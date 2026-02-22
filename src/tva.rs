@@ -1,0 +1,36 @@
+extern crate clap;
+
+use clap::*;
+
+use tva::cmd_tva;
+
+fn main() -> anyhow::Result<()> {
+    let app = Command::new("tva")
+        .version(crate_version!())
+        .author(crate_authors!())
+        .about("`tva` Tab-separated Values Assistant")
+        .propagate_version(true)
+        .arg_required_else_help(true)
+        .color(ColorChoice::Auto)
+        .subcommand(cmd_tva::md::make_subcommand())
+        .after_help(
+            r###"
+Subcommand groups:
+
+* Generic .tsv: md
+
+"###,
+        );
+
+    // Check which subcomamnd the user ran...
+    match app.get_matches().subcommand() {
+        Some(("md", sub_matches)) => cmd_tva::md::execute(sub_matches),
+        _ => unreachable!(),
+    }
+    .unwrap();
+
+    Ok(())
+}
+
+// TODO: `rgr span` 5p and 3p
+// TODO: --bed for `rgr field`
