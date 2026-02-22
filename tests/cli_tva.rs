@@ -1,11 +1,9 @@
-use assert_cmd::prelude::*; // Add methods on commands
+use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*; // Used for writing assertions
-use std::process::Command;
-use tempfile::TempDir; // Run programs
 
 #[test]
 fn command_invalid() -> anyhow::Result<()> {
-    let mut cmd = Command::cargo_bin("tva")?;
+    let mut cmd = cargo_bin_cmd!("tva");
     cmd.arg("foobar");
     cmd.assert()
         .failure()
@@ -16,7 +14,7 @@ fn command_invalid() -> anyhow::Result<()> {
 
 #[test]
 fn command_md() -> anyhow::Result<()> {
-    let mut cmd = Command::cargo_bin("tva")?;
+    let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("md")
         .arg("tests/genome/ctg.range.tsv")
@@ -34,7 +32,7 @@ fn command_md() -> anyhow::Result<()> {
     );
     assert!(stdout.contains("| 130218 |  ctg:I:2   | I:100001-230218 |"));
 
-    let mut cmd = Command::cargo_bin("tva")?;
+    let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("md")
         .arg("tests/genome/ctg.range.tsv")
