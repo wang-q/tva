@@ -16,6 +16,7 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::dedup::make_subcommand())
         .subcommand(cmd_tva::nl::make_subcommand())
         .subcommand(cmd_tva::keep_header::make_subcommand())
+        .subcommand(cmd_tva::check::make_subcommand())
         .after_help(
             r###"
 Description:
@@ -35,6 +36,7 @@ Notes:
         Some(("dedup", sub_matches)) => cmd_tva::dedup::execute(sub_matches),
         Some(("nl", sub_matches)) => cmd_tva::nl::execute(sub_matches),
         Some(("keep-header", sub_matches)) => cmd_tva::keep_header::execute(sub_matches),
+        Some(("check", sub_matches)) => cmd_tva::check::execute(sub_matches),
         _ => unreachable!(),
     }
     .unwrap();
