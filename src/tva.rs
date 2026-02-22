@@ -14,13 +14,14 @@ fn main() -> anyhow::Result<()> {
         .color(ColorChoice::Auto)
         .subcommand(cmd_tva::md::make_subcommand())
         .subcommand(cmd_tva::dedup::make_subcommand())
+        .subcommand(cmd_tva::nl::make_subcommand())
         .after_help(
             r###"
 Description:
 Tab-separated Values Assistant with subcommands for working with TSV files.
 
 Subcommand groups:
-* Generic TSV: md, dedup
+* Generic TSV: md, dedup, nl
 
 Notes:
 * Run `tva help <SUBCOMMAND>` for detailed usage
@@ -31,6 +32,7 @@ Notes:
     match app.get_matches().subcommand() {
         Some(("md", sub_matches)) => cmd_tva::md::execute(sub_matches),
         Some(("dedup", sub_matches)) => cmd_tva::dedup::execute(sub_matches),
+        Some(("nl", sub_matches)) => cmd_tva::nl::execute(sub_matches),
         _ => unreachable!(),
     }
     .unwrap();

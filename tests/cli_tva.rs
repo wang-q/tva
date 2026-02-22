@@ -1,5 +1,6 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*; // Used for writing assertions
+use std::fs;
 
 #[test]
 fn command_invalid() -> anyhow::Result<()> {
@@ -78,6 +79,104 @@ fn command_dedup() -> anyhow::Result<()> {
 
     assert_eq!(stdout.lines().count(), 3);
     assert!(!stdout.contains("ctg:I:2\tI"));
+
+    Ok(())
+}
+
+#[test]
+fn command_dedup_stdin() -> anyhow::Result<()> {
+    let input = fs::read_to_string("tests/genome/ctg.tsv").unwrap();
+    let input_dup = format!("{input}{input}");
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("dedup")
+        .write_stdin(input_dup)
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout.lines().count(), 4);
+
+    // field-based dedup via stdin (column 2)
+    let input = fs::read_to_string("tests/genome/ctg.tsv").unwrap();
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("dedup")
+        .arg("-f")
+        .arg("2")
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout.lines().count(), 3);
+    assert!(!stdout.contains("ctg:I:2\tI"));
+
+    Ok(())
+}
+
+#[test]
+fn command_dedup_stdin_and_file() -> anyhow::Result<()> {
+    let input = fs::read_to_string("tests/genome/ctg.tsv").unwrap();
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("dedup")
+        .arg("stdin")
+        .arg("tests/genome/ctg.tsv")
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout.lines().count(), 4);
+
+    Ok(())
+}
+
+#[test]
+fn command_nl() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd.arg("nl").arg("tests/genome/ctg.tsv").output().unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 4);
+    assert!(lines[0].starts_with("1\tID\tchr_id"));
+    assert!(lines[3].starts_with("4\tctg:I:2\tI"));
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("nl")
+        .arg("--header")
+        .arg("tests/genome/ctg.tsv")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 4);
+    assert_eq!(
+        lines[0],
+        "line\tID\tchr_id\tchr_start\tchr_end\tchr_strand\tlength"
+    );
+    assert!(lines[1].starts_with("1\tctg:I:1\tI"));
+    assert!(lines[3].starts_with("3\tctg:I:2\tI"));
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("nl")
+        .arg("--header-string")
+        .arg("linenum")
+        .arg("tests/genome/ctg.tsv")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines[0], "linenum\tID\tchr_id\tchr_start\tchr_end\tchr_strand\tlength");
 
     Ok(())
 }
