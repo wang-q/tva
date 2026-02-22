@@ -102,6 +102,36 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .unwrap_or("\t");
 
     for infile in &infiles {
+        let is_stdin = infile == "stdin";
+
+        let mut skip_entire_file = false;
+        if !is_stdin {
+            let mut probe = crate::libs::reader(infile);
+            let mut buf = String::new();
+            let mut has_nonempty = false;
+
+            loop {
+                buf.clear();
+                let n = std::io::BufRead::read_line(&mut *probe, &mut buf)?;
+                if n == 0 {
+                    break;
+                }
+                let trimmed = buf.trim_end_matches(&['\n', '\r'][..]);
+                if !trimmed.is_empty() {
+                    has_nonempty = true;
+                    break;
+                }
+            }
+
+            if !has_nonempty {
+                skip_entire_file = true;
+            }
+        }
+
+        if skip_entire_file {
+            continue;
+        }
+
         let reader = crate::libs::reader(infile);
         let mut file_line_num: u64 = 0;
 
@@ -110,20 +140,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             if has_header && file_line_num == 1 {
                 if !header_written {
-                    let header_line = if infile == "stdin" {
-                        line.clone()
-                    } else {
-                        let mut header_reader = crate::libs::reader(infile);
-                        let mut s = String::new();
-                        match std::io::BufRead::read_line(&mut *header_reader, &mut s) {
-                            Ok(0) | Err(_) => line.clone(),
-                            Ok(_) => s.trim_end_matches(&['\n', '\r'][..]).to_string(),
-                        }
-                    };
-
                     writer.write_all(header_string.as_bytes())?;
                     writer.write_all(delimiter.as_bytes())?;
-                    writer.write_all(header_line.as_bytes())?;
+                    writer.write_all(line.as_bytes())?;
                     writer.write_all(b"\n")?;
                     writer.flush()?;
                     header_written = true;

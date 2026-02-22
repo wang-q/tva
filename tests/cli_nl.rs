@@ -125,6 +125,41 @@ fn nl_start_number_negative_from_gold() -> anyhow::Result<()> {
 }
 
 #[test]
+fn nl_empty_file_from_gold() -> anyhow::Result<()> {
+    let expected = expected_block("empty-file.txt");
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("nl")
+        .arg("tests/data/nl/empty-file.txt")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn nl_header_empty_file_from_gold() -> anyhow::Result<()> {
+    let expected = expected_block("-H empty-file.txt");
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("nl")
+        .arg("-H")
+        .arg("tests/data/nl/empty-file.txt")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
 fn nl_header_from_gold() -> anyhow::Result<()> {
     let expected = expected_block("--header input1.txt");
 
@@ -259,6 +294,68 @@ fn nl_header_string_from_gold() -> anyhow::Result<()> {
 }
 
 #[test]
+fn nl_multi_file_from_gold() -> anyhow::Result<()> {
+    let expected = expected_block("input1.txt input2.txt empty-file.txt one-line-file.txt");
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("nl")
+        .arg("tests/data/nl/input1.txt")
+        .arg("tests/data/nl/input2.txt")
+        .arg("tests/data/nl/empty-file.txt")
+        .arg("tests/data/nl/one-line-file.txt")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn nl_multi_file_reordered_from_gold() -> anyhow::Result<()> {
+    let expected = expected_block("input1.txt one-line-file.txt input2.txt empty-file.txt");
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("nl")
+        .arg("tests/data/nl/input1.txt")
+        .arg("tests/data/nl/one-line-file.txt")
+        .arg("tests/data/nl/input2.txt")
+        .arg("tests/data/nl/empty-file.txt")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn nl_multi_file_with_leading_empty_from_gold() -> anyhow::Result<()> {
+    let expected =
+        expected_block("empty-file.txt input1.txt one-line-file.txt input2.txt input1.txt");
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("nl")
+        .arg("tests/data/nl/empty-file.txt")
+        .arg("tests/data/nl/input1.txt")
+        .arg("tests/data/nl/one-line-file.txt")
+        .arg("tests/data/nl/input2.txt")
+        .arg("tests/data/nl/input1.txt")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
 fn nl_multi_file_header_second_from_gold() -> anyhow::Result<()> {
     let expected = expected_block("-H input2.txt input2.txt input2.txt");
 
@@ -291,6 +388,32 @@ fn nl_multi_file_header_mixed_from_gold() -> anyhow::Result<()> {
         .arg("tests/data/nl/input2.txt")
         .arg("tests/data/nl/empty-file.txt")
         .arg("tests/data/nl/one-line-file.txt")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn nl_multi_file_header_string_from_gold() -> anyhow::Result<()> {
+    let expected = expected_block(
+        "--header -s LINENUM empty-file.txt input1.txt one-line-file.txt input2.txt input1.txt",
+    );
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("nl")
+        .arg("--header")
+        .arg("-s")
+        .arg("LINENUM")
+        .arg("tests/data/nl/empty-file.txt")
+        .arg("tests/data/nl/input1.txt")
+        .arg("tests/data/nl/one-line-file.txt")
+        .arg("tests/data/nl/input2.txt")
+        .arg("tests/data/nl/input1.txt")
         .output()
         .unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
