@@ -26,10 +26,10 @@ Examples:
         )
         .arg(
             Arg::new("infile")
-                .required(true)
-                .num_args(1)
+                .num_args(0..=1)
+                .default_value("stdin")
                 .index(1)
-                .help("Input TSV file to process"),
+                .help("Input TSV file to process (default: stdin)"),
         )
         .arg(
             Arg::new("center")

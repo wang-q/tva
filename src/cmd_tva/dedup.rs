@@ -13,7 +13,7 @@ Deduplicates rows of one or more tab-separated values (TSV) files without sortin
 
 Notes:
 * Supports plain text and gzipped (.gz) TSV files
-* Reads from stdin if input file is 'stdin'
+* Reads from stdin if no input file is given or if input file is 'stdin'
 * Keeps a 64-bit hash for each unique key; ~8 bytes of memory per unique row
 * Only the first occurrence of each key is kept; occurrences are not counted
 
@@ -27,10 +27,9 @@ Examples:
         )
         .arg(
             Arg::new("infiles")
-                .required(true)
-                .num_args(1..)
+                .num_args(0..)
                 .index(1)
-                .help("Input TSV file(s) to process"),
+                .help("Input TSV file(s) to process (default: stdin)"),
         )
         .arg(
             Arg::new("fields")
@@ -53,6 +52,11 @@ Examples:
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::writer(args.get_one::<String>("outfile").unwrap());
 
+    let infiles: Vec<String> = match args.get_many::<String>("infiles") {
+        Some(values) => values.cloned().collect(),
+        None => vec!["stdin".to_string()],
+    };
+
     let opt_fields: intspan::IntSpan = if args.contains_id("fields") {
         crate::libs::fields_to_ints(args.get_one::<String>("fields").unwrap())
     } else {
@@ -61,7 +65,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut subject_set: HashSet<u64> = HashSet::new();
 
-    for infile in args.get_many::<String>("infiles").unwrap() {
+    for infile in &infiles {
         let reader = crate::libs::reader(infile);
 
         for line in reader.lines().map_while(Result::ok) {
