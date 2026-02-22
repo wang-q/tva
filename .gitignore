@@ -81,43 +81,6 @@ $RECYCLE.BIN/
 *.lnk
 
 #----------------------------#
-# LaTeX
-#----------------------------#
-
-# LaTeX tmp
-*.toc
-*.aux
-*.fdb_latexmk
-*.fls
-*.nav
-*.out
-*.snm
-*.vrb
-*(busy)
-*.synctex.gz
-*.xdv
-
-# bibtex tmp
-*.bbl
-*.bcf
-*.blg
-*-blx.bib
-*.run.xml
-
-# nomencl tmp
-*.ilg
-*.nlo
-*.nls
-
-# latexindent backup
-*.bak*
-indent.log
-
-*.log
-*.pdf
-output.tex
-
-#----------------------------#
 # This project
 #----------------------------#
 
@@ -133,7 +96,3 @@ Cargo.lock
 **/*.rs.bk
 
 *.tmp
-
-*.sqlite
-*.dmp
-*.tsv
