@@ -133,32 +133,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     for infile in &infiles {
         let is_stdin = infile == "stdin";
 
-        let mut skip_entire_file = false;
         if !is_stdin {
-            let mut probe = crate::libs::io::reader(infile);
-            let mut buf = String::new();
-            let mut has_nonempty = false;
-
-            loop {
-                buf.clear();
-                let n = std::io::BufRead::read_line(&mut *probe, &mut buf)?;
-                if n == 0 {
-                    break;
-                }
-                let trimmed = buf.trim_end_matches(&['\n', '\r'][..]);
-                if !trimmed.is_empty() {
-                    has_nonempty = true;
-                    break;
-                }
+            if !crate::libs::io::has_nonempty_line(infile)? {
+                continue;
             }
-
-            if !has_nonempty {
-                skip_entire_file = true;
-            }
-        }
-
-        if skip_entire_file {
-            continue;
         }
 
         let reader = crate::libs::io::reader(infile);

@@ -1,5 +1,4 @@
 use clap::*;
-use std::fs::File;
 use std::io::{self, BufRead, Write};
 use std::process::{Command as ProcessCommand, Stdio};
 
@@ -99,49 +98,25 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     for name in filenames {
-        let is_stdin = name == "-" || name == "stdin";
         let mut file_had_content = false;
         let mut remaining = header_lines;
 
-        if is_stdin {
-            let stdin = io::stdin();
-            let mut reader = stdin.lock();
-            let mut line = String::new();
-            loop {
-                line.clear();
-                let n = reader.read_line(&mut line)?;
-                if n == 0 {
-                    break;
-                }
-                file_had_content = true;
-                if remaining > 0 {
-                    if !header_source_used {
-                        stdout.write_all(line.as_bytes())?;
-                    }
-                    remaining -= 1;
-                } else {
-                    child_stdin.write_all(line.as_bytes())?;
-                }
+        let mut reader = crate::libs::io::reader(&name);
+        let mut line = String::new();
+        loop {
+            line.clear();
+            let n = BufRead::read_line(&mut *reader, &mut line)?;
+            if n == 0 {
+                break;
             }
-        } else {
-            let file = File::open(&name)?;
-            let mut reader = io::BufReader::new(file);
-            let mut line = String::new();
-            loop {
-                line.clear();
-                let n = reader.read_line(&mut line)?;
-                if n == 0 {
-                    break;
+            file_had_content = true;
+            if remaining > 0 {
+                if !header_source_used {
+                    stdout.write_all(line.as_bytes())?;
                 }
-                file_had_content = true;
-                if remaining > 0 {
-                    if !header_source_used {
-                        stdout.write_all(line.as_bytes())?;
-                    }
-                    remaining -= 1;
-                } else {
-                    child_stdin.write_all(line.as_bytes())?;
-                }
+                remaining -= 1;
+            } else {
+                child_stdin.write_all(line.as_bytes())?;
             }
         }
 

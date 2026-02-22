@@ -65,8 +65,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut subject_set: HashSet<u64> = HashSet::new();
 
-    for infile in &infiles {
-        let reader = crate::libs::io::reader(infile);
+    for input in crate::libs::io::input_sources(&infiles) {
+        let reader = input.reader;
 
         for line in reader.lines().map_while(Result::ok) {
             let subject = if opt_fields.is_empty() {
