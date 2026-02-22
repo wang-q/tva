@@ -517,7 +517,7 @@ fn nl_help_displays_usage() -> anyhow::Result<()> {
     cmd.arg("nl").arg("--help");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Adds a line number column"));
+        .stdout(predicate::str::contains("Reads TSV data from files or standard input"));
 
     Ok(())
 }

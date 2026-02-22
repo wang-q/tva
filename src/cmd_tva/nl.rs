@@ -7,9 +7,13 @@ pub fn make_subcommand() -> Command {
         .after_help(
             r###"
 Description:
-Adds a line number column to each input line. Supports plain text and
-gzipped (.gz) files. When multiple files are given, lines are numbered
-continuously across files.
+Reads TSV data from files or standard input and writes each line preceded
+by a line number. This is a simplified, TSV-aware version of the Unix
+`nl` program and adds support for treating the first input line as a
+header.
+
+Supports plain text and gzipped (.gz) files. When multiple files are
+given, lines are numbered continuously across files.
 
 Input:
 - If no input files are given, or an input file is 'stdin', data is read
