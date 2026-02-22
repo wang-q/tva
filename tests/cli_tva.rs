@@ -52,3 +52,32 @@ fn command_md() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn command_dedup() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("dedup")
+        .arg("tests/genome/ctg.tsv")
+        .arg("tests/genome/ctg.tsv")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout.lines().count(), 4);
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("dedup")
+        .arg("tests/genome/ctg.tsv")
+        .arg("-f")
+        .arg("2")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout.lines().count(), 3);
+    assert!(!stdout.contains("ctg:I:2\tI"));
+
+    Ok(())
+}

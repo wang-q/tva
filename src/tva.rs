@@ -13,6 +13,7 @@ fn main() -> anyhow::Result<()> {
         .arg_required_else_help(true)
         .color(ColorChoice::Auto)
         .subcommand(cmd_tva::md::make_subcommand())
+        .subcommand(cmd_tva::dedup::make_subcommand())
         .after_help(
             r###"
 Subcommand groups:
@@ -25,6 +26,7 @@ Subcommand groups:
     // Check which subcomamnd the user ran...
     match app.get_matches().subcommand() {
         Some(("md", sub_matches)) => cmd_tva::md::execute(sub_matches),
+        Some(("dedup", sub_matches)) => cmd_tva::dedup::execute(sub_matches),
         _ => unreachable!(),
     }
     .unwrap();
