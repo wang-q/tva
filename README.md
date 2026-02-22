@@ -12,31 +12,69 @@ Fast, reliable TSV processing toolkit in Rust
 ### `tva help`
 
 ```text
-`tva` Tab-separated Values Assistant
+tva: Tab-separated Values Assistant
 
 Usage: tva [COMMAND]
 
 Commands:
-  md    Convert .tsv file to markdown table
-  help  Print this message or the help of the given subcommand(s)
+  md     Converts TSV file to markdown table
+  dedup  Deduplicates TSV rows from one or more files
+  help   Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help     Print help
   -V, --version  Print version
 
 
-Subcommand groups:
+Description:
+Tab-separated Values Assistant with subcommands for working with TSV files.
 
-* Generic .tsv: md
+Subcommand groups:
+* Generic TSV: md, dedup
+
+Notes:
+* Run `tva help <SUBCOMMAND>` for detailed usage
 ```
 
 ## Examples
 
 ```bash
-cargo run --bin tva md tests/genome/ctg.range.tsv --num -c 2
-cargo run --bin tva md tests/genome/ctg.range.tsv --fmt --digits 2
+tva md tests/genome/ctg.range.tsv --num -c 2
+tva md tests/genome/ctg.range.tsv --fmt --digits 2
 
-cargo run --bin tva dedup tests/genome/ctg.tsv tests/genome/ctg.tsv
-cargo run --bin tva dedup tests/genome/ctg.tsv -f 2
+tva dedup tests/genome/ctg.tsv tests/genome/ctg.tsv
+tva dedup tests/genome/ctg.tsv -f 2
 
 ```
+
+## Help text style guide
+
+* **`about`**: Third-person singular, describing the TSV operation
+  (e.g., "Converts TSV to markdown table", "Deduplicates TSV rows").
+* **`after_help`**: Use raw string `r###"..."###`.
+    * **Description**: Short paragraph of what the subcommand does and its trade-offs.
+    * **Notes**: Bullet points starting with `*`.
+        * Standard note for TSV input: `* Supports plain text and gzipped (.gz) TSV files`
+        * Standard note for TSV input: `* Reads from stdin if input file is 'stdin'`
+        * For memory-heavy tools like `dedup`: `* Keeps a hash for each unique row; does not count occurrences`
+    * **Examples**: Numbered list (`1.`, `2.`) with code blocks indented by 3 spaces.
+* **Arguments**:
+    * **Input**: `infile` (single) or `infiles` (multiple).
+        * Help: `Input TSV file(s) to process`.
+    * **Output**: `outfile` (`-o`, `--outfile`).
+        * Help: `Output filename. [stdout] for screen`.
+* **Terminology**:
+    * Prefer "TSV" when referring to files.
+    * Use "row" / "column" in help text where it makes sense.
+
+## Author
+
+Qiang Wang <wang-q@outlook.com>
+
+## License
+
+MIT.
+
+Copyright by Qiang Wang.
+
+Written by Qiang Wang <wang-q@outlook.com>, 2024-

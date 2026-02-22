@@ -1,16 +1,28 @@
 use clap::*;
 use std::collections::HashSet;
-use std::io::{BufRead, Write};
+use std::io::BufRead;
 
 // Create clap subcommand arguments
 pub fn make_subcommand() -> Command {
     Command::new("dedup")
-        .about("Deduplicate lines in .tsv file(s)")
+        .about("Deduplicates TSV rows from one or more files")
         .after_help(
             r###"
-The file requires a single pass without sorting, with each line consuming 8 bytes (u64) of memory.
-As a trade-off, this program cannot count the occurrences.
+Description:
+Deduplicates rows of one or more tab-separated values (TSV) files without sorting.
 
+Notes:
+* Supports plain text and gzipped (.gz) TSV files
+* Reads from stdin if input file is 'stdin'
+* Keeps a 64-bit hash for each unique key; ~8 bytes of memory per unique row
+* Only the first occurrence of each key is kept; occurrences are not counted
+
+Examples:
+1. Deduplicate whole rows
+   tva dedup tests/genome/ctg.tsv
+
+2. Deduplicate by column 2
+   tva dedup tests/genome/ctg.tsv -f 2
 "###,
         )
         .arg(
@@ -18,14 +30,14 @@ As a trade-off, this program cannot count the occurrences.
                 .required(true)
                 .num_args(1..)
                 .index(1)
-                .help("Sets the input file(s) to use"),
+                .help("Input TSV file(s) to process"),
         )
         .arg(
             Arg::new("fields")
                 .long("fields")
                 .short('f')
                 .num_args(1)
-                .help("Fields to use as the key"),
+                .help("TSV fields (1-based) to use as dedup key"),
         )
         .arg(
             Arg::new("outfile")
@@ -39,24 +51,18 @@ As a trade-off, this program cannot count the occurrences.
 
 // command implementation
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    //----------------------------
-    // Args
-    //----------------------------
-    let mut writer = intspan::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer = crate::libs::writer(args.get_one::<String>("outfile").unwrap());
 
     let opt_fields: intspan::IntSpan = if args.contains_id("fields") {
-        intspan::fields_to_ints(args.get_one::<String>("fields").unwrap())
+        crate::libs::fields_to_ints(args.get_one::<String>("fields").unwrap())
     } else {
         intspan::IntSpan::new()
     };
 
-    //----------------------------
-    // Ops
-    //----------------------------
     let mut subject_set: HashSet<u64> = HashSet::new();
 
     for infile in args.get_many::<String>("infiles").unwrap() {
-        let reader = intspan::reader(infile);
+        let reader = crate::libs::reader(infile);
 
         for line in reader.lines().map_while(Result::ok) {
             let subject = if opt_fields.is_empty() {

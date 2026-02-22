@@ -4,13 +4,24 @@ use std::io::{BufRead, Write};
 // Create clap subcommand arguments
 pub fn make_subcommand() -> Command {
     Command::new("md")
-        .about("Convert .tsv file to markdown table")
+        .about("Converts TSV file to markdown table")
         .after_help(
             r###"
-* --right 1,3-5
+Description:
+Converts a tab-separated values (TSV) file into a markdown table.
 
-* Using `--fmt --digits 2` will produce the output in the format `1,234.00`.
+Notes:
+* Supports plain text and gzipped (.gz) TSV files
+* Reads from stdin if input file is 'stdin'
+* With `--fmt`, numeric columns are formatted with thousands separators and fixed decimals
+* With `--num`, numeric columns are right-aligned automatically
 
+Examples:
+1. Basic markdown table
+   tva md tests/genome/ctg.range.tsv --num -c 2
+
+2. Formatted numeric columns
+   tva md tests/genome/ctg.range.tsv --fmt --digits 2
 "###,
         )
         .arg(
@@ -18,7 +29,7 @@ pub fn make_subcommand() -> Command {
                 .required(true)
                 .num_args(1)
                 .index(1)
-                .help("Sets the input file to use"),
+                .help("Input TSV file to process"),
         )
         .arg(
             Arg::new("center")
@@ -66,11 +77,8 @@ pub fn make_subcommand() -> Command {
 
 // command implementation
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    //----------------------------
-    // Loading
-    //----------------------------
-    let mut writer = intspan::writer(args.get_one::<String>("outfile").unwrap());
-    let reader = intspan::reader(args.get_one::<String>("infile").unwrap());
+    let mut writer = crate::libs::writer(args.get_one::<String>("outfile").unwrap());
+    let reader = crate::libs::reader(args.get_one::<String>("infile").unwrap());
 
     let mut opt_center: intspan::IntSpan = if args.contains_id("center") {
         crate::libs::fields_to_ints(args.get_one::<String>("center").unwrap())
@@ -135,7 +143,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         format!("{}", value)
                     } else if is_fmt && is_numeric_column[j] {
                         let num = value.parse::<f64>().unwrap();
-                        let v = intspan::format_number(num, opt_digits);
+                        let v = crate::libs::format_number(num, opt_digits);
                         format!("{}", v)
                     } else {
                         format!("{}", value)

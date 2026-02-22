@@ -8,7 +8,7 @@ fn main() -> anyhow::Result<()> {
     let app = Command::new("tva")
         .version(crate_version!())
         .author(crate_authors!())
-        .about("`tva` Tab-separated Values Assistant")
+        .about("tva: Tab-separated Values Assistant")
         .propagate_version(true)
         .arg_required_else_help(true)
         .color(ColorChoice::Auto)
@@ -16,10 +16,14 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::dedup::make_subcommand())
         .after_help(
             r###"
+Description:
+Tab-separated Values Assistant with subcommands for working with TSV files.
+
 Subcommand groups:
+* Generic TSV: md, dedup
 
-* Generic .tsv: md
-
+Notes:
+* Run `tva help <SUBCOMMAND>` for detailed usage
 "###,
         );
 
