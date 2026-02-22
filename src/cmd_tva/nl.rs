@@ -7,21 +7,46 @@ pub fn make_subcommand() -> Command {
         .after_help(
             r###"
 Description:
-Adds a line number column to each row from one or more TSV files.
+Adds a line number column to each input line. Supports plain text and
+gzipped (.gz) files. When multiple files are given, lines are numbered
+continuously across files.
 
-Notes:
-* Supports plain text and gzipped (.gz) TSV files
-* Reads from stdin if no input file is given or if input file is 'stdin'
+Input:
+- If no input files are given, or an input file is 'stdin', data is read
+  from standard input.
+- Files ending in '.gz' are transparently decompressed.
+- Completely empty files (only blank lines) are skipped and do not consume
+  line numbers.
+
+Header behavior:
+- --header / -H
+  Treats the first line of each file as a header. Only the header from
+  the first non-empty file is written; later header lines are skipped
+  and not numbered.
+- --header-string / -s
+  Sets the header text for the line number column (default: 'line') and
+  implies --header.
+
+Numbering:
+- Line numbers start from --start-number / -n (default: 1, can be negative).
+- Numbers increase by 1 for each data line, across all input files.
+- Header lines are never numbered.
 
 Examples:
 1. Number lines of a TSV file
    tva nl tests/genome/ctg.tsv
 
 2. Number lines with a header for the line number column
-   tva nl --header tests/genome/ctg.tsv
+   tva nl --header --header-string LINENUM tests/genome/ctg.tsv
 
 3. Number lines starting from 100
    tva nl --start-number 100 tests/genome/ctg.tsv
+
+4. Number multiple files, preserving continuous line numbers
+   tva nl input1.tsv input2.tsv
+
+5. Read from stdin
+   cat input1.tsv | tva nl
 "###,
         )
         .arg(
