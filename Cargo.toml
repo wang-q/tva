@@ -10,6 +10,7 @@ readme = "README.md"
 categories = ["command-line-utilities", "science"]
 license = "MIT"
 edition = "2021"
+publish = false
 
 [lib]
 name = "tva"
