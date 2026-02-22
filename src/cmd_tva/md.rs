@@ -77,16 +77,16 @@ Examples:
 
 // command implementation
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::writer(args.get_one::<String>("outfile").unwrap());
-    let reader = crate::libs::reader(args.get_one::<String>("infile").unwrap());
+    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let reader = crate::libs::io::reader(args.get_one::<String>("infile").unwrap());
 
     let mut opt_center: intspan::IntSpan = if args.contains_id("center") {
-        crate::libs::fields_to_ints(args.get_one::<String>("center").unwrap())
+        crate::libs::fields::fields_to_ints(args.get_one::<String>("center").unwrap())
     } else {
         intspan::IntSpan::new()
     };
     let mut opt_right: intspan::IntSpan = if args.contains_id("right") {
-        crate::libs::fields_to_ints(args.get_one::<String>("right").unwrap())
+        crate::libs::fields::fields_to_ints(args.get_one::<String>("right").unwrap())
     } else {
         intspan::IntSpan::new()
     };
@@ -104,7 +104,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut data: Vec<Vec<String>> = Vec::new();
     for line in reader.lines().map_while(Result::ok) {
-        let fields: Vec<String> = line.split('\t').map(|s| s.to_string()).collect();
+        let fields: Vec<String> = line.split('\t').map(|s: &str| s.to_string()).collect();
         data.push(fields);
     }
 
@@ -143,7 +143,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         format!("{}", value)
                     } else if is_fmt && is_numeric_column[j] {
                         let num = value.parse::<f64>().unwrap();
-                        let v = crate::libs::format_number(num, opt_digits);
+                        let v = crate::libs::number::format_number(num, opt_digits);
                         format!("{}", v)
                     } else {
                         format!("{}", value)

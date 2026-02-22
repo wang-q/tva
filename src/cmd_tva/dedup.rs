@@ -50,7 +50,7 @@ Examples:
 
 // command implementation
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
@@ -58,7 +58,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let opt_fields: intspan::IntSpan = if args.contains_id("fields") {
-        crate::libs::fields_to_ints(args.get_one::<String>("fields").unwrap())
+        crate::libs::fields::fields_to_ints(args.get_one::<String>("fields").unwrap())
     } else {
         intspan::IntSpan::new()
     };
@@ -66,12 +66,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut subject_set: HashSet<u64> = HashSet::new();
 
     for infile in &infiles {
-        let reader = crate::libs::reader(infile);
+        let reader = crate::libs::io::reader(infile);
 
         for line in reader.lines().map_while(Result::ok) {
             let subject = if opt_fields.is_empty() {
                 // whole line
-                xxhash_rust::xxh3::xxh3_64(&line.clone().into_bytes())
+                xxhash_rust::xxh3::xxh3_64(line.as_bytes())
             } else {
                 // Get elements at specified indices
                 let fields: Vec<&str> = line.split('\t').collect();

@@ -108,7 +108,7 @@ Examples:
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
@@ -135,7 +135,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         let mut skip_entire_file = false;
         if !is_stdin {
-            let mut probe = crate::libs::reader(infile);
+            let mut probe = crate::libs::io::reader(infile);
             let mut buf = String::new();
             let mut has_nonempty = false;
 
@@ -161,7 +161,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             continue;
         }
 
-        let reader = crate::libs::reader(infile);
+        let reader = crate::libs::io::reader(infile);
         let mut file_line_num: u64 = 0;
 
         for line in reader.lines().map_while(Result::ok) {
