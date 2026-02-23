@@ -618,6 +618,172 @@ fn join_error_invalid_whole_line_combo_append_header_0_2() -> anyhow::Result<()>
 }
 
 #[test]
+fn join_error_invalid_whole_line_combo_key_and_fields_header_name_f2_0() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("f2,0")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("field index must be >= 1")
+            || stderr.contains("Field 0 (whole line) cannot be combined"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_invalid_whole_line_combo_key_and_fields_header_name_0_f2() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("0,f2")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("field index must be >= 1")
+            || stderr.contains("Field 0 (whole line) cannot be combined"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_invalid_whole_line_combo_key_and_fields_header_name_data_0_f2(
+) -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("f2,f3")
+        .arg("-d")
+        .arg("0,f2")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("field index must be >= 1")
+            || stderr.contains("Field 0 (whole line) cannot be combined"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_invalid_whole_line_combo_key_and_fields_header_name_data_f2_0(
+) -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("f2,f3")
+        .arg("-d")
+        .arg("f2,0")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("field index must be >= 1")
+            || stderr.contains("Field 0 (whole line) cannot be combined"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_invalid_whole_line_combo_append_header_name_f2_0() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("f1")
+        .arg("-a")
+        .arg("f2,0")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("field index must be >= 1")
+            || stderr.contains("Field 0 (whole line) cannot be combined"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_invalid_whole_line_combo_append_header_name_0_f2() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("f1")
+        .arg("-a")
+        .arg("0,f2")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("field index must be >= 1")
+            || stderr.contains("Field 0 (whole line) cannot be combined"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
 fn join_error_invalid_header_name_key_fields() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
