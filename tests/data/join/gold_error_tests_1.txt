@@ -1,0 +1,25 @@
+Error test set 1
+----------------
+
+===Duplicate keys===
+
+====[tsv-join --header -f input1.tsv -k 2 -a 0 input2.tsv]====
+Error [tsv-join]: Duplicate keys with different append values (use --z|allow-duplicate-keys to ignore)
+   [key 1][values]: [ggg][1	ggg	UUU	101	15]
+   [key 2][values]: [ggg][5	ggg	CCC	5734	52]
+
+====[tsv-join --header -f input1.tsv -k 2 -a 4 input2.tsv]====
+Error [tsv-join]: Duplicate keys with different append values (use --z|allow-duplicate-keys to ignore)
+   [key 1][values]: [ggg][101]
+   [key 2][values]: [ggg][5734]
+
+====[tsv-join -f input1_noheader.tsv -k 2 -a 0 input2_noheader.tsv]====
+Error [tsv-join]: Duplicate keys with different append values (use --z|allow-duplicate-keys to ignore)
+   [key 1][values]: [ggg][1	ggg	UUU	101	15]
+   [key 2][values]: [ggg][5	ggg	CCC	5734	52]
+
+====[tsv-join -f input1_noheader.tsv -k 2 -a 4 input2_noheader.tsv]====
+Error [tsv-join]: Duplicate keys with different append values (use --z|allow-duplicate-keys to ignore)
+   [key 1][values]: [ggg][101]
+   [key 2][values]: [ggg][5734]
+

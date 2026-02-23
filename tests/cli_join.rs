@@ -165,3 +165,56 @@ fn join_error_delimiter_must_be_single_char() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn join_basic_exclude_header_whole_line_key() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("--exclude")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let golden = std::fs::read_to_string("tests/data/join/gold_basic_tests_1.txt")?;
+    let expected = extract_block(
+        &golden,
+        "====[tsv-join --header -f input1.tsv --exclude input2.tsv]====",
+    );
+
+    assert_eq!(stdout.trim_end(), expected.trim_end());
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_exclude_noheader_whole_line_key() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-f")
+        .arg("tests/data/join/input1_noheader.tsv")
+        .arg("--exclude")
+        .arg("tests/data/join/input2_noheader.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let golden = std::fs::read_to_string("tests/data/join/gold_basic_tests_1.txt")?;
+    let expected = extract_block(
+        &golden,
+        "====[tsv-join -f input1_noheader.tsv --exclude input2_noheader.tsv]====",
+    );
+
+    assert_eq!(stdout.trim_end(), expected.trim_end());
+
+    Ok(())
+}

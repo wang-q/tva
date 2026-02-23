@@ -67,6 +67,13 @@ Output:
                 .help("Filter file fields to append to matched records"),
         )
         .arg(
+            Arg::new("exclude")
+                .long("exclude")
+                .short('e')
+                .action(ArgAction::SetTrue)
+                .help("Exclude matching records (anti-join)"),
+        )
+        .arg(
             Arg::new("header")
                 .long("header")
                 .short('H')
@@ -210,6 +217,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let has_header = args.get_flag("header");
     let allow_duplicate_keys = args.get_flag("allow-duplicate-keys");
     let line_buffered = args.get_flag("line-buffered");
+    let exclude = args.get_flag("exclude");
 
     let delimiter_str = args
         .get_one::<String>("delimiter")
@@ -222,6 +230,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             "tva join: delimiter must be a single character, got `{}`",
             delimiter_str
         );
+        std::process::exit(1);
+    }
+
+    if exclude && append_fields_spec.is_some() {
+        eprintln!("tva join: --exclude cannot be used with --append-fields");
         std::process::exit(1);
     }
 
@@ -278,6 +291,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut header_written = false;
     let prefix = args.get_one::<String>("prefix").cloned().unwrap_or_default();
+
+    if !has_header && !prefix.is_empty() {
+        eprintln!("tva join: --prefix requires --header");
+        std::process::exit(1);
+    }
 
     for input in crate::libs::io::input_sources(&infiles) {
         let reader = input.reader;
@@ -356,15 +374,20 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 key_from_indices(&line, data_key_indices.as_ref().unwrap(), delimiter)
             };
 
-            if let Some(values) = filter_map.get(&key) {
+            let matched = filter_map.get(&key);
+
+            if exclude {
+                if matched.is_none() {
+                    writer.write_fmt(format_args!("{}\n", line))?;
+                    if line_buffered {
+                        writer.flush()?;
+                    }
+                }
+            } else if let Some(values) = matched {
                 let mut out_line = line.clone();
                 if !values.is_empty() {
-                    for (i, v) in values.iter().enumerate() {
-                        if i == 0 {
-                            out_line.push(delimiter);
-                        } else {
-                            out_line.push(delimiter);
-                        }
+                    for v in values {
+                        out_line.push(delimiter);
                         out_line.push_str(v);
                     }
                 }
@@ -378,4 +401,3 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     Ok(())
 }
-
