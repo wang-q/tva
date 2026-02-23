@@ -5,7 +5,7 @@ use std::io::BufRead;
 
 // Create clap subcommand arguments
 pub fn make_subcommand() -> Command {
-    Command::new("dedup")
+    Command::new("uniq")
         .about("Deduplicates TSV rows from one or more files")
         .after_help(
             r###"
@@ -19,10 +19,10 @@ Notes:
 
 Examples:
 1. Deduplicate whole rows
-   tva dedup tests/genome/ctg.tsv
+   tva uniq tests/genome/ctg.tsv
 
 2. Deduplicate by column 2
-   tva dedup tests/genome/ctg.tsv -f 2
+   tva uniq tests/genome/ctg.tsv -f 2
 "###,
         )
         .arg(
@@ -140,3 +140,4 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     Ok(())
 }
+

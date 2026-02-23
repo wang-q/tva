@@ -2,10 +2,10 @@ use assert_cmd::cargo::cargo_bin_cmd;
 use std::fs;
 
 #[test]
-fn command_dedup() -> anyhow::Result<()> {
+fn command_uniq() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("dedup")
+        .arg("uniq")
         .arg("tests/genome/ctg.tsv")
         .arg("tests/genome/ctg.tsv")
         .output()
@@ -16,7 +16,7 @@ fn command_dedup() -> anyhow::Result<()> {
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("dedup")
+        .arg("uniq")
         .arg("tests/genome/ctg.tsv")
         .arg("-f")
         .arg("2")
@@ -31,13 +31,13 @@ fn command_dedup() -> anyhow::Result<()> {
 }
 
 #[test]
-fn command_dedup_stdin() -> anyhow::Result<()> {
+fn command_uniq_stdin() -> anyhow::Result<()> {
     let input = fs::read_to_string("tests/genome/ctg.tsv").unwrap();
     let input_dup = format!("{input}{input}");
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("dedup")
+        .arg("uniq")
         .write_stdin(input_dup)
         .output()
         .unwrap();
@@ -49,7 +49,7 @@ fn command_dedup_stdin() -> anyhow::Result<()> {
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("dedup")
+        .arg("uniq")
         .arg("-f")
         .arg("2")
         .write_stdin(input)
@@ -64,12 +64,12 @@ fn command_dedup_stdin() -> anyhow::Result<()> {
 }
 
 #[test]
-fn command_dedup_stdin_and_file() -> anyhow::Result<()> {
+fn command_uniq_stdin_and_file() -> anyhow::Result<()> {
     let input = fs::read_to_string("tests/genome/ctg.tsv").unwrap();
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("dedup")
+        .arg("uniq")
         .arg("stdin")
         .arg("tests/genome/ctg.tsv")
         .write_stdin(input)
@@ -83,10 +83,10 @@ fn command_dedup_stdin_and_file() -> anyhow::Result<()> {
 }
 
 #[test]
-fn command_dedup_header_single_header_across_files() -> anyhow::Result<()> {
+fn command_uniq_header_single_header_across_files() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("dedup")
+        .arg("uniq")
         .arg("--header")
         .arg("tests/data/dedup/input1.tsv")
         .arg("tests/data/dedup/input2.tsv")
@@ -108,12 +108,12 @@ fn command_dedup_header_single_header_across_files() -> anyhow::Result<()> {
 }
 
 #[test]
-fn command_dedup_header_named_fields_equivalent_to_numeric_single_file() -> anyhow::Result<()> {
+fn command_uniq_header_named_fields_equivalent_to_numeric_single_file() -> anyhow::Result<()> {
     let input = "tests/data/dedup/input1.tsv";
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output_numeric = cmd
-        .arg("dedup")
+        .arg("uniq")
         .arg("--header")
         .arg("-f")
         .arg("3,4")
@@ -125,7 +125,7 @@ fn command_dedup_header_named_fields_equivalent_to_numeric_single_file() -> anyh
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output_named = cmd
-        .arg("dedup")
+        .arg("uniq")
         .arg("--header")
         .arg("-f")
         .arg("f3,f4")
@@ -141,13 +141,13 @@ fn command_dedup_header_named_fields_equivalent_to_numeric_single_file() -> anyh
 }
 
 #[test]
-fn command_dedup_header_named_fields_equivalent_to_numeric_multiple_files() -> anyhow::Result<()> {
+fn command_uniq_header_named_fields_equivalent_to_numeric_multiple_files() -> anyhow::Result<()> {
     let input1 = "tests/data/dedup/input1.tsv";
     let input2 = "tests/data/dedup/input2.tsv";
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output_numeric = cmd
-        .arg("dedup")
+        .arg("uniq")
         .arg("--header")
         .arg("-f")
         .arg("3,4")
@@ -160,7 +160,7 @@ fn command_dedup_header_named_fields_equivalent_to_numeric_multiple_files() -> a
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output_named = cmd
-        .arg("dedup")
+        .arg("uniq")
         .arg("--header")
         .arg("-f")
         .arg("f3,f4")

@@ -1,6 +1,6 @@
 pub mod md;
 pub mod append;
-pub mod dedup;
+pub mod uniq;
 pub mod nl;
 pub mod keep_header;
 pub mod check;

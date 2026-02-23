@@ -18,7 +18,7 @@ Usage: tva [COMMAND]
 
 Commands:
   md     Converts TSV file to markdown table
-  dedup  Deduplicates TSV rows from one or more files
+  uniq   Deduplicates TSV rows from one or more files
   nl     Adds line numbers to TSV rows
   help   Print this message or the help of the given subcommand(s)
 
@@ -31,7 +31,7 @@ Description:
 Tab-separated Values Assistant with subcommands for working with TSV files.
 
 Subcommand groups:
-* Generic TSV: md, dedup, nl
+* Generic TSV: md, uniq, nl
 
 Notes:
 * Run `tva help <SUBCOMMAND>` for detailed usage
@@ -43,8 +43,8 @@ Notes:
 tva md tests/genome/ctg.range.tsv --num -c 2
 tva md tests/genome/ctg.range.tsv --fmt --digits 2
 
-tva dedup tests/genome/ctg.tsv tests/genome/ctg.tsv
-tva dedup tests/genome/ctg.tsv -f 2
+tva uniq tests/genome/ctg.tsv tests/genome/ctg.tsv
+tva uniq tests/genome/ctg.tsv -f 2
 
 tva nl tests/genome/ctg.tsv
 
@@ -60,8 +60,8 @@ tva nl tests/genome/ctg.tsv
         * TSV input: `* Supports plain text and gzipped (.gz) TSV files`
         * Stdin behavior:
             * Single-input tools (e.g. `md`): `* Reads from stdin if input file is 'stdin' or no input file is given`
-            * Multi-input tools (e.g. `dedup`): `* Reads from stdin if no input file is given or if input file is 'stdin'`
-        * Memory-heavy tools (e.g. `dedup`): `* Keeps a hash for each unique row; does not count occurrences`
+            * Multi-input tools (e.g. `uniq`): `* Reads from stdin if no input file is given or if input file is 'stdin'`
+        * Memory-heavy tools (e.g. `uniq`): `* Keeps a hash for each unique row; does not count occurrences`
     * **Examples**: Numbered list (`1.`, `2.`) with code blocks indented by 3 spaces.
 * **Arguments**:
     * **Input**: `infile` (single) or `infiles` (multiple).
