@@ -201,24 +201,7 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
      - 为 `tva sort` 自身增加一套针对 TSV/CSV 的 golden tests，尽量重用上游 tsv-utils 的测试数据和行为定义，并参考 `rsv` / `qsv` 在边界条件上的处理。
    - 整体上，`tva sort` 会被视为 tsv-utils 工具矩阵中的一个“补全”组件：既与现有 `keep-header`/`tsv-sort-fast` 的使用模式兼容，又能在跨平台和 Rust 生态中提供一个更稳定的一等排序工具。
 
-6. **表结构校验与 `datamash check` 借鉴**
-   - GNU datamash 提供了一个 `check` 主操作，用于校验输入文件的“表格结构是否完整一致” [GNU Datamash manual - Check](https://www.gnu.org/software/datamash/manual/html_node/Check.html)：
-     - 确认所有行都有相同的字段数（通常按 TAB 分隔，也支持自定义分隔符或基于空白的分隔）。
-     - 可选地校验期望的总行数和字段数：`datamash check 4 lines 3 fields < file.txt`，一旦不符则立即失败。
-     - 一旦发现结构问题（例如某一行字段数少于前一行，或总行数不符），会以非零退出码终止，并在 stderr 输出详细上下文信息（问题行号、该行字段数、上一行/期望字段数、该行内容等），非常适合在自动化流水线中做“fail-fast”式校验。
-   - 典型用法是作为下游分析流程的“防火墙”：
-     - 在自定义脚本或 ETL 流程中，生成中间结果后先运行 `datamash check`，确认结构完全合法，再做 groupby / 统计 / join 等昂贵操作。
-     - 一旦结构异常（比如某些行缺字段），可以尽早失败并打印清晰提示，而不是在后续步骤中以更难排查的方式表现出来。
-   - 对 `tva` 的启发和规划：
-     - 可以实现一个类似的“结构检查”子命令（例如 `tva check`），专门用于：
-       - 校验所有行的字段数是否一致；
-       - 在发现异常时，给出问题行号、该行字段数、上一行字段数或期望字段数，以及该行的原始文本。
-     - 实现层面可以直接复用当前的输入源基础设施：
-       - 使用 `libs::io::reader` 统一处理 `stdin` / `-` / 普通文件 / `.gz` 压缩文件；
-       - 在错误输出格式和退出码上参考 datamash 的风格，保持“适合脚本消费”的简洁消息与明确失败信号。
-     - 与 tsv-utils 工具矩阵相比，`tva check` 会更偏向于“前置验证工具”：它本身不做任何数值或分组计算，只负责在数据进入 `sort`、`tsv-select`、`tsv-uniq` 等命令之前，先保证结构健康，减少后续调试成本。
-
-7. **公共基础设施（`common/` 目录）**
+6. **公共基础设施（`common/` 目录）**
    - `common` 目录下的若干模块并不直接对用户暴露，但为所有工具提供了统一的基础设施。其中对 `tva` 特别有参考价值的包括：
      - **输入源抽象（`InputSourceRange` 等）**
        - 为“多文件 + stdin”提供统一的输入视图：按命令行顺序依次打开文件/标准输入，对上层暴露为一个连续的“行流”。
@@ -261,5 +244,6 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
   - 状态：已实现，负责在保留表头的前提下调用外部命令，对正文部分进行处理。
   - 测试：在 `tests/cli_keep_header.rs` 中有 CLI 测试，覆盖单文件、多文件排序等典型使用方式。
 - `check`：
-  - 状态：已实现，参考 GNU `datamash check`，用于校验输入表是否在所有行上具有统一的字段数。
+  - 状态：已实现，参考 GNU `datamash check`，作为“前置验证”子命令，用于校验输入表在所有行上是否具有统一的字段数；一旦发现字段数不一致或空行等结构问题，会在 stderr 输出问题行号、该行字段数和原始文本，并以非零退出码 fail-fast。
+  - 实现：复用 `libs::io::reader` / `input_sources`，统一处理 `stdin` / `-` / 普通文件 / `.gz` 压缩文件，错误信息风格对齐 datamash，适合在 `sort`、`tsv-select`、`tsv-uniq` 等命令前作为结构健康检查。
   - 测试：`tests/cli_check.rs` 中包含若干用例，覆盖空输入、规则矩阵、字段数不一致以及空行（0 字段）等核心结构检查场景。
