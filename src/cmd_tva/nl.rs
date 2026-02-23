@@ -6,7 +6,6 @@ pub fn make_subcommand() -> Command {
         .about("Adds line numbers to TSV rows")
         .after_help(
             r###"
-Description:
 Reads TSV data from files or standard input and writes each line preceded
 by a line number. This is a simplified, TSV-aware version of the Unix
 `nl` program and adds support for treating the first input line as a

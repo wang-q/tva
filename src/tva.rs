@@ -19,11 +19,11 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::check::make_subcommand())
         .after_help(
             r###"
-Description:
-Tab-separated Values Assistant with subcommands for working with TSV files.
+Tab-separated Values Assistant (tva): small toolbox for working with TSV files.
 
-Subcommand groups:
+Currently implemented subcommands:
 * Generic TSV: md, dedup, nl
+* Table plumbing: keep-header, check
 
 Notes:
 * Run `tva help <SUBCOMMAND>` for detailed usage

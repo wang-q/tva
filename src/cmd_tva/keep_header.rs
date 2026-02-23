@@ -7,7 +7,6 @@ pub fn make_subcommand() -> Command {
         .about("Executes a command while preserving the first header line")
         .after_help(
             r###"
-Description:
 Runs an external command in a header-aware fashion. The first line of each
 input file is treated as a header. The first header line is written to standard
 output unchanged. All remaining lines (from all files) are sent to the given

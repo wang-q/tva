@@ -8,7 +8,6 @@ pub fn make_subcommand() -> Command {
         .about("Deduplicates TSV rows from one or more files")
         .after_help(
             r###"
-Description:
 Deduplicates rows of one or more tab-separated values (TSV) files without sorting.
 
 Notes:

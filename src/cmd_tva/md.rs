@@ -7,7 +7,6 @@ pub fn make_subcommand() -> Command {
         .about("Converts TSV file to markdown table")
         .after_help(
             r###"
-Description:
 Converts a tab-separated values (TSV) file into a markdown table.
 
 Notes:

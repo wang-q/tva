@@ -6,7 +6,6 @@ pub fn make_subcommand() -> Command {
         .about("Checks TSV table structure for consistent field counts")
         .after_help(
             r###"
-Description:
 Validates the structure of TSV input by ensuring that all lines have the
 same number of fields.
 
