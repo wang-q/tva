@@ -224,21 +224,30 @@ fn join_basic_allow_duplicate_keys_header_append_last_wins() -> anyhow::Result<(
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("join")
-        .arg("--filter-file")
+        .arg("--header")
+        .arg("-f")
         .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
         .arg("-a")
         .arg("5")
+        .arg("--allow-duplicate-keys")
         .arg("tests/data/join/input2.tsv")
         .output()
         .unwrap();
 
-    assert!(!output.status.success());
-    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
 
-    assert!(stderr.contains("tva join: line has 1 fields, but append index 5 is out of range")
-        || stderr.contains("tva join: line has 1 fields, but key index 2 is out of range"),
-        "stderr was: {}",
-        stderr);
+    let golden =
+        std::fs::read_to_string("tsv-utils-master/tsv-join/tests/gold/basic_tests_1.txt")?;
+    let expected = extract_block(
+        &golden,
+        "====[tsv-join --header -f input1.tsv -k 2 -a 5 --allow-duplicate-keys input2.tsv]====",
+    );
+
+    assert!(expected.starts_with("f1\tf2\tf3\tf4\tf5\tf5"));
+    assert_eq!(stdout.trim_end(), expected.trim_end());
 
     Ok(())
 }
@@ -622,6 +631,152 @@ fn join_error_prefix_without_header() -> anyhow::Result<()> {
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
         stderr.contains("tva join: --prefix requires --header"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_invalid_field_range_header_unknown_name_in_list() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2,x")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: unknown field name `x` in `2,x`"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_invalid_field_range_noheader_name_requires_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-f")
+        .arg("tests/data/join/input1_noheader.tsv")
+        .arg("-k")
+        .arg("2,x")
+        .arg("tests/data/join/input2_noheader.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: field name `x` requires header in `2,x`"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_invalid_field_list_empty_element_noheader() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-f")
+        .arg("tests/data/join/input1_noheader.tsv")
+        .arg("-k")
+        .arg("2,,4")
+        .arg("tests/data/join/input2_noheader.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: empty field list element in `2,,4`"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_invalid_field_list_empty_element_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("f2,,f4")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: empty field list element in `f2,,f4`"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_no_such_filter_file() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-f")
+        .arg("tests/data/join/no_such-file.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("could not open tests/data/join/no_such-file.tsv"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_no_such_data_file() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("tests/data/join/no_such-file.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("could not open tests/data/join/no_such-file.tsv"),
         "stderr was: {}",
         stderr
     );
