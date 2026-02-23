@@ -1,0 +1,116 @@
+use clap::*;
+use std::io::{BufRead, Write};
+
+pub fn make_subcommand() -> Command {
+    Command::new("transpose")
+        .about("Transposes TSV table in strict mode")
+        .after_help(
+            r###"
+Transposes a tab-separated values (TSV) table by swapping rows and columns.
+
+Behavior:
+- Reads a single TSV input as a whole table and performs a matrix transpose.
+- Uses the number of fields in the first line as the expected width.
+- All subsequent lines must have the same number of fields.
+- On mismatch, an error is printed and the command exits with non-zero status.
+
+Input:
+- If no input file is given, or the input file is 'stdin', data is read
+  from standard input.
+- Files ending in '.gz' are transparently decompressed.
+
+Output:
+- For an MxN matrix (M lines, N fields), writes an NxM matrix.
+- If the input is empty, no output is produced.
+
+Notes:
+- This command only operates in strict mode; non-rectangular tables are rejected.
+"###,
+        )
+        .arg(
+            Arg::new("infile")
+                .num_args(0..=1)
+                .default_value("stdin")
+                .index(1)
+                .help("Input TSV file to transpose (default: stdin)"),
+        )
+        .arg(
+            Arg::new("outfile")
+                .long("outfile")
+                .short('o')
+                .num_args(1)
+                .default_value("stdout")
+                .help("Output filename. [stdout] for screen"),
+        )
+}
+
+pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
+    let infile = args.get_one::<String>("infile").unwrap();
+    let mut reader = crate::libs::io::reader(infile);
+    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+
+    let mut data: Vec<Vec<String>> = Vec::new();
+    let mut expected_fields: Option<usize> = None;
+    let mut line_number: u64 = 0;
+
+    let mut line = String::new();
+    loop {
+        line.clear();
+        let bytes_read = reader.read_line(&mut line)?;
+        if bytes_read == 0 {
+            break;
+        }
+
+        if line.ends_with('\n') {
+            line.pop();
+            if line.ends_with('\r') {
+                line.pop();
+            }
+        }
+
+        line_number += 1;
+
+        let fields: Vec<String> = if line.is_empty() {
+            Vec::new()
+        } else {
+            line.split('\t').map(|s| s.to_string()).collect()
+        };
+
+        let field_count = fields.len();
+
+        if let Some(exp) = expected_fields {
+            if field_count != exp {
+                eprintln!("line {} ({} fields):", line_number, field_count);
+                eprintln!("  {}", line);
+                eprintln!(
+                    "tva transpose: structure check failed: line {} has {} fields (expected {})",
+                    line_number, field_count, exp
+                );
+                std::process::exit(1);
+            }
+        } else {
+            expected_fields = Some(field_count);
+        }
+
+        data.push(fields);
+    }
+
+    if data.is_empty() {
+        return Ok(());
+    }
+
+    let cols = expected_fields.unwrap_or(0);
+    let rows = data.len();
+
+    for c in 0..cols {
+        for r in 0..rows {
+            if r > 0 {
+                writer.write_all(b"\t")?;
+            }
+            writer.write_all(data[r][c].as_bytes())?;
+        }
+        writer.write_all(b"\n")?;
+    }
+
+    Ok(())
+}
