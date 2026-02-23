@@ -13,6 +13,7 @@ fn main() -> anyhow::Result<()> {
         .arg_required_else_help(true)
         .color(ColorChoice::Auto)
         .subcommand(cmd_tva::md::make_subcommand())
+        .subcommand(cmd_tva::append::make_subcommand())
         .subcommand(cmd_tva::dedup::make_subcommand())
         .subcommand(cmd_tva::nl::make_subcommand())
         .subcommand(cmd_tva::keep_header::make_subcommand())
@@ -27,7 +28,7 @@ fn main() -> anyhow::Result<()> {
 Tab-separated Values Assistant (tva): small toolbox for working with TSV files.
 
 Currently implemented subcommands:
-* Generic TSV: md, dedup, nl, transpose, sort
+* Generic TSV: md, append, dedup, nl, transpose, sort
 * Table plumbing: keep-header, check
 * Ingestion: from-csv
 
@@ -38,6 +39,7 @@ Notes:
 
     match app.get_matches().subcommand() {
         Some(("md", sub_matches)) => cmd_tva::md::execute(sub_matches),
+        Some(("append", sub_matches)) => cmd_tva::append::execute(sub_matches),
         Some(("dedup", sub_matches)) => cmd_tva::dedup::execute(sub_matches),
         Some(("nl", sub_matches)) => cmd_tva::nl::execute(sub_matches),
         Some(("keep-header", sub_matches)) => cmd_tva::keep_header::execute(sub_matches),

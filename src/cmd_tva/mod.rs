@@ -1,4 +1,5 @@
 pub mod md;
+pub mod append;
 pub mod dedup;
 pub mod nl;
 pub mod keep_header;
