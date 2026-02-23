@@ -1,4 +1,5 @@
 use clap::*;
+use rapidhash::rapidhash;
 use std::collections::HashSet;
 use std::io::BufRead;
 
@@ -70,7 +71,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         for line in reader.lines().map_while(Result::ok) {
             let subject = if opt_fields.is_empty() {
                 // whole line
-                xxhash_rust::xxh3::xxh3_64(line.as_bytes())
+                rapidhash(line.as_bytes())
             } else {
                 // Get elements at specified indices
                 let fields: Vec<&str> = line.split('\t').collect();
@@ -81,7 +82,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     .copied()
                     .collect();
                 let concat = subset.join("\t");
-                xxhash_rust::xxh3::xxh3_64(&concat.into_bytes())
+                rapidhash(concat.as_bytes())
             };
 
             if !subject_set.contains(&subject) {
