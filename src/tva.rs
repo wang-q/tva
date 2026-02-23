@@ -23,14 +23,16 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::from_csv::make_subcommand())
         .subcommand(cmd_tva::select::make_subcommand())
         .subcommand(cmd_tva::sample::make_subcommand())
+        .subcommand(cmd_tva::split::make_subcommand())
         .after_help(
             r###"
 Tab-separated Values Assistant (tva): small toolbox for working with TSV files.
 
 Currently implemented subcommands:
-* Generic TSV: md, append, dedup, nl, transpose, sort
+* Generic TSV: md, append, dedup, nl, transpose, sort, split
 * Table plumbing: keep-header, check
 * Ingestion: from-csv
+* Sampling: sample
 
 Notes:
 * Run `tva help <SUBCOMMAND>` for detailed usage
@@ -49,6 +51,7 @@ Notes:
         Some(("from-csv", sub_matches)) => cmd_tva::from_csv::execute(sub_matches),
         Some(("select", sub_matches)) => cmd_tva::select::execute(sub_matches),
         Some(("sample", sub_matches)) => cmd_tva::sample::execute(sub_matches),
+        Some(("split", sub_matches)) => cmd_tva::split::execute(sub_matches),
         _ => unreachable!(),
     }
     .unwrap();
