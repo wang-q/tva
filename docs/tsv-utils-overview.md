@@ -254,8 +254,10 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
 ### 基础设施模块
 
 - 字段列表解析（对应上游 `parseFieldList`）：
-  - 状态：已在 `libs::fields` 中实现数字区间语法（如 `1,3-5`），通过 `parse_numeric_field_list` / `fields_to_ints` / `fields_to_idx` 为 `dedup`、`md` 等子命令提供统一的数字字段列表解析。
-  - 测试：在 `libs::fields` 模块内有单元测试，覆盖空输入、重复字段、空白处理等基本场景。
+  - 状态：在 `libs::fields` 中实现了统一的字段语法解析：
+    - 数字字段语法：`parse_numeric_field_list` / `fields_to_ints` / `fields_to_idx` 支持 `1,3-5` 等区间表达式，已被 `dedup`、`md` 等子命令复用。
+    - header 感知语法：`parse_field_list_with_header` / `parse_field_list_with_header_preserve_order` 支持按列名、通配符（如 `*_time`）、列名区间（如 `run-user_time`）以及带反斜杠转义的特殊字段名（空格、`:`、`-`、`*`、`\001` 等），作为 `tva select` 的字段解析地基。
+  - 测试：在 `libs::fields` 模块内有单元测试，覆盖空输入、重复字段、空白处理、header 模式下的列名/通配符/列名区间以及字段名转义等场景。
 - 输入源抽象（对应上游 `InputSourceRange`）：
   - 状态：已在 `libs::io` 中实现统一输入层：`reader` 处理 `stdin` / `-` / 普通文件 / `.gz` 压缩文件，`InputSource` / `input_sources` 为多输入文件提供一致视图，`has_nonempty_line` 封装“探测是否包含非空行”的逻辑。
   - 使用情况：当前已被 `nl`、`dedup`、`keep-header`、`check` 等子命令复用，作为后续 `tva sort` 等命令的输入基础设施。
@@ -293,3 +295,14 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
    - 状态：已实现，作为 CSV 数据的入口子命令，将 CSV 解析为标准 TSV 以便接入 `tva` 其他子命令；在功能上对标上游的 `csv2tsv`，但解析细节交由 Rust `csv` crate 处理。
    - 实现：复用 `libs::io::reader` 读取 `stdin` / `-` / 普通文件 / `.gz` 压缩文件，通过 `csv::ReaderBuilder` 处理引号、分隔符和嵌套字段，将每条记录按 TAB 连接后输出。
    - 测试：`tests/cli_from_csv.rs` 中包含若干用例，覆盖基础转换、带引号和逗号的字段以及自定义分隔符场景。
+- `select`：
+  - 状态：已实现，作为 `tsv-select` 的 Rust 版本子命令，支持：
+    - 按列号选择/重排（支持区间表达式）、按列号排除字段；
+    - 在显式指定 `--header` / `-H` 时，按列名选择/排除字段，可混合使用列号；
+    - header 模式下的字段名通配符（如 `*_time`）、列名区间（如 `run-user_time`）以及空格、冒号、连字符、逗号、星号和数字型列名等通过反斜杠转义的特殊字段名。
+    - 当前版本刻意不实现 `--rest` / `-r` 与 `--line-buffered` 等选项，只覆盖核心列选择/排除能力。
+  - 实现：复用 `libs::io::input_sources` 读取多输入源，首个输入在 header 模式下提供全局表头；字段解析完全委托给 `libs::fields`，保持与上游 `common/` 中字段语法的一致性，并在错误路径上采用 fail-fast 策略（例如未知字段名、非法字段列表表达式等）。
+  - 测试：`tests/cli_select.rs` 中包含 20+ 条 CLI 用例，测试数据来自上游 `tsv-select/tests` 中的 `input1.tsv`、`input_header*.tsv`、`input_header_variants.tsv` 等文件，覆盖：
+    - 按列号/区间的选择与排除、多文件与空文件场景；
+    - header 模式下的列名选择、通配符、列名区间和字段名转义；
+    - 对部分边界行为（如超大字段号、CRLF 行结束）与错误信息的验证。
