@@ -1,0 +1,16 @@
+Basic tests set 1
+-----------------
+====Whole line as key===
+
+====[tsv-join --header --filter-file input1.tsv input2.tsv]====
+f1	f2	f3	f4	f5
+2	bbb	ZZZ	21	28
+9	v	vv	97	91
+10	GGG	nnn	101	102
+
+====[tsv-join --header -f input1.tsv --key-fields 0 input2.tsv]====
+f1	f2	f3	f4	f5
+2	bbb	ZZZ	21	28
+9	v	vv	97	91
+10	GGG	nnn	101	102
+

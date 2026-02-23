@@ -10,3 +10,4 @@ pub mod from_csv;
 pub mod select;
 pub mod sample;
 pub mod split;
+pub mod join;
