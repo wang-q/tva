@@ -1,0 +1,18 @@
+1	ggg	UUU	101
+2	ggg	CCC	5734	52
+3	ßßß	SSS
+4	ssssss	sss	18	16	f6	f7	f8	f9	f10
+5	ÀBC		1367	1331	1234	4567
+6			e-e
+7	 	 	sp-sp	2020	2021
+8	empty-last	
+9	next-line-6-empty				|
+					
+11		
+12	A	B	C	D
+13	AA	BB	CC	DD	EE
+14	ß	Ä	ä	Ö	ö
+15	ßß	ÄÄ	ää	ÖÖ	öö
+16	ßsß	ÄAÄ	äaä	ÖOÖ	öoö
+17	last-row	done
+

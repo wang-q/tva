@@ -99,6 +99,61 @@ pub fn parse_field_list_with_header(
     Ok(indices)
 }
 
+pub fn parse_field_list_with_header_preserve_order(
+    spec: &str,
+    header: Option<&Header>,
+    delimiter: char,
+) -> Result<Vec<usize>, String> {
+    let trimmed = spec.trim();
+    if trimmed.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut indices: Vec<usize> = Vec::new();
+
+    for part in trimmed.split(',') {
+        let token = part.trim();
+        if token.is_empty() {
+            return Err(format!("empty field list element in `{}`", spec));
+        }
+
+        let is_numeric_like = token
+            .chars()
+            .all(|c| c.is_ascii_digit() || c == '-');
+
+        if is_numeric_like {
+            let intspan = IntSpan::from(token);
+            for e in intspan.elements() {
+                if e <= 0 {
+                    return Err(format!("field index must be >= 1 in `{}`", spec));
+                }
+                indices.push(e as usize);
+            }
+        } else {
+            match header {
+                Some(h) => {
+                    if let Some(idx0) = h.get_index(token) {
+                        indices.push(idx0 + 1);
+                    } else {
+                        return Err(format!(
+                            "unknown field name `{}` in `{}`",
+                            token, spec
+                        ));
+                    }
+                }
+                None => {
+                    return Err(format!(
+                        "field name `{}` requires header in `{}`",
+                        token, spec
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(indices)
+}
+
 pub struct Header {
     pub fields: Vec<String>,
     pub index_by_name: HashMap<String, usize>,
@@ -157,6 +212,24 @@ mod tests {
         let header = Header::from_line("a\tb\tc", '\t');
         let v = parse_field_list_with_header("1,c", Some(&header), '\t').unwrap();
         assert_eq!(v, vec![1, 3]);
+    }
+
+    #[test]
+    fn parse_field_list_with_header_preserve_order_and_duplicates() {
+        let header = Header::from_line("a\tb\tc", '\t');
+        let v =
+            parse_field_list_with_header_preserve_order("c,1,c", Some(&header), '\t')
+                .unwrap();
+        assert_eq!(v, vec![3, 1, 3]);
+    }
+
+    #[test]
+    fn parse_field_list_with_header_preserve_order_numeric_only() {
+        let header = Header::from_line("a\tb\tc", '\t');
+        let v =
+            parse_field_list_with_header_preserve_order("1,3-4", Some(&header), '\t')
+                .unwrap();
+        assert_eq!(v, vec![1, 3, 4]);
     }
 
     #[test]

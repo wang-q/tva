@@ -177,12 +177,23 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
 结合当前 `tva` 的定位（Rust 实现的 TSV 助手），可以把 tsv-utils 视为一个“功能地图”和“经验库”：一方面按需对标其工具集合规划 `tva` 的子命令，另一方面在实现与文档风格上保持一致或有意识地作出改进；同时，上游 `common/` 目录提供的字段语法、输入源抽象和数值工具等，也可以视为未来在 Rust 中设计公共库的重要灵感来源。下面是几条可以直接借鉴的设计思路：
 
 1. **子命令规划**
-   - 可以参考 tsv-utils 的工具矩阵，逐步扩展 `tva` 的子命令：
-     - 过滤（类似 `tsv-filter`）
-     - 列选择（类似 `tsv-select`）
-     - 去重（当前已有 `dedup`，可向 `tsv-uniq` 的等价类模式靠拢）
-     - 汇总统计（类似 `tsv-summarize`）
-     - 拼接与拆分（类似 `tsv-append` / `tsv-split`）
+  - 可以参考 tsv-utils 的工具矩阵，逐步扩展 `tva` 的子命令：
+    - 过滤（类似 `tsv-filter`）
+    - 列选择（类似 `tsv-select`）
+    - 去重（当前已有 `dedup`，可向 `tsv-uniq` 的等价类模式靠拢）
+    - 汇总统计（类似 `tsv-summarize`）
+    - 拼接与拆分（类似 `tsv-append` / `tsv-split`）
+  - 其中 `tsv-select` 的迁移计划（草案）：
+    - 工具定位：在 `tva` 中提供 `select` 子命令，作为“TSV-first”的列选择/重排工具，对标上游 `tsv-utils-master/tsv-select` 的核心行为（按列号/列名/通配符选择、重排、排除），并兼顾与现有 `cut`/`qsv select` 等工具的使用习惯。
+    - 参考实现：
+      - 语义来源：以 `tsv-utils-master/tsv-select` 的文档与测试脚本为主，保持在 header 处理、字段语法和错误行为上的一致性。
+      - 体验借鉴：在列选择表达式（例如前缀 `!` 反选、范围、下标、正则/通配符）和进阶选项（如列排序、随机重排）上参考 `qsv-16.1.0/src/cmd/select.rs` 中的 `select` 实现，结合 TSV 场景做取舍。
+    - 第一阶段（基础能力）：
+      - 引入 `tva select` 子命令，复用 `libs::io::input_sources` 作为输入层，默认按 TAB 解析 TSV。
+      - 在显式给出 `--header` / `-H` 时，支持“列号 + 列名 + 通配符”字段语法；在默认“无 header”模式下仅允许列号，误用列名时 fail-fast 并在 stderr 报告错误位置。
+      - 字段解析层复用并扩展现有 `libs::fields`，在数字区间语法基础上增加“列名/通配符”分支，实现与 `tsv-select` 一致的字段列表解析入口。
+      - 只实现“按表达式选列并保持原有相对顺序”的基础功能，不包含列排序/随机重排等高级操作；保证在单文件 + 多文件（带 header）场景下，列数与 header 一致且结构性错误时 fail-fast。
+      - 按既有迁移流程为 `select` 建立独立测试目录与 CLI 测试文件（例如 `tests/data/select/` 与 `tests/cli_select.rs`），从上游 `tsv-select/tests` 中挑选一小批代表性用例作为 golden test。
 
 2. **字段语法与命名**
    - 统一的字段语法（编号、名称、通配符）可以成为 `tva` 的长期目标。

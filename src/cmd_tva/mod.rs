@@ -6,3 +6,4 @@ pub mod check;
 pub mod transpose;
 pub mod sort;
 pub mod from_csv;
+pub mod select;
