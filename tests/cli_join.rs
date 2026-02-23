@@ -362,6 +362,33 @@ fn join_error_invalid_append_index_noheader() -> anyhow::Result<()> {
 }
 
 #[test]
+fn join_error_invalid_append_index_header_filter_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("-a")
+        .arg("6")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: line has 5 fields, but append index 6 is out of range"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
 fn join_error_missing_filter_file_header() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -875,6 +902,33 @@ fn join_error_different_number_of_keys_and_data_fields_header() -> anyhow::Resul
         .arg("2")
         .arg("-d")
         .arg("2,3")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: different number of key-fields and data-fields"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_different_number_of_keys_and_data_fields_header_name() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("f2")
+        .arg("-d")
+        .arg("f2,f3")
         .arg("tests/data/join/input2.tsv")
         .output()
         .unwrap();
