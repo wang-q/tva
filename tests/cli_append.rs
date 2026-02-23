@@ -47,10 +47,6 @@ fn expected_block(command: &str) -> String {
     extract_block(|line| line == header)
 }
 
-fn expected_header_block(header: &str) -> String {
-    extract_block(|line| line == header)
-}
-
 #[test]
 fn append_basic_input3x2_input3x5_from_gold() -> anyhow::Result<()> {
     let expected = expected_block("input3x2.tsv input3x5.tsv");

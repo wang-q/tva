@@ -27,27 +27,6 @@ fn expected_block(command: &str) -> String {
     panic!("Expected block not found for command: {}", command);
 }
 
-fn expected_stdin_block(header: &str) -> String {
-    let gold =
-        fs::read_to_string("tests/data/uniq/gold_basic_tests_1.txt").unwrap();
-
-    let mut lines = gold.lines();
-    while let Some(line) = lines.next() {
-        if line == header {
-            let mut block = Vec::new();
-            for line in lines.by_ref() {
-                if line.is_empty() {
-                    break;
-                }
-                block.push(line);
-            }
-            return block.join("\n") + "\n";
-        }
-    }
-
-    panic!("Expected stdin block not found for header: {}", header);
-}
-
 #[test]
 fn command_uniq() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
