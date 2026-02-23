@@ -296,3 +296,115 @@ fn select_cannot_use_fields_and_exclude_together() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn select_error_zero_field_index() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-f")
+        .arg("0")
+        .arg("tests/data/select/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("field index must be >= 1"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn select_error_trailing_comma_in_field_list() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-f")
+        .arg("1,")
+        .arg("tests/data/select/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("empty field list element"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn select_error_name_without_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-f")
+        .arg("field1")
+        .arg("tests/data/select/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("requires header"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn select_error_unknown_field_name_with_header_fields() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-H")
+        .arg("-f")
+        .arg("no_such_field")
+        .arg("tests/data/select/input_header1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("unknown field name `no_such_field`"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn select_error_unknown_field_name_with_header_exclude() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-H")
+        .arg("-e")
+        .arg("no_such_field")
+        .arg("tests/data/select/input_header1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("unknown field name `no_such_field`"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
