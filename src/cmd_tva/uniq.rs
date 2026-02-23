@@ -177,6 +177,24 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
     }
 
+    if !equiv_mode {
+        if args.get_one::<String>("equiv-header").is_some() {
+            eprintln!("tva uniq: --equiv-header requires --equiv");
+            std::process::exit(1);
+        }
+        if args.get_one::<String>("equiv-start").is_some() {
+            eprintln!("tva uniq: --equiv-start requires --equiv");
+            std::process::exit(1);
+        }
+    }
+
+    if !number_mode {
+        if args.get_one::<String>("number-header").is_some() {
+            eprintln!("tva uniq: --number-header requires --number");
+            std::process::exit(1);
+        }
+    }
+
     let equiv_header = args
         .get_one::<String>("equiv-header")
         .cloned()
@@ -215,14 +233,23 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if header.is_none() {
                     header = Some(crate::libs::fields::Header::from_line(&line, delimiter));
                     if let Some(ref spec) = fields_spec {
-                        key_fields = Some(
-                            crate::libs::fields::parse_field_list_with_header(
-                                spec,
-                                header.as_ref(),
-                                delimiter,
-                            )
-                            .map_err(|e| anyhow::anyhow!(e))?,
-                        );
+                        if spec.trim() == "0" {
+                            key_fields = Some(Vec::new());
+                        } else {
+                            let parsed =
+                                crate::libs::fields::parse_field_list_with_header(
+                                    spec,
+                                    header.as_ref(),
+                                    delimiter,
+                                );
+                            match parsed {
+                                Ok(v) => key_fields = Some(v),
+                                Err(e) => {
+                                    eprintln!("tva uniq: {}", e);
+                                    std::process::exit(1);
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -250,14 +277,23 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             if key_fields.is_none() {
                 if let Some(ref spec) = fields_spec {
-                    key_fields = Some(
-                        crate::libs::fields::parse_field_list_with_header(
-                            spec,
-                            None,
-                            delimiter,
-                        )
-                        .map_err(|e| anyhow::anyhow!(e))?,
-                    );
+                    if spec.trim() == "0" {
+                        key_fields = Some(Vec::new());
+                    } else {
+                        let parsed =
+                            crate::libs::fields::parse_field_list_with_header(
+                                spec,
+                                None,
+                                delimiter,
+                            );
+                        match parsed {
+                            Ok(v) => key_fields = Some(v),
+                            Err(e) => {
+                                eprintln!("tva uniq: {}", e);
+                                std::process::exit(1);
+                            }
+                        }
+                    }
                 }
             }
 

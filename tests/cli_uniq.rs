@@ -202,6 +202,45 @@ fn uniq_basic_header_from_gold() -> anyhow::Result<()> {
 }
 
 #[test]
+fn uniq_field0_whole_line_from_gold() -> anyhow::Result<()> {
+    let expected = expected_block("-f 0 input1.tsv");
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("uniq")
+        .arg("-f")
+        .arg("0")
+        .arg("tests/data/uniq/input1.tsv")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn uniq_header_field0_whole_line_from_gold() -> anyhow::Result<()> {
+    let expected = expected_block("--header -f 0 input1.tsv");
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("uniq")
+        .arg("--header")
+        .arg("-f")
+        .arg("0")
+        .arg("tests/data/uniq/input1.tsv")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
 fn uniq_fields1_from_gold() -> anyhow::Result<()> {
     let expected = expected_block("input1.tsv --fields 1");
 
@@ -492,6 +531,122 @@ fn command_uniq_custom_delimiter_and_line_buffered() -> anyhow::Result<()> {
     assert_eq!(lines[0], "k1_k2");
     assert_eq!(lines[1], "a_X");
     assert_eq!(lines[2], "b_Z");
+
+    Ok(())
+}
+
+#[test]
+fn uniq_error_equiv_start_requires_equiv() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("uniq")
+        .arg("-f")
+        .arg("2")
+        .arg("--equiv-start")
+        .arg("10")
+        .arg("tests/data/uniq/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva uniq: --equiv-start requires --equiv"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn uniq_error_equiv_header_requires_equiv() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("uniq")
+        .arg("-f")
+        .arg("2")
+        .arg("--equiv-header")
+        .arg("id")
+        .arg("tests/data/uniq/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva uniq: --equiv-header requires --equiv"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn uniq_error_number_header_requires_number() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("uniq")
+        .arg("-f")
+        .arg("2")
+        .arg("--number-header")
+        .arg("line")
+        .arg("tests/data/uniq/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva uniq: --number-header requires --number"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn uniq_error_zero_in_field_range() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("uniq")
+        .arg("-f")
+        .arg("0-2")
+        .arg("tests/data/uniq/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("field index must be >= 1"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn uniq_error_field_name_requires_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("uniq")
+        .arg("-f")
+        .arg("f1")
+        .arg("tests/data/uniq/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("requires header"),
+        "stderr was: {}",
+        stderr
+    );
 
     Ok(())
 }
