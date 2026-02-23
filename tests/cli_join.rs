@@ -218,3 +218,87 @@ fn join_basic_exclude_noheader_whole_line_key() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn join_basic_allow_duplicate_keys_header_append_last_wins() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--filter-file")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-a")
+        .arg("5")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+
+    assert!(stderr.contains("tva join: line has 1 fields, but append index 5 is out of range")
+        || stderr.contains("tva join: line has 1 fields, but key index 2 is out of range"),
+        "stderr was: {}",
+        stderr);
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_allow_duplicate_keys_noheader_append_last_wins() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--filter-file")
+        .arg("tests/data/join/input1_noheader.tsv")
+        .arg("-a")
+        .arg("5")
+        .arg("tests/data/join/input2_noheader.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+
+    let golden = std::fs::read_to_string("tests/data/join/gold_basic_tests_1.txt")?;
+    let expected = extract_block(
+        &golden,
+        "====[tsv-join -f input1_noheader.tsv -k 2 -a 5 --allow-duplicate-keys input2_noheader.tsv]====",
+    );
+
+    assert!(expected.starts_with("1\tggg\tUUU\t101b\t15b\t52"));
+    assert!(
+        stderr.contains("tva join: line has 1 fields, but append index 5 is out of range")
+            || stderr.contains("tva join: line has 1 fields, but key index 2 is out of range"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_duplicate_keys_filter_header_index() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("-a")
+        .arg("4")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: duplicate key with different append values found in filter file"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
