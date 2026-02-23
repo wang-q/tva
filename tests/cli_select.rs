@@ -41,6 +41,52 @@ fn select_fields_by_name_with_header() -> anyhow::Result<()> {
 }
 
 #[test]
+fn select_fields_by_name_with_header_wildcard() -> anyhow::Result<()> {
+    let input = "run\telapsed_time\tuser_time\tsystem_time\tmax_memory\n1\t57.5\t52.0\t5.5\t1420\n2\t52.0\t49.0\t3.0\t1270\n";
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-H")
+        .arg("-f")
+        .arg("*_time")
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(
+        stdout,
+        "elapsed_time\tuser_time\tsystem_time\n57.5\t52.0\t5.5\n52.0\t49.0\t3.0\n"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn select_fields_by_name_with_header_name_range() -> anyhow::Result<()> {
+    let input = "run\telapsed_time\tuser_time\tsystem_time\tmax_memory\n1\t57.5\t52.0\t5.5\t1420\n2\t52.0\t49.0\t3.0\t1270\n";
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-H")
+        .arg("-f")
+        .arg("run-user_time")
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(
+        stdout,
+        "run\telapsed_time\tuser_time\n1\t57.5\t52.0\n2\t52.0\t49.0\n"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn select_exclude_field_by_index() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd

@@ -3,9 +3,8 @@ use std::collections::HashMap;
 
 pub fn fields_to_ints(s: &str) -> IntSpan {
     let mut ints = IntSpan::new();
-    let parts: Vec<&str> = s.split(',').collect();
-    for p in parts {
-        ints.add_runlist(p);
+    for p in tokenize_field_spec(s) {
+        ints.add_runlist(&p);
     }
 
     ints
@@ -17,7 +16,7 @@ pub fn parse_numeric_field_list(spec: &str) -> Result<Vec<usize>, String> {
     }
 
     let mut ints: Vec<i32> = Vec::new();
-    for part in spec.split(',') {
+    for part in tokenize_field_spec(spec) {
         let part = part.trim();
         if part.is_empty() {
             return Err(format!("empty field list element in `{}`", spec));
@@ -41,10 +40,110 @@ pub fn fields_to_idx(spec: &str) -> Vec<usize> {
     parse_numeric_field_list(spec).unwrap()
 }
 
+fn tokenize_field_spec(spec: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut chars = spec.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            if let Some(next) = chars.next() {
+                current.push('\\');
+                current.push(next);
+            } else {
+                current.push('\\');
+            }
+        } else if c == ',' {
+            tokens.push(current.clone());
+            current.clear();
+        } else {
+            current.push(c);
+        }
+    }
+
+    tokens.push(current);
+    tokens
+}
+
+fn split_name_range_token(token: &str) -> Option<(String, String)> {
+    let mut start = String::new();
+    let mut end = String::new();
+    let mut in_end = false;
+    let mut chars = token.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            if let Some(next) = chars.next() {
+                if in_end {
+                    end.push(next);
+                } else {
+                    start.push(next);
+                }
+            } else {
+                if in_end {
+                    end.push('\\');
+                } else {
+                    start.push('\\');
+                }
+            }
+        } else if c == '-' && !in_end {
+            in_end = true;
+        } else if in_end {
+            end.push(c);
+        } else {
+            start.push(c);
+        }
+    }
+
+    if !in_end {
+        return None;
+    }
+
+    let start_trimmed = start.trim();
+    let end_trimmed = end.trim();
+    if start_trimmed.is_empty() || end_trimmed.is_empty() {
+        return None;
+    }
+
+    Some((start_trimmed.to_string(), end_trimmed.to_string()))
+}
+
+fn name_matches_pattern(name: &str, pattern: &str) -> bool {
+    let name_bytes = name.as_bytes();
+    let pat_bytes = pattern.as_bytes();
+    let mut i = 0;
+    let mut j = 0;
+    let mut star_i: Option<usize> = None;
+    let mut star_j: Option<usize> = None;
+
+    while i < name_bytes.len() {
+        if j < pat_bytes.len() && pat_bytes[j] == b'*' {
+            star_i = Some(i);
+            star_j = Some(j + 1);
+            j += 1;
+        } else if j < pat_bytes.len() && pat_bytes[j] == name_bytes[i] {
+            i += 1;
+            j += 1;
+        } else if let (Some(si), Some(sj)) = (star_i, star_j) {
+            i = si + 1;
+            star_i = Some(i);
+            j = sj;
+        } else {
+            return false;
+        }
+    }
+
+    while j < pat_bytes.len() && pat_bytes[j] == b'*' {
+        j += 1;
+    }
+
+    j == pat_bytes.len()
+}
+
 pub fn parse_field_list_with_header(
     spec: &str,
     header: Option<&Header>,
-    delimiter: char,
+    _delimiter: char,
 ) -> Result<Vec<usize>, String> {
     let trimmed = spec.trim();
     if trimmed.is_empty() {
@@ -53,15 +152,14 @@ pub fn parse_field_list_with_header(
 
     let mut indices: Vec<usize> = Vec::new();
 
-    for part in trimmed.split(',') {
+    for part in tokenize_field_spec(trimmed) {
         let token = part.trim();
         if token.is_empty() {
             return Err(format!("empty field list element in `{}`", spec));
         }
 
-        let is_numeric_like = token
-            .chars()
-            .all(|c| c.is_ascii_digit() || c == '-');
+        let is_numeric_like = !token.starts_with('\\')
+            && token.chars().all(|c| c.is_ascii_digit() || c == '-');
 
         if is_numeric_like {
             let intspan = IntSpan::from(token);
@@ -74,7 +172,44 @@ pub fn parse_field_list_with_header(
         } else {
             match header {
                 Some(h) => {
-                    if let Some(idx0) = h.get_index(token) {
+                    if token.contains('*') {
+                        let mut matched = false;
+                        for (idx0, name) in h.fields.iter().enumerate() {
+                            if name_matches_pattern(name, token) {
+                                indices.push(idx0 + 1);
+                                matched = true;
+                            }
+                        }
+                        if !matched {
+                            return Err(format!(
+                                "unknown field name `{}` in `{}`",
+                                token, spec
+                            ));
+                        }
+                    } else if let Some((start_name, end_name)) =
+                        split_name_range_token(token)
+                    {
+                        let start_idx0 = h.get_index(&start_name).ok_or_else(|| {
+                            format!(
+                                "unknown field name `{}` in `{}`",
+                                start_name, spec
+                            )
+                        })?;
+                        let end_idx0 = h.get_index(&end_name).ok_or_else(|| {
+                            format!(
+                                "unknown field name `{}` in `{}`",
+                                end_name, spec
+                            )
+                        })?;
+                        let (lo, hi) = if start_idx0 <= end_idx0 {
+                            (start_idx0, end_idx0)
+                        } else {
+                            (end_idx0, start_idx0)
+                        };
+                        for idx0 in lo..=hi {
+                            indices.push(idx0 + 1);
+                        }
+                    } else if let Some(idx0) = h.get_index(token) {
                         indices.push(idx0 + 1);
                     } else {
                         return Err(format!(
@@ -102,7 +237,7 @@ pub fn parse_field_list_with_header(
 pub fn parse_field_list_with_header_preserve_order(
     spec: &str,
     header: Option<&Header>,
-    delimiter: char,
+    _delimiter: char,
 ) -> Result<Vec<usize>, String> {
     let trimmed = spec.trim();
     if trimmed.is_empty() {
@@ -111,15 +246,14 @@ pub fn parse_field_list_with_header_preserve_order(
 
     let mut indices: Vec<usize> = Vec::new();
 
-    for part in trimmed.split(',') {
+    for part in tokenize_field_spec(trimmed) {
         let token = part.trim();
         if token.is_empty() {
             return Err(format!("empty field list element in `{}`", spec));
         }
 
-        let is_numeric_like = token
-            .chars()
-            .all(|c| c.is_ascii_digit() || c == '-');
+        let is_numeric_like = !token.starts_with('\\')
+            && token.chars().all(|c| c.is_ascii_digit() || c == '-');
 
         if is_numeric_like {
             let intspan = IntSpan::from(token);
@@ -132,7 +266,44 @@ pub fn parse_field_list_with_header_preserve_order(
         } else {
             match header {
                 Some(h) => {
-                    if let Some(idx0) = h.get_index(token) {
+                    if token.contains('*') {
+                        let mut matched = false;
+                        for (idx0, name) in h.fields.iter().enumerate() {
+                            if name_matches_pattern(name, token) {
+                                indices.push(idx0 + 1);
+                                matched = true;
+                            }
+                        }
+                        if !matched {
+                            return Err(format!(
+                                "unknown field name `{}` in `{}`",
+                                token, spec
+                            ));
+                        }
+                    } else if let Some((start_name, end_name)) =
+                        split_name_range_token(token)
+                    {
+                        let start_idx0 = h.get_index(&start_name).ok_or_else(|| {
+                            format!(
+                                "unknown field name `{}` in `{}`",
+                                start_name, spec
+                            )
+                        })?;
+                        let end_idx0 = h.get_index(&end_name).ok_or_else(|| {
+                            format!(
+                                "unknown field name `{}` in `{}`",
+                                end_name, spec
+                            )
+                        })?;
+                        let (lo, hi) = if start_idx0 <= end_idx0 {
+                            (start_idx0, end_idx0)
+                        } else {
+                            (end_idx0, start_idx0)
+                        };
+                        for idx0 in lo..=hi {
+                            indices.push(idx0 + 1);
+                        }
+                    } else if let Some(idx0) = h.get_index(token) {
                         indices.push(idx0 + 1);
                     } else {
                         return Err(format!(
@@ -212,6 +383,59 @@ mod tests {
         let header = Header::from_line("a\tb\tc", '\t');
         let v = parse_field_list_with_header("1,c", Some(&header), '\t').unwrap();
         assert_eq!(v, vec![1, 3]);
+    }
+
+    #[test]
+    fn parse_field_list_with_header_name_range() {
+        let header = Header::from_line(
+            "run\telapsed_time\tuser_time\tsystem_time\tmax_memory",
+            '\t',
+        );
+        let v =
+            parse_field_list_with_header("run-user_time", Some(&header), '\t')
+                .unwrap();
+        assert_eq!(v, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn parse_field_list_with_header_wildcard_basic() {
+        let header = Header::from_line(
+            "run\telapsed_time\tuser_time\tsystem_time\tmax_memory",
+            '\t',
+        );
+        let v =
+            parse_field_list_with_header("*_time", Some(&header), '\t').unwrap();
+        assert_eq!(v, vec![2, 3, 4]);
+    }
+
+    #[test]
+    fn parse_field_list_with_header_wildcard_preserve_order() {
+        let header = Header::from_line(
+            "run\telapsed_time\tuser_time\tsystem_time\tmax_memory",
+            '\t',
+        );
+        let v = parse_field_list_with_header_preserve_order(
+            "*_time,run",
+            Some(&header),
+            '\t',
+        )
+        .unwrap();
+        assert_eq!(v, vec![2, 3, 4, 1]);
+    }
+
+    #[test]
+    fn parse_field_list_with_header_name_range_preserve_order() {
+        let header = Header::from_line(
+            "run\telapsed_time\tuser_time\tsystem_time\tmax_memory",
+            '\t',
+        );
+        let v = parse_field_list_with_header_preserve_order(
+            "run-user_time",
+            Some(&header),
+            '\t',
+        )
+        .unwrap();
+        assert_eq!(v, vec![1, 2, 3]);
     }
 
     #[test]

@@ -119,7 +119,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut exclude_set: Option<HashSet<usize>> = None;
 
     for input in crate::libs::io::input_sources(&infiles) {
-        let mut reader = input.reader;
+        let reader = input.reader;
         let mut is_first_line = true;
 
         for line in reader.lines().map_while(Result::ok) {
