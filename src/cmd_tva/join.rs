@@ -67,6 +67,14 @@ Output:
                 .help("Filter file fields to append to matched records"),
         )
         .arg(
+            Arg::new("write-all")
+                .long("write-all")
+                .short('w')
+                .num_args(1)
+                .allow_hyphen_values(true)
+                .help("Output all data records; use the given value for unmatched append fields"),
+        )
+        .arg(
             Arg::new("exclude")
                 .long("exclude")
                 .short('e')
@@ -213,6 +221,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let key_fields_spec: Option<String> = args.get_one::<String>("key-fields").cloned();
     let data_fields_spec: Option<String> = args.get_one::<String>("data-fields").cloned();
     let append_fields_spec: Option<String> = args.get_one::<String>("append-fields").cloned();
+    let write_all_value: Option<String> = args.get_one::<String>("write-all").cloned();
 
     let has_header = args.get_flag("header");
     let allow_duplicate_keys = args.get_flag("allow-duplicate-keys");
@@ -235,6 +244,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     if exclude && append_fields_spec.is_some() {
         eprintln!("tva join: --exclude cannot be used with --append-fields");
+        std::process::exit(1);
+    }
+
+    if exclude && write_all_value.is_some() {
+        eprintln!("tva join: --write-all cannot be used with --exclude");
+        std::process::exit(1);
+    }
+
+    if write_all_value.is_some() && append_fields_spec.is_none() {
+        eprintln!("tva join: --write-all requires --append-fields");
         std::process::exit(1);
     }
 
@@ -261,6 +280,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         parse_join_field_spec(key_fields_spec.clone(), filter_header.as_ref(), delimiter);
     let append_indices =
         parse_append_field_spec(append_fields_spec, filter_header.as_ref(), delimiter);
+    let append_count = append_indices.as_ref().map(|v| v.len()).unwrap_or(0);
 
     let mut filter_map: HashMap<String, Vec<String>> = HashMap::new();
 
@@ -424,6 +444,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     for v in values {
                         out_line.push(delimiter);
                         out_line.push_str(v);
+                    }
+                }
+                writer.write_fmt(format_args!("{}\n", out_line))?;
+                if line_buffered {
+                    writer.flush()?;
+                }
+            } else if let Some(ref fill) = write_all_value {
+                let mut out_line = line.clone();
+                if append_count > 0 {
+                    for _ in 0..append_count {
+                        out_line.push(delimiter);
+                        out_line.push_str(fill);
                     }
                 }
                 writer.write_fmt(format_args!("{}\n", out_line))?;
