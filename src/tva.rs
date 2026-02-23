@@ -21,6 +21,7 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::sort::make_subcommand())
         .subcommand(cmd_tva::from_csv::make_subcommand())
         .subcommand(cmd_tva::select::make_subcommand())
+        .subcommand(cmd_tva::sample::make_subcommand())
         .after_help(
             r###"
 Tab-separated Values Assistant (tva): small toolbox for working with TSV files.
@@ -45,6 +46,7 @@ Notes:
         Some(("sort", sub_matches)) => cmd_tva::sort::execute(sub_matches),
         Some(("from-csv", sub_matches)) => cmd_tva::from_csv::execute(sub_matches),
         Some(("select", sub_matches)) => cmd_tva::select::execute(sub_matches),
+        Some(("sample", sub_matches)) => cmd_tva::sample::execute(sub_matches),
         _ => unreachable!(),
     }
     .unwrap();
