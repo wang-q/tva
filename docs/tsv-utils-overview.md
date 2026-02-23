@@ -61,10 +61,10 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
   - `tsv-summarize`：实现汇总统计、分组、多种聚合函数，内部有较复杂的状态与数据结构。
   - `tsv-join`：多文件 join、键匹配、连接模式处理等，控制流和边界情况较多。
 
-在 `tva` 中如果考虑分阶段迁移/重写，建议：
-- 第一阶段：从 `number-lines`、`keep-header`、`tsv-pretty` 这类“薄壳工具”入手，打磨公共 IO/字段处理基础设施。
-- 第二阶段：逐步覆盖 `tsv-append`、`tsv-split`、`tsv-sample`、`tsv-uniq`、`tsv-select` 等中等复杂度工具。
-- 最后阶段：再评估 `tsv-filter`、`tsv-summarize`、`tsv-join` 等“重量级”工具是否需要完整对标，或只抽取其中一部分能力。
+在 `tva` 中如果考虑分阶段迁移/重写，可以按目前进展和后续计划理解为：
+- 第一阶段（已完成部分）：从 `number-lines`、`keep-header` 这类“薄壳工具”入手，分别在 `tva` 中落地为 `nl`、`keep-header` 子命令，顺带打磨统一的 IO/字段处理基础设施；对于 `tsv-pretty`，当前由 `tva md` 在“表格美观展示”场景上部分接替其作用，暂不计划做 1:1 迁移。
+- 第二阶段（待选）：逐步覆盖 `tsv-append`、`tsv-split`、`tsv-sample`、`tsv-uniq`、`tsv-select` 等中等复杂度工具。
+- 最后阶段（视需要）：再评估 `tsv-filter`、`tsv-summarize`、`tsv-join` 等“重量级”工具是否需要完整对标，或只抽取其中一部分能力。
 
 ### 2.2 上游测试资源与迁移策略
 
@@ -105,7 +105,7 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
   - 将 stdout 与预期输出文件逐行比对
 - **记录有意差异**：如果 `tva` 在某些行为上有意偏离上游（例如默认选项、错误信息、编码处理），在测试和文档中明确标注“与 tsv-utils 不同”的部分，避免未来维护者误以为是 bug。
 
-`number-lines` 已经可以作为这个通用流程的试点：先用它验证“如何迁移一个工具的测试数据和行为定义”，再按同样的模式扩展到 `tsv-uniq`、`tsv-pretty`、`tsv-summarize` 等其他工具。
+`number-lines` / `keep-header` 已经可以作为这个通用流程的试点：先用它们验证“如何迁移一个工具的测试数据和行为定义”，再按同样的模式扩展到 `tsv-uniq`、`tsv-summarize` 等其他工具（而在“对齐美观展示”方面则由 `tva md` 承担与 `tsv-pretty` 部分重叠的需求）。
 
 ## 3. 使用模式与设计特点
 
@@ -222,7 +222,7 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
 ### 子命令
 
 - `md`：
-  - 状态：已实现，提供区间到 Markdown 表格的转换能力。
+  - 状态：已实现，提供区间到 Markdown 表格的转换能力；在“表格美观展示”这一点上与上游 `tsv-pretty` 功能有一定重叠，因此暂不计划单独迁移 `tsv-pretty`。
   - 测试：有专门的 CLI 测试（`tests/cli_tva.rs`），覆盖基本输出形态和数字格式化行为。
 - `dedup`：
   - 状态：已实现，支持整行去重和按字段去重，基于 `libs::fields` 的字段列表解析。
