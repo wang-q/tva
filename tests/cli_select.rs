@@ -110,6 +110,26 @@ fn select_fields_by_name_with_header_special_char_escapes() -> anyhow::Result<()
 }
 
 #[test]
+fn select_handles_crlf_input_from_stdin() -> anyhow::Result<()> {
+    let input = "f1\tf2\n1\t2\r\n3\t4\r\n";
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-f")
+        .arg("1,2")
+        .arg("-")
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, "f1\tf2\n1\t2\n3\t4\n");
+
+    Ok(())
+}
+
+#[test]
 fn select_exclude_field_by_index() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -198,6 +218,48 @@ fn select_exclude_first_field_from_input1() -> anyhow::Result<()> {
     assert_eq!(
         stdout,
         "f2\tf3\tf4\nggg\tUUU\t101\nf1-empty\tCCC\t5734\nßßß\tSSS\t 7\nsss\tf4-empty\nÀBC\t\t1367\n\t\tf23-empty\n \t \tf23-space\n0.0\tZ\t1931\n"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn select_exclude_large_index_is_noop() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-e")
+        .arg("1048576")
+        .arg("tests/data/select/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(
+        stdout,
+        "f1\tf2\tf3\tf4\n1\tggg\tUUU\t101\n\tf1-empty\tCCC\t5734\n3\tßßß\tSSS\t 7\n4\tsss\tf4-empty\n5\tÀBC\t\t1367\n6\t\t\tf23-empty\n7\t \t \tf23-space\n8\t0.0\tZ\t1931\n"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn select_exclude_large_range_is_noop() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-e")
+        .arg("5-1048576")
+        .arg("tests/data/select/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(
+        stdout,
+        "f1\tf2\tf3\tf4\n1\tggg\tUUU\t101\n\tf1-empty\tCCC\t5734\n3\tßßß\tSSS\t 7\n4\tsss\tf4-empty\n5\tÀBC\t\t1367\n6\t\t\tf23-empty\n7\t \t \tf23-space\n8\t0.0\tZ\t1931\n"
     );
 
     Ok(())

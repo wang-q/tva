@@ -123,6 +123,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut is_first_line = true;
 
         for line in reader.lines().map_while(Result::ok) {
+            let mut line = line;
+            if let Some('\r') = line.chars().last() {
+                line.pop();
+            }
+
             if has_header && is_first_line {
                 if !header_written {
                     let header =
