@@ -183,26 +183,6 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
     - 去重（当前已有 `dedup`，可向 `tsv-uniq` 的等价类模式靠拢）
     - 汇总统计（类似 `tsv-summarize`）
     - 拼接与拆分（类似 `tsv-append` / `tsv-split`）
-  - `tsv-sample` 的行为概览与迁移思路：
-    - 工具定位：`tsv-sample` 是“采样 / 乱序工具”，对整行进行随机重排或子集抽样，支持多种模式：
-      - 默认乱序：不带额外选项时，对所有输入行做完全随机重排（所有排列等概率），相当于行级 shuffle。
-      - 固定样本量随机采样（`--n|num N`）：从全部输入中随机选 N 行输出，默认输出顺序也是随机的；配合 `--i|inorder` 可以保持原始输入顺序。
-      - 加权随机采样（`--n|num N --w|weight-field F`）：按某一字段的权重做有放缩的概率抽样，内部使用流式加权采样算法（Efraimidis & Spirakis），输出顺序按随机权重排序；不指定 `--n` 时等价于“按权重打乱所有行”。
-      - 有放回采样（`--r|replace --n|num N`）：读入全部行后，进行 N 次独立随机选择，每次选择一行输出，允许同一行被多次选中；N 为 0 或未设置时视为无限流（直到下游停止）。
-      - Bernoulli 采样（`--p|prob P`）：对输入流做逐行判定，每行以概率 P（0.0 < P ≤ 1.0）被保留或丢弃，行顺序保持不变，是完全流式算法。
-      - Distinct 采样（`--k|key-fields F --p|prob P`）：先在 key 空间上做 Bernoulli 抽样（按 key 值决定是否选中），所有 key 被选中的行都会输出，适合“按用户、会话等主键抽样”；支持 `--k|key-fields 0` 以整行作为 key。
-    - 字段与随机控制：
-      - 字段指定：采样时用于 key / weight 的字段通过统一字段语法传入（数字或列名），需要 header 时由 `--H|header` 控制。
-      - 随机种子：默认每次运行结果不同；`--s|static-seed` 固定种子；`--v|seed-value` 可指定具体非零 32 位种子，便于可重现实验。
-      - 随机值输出：`--print-random` 与 `--gen-random-inorder` 支持将内部使用的随机值作为新字段打印出来（例如调试或后续分析），字段名可通过 `--random-value-header` 配置。
-    - 性能与模式选择：
-      - 完全流式：Bernoulli 与 distinct 采样对每行单独决策，不累积数据，适用于超大输入；`--prefer-skip-sampling` 等内部选项控制使用哪种 Bernoulli 算法。
-      - 受内存限制：简单乱序与有放回采样需要将所有行载入内存，受可用内存约束。
-      - 有界内存：固定样本量随机采样（不含权重）使用 reservoir sampling，只需持有样本窗口，输入可以非常大。
-    - 兼容性模式：默认会在某些场景下选择更快的算法；`--compatibility-mode` / 随机值打印会强制使用“每行一个随机值”的算法族，以保证不同采样参数之间的可组合性（例如同一 static seed 下，`--prob 0.2` 产生的子集必然包含于 `--prob 0.3`）。
-    - 在 `tva` 中的迁移建议：
-      - 优先考虑落地“行乱序 + 固定样本量随机采样 + Bernoulli 采样”三类模式（覆盖大部分日常需求），其余模式（加权、distinct、有放回、兼容性模式）可以作为后续扩展。
-      - 采样接口尽量复用现有 `libs::io::input_sources` 和字段语法实现，在 header 语义、字段名/字段号指定方式上对齐 `select` / `dedup`，并通过 golden test 固化各种组合选项下的行为。
 
 2. **字段语法与命名**
    - 统一的字段语法（编号、名称、通配符）可以成为 `tva` 的长期目标。
@@ -315,3 +295,21 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
     - 按列号/区间的选择与排除、多文件与空文件场景；
     - header 模式下的列名选择、通配符、列名区间和字段名转义；
     - 对部分边界行为（如超大字段号、CRLF 行结束）与错误信息的验证。
+- `sample`：
+  - 状态：已实现，作为 `tsv-sample` 的 Rust 版本子命令，定位为“采样 / 乱序工具”，对整行进行随机重排或子集抽样，支持多种模式：
+    - 默认乱序：不带额外选项时，对所有输入数据行做完全随机重排（所有排列等概率），相当于行级 shuffle。
+    - 固定样本量随机采样（`--num/-n N`）：从全部输入中随机选 N 行输出，默认输出顺序也是随机的；配合 `--inorder/-i` 可以保持原始输入顺序。
+    - Bernoulli 采样（`--prob/-p P`）：对输入流做逐行判定，每行以概率 P（0.0 < P ≤ 1.0）被保留或丢弃，行顺序保持不变，是完全流式算法。
+    - 加权随机采样（`--num/-n N --weight-field/-w F`）：按某一字段的权重做加权采样，内部使用 Efraimidis & Spirakis 流式加权算法，不指定 `--num` 时等价于“按权重打乱所有行”。
+    - 有放回采样（`--replace/-r --num/-n N`）：读入全部行后进行 N 次独立随机选择，每次选择一行输出，允许同一行被多次选中。
+    - Distinct 采样（`--key-fields/-k F --prob/-p P`）：先在 key 空间上做 Bernoulli 抽样（按 key 值决定是否选中），所有 key 被选中的行都会输出，适合“按用户、会话等主键抽样”。
+  - 字段与随机控制：
+    - 字段指定：采样时用于 key / weight 的字段通过 `libs::fields` 统一字段语法传入（数字或列名），是否有 header 由 `--header/-H` 控制。
+    - 随机种子：默认每次运行结果不同；`--static-seed/-s` 固定种子；`--seed-value/-v` 可指定具体非零 64 位种子，便于可重现实验。
+    - 随机值输出：`--print-random` 与 `--gen-random-inorder` 支持将内部使用的随机值作为新字段打印出来（例如调试或后续分析），字段名可通过 `--random-value-header` 配置。
+    - 兼容性模式：`--compatibility-mode` 会强制使用“每行一个随机值”的算法族，以保证不同采样参数之间的可组合性（例如同一 static seed 下，`--num 5` 的结果必然包含于 `--num 10` 的结果，多文件 / stdin 混合场景也保持稳定）。
+  - 实现：复用 `libs::io::input_sources` 统一处理多文件和 stdin 输入，在 header 语义和字段语法上对齐 `select` / `dedup`；在内部根据是否有权重、是否有 key、是否需要兼容模式选择不同的随机算法（Fisher–Yates 洗牌、reservoir sampling、Efraimidis & Spirakis 加权采样、per-row random key 排序等），并通过 CLI 测试固化多文件、stdin+文件混合、CRLF 输入和各种选项组合下的行为。
+  - 测试：`tests/cli_sample.rs` 中包含多组用例，部分测试数据来自上游 `tsv-sample/tests`（迁移至 `tests/data/sample`），覆盖：
+    - shuffle、固定样本量和 Bernoulli 采样的基础行为；
+    - `--replace`、`--weight-field`、`--key-fields`、`--compatibility-mode`、`--print-random`、`--gen-random-inorder` 等选项及其合法/非法组合；
+    - 多文件与 stdin 混合输入、`--header` 下的 header 合并策略以及 Windows 风格行结束符（`.dos_tsv`）等边界场景。
