@@ -226,3 +226,55 @@ fn from_csv_invalid2_should_fail() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn from_csv_stdin_filename_explicit() -> anyhow::Result<()> {
+    let input = "a,b\n1,2\n3,4\n";
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("from-csv")
+        .arg("stdin")
+        .write_stdin(input)
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stdout = normalize_newlines(&stdout);
+
+    let expected = "a\tb\n1\t2\n3\t4\n";
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn from_csv_gz_matches_plain_csv() -> anyhow::Result<()> {
+    // plain CSV
+    let mut cmd_plain = cargo_bin_cmd!("tva");
+    let output_plain = cmd_plain
+        .arg("from-csv")
+        .arg("qsv-16.1.0/resources/test/boston311-100.csv")
+        .output()
+        .unwrap();
+
+    assert!(output_plain.status.success());
+    let stdout_plain = String::from_utf8(output_plain.stdout).unwrap();
+    let stdout_plain = normalize_newlines(&stdout_plain);
+
+    // gzipped CSV
+    let mut cmd_gz = cargo_bin_cmd!("tva");
+    let output_gz = cmd_gz
+        .arg("from-csv")
+        .arg("qsv-16.1.0/resources/test/boston311-100.csv.gz")
+        .output()
+        .unwrap();
+
+    assert!(output_gz.status.success());
+    let stdout_gz = String::from_utf8(output_gz.stdout).unwrap();
+    let stdout_gz = normalize_newlines(&stdout_gz);
+
+    assert_eq!(stdout_plain, stdout_gz);
+
+    Ok(())
+}
