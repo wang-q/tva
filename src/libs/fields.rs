@@ -140,6 +140,29 @@ fn name_matches_pattern(name: &str, pattern: &str) -> bool {
     j == pat_bytes.len()
 }
 
+fn unescape_name_pattern(token: &str) -> (String, bool) {
+    let mut out = String::new();
+    let mut has_unescaped_star = false;
+    let mut chars = token.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            if let Some(next) = chars.next() {
+                out.push(next);
+            } else {
+                out.push('\\');
+            }
+        } else {
+            if c == '*' {
+                has_unescaped_star = true;
+            }
+            out.push(c);
+        }
+    }
+
+    (out, has_unescaped_star)
+}
+
 pub fn parse_field_list_with_header(
     spec: &str,
     header: Option<&Header>,
@@ -172,10 +195,11 @@ pub fn parse_field_list_with_header(
         } else {
             match header {
                 Some(h) => {
-                    if token.contains('*') {
+                    let (pattern, has_unescaped_star) = unescape_name_pattern(token);
+                    if has_unescaped_star {
                         let mut matched = false;
                         for (idx0, name) in h.fields.iter().enumerate() {
-                            if name_matches_pattern(name, token) {
+                            if name_matches_pattern(name, &pattern) {
                                 indices.push(idx0 + 1);
                                 matched = true;
                             }
@@ -209,7 +233,7 @@ pub fn parse_field_list_with_header(
                         for idx0 in lo..=hi {
                             indices.push(idx0 + 1);
                         }
-                    } else if let Some(idx0) = h.get_index(token) {
+                    } else if let Some(idx0) = h.get_index(&pattern) {
                         indices.push(idx0 + 1);
                     } else {
                         return Err(format!(
@@ -266,10 +290,11 @@ pub fn parse_field_list_with_header_preserve_order(
         } else {
             match header {
                 Some(h) => {
-                    if token.contains('*') {
+                    let (pattern, has_unescaped_star) = unescape_name_pattern(token);
+                    if has_unescaped_star {
                         let mut matched = false;
                         for (idx0, name) in h.fields.iter().enumerate() {
-                            if name_matches_pattern(name, token) {
+                            if name_matches_pattern(name, &pattern) {
                                 indices.push(idx0 + 1);
                                 matched = true;
                             }
@@ -303,7 +328,7 @@ pub fn parse_field_list_with_header_preserve_order(
                         for idx0 in lo..=hi {
                             indices.push(idx0 + 1);
                         }
-                    } else if let Some(idx0) = h.get_index(token) {
+                    } else if let Some(idx0) = h.get_index(&pattern) {
                         indices.push(idx0 + 1);
                     } else {
                         return Err(format!(
@@ -461,6 +486,18 @@ mod tests {
         let header = Header::from_line("a\tb\tc", '\t');
         let err = parse_field_list_with_header("d", Some(&header), '\t').unwrap_err();
         assert!(err.contains("unknown field name"));
+    }
+
+    #[test]
+    fn parse_field_list_with_header_special_char_escapes() {
+        let header = Header::from_line("test id\trun:id\ttime-stamp\t001\t100", '\t');
+        let v = parse_field_list_with_header(
+            r"test\ id,run\:id,time\-stamp,\001,\100",
+            Some(&header),
+            '\t',
+        )
+        .unwrap();
+        assert_eq!(v, vec![1, 2, 3, 4, 5]);
     }
 
     #[test]

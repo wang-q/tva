@@ -87,6 +87,29 @@ fn select_fields_by_name_with_header_name_range() -> anyhow::Result<()> {
 }
 
 #[test]
+fn select_fields_by_name_with_header_special_char_escapes() -> anyhow::Result<()> {
+    let input = "test id\trun:id\ttime-stamp\t001\t100\nv1\tv2\tv3\tv4\tv5\n";
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("select")
+        .arg("-H")
+        .arg("-f")
+        .arg(r"test\ id,run\:id,time\-stamp,\001,\100")
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(
+        stdout,
+        "test id\trun:id\ttime-stamp\t001\t100\nv1\tv2\tv3\tv4\tv5\n"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn select_exclude_field_by_index() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
