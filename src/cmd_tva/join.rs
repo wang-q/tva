@@ -238,6 +238,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         std::process::exit(1);
     }
 
+    if filter_file == "-" && (infiles.len() == 1 && infiles[0] == "stdin") {
+        eprintln!("tva join: data file is required when filter-file is '-'");
+        std::process::exit(1);
+    }
+
     let mut filter_reader = crate::libs::io::reader(&filter_file);
     let mut filter_lines_iter = filter_reader.lines().map_while(Result::ok);
 
