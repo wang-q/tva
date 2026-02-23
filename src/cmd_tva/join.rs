@@ -268,6 +268,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         if let Some('\r') = line.chars().last() {
             line.pop();
         }
+        if line.is_empty() {
+            continue;
+        }
         let key = if filter_key_whole_line {
             line.clone()
         } else {
@@ -313,6 +316,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if let Some('\r') = line.chars().last() {
                 line.pop();
             }
+            if line.is_empty() {
+                continue;
+            }
 
             if has_header && is_first_line {
                 if !header_written {
@@ -328,6 +334,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     );
                     data_key_whole_line = whole_line;
                     data_key_indices = indices;
+
+                    if !filter_key_whole_line && !data_key_whole_line {
+                        if let (Some(ref fk), Some(ref dk)) =
+                            (filter_key_indices.as_ref(), data_key_indices.as_ref())
+                        {
+                            if fk.len() != dk.len() {
+                                eprintln!(
+                                    "tva join: different number of key-fields and data-fields"
+                                );
+                                std::process::exit(1);
+                            }
+                        }
+                    }
 
                     let mut header_line = line.clone();
                     if let Some(idxs) = append_indices.as_ref() {
@@ -368,9 +387,20 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 let effective_data_spec =
                     data_fields_spec.clone().or_else(|| key_fields_spec.clone());
                 let (whole_line, indices) =
-                    parse_join_field_spec(effective_data_spec, None, delimiter);
+                    parse_join_field_spec(effective_data_spec.clone(), None, delimiter);
                 data_key_whole_line = whole_line;
                 data_key_indices = indices;
+
+                if !filter_key_whole_line && !data_key_whole_line {
+                    if let (Some(ref fk), Some(ref dk)) =
+                        (filter_key_indices.as_ref(), data_key_indices.as_ref())
+                    {
+                        if fk.len() != dk.len() {
+                            eprintln!("tva join: different number of key-fields and data-fields");
+                            std::process::exit(1);
+                        }
+                    }
+                }
             }
 
             let key = if data_key_whole_line {

@@ -248,16 +248,19 @@ fn join_basic_allow_duplicate_keys_noheader_append_last_wins() -> anyhow::Result
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("join")
-        .arg("--filter-file")
+        .arg("-f")
         .arg("tests/data/join/input1_noheader.tsv")
+        .arg("-k")
+        .arg("2")
         .arg("-a")
         .arg("5")
+        .arg("--allow-duplicate-keys")
         .arg("tests/data/join/input2_noheader.tsv")
         .output()
         .unwrap();
 
-    assert!(!output.status.success());
-    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
 
     let golden = std::fs::read_to_string("tests/data/join/gold_basic_tests_1.txt")?;
     let expected = extract_block(
@@ -266,12 +269,7 @@ fn join_basic_allow_duplicate_keys_noheader_append_last_wins() -> anyhow::Result
     );
 
     assert!(expected.starts_with("1\tggg\tUUU\t101b\t15b\t52"));
-    assert!(
-        stderr.contains("tva join: line has 1 fields, but append index 5 is out of range")
-            || stderr.contains("tva join: line has 1 fields, but key index 2 is out of range"),
-        "stderr was: {}",
-        stderr
-    );
+    assert_eq!(stdout.trim_end(), expected.trim_end());
 
     Ok(())
 }
@@ -545,6 +543,85 @@ fn join_error_invalid_header_name_data_fields() -> anyhow::Result<()> {
     assert!(
         stderr.contains("tva join: unknown field name `no_field_6`")
             || stderr.contains("tva join: line has 1 fields, but key index 4 is out of range"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_different_number_of_keys_and_data_fields_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("-d")
+        .arg("2,3")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: different number of key-fields and data-fields"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_different_number_of_keys_and_data_fields_noheader() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-f")
+        .arg("tests/data/join/input1_noheader.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("-d")
+        .arg("2,3")
+        .arg("tests/data/join/input2_noheader.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: different number of key-fields and data-fields"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_prefix_without_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--prefix")
+        .arg("input1_")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: --prefix requires --header"),
         "stderr was: {}",
         stderr
     );
