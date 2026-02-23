@@ -230,3 +230,94 @@ fn split_rejects_conflicting_modes() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn split_lines_per_file_from_input1x5() -> anyhow::Result<()> {
+    let dir = tempdir().unwrap();
+    let dir_path: PathBuf = dir.path().to_path_buf();
+    let dir_str = dir_path.to_str().unwrap();
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("split")
+        .arg("--lines-per-file")
+        .arg("3")
+        .arg("--dir")
+        .arg(dir_str)
+        .arg("tests/data/split/input1x5.txt")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let mut files: Vec<PathBuf> = fs::read_dir(&dir_path)?
+        .map(|e| e.unwrap().path())
+        .collect();
+    files.sort();
+
+    assert_eq!(files.len(), 2);
+
+    let contents0 = fs::read_to_string(&files[0])?;
+    let contents1 = fs::read_to_string(&files[1])?;
+
+    assert_eq!(
+        contents0,
+        "input1x5.txt: line 1\ninput1x5.txt: line 2\ninput1x5.txt: line 3\n"
+    );
+    assert_eq!(
+        contents1,
+        "input1x5.txt: line 4\ninput1x5.txt: line 5\n\n"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn split_random_by_key_on_input4x18_groups_keys_together() -> anyhow::Result<()> {
+    let dir = tempdir().unwrap();
+    let dir_path: PathBuf = dir.path().to_path_buf();
+    let dir_str = dir_path.to_str().unwrap();
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("split")
+        .arg("--num-files")
+        .arg("3")
+        .arg("--key-fields")
+        .arg("1")
+        .arg("--header-in-out")
+        .arg("--dir")
+        .arg(dir_str)
+        .arg("tests/data/split/input4x18.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let mut files: Vec<PathBuf> = fs::read_dir(&dir_path)?
+        .map(|e| e.unwrap().path())
+        .collect();
+    files.sort();
+
+    let mut key_to_bucket: HashMap<String, usize> = HashMap::new();
+
+    for (bucket_idx, path) in files.iter().enumerate() {
+        let contents = fs::read_to_string(path)?;
+        for (line_idx, line) in contents.lines().enumerate() {
+            if line_idx == 0 {
+                continue;
+            }
+            if line.is_empty() {
+                continue;
+            }
+            let mut parts = line.split('\t');
+            let key = parts.next().unwrap_or("").to_string();
+            if let Some(prev_bucket) = key_to_bucket.get(&key) {
+                assert_eq!(*prev_bucket, bucket_idx);
+            } else {
+                key_to_bucket.insert(key, bucket_idx);
+            }
+        }
+    }
+
+    Ok(())
+}
