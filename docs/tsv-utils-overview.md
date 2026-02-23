@@ -50,7 +50,7 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
   - `tsv-pretty`：对 TSV 做对齐美化，虽然要计算列宽，但整体流程相对直观。
 
 - **中等复杂度（功能较多但整体仍是线性流程）**
-  - `csv2tsv`：处理 CSV 各种边界情况（引号、编码等），解析逻辑比上面工具复杂一截。
+  - `csv2tsv`：处理 CSV 各种边界情况（引号、编码等），解析逻辑比上面工具复杂一截；在 `tva` 中对应的能力由 `from-csv` 子命令基于 Rust `csv` crate 提供，整体实现复杂度有所降低。
   - `tsv-append`：需要处理多文件头部、来源标记等，但数据流仍然是一次扫描。
   - `tsv-split` / `tsv-sample`：有多种拆分/抽样模式，需要一定的参数组合和随机数逻辑。
   - `tsv-uniq`：支持整行/部分字段去重以及等价类输出，内部状态管理比简单去重复杂。
@@ -245,3 +245,7 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
    - 状态：已实现，作为“tsv-aware 排序工具”，支持针对 TSV/CSV 的按列排序；当前版本默认以 TAB 分隔，可通过 `-t` 切换分隔符。
    - 实现：复用 `libs::io::input_sources` 读取多输入源，将每一行解析为字段向量，并以内存内排序完成小文件的单 key / 多 key 排序；支持字典序与数值模式（`-n`）、升序/降序（`-r`）以及 GNU `sort` 风格的 `-k` 字段列表语法，字段索引与 `libs::fields` 保持一致。
    - 测试：`tests/cli_sort.rs` 中包含若干用例，覆盖默认词典序、多 key 排序、数值模式及逆序、分隔符切换以及数字/非数字混合场景。
+ - `from-csv`：
+   - 状态：已实现，作为 CSV 数据的入口子命令，将 CSV 解析为标准 TSV 以便接入 `tva` 其他子命令；在功能上对标上游的 `csv2tsv`，但解析细节交由 Rust `csv` crate 处理。
+   - 实现：复用 `libs::io::reader` 读取 `stdin` / `-` / 普通文件 / `.gz` 压缩文件，通过 `csv::ReaderBuilder` 处理引号、分隔符和嵌套字段，将每条记录按 TAB 连接后输出。
+   - 测试：`tests/cli_from_csv.rs` 中包含若干用例，覆盖基础转换、带引号和逗号的字段以及自定义分隔符场景。

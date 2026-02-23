@@ -5,3 +5,4 @@ pub mod keep_header;
 pub mod check;
 pub mod transpose;
 pub mod sort;
+pub mod from_csv;
