@@ -39,6 +39,13 @@ Examples:
                 .help("TSV fields (1-based) to use as dedup key"),
         )
         .arg(
+            Arg::new("header")
+                .long("header")
+                .short('H')
+                .action(ArgAction::SetTrue)
+                .help("Treat the first line of each input as a header; only the first header is output"),
+        )
+        .arg(
             Arg::new("outfile")
                 .long("outfile")
                 .short('o')
@@ -57,28 +64,67 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None => vec!["stdin".to_string()],
     };
 
-    let opt_fields: intspan::IntSpan = if args.contains_id("fields") {
-        crate::libs::fields::fields_to_ints(args.get_one::<String>("fields").unwrap())
-    } else {
-        intspan::IntSpan::new()
-    };
+    let fields_spec: Option<String> = args.get_one::<String>("fields").cloned();
+
+    let has_header = args.get_flag("header");
+    let mut header_written = false;
+    let mut header: Option<crate::libs::fields::Header> = None;
+    let mut key_fields: Option<Vec<usize>> = None;
 
     let mut subject_set: HashSet<u64> = HashSet::new();
 
     for input in crate::libs::io::input_sources(&infiles) {
         let reader = input.reader;
+        let mut is_first_line = true;
 
         for line in reader.lines().map_while(Result::ok) {
-            let subject = if opt_fields.is_empty() {
-                // whole line
+            if has_header && is_first_line {
+                if header.is_none() {
+                    header = Some(crate::libs::fields::Header::from_line(&line, '\t'));
+                    if let Some(ref spec) = fields_spec {
+                        key_fields = Some(
+                            crate::libs::fields::parse_field_list_with_header(
+                                spec,
+                                header.as_ref(),
+                                '\t',
+                            )
+                            .map_err(|e| anyhow::anyhow!(e))?,
+                        );
+                    }
+                }
+
+                if !header_written {
+                    writer.write_fmt(format_args!("{}\n", line))?;
+                    header_written = true;
+                }
+                is_first_line = false;
+                continue;
+            }
+
+            is_first_line = false;
+
+            if key_fields.is_none() {
+                if let Some(ref spec) = fields_spec {
+                    key_fields = Some(
+                        crate::libs::fields::parse_field_list_with_header(
+                            spec,
+                            None,
+                            '\t',
+                        )
+                        .map_err(|e| anyhow::anyhow!(e))?,
+                    );
+                }
+            }
+
+            let subject = if key_fields.as_ref().map_or(true, |v| v.is_empty()) {
                 rapidhash(line.as_bytes())
             } else {
-                // Get elements at specified indices
                 let fields: Vec<&str> = line.split('\t').collect();
-                let subset: Vec<&str> = opt_fields
-                    .elements()
+                let subset: Vec<&str> = key_fields
+                    .as_ref()
+                    .unwrap()
                     .iter()
-                    .filter_map(|&i| fields.get(i as usize - 1))
+                    .filter_map(|&i| fields.get(i - 1))
                     .copied()
                     .collect();
                 let concat = subset.join("\t");

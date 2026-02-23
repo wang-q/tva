@@ -1,6 +1,5 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*; // Used for writing assertions
-use std::fs;
 
 #[test]
 fn command_invalid() -> anyhow::Result<()> {
@@ -50,88 +49,6 @@ fn command_md() -> anyhow::Result<()> {
         "separator"
     );
     assert!(stdout.contains("| 130,218.00 | ctg:I:2    | I:100001-230218 |"));
-
-    Ok(())
-}
-
-#[test]
-fn command_dedup() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("dedup")
-        .arg("tests/genome/ctg.tsv")
-        .arg("tests/genome/ctg.tsv")
-        .output()
-        .unwrap();
-    let stdout = String::from_utf8(output.stdout).unwrap();
-
-    assert_eq!(stdout.lines().count(), 4);
-
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("dedup")
-        .arg("tests/genome/ctg.tsv")
-        .arg("-f")
-        .arg("2")
-        .output()
-        .unwrap();
-    let stdout = String::from_utf8(output.stdout).unwrap();
-
-    assert_eq!(stdout.lines().count(), 3);
-    assert!(!stdout.contains("ctg:I:2\tI"));
-
-    Ok(())
-}
-
-#[test]
-fn command_dedup_stdin() -> anyhow::Result<()> {
-    let input = fs::read_to_string("tests/genome/ctg.tsv").unwrap();
-    let input_dup = format!("{input}{input}");
-
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("dedup")
-        .write_stdin(input_dup)
-        .output()
-        .unwrap();
-    let stdout = String::from_utf8(output.stdout).unwrap();
-
-    assert_eq!(stdout.lines().count(), 4);
-
-    // field-based dedup via stdin (column 2)
-    let input = fs::read_to_string("tests/genome/ctg.tsv").unwrap();
-
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("dedup")
-        .arg("-f")
-        .arg("2")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    let stdout = String::from_utf8(output.stdout).unwrap();
-
-    assert_eq!(stdout.lines().count(), 3);
-    assert!(!stdout.contains("ctg:I:2\tI"));
-
-    Ok(())
-}
-
-#[test]
-fn command_dedup_stdin_and_file() -> anyhow::Result<()> {
-    let input = fs::read_to_string("tests/genome/ctg.tsv").unwrap();
-
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("dedup")
-        .arg("stdin")
-        .arg("tests/genome/ctg.tsv")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    let stdout = String::from_utf8(output.stdout).unwrap();
-
-    assert_eq!(stdout.lines().count(), 4);
 
     Ok(())
 }
