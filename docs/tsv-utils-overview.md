@@ -183,17 +183,26 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
     - 去重（当前已有 `dedup`，可向 `tsv-uniq` 的等价类模式靠拢）
     - 汇总统计（类似 `tsv-summarize`）
     - 拼接与拆分（类似 `tsv-append` / `tsv-split`）
-  - 其中 `tsv-select` 的迁移计划（草案）：
-    - 工具定位：在 `tva` 中提供 `select` 子命令，作为“TSV-first”的列选择/重排工具，对标上游 `tsv-utils-master/tsv-select` 的核心行为（按列号/列名/通配符选择、重排、排除），并兼顾与现有 `cut`/`qsv select` 等工具的使用习惯。
-    - 参考实现：
-      - 语义来源：以 `tsv-utils-master/tsv-select` 的文档与测试脚本为主，保持在 header 处理、字段语法和错误行为上的一致性。
-      - 体验借鉴：在列选择表达式（例如前缀 `!` 反选、范围、下标、正则/通配符）和进阶选项（如列排序、随机重排）上参考 `qsv-16.1.0/src/cmd/select.rs` 中的 `select` 实现，结合 TSV 场景做取舍。
-    - 第一阶段（基础能力）：
-      - 引入 `tva select` 子命令，复用 `libs::io::input_sources` 作为输入层，默认按 TAB 解析 TSV。
-      - 在显式给出 `--header` / `-H` 时，支持“列号 + 列名 + 通配符”字段语法；在默认“无 header”模式下仅允许列号，误用列名时 fail-fast 并在 stderr 报告错误位置。
-      - 字段解析层复用并扩展现有 `libs::fields`，在数字区间语法基础上增加“列名/通配符”分支，实现与 `tsv-select` 一致的字段列表解析入口。
-      - 只实现“按表达式选列并保持原有相对顺序”的基础功能，不包含列排序/随机重排等高级操作；保证在单文件 + 多文件（带 header）场景下，列数与 header 一致且结构性错误时 fail-fast。
-      - 按既有迁移流程为 `select` 建立独立测试目录与 CLI 测试文件（例如 `tests/data/select/` 与 `tests/cli_select.rs`），从上游 `tsv-select/tests` 中挑选一小批代表性用例作为 golden test。
+  - `tsv-sample` 的行为概览与迁移思路：
+    - 工具定位：`tsv-sample` 是“采样 / 乱序工具”，对整行进行随机重排或子集抽样，支持多种模式：
+      - 默认乱序：不带额外选项时，对所有输入行做完全随机重排（所有排列等概率），相当于行级 shuffle。
+      - 固定样本量随机采样（`--n|num N`）：从全部输入中随机选 N 行输出，默认输出顺序也是随机的；配合 `--i|inorder` 可以保持原始输入顺序。
+      - 加权随机采样（`--n|num N --w|weight-field F`）：按某一字段的权重做有放缩的概率抽样，内部使用流式加权采样算法（Efraimidis & Spirakis），输出顺序按随机权重排序；不指定 `--n` 时等价于“按权重打乱所有行”。
+      - 有放回采样（`--r|replace --n|num N`）：读入全部行后，进行 N 次独立随机选择，每次选择一行输出，允许同一行被多次选中；N 为 0 或未设置时视为无限流（直到下游停止）。
+      - Bernoulli 采样（`--p|prob P`）：对输入流做逐行判定，每行以概率 P（0.0 < P ≤ 1.0）被保留或丢弃，行顺序保持不变，是完全流式算法。
+      - Distinct 采样（`--k|key-fields F --p|prob P`）：先在 key 空间上做 Bernoulli 抽样（按 key 值决定是否选中），所有 key 被选中的行都会输出，适合“按用户、会话等主键抽样”；支持 `--k|key-fields 0` 以整行作为 key。
+    - 字段与随机控制：
+      - 字段指定：采样时用于 key / weight 的字段通过统一字段语法传入（数字或列名），需要 header 时由 `--H|header` 控制。
+      - 随机种子：默认每次运行结果不同；`--s|static-seed` 固定种子；`--v|seed-value` 可指定具体非零 32 位种子，便于可重现实验。
+      - 随机值输出：`--print-random` 与 `--gen-random-inorder` 支持将内部使用的随机值作为新字段打印出来（例如调试或后续分析），字段名可通过 `--random-value-header` 配置。
+    - 性能与模式选择：
+      - 完全流式：Bernoulli 与 distinct 采样对每行单独决策，不累积数据，适用于超大输入；`--prefer-skip-sampling` 等内部选项控制使用哪种 Bernoulli 算法。
+      - 受内存限制：简单乱序与有放回采样需要将所有行载入内存，受可用内存约束。
+      - 有界内存：固定样本量随机采样（不含权重）使用 reservoir sampling，只需持有样本窗口，输入可以非常大。
+    - 兼容性模式：默认会在某些场景下选择更快的算法；`--compatibility-mode` / 随机值打印会强制使用“每行一个随机值”的算法族，以保证不同采样参数之间的可组合性（例如同一 static seed 下，`--prob 0.2` 产生的子集必然包含于 `--prob 0.3`）。
+    - 在 `tva` 中的迁移建议：
+      - 优先考虑落地“行乱序 + 固定样本量随机采样 + Bernoulli 采样”三类模式（覆盖大部分日常需求），其余模式（加权、distinct、有放回、兼容性模式）可以作为后续扩展。
+      - 采样接口尽量复用现有 `libs::io::input_sources` 和字段语法实现，在 header 语义、字段名/字段号指定方式上对齐 `select` / `dedup`，并通过 golden test 固化各种组合选项下的行为。
 
 2. **字段语法与命名**
    - 统一的字段语法（编号、名称、通配符）可以成为 `tva` 的长期目标。
@@ -296,13 +305,13 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
    - 实现：复用 `libs::io::reader` 读取 `stdin` / `-` / 普通文件 / `.gz` 压缩文件，通过 `csv::ReaderBuilder` 处理引号、分隔符和嵌套字段，将每条记录按 TAB 连接后输出。
    - 测试：`tests/cli_from_csv.rs` 中包含若干用例，覆盖基础转换、带引号和逗号的字段以及自定义分隔符场景。
 - `select`：
-  - 状态：已实现，作为 `tsv-select` 的 Rust 版本子命令，支持：
-    - 按列号选择/重排（支持区间表达式）、按列号排除字段；
-    - 在显式指定 `--header` / `-H` 时，按列名选择/排除字段，可混合使用列号；
-    - header 模式下的字段名通配符（如 `*_time`）、列名区间（如 `run-user_time`）以及空格、冒号、连字符、逗号、星号和数字型列名等通过反斜杠转义的特殊字段名。
+  - 状态：已实现，作为 `tsv-select` 的 Rust 版本子命令，定位为“TSV-first”的列选择/重排工具，对标上游核心行为（按列号/列名/通配符选择、重排、排除），并兼顾 `cut` / `qsv select` 等常见工具的使用习惯。
+    - 支持按列号选择/重排（含区间表达式）以及按列号排除字段；
+    - 在显式指定 `--header` / `-H` 时，支持“列号 + 列名 + 通配符”的字段语法，列号与列名可混合使用；
+    - header 模式下支持字段名通配符（如 `*_time`）、列名区间（如 `run-user_time`），以及通过反斜杠转义的特殊字段名（空格、冒号、连字符、逗号、星号和数字型列名等）。
     - 当前版本刻意不实现 `--rest` / `-r` 与 `--line-buffered` 等选项，只覆盖核心列选择/排除能力。
-  - 实现：复用 `libs::io::input_sources` 读取多输入源，首个输入在 header 模式下提供全局表头；字段解析完全委托给 `libs::fields`，保持与上游 `common/` 中字段语法的一致性，并在错误路径上采用 fail-fast 策略（例如未知字段名、非法字段列表表达式等）。
-  - 测试：`tests/cli_select.rs` 中包含 20+ 条 CLI 用例，测试数据来自上游 `tsv-select/tests` 中的 `input1.tsv`、`input_header*.tsv`、`input_header_variants.tsv` 等文件，覆盖：
+  - 实现：复用 `libs::io::input_sources` 作为输入层，默认按 TAB 解析 TSV；在 header 模式下以首个输入的表头作为全局 header，字段解析完全委托给扩展后的 `libs::fields`，在原有数字区间语法基础上增加“列名/通配符”分支，并在错误路径上采用 fail-fast 策略（例如未知字段名、非法字段列表表达式、header 与数据列数不一致等）。
+  - 测试：`tests/cli_select.rs` 中包含 20+ 条 CLI 用例，测试数据来自上游 `tsv-select/tests` 中的 `input1.tsv`、`input_header*.tsv`、`input_header_variants.tsv` 等文件，并按既有迁移流程组织为独立测试目录与 CLI 测试文件，覆盖：
     - 按列号/区间的选择与排除、多文件与空文件场景；
     - header 模式下的列名选择、通配符、列名区间和字段名转义；
     - 对部分边界行为（如超大字段号、CRLF 行结束）与错误信息的验证。
