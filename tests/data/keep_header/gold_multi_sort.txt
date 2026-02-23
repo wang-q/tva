@@ -1,7 +1,7 @@
 file.row,field1,field2,field3
 input1.txt.1,30,green|blue
-input1.txt.2,20,green|blue2
-input1.txt.3,10,green|blue3
+input1.txt.2,20,緑|青
+input1.txt.3,10,绿色|蓝色
 input2.txt.1,15,green|blue
-input2.txt.2,25,green|blue2
-input2.txt.3,35,green|blue3
+input2.txt.2,25,grün|blau
+input2.txt.3,35,vihreä|sininen

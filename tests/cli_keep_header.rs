@@ -18,6 +18,7 @@ fn keep_header_single_file_sort() -> anyhow::Result<()> {
         .arg("keep-header")
         .arg("tests/data/keep_header/input1.csv")
         .arg("--")
+        .arg(env!("CARGO_BIN_EXE_tva"))
         .arg("sort")
         .output()
         .unwrap();
@@ -39,6 +40,7 @@ fn keep_header_multi_file_sort() -> anyhow::Result<()> {
         .arg("tests/data/keep_header/input1.csv")
         .arg("tests/data/keep_header/input2.csv")
         .arg("--")
+        .arg(env!("CARGO_BIN_EXE_tva"))
         .arg("sort")
         .output()
         .unwrap();
@@ -59,6 +61,7 @@ fn keep_header_multi_line_header_with_lines_option() -> anyhow::Result<()> {
         .arg("2")
         .arg("-")
         .arg("--")
+        .arg(env!("CARGO_BIN_EXE_tva"))
         .arg("sort")
         .write_stdin(read_golden("multi_header.txt"))
         .output()
