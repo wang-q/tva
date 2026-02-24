@@ -74,8 +74,7 @@ Notes:
         Some(("filter", sub_matches)) => cmd_tva::filter::execute(sub_matches),
         Some(("stats", sub_matches)) => cmd_tva::stats::execute(sub_matches),
         _ => unreachable!(),
-    }
-    .unwrap();
+    }?;
 
     Ok(())
 }
