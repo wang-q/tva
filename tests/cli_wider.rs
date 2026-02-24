@@ -403,7 +403,7 @@ fn wider_aggregation_ops() -> anyhow::Result<()> {
         .arg("--op")
         .arg("mean")
         .output()?;
-    
+
     // A: (10+20)/2 = 15
     // B: (5+15)/2 = 10
     // C: 100

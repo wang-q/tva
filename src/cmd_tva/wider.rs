@@ -100,8 +100,9 @@ Examples:
                 .long("op")
                 .default_value("last")
                 .value_parser([
-                    "count", "sum", "mean", "min", "max", "first", "last",
-                    "median", "q1", "q3", "iqr", "geomean", "harmmean", "cv", "range", "mode", "stdev", "variance"
+                    "count", "sum", "mean", "min", "max", "first", "last", "median",
+                    "q1", "q3", "iqr", "geomean", "harmmean", "cv", "range", "mode",
+                    "stdev", "variance",
                 ])
                 .help("Aggregation operation to perform on value column"),
         )
@@ -178,18 +179,24 @@ impl Cell {
                 Op::Sum | Op::Mean | Op::CV | Op::Stdev | Op::Variance => {
                     self.sum += val;
                     if matches!(op, Op::CV | Op::Stdev | Op::Variance) {
-                         self.sum_sq += val * val;
+                        self.sum_sq += val * val;
                     }
                 }
                 Op::Min | Op::Range => {
-                    if val < self.min { self.min = val; }
+                    if val < self.min {
+                        self.min = val;
+                    }
                     // Range needs max too
                     if op == Op::Range {
-                        if val > self.max { self.max = val; }
+                        if val > self.max {
+                            self.max = val;
+                        }
                     }
                 }
                 Op::Max => {
-                    if val > self.max { self.max = val; }
+                    if val > self.max {
+                        self.max = val;
+                    }
                 }
                 Op::GeoMean => {
                     if val > 0.0 {
@@ -208,10 +215,14 @@ impl Cell {
             }
 
             if matches!(op, Op::Min | Op::Range) {
-                 if val < self.min { self.min = val; }
+                if val < self.min {
+                    self.min = val;
+                }
             }
             if matches!(op, Op::Max | Op::Range) {
-                 if val > self.max { self.max = val; }
+                if val > self.max {
+                    self.max = val;
+                }
             }
         }
     }
@@ -228,10 +239,18 @@ impl Cell {
                 }
             }
             Op::Min => {
-                if self.min == f64::INFINITY { "nan".to_string() } else { self.min.to_string() }
+                if self.min == f64::INFINITY {
+                    "nan".to_string()
+                } else {
+                    self.min.to_string()
+                }
             }
             Op::Max => {
-                if self.max == f64::NEG_INFINITY { "nan".to_string() } else { self.max.to_string() }
+                if self.max == f64::NEG_INFINITY {
+                    "nan".to_string()
+                } else {
+                    self.max.to_string()
+                }
             }
             Op::First => self.first.clone().unwrap_or_default(),
             Op::Last => self.last.clone().unwrap_or_default(),
@@ -259,7 +278,8 @@ impl Cell {
             Op::CV => {
                 if self.count > 1 {
                     let mean = self.sum / self.count as f64;
-                    let variance = (self.sum_sq - (self.sum * self.sum) / self.count as f64)
+                    let variance = (self.sum_sq
+                        - (self.sum * self.sum) / self.count as f64)
                         / (self.count as f64 - 1.0);
                     let stdev = variance.sqrt();
                     if mean != 0.0 {
@@ -273,7 +293,8 @@ impl Cell {
             }
             Op::Stdev => {
                 if self.count > 1 {
-                    let variance = (self.sum_sq - (self.sum * self.sum) / self.count as f64)
+                    let variance = (self.sum_sq
+                        - (self.sum * self.sum) / self.count as f64)
                         / (self.count as f64 - 1.0);
                     variance.sqrt().to_string()
                 } else {
@@ -282,7 +303,8 @@ impl Cell {
             }
             Op::Variance => {
                 if self.count > 1 {
-                    let variance = (self.sum_sq - (self.sum * self.sum) / self.count as f64)
+                    let variance = (self.sum_sq
+                        - (self.sum * self.sum) / self.count as f64)
                         / (self.count as f64 - 1.0);
                     variance.to_string()
                 } else {
@@ -293,9 +315,15 @@ impl Cell {
                 let mut sorted_vals = self.values.clone();
                 sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
                 match op {
-                    Op::Median => Aggregator::calculate_quantile(&sorted_vals, 0.5).to_string(),
-                    Op::Q1 => Aggregator::calculate_quantile(&sorted_vals, 0.25).to_string(),
-                    Op::Q3 => Aggregator::calculate_quantile(&sorted_vals, 0.75).to_string(),
+                    Op::Median => {
+                        Aggregator::calculate_quantile(&sorted_vals, 0.5).to_string()
+                    }
+                    Op::Q1 => {
+                        Aggregator::calculate_quantile(&sorted_vals, 0.25).to_string()
+                    }
+                    Op::Q3 => {
+                        Aggregator::calculate_quantile(&sorted_vals, 0.75).to_string()
+                    }
                     Op::IQR => {
                         let q1 = Aggregator::calculate_quantile(&sorted_vals, 0.25);
                         let q3 = Aggregator::calculate_quantile(&sorted_vals, 0.75);
@@ -308,9 +336,10 @@ impl Cell {
                 if self.value_counts.is_empty() {
                     "".to_string()
                 } else {
-                     let mut count_vec: Vec<(&String, &usize)> = self.value_counts.iter().collect();
-                     count_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
-                     count_vec[0].0.clone()
+                    let mut count_vec: Vec<(&String, &usize)> =
+                        self.value_counts.iter().collect();
+                    count_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+                    count_vec[0].0.clone()
                 }
             }
         }
@@ -447,12 +476,9 @@ fn process_file(
         state.names_idx = n_indices[0] - 1;
 
         if let Some(v_spec) = &config.values_from {
-            let v_indices = fields::parse_field_list_with_header(
-                v_spec,
-                Some(&header),
-                '\t',
-            )
-            .map_err(|e| anyhow::anyhow!(e))?;
+            let v_indices =
+                fields::parse_field_list_with_header(v_spec, Some(&header), '\t')
+                    .map_err(|e| anyhow::anyhow!(e))?;
             if v_indices.len() != 1 {
                 return Err(anyhow::anyhow!(
                     "Currently only single column supported for --values-from"
@@ -503,7 +529,9 @@ fn process_file(
     for line in reader.lines() {
         let mut line = line?;
         trim_newline(&mut line);
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
 
         let fields: Vec<&str> = line.split('\t').collect();
 

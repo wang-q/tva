@@ -149,7 +149,8 @@ tva wider [input_files...] --names-from <column> --values-from <column> [options
 *   **`--values-from`**: The column containing the new column values.
 *   **`--id-cols`**: (Optional) Columns that uniquely identify each row. If not specified, all columns except `names-from` and `values-from` are used.
 *   **`--values-fill`**: (Optional) Value to use for missing cells (default: empty).
-*   **`--names-sort`**: (Optional) Sort the new column names alphabetically.
+*   **`--names-sort`**: (Optional) Sort the new column headers alphabetically.
+*   **`--op`**: (Optional) Aggregation operation (e.g., `sum`, `mean`, `count`, `last`). Default: `last`.
 
 ### Example 1: US Rent and Income
 
@@ -256,7 +257,15 @@ AFG	2001	4648139	4.66
 When widening data, you might encounter multiple rows for the same ID and name combination.
 
 *   **`tidyr`**: Often creates list-columns or requires an aggregation function (`values_fn`).
-*   **`tva`**: Currently **overwrites** previous values with the **last observed value**. It does not support aggregation (like `mean` or `sum`) during the reshape process.
+*   **`tva`**: Supports aggregation via the **`--op`** argument.
+
+By default (`--op last`), `tva` **overwrites** previous values with the **last observed value**.
+
+However, you can specify an operation to aggregate these values, similar to `values_fn` in `tidyr` or `crosstab` in `datamash`.
+
+Supported operations: `count`, `sum`, `mean`, `min`, `max`, `first`, `last`, `median`, `mode`, `stdev`, `variance`, etc.
+
+### Example: Summing values
 
 Example using `docs/data/warpbreaks.tsv`:
 ```tsv
@@ -267,21 +276,73 @@ A	L	54
 ...
 ```
 
-If we widen by `wool` (using `tension` as ID):
+If we want to sum the breaks for each wool/tension pair:
 ```bash
-tva wider docs/data/warpbreaks.tsv --names-from wool --values-from breaks
+tva wider docs/data/warpbreaks.tsv --names-from wool --values-from breaks --op sum
 ```
 
-For `tension=L` and `wool=A`, there are three values (26, 30, 54). `tva` will use **54** (the last one).
-
+Output:
 ```tsv
 tension	A	B
-L	54	18
-M	29	21
-H	24	28
+L	110	54
+M	87	63
+H	72	84
+```
+(For A-L: 26 + 30 + 54 = 110)
+
+### Example: Crosstab (Counting)
+
+You can also use `wider` to create a frequency table (crosstab) by using `--op count`. In this case, `--values-from` is optional.
+
+```bash
+tva wider docs/data/warpbreaks.tsv --names-from wool --op count
 ```
 
-> **Note**: If your data has duplicates that you want to aggregate (e.g., sum them), you should aggregate the data *before* using `tva wider` (e.g., using `tva agg` if available, or other tools like `awk` or `datamash`).
+Output:
+```tsv
+tension	A	B
+L	3	3
+M	3	3
+H	3	3
+```
+(Each combination appears 3 times in this dataset)
+
+### Comparison: `stats` vs `wider` (Aggregation)
+
+Both `tva stats` (if available) and `tva wider --op ...` can aggregate data, but they produce different **structures**:
+
+| Feature | `tva stats` (Group By) | `tva wider` (Pivot) |
+| :--- | :--- | :--- |
+| **Goal** | Summarize data into rows | Reshape data into columns |
+| **Output Shape** | Long / Tall | Wide / Matrix |
+| **Columns** | Fixed (Group + Stat) | Dynamic (Values become Headers) |
+| **Best For** | General summaries, reporting | Cross-tabulation, heatmaps |
+
+**Example**:
+Data:
+```tsv
+Group   Category    Value
+A       X           10
+A       Y           20
+B       X           30
+B       Y           40
+```
+
+**`tva stats`** (Sum by Group):
+```tsv
+Group   Sum_Value
+A       30
+B       70
+```
+(Retains vertical structure)
+
+**`tva wider`** (Sum, name from Category):
+```tsv
+Group   X   Y
+A       10  20
+B       30  40
+```
+(Spreads categories horizontally)
 
 ## Detailed Options
 
@@ -295,6 +356,7 @@ H	24	28
 | `--id-cols <cols>` | **(Wider Only)** Columns identifying rows. |
 | `--values-fill <str>` | **(Wider Only)** Fill value for missing cells. |
 | `--names-sort` | **(Wider Only)** Sort new column headers. |
+| `--op <op>` | **(Wider Only)** Aggregation operation (`sum`, `mean`, `count`, etc.). |
 
 ## Comparison with R `tidyr`
 
@@ -312,7 +374,7 @@ H	24	28
 | ID columns | `id_cols` (default: all others) | `--id-cols` (default: all others) |
 | Fill missing | `values_fill` | `--values-fill` |
 | Sort columns | `names_sort` | `--names-sort` |
-| Aggregation | `values_fn` | Not supported (last value wins) |
+| Aggregation | `values_fn` | `--op` (sum, mean, count, etc.) |
 | Multiple values | `values_from = c(a, b)` | Not supported (single column only) |
 | Multiple names | `names_from = c(a, b)` | Not supported (single column only) |
 | Implicit missing | `names_expand`, `id_expand` | Not supported |

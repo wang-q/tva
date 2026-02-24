@@ -85,9 +85,11 @@ impl Aggregator {
                     }
                     OpKind::GeoMean => sum_log_fields.push(idx),
                     OpKind::HarmMean => sum_inv_fields.push(idx),
-                    OpKind::Median | OpKind::Mad | OpKind::Q1 | OpKind::Q3 | OpKind::IQR => {
-                        value_fields.push(idx)
-                    }
+                    OpKind::Median
+                    | OpKind::Mad
+                    | OpKind::Q1
+                    | OpKind::Q3
+                    | OpKind::IQR => value_fields.push(idx),
                     OpKind::First => first_fields.push(idx),
                     OpKind::Last => last_fields.push(idx),
                     OpKind::NUnique | OpKind::Mode => count_fields.push(idx),
@@ -360,7 +362,8 @@ impl Aggregator {
                 OpKind::Range => {
                     if let Some(idx) = op.field_idx {
                         let min = self.mins.get(&idx).copied().unwrap_or(f64::INFINITY);
-                        let max = self.maxs.get(&idx).copied().unwrap_or(f64::NEG_INFINITY);
+                        let max =
+                            self.maxs.get(&idx).copied().unwrap_or(f64::NEG_INFINITY);
                         if min != f64::INFINITY && max != f64::NEG_INFINITY {
                             values.push((max - min).to_string());
                         } else {
@@ -398,12 +401,23 @@ impl Aggregator {
 
                             if len > 0 {
                                 match op.kind {
-                                    OpKind::Median => values.push(Self::calculate_quantile(&sorted_vals, 0.5).to_string()),
-                                    OpKind::Q1 => values.push(Self::calculate_quantile(&sorted_vals, 0.25).to_string()),
-                                    OpKind::Q3 => values.push(Self::calculate_quantile(&sorted_vals, 0.75).to_string()),
+                                    OpKind::Median => values.push(
+                                        Self::calculate_quantile(&sorted_vals, 0.5)
+                                            .to_string(),
+                                    ),
+                                    OpKind::Q1 => values.push(
+                                        Self::calculate_quantile(&sorted_vals, 0.25)
+                                            .to_string(),
+                                    ),
+                                    OpKind::Q3 => values.push(
+                                        Self::calculate_quantile(&sorted_vals, 0.75)
+                                            .to_string(),
+                                    ),
                                     OpKind::IQR => {
-                                        let q1 = Self::calculate_quantile(&sorted_vals, 0.25);
-                                        let q3 = Self::calculate_quantile(&sorted_vals, 0.75);
+                                        let q1 =
+                                            Self::calculate_quantile(&sorted_vals, 0.25);
+                                        let q3 =
+                                            Self::calculate_quantile(&sorted_vals, 0.75);
                                         values.push((q3 - q1).to_string());
                                     }
                                     _ => {}

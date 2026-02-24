@@ -65,8 +65,14 @@ The design of `tva` follows the philosophy of the original `tsv-utils`:
 See [Reshaping Documentation](docs/reshape.md).
 
 - **`longer`**: Reshape wide to long (unpivot). Requires a header row.
-- **`wider`**: Reshape long to wide (pivot).
+- **`wider`**: Reshape long to wide (pivot). Supports aggregation via `--op` (sum, count, etc.).
 
+**Comparison: `stats` vs `wider`**
+
+| Feature | `stats` (Group By) | `wider` (Pivot) |
+| :--- | :--- | :--- |
+| **Goal** | Summarize to rows | Reshape to columns |
+| **Output** | Long / Tall | Wide / Matrix |
 
 ### Formatting & Utilities
 - **`from-csv`**: Convert CSV to TSV.
