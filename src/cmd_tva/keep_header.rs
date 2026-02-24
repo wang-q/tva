@@ -49,11 +49,18 @@ Examples:
                 .help("Number of initial header lines to preserve from the first non-empty input"),
         )
         .arg(
-            Arg::new("args")
-                .value_name("ARGS")
+            Arg::new("files")
+                .value_name("FILE")
+                .num_args(0..)
+                .help("Input file(s)"),
+        )
+        .arg(
+            Arg::new("command")
+                .value_name("COMMAND")
                 .num_args(1..)
-                .trailing_var_arg(true)
-                .help("Usage: tva keep-header [file...] -- program [args...]"),
+                .last(true) // Requires -- before these args
+                .required(true)
+                .help("Command to run"),
         )
 }
 
@@ -63,21 +70,26 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         header_lines = 1;
     }
 
-    let raw_args: Vec<String> = match args.get_many::<String>("args") {
+    let file_args: Vec<String> = match args.get_many::<String>("files") {
         Some(values) => values.cloned().collect(),
         None => Vec::new(),
     };
 
-    let split_pos = raw_args.iter().position(|s| s == "--");
+    let cmd_parts: Vec<String> = match args.get_many::<String>("command") {
+        Some(values) => values.cloned().collect(),
+        None => {
+            // This should be unreachable if required(true) works as expected,
+            // but for safety/legacy behavior matching:
+            eprintln!("Synopsis: tva keep-header [file...] -- program [args...]");
+            return Ok(());
+        }
+    };
 
-    if split_pos.is_none() || split_pos == Some(raw_args.len() - 1) {
+    // If cmd_parts is empty (shouldn't be due to required(true) + num_args(1..)), fail
+    if cmd_parts.is_empty() {
         eprintln!("Synopsis: tva keep-header [file...] -- program [args...]");
         return Ok(());
     }
-
-    let split_index = split_pos.unwrap();
-    let file_args = &raw_args[..split_index];
-    let cmd_parts = &raw_args[split_index + 1..];
 
     let mut child = ProcessCommand::new(&cmd_parts[0])
         .args(&cmd_parts[1..])
