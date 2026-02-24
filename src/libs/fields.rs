@@ -1,3 +1,27 @@
+//! Common field list parsing utilities shared across tva commands.
+//!
+//! Field lists are used to refer to columns by index or by name. The shared
+//! syntax is documented in [`FIELD_SYNTAX_HELP`].
+//!
+//! Basic numeric-only parsing:
+//!
+//! ```
+//! use tva::libs::fields::parse_numeric_field_list;
+//!
+//! let indices = parse_numeric_field_list("1,3-5").unwrap();
+//! assert_eq!(indices, vec![1, 3, 4, 5]);
+//! ```
+//!
+//! Header-aware parsing (mixing indices and names):
+//!
+//! ```
+//! use tva::libs::fields::{Header, parse_field_list_with_header};
+//!
+//! let header = Header::from_line("run\tuser_time\tsystem_time", '\t');
+//! let indices = parse_field_list_with_header("run,system_time", Some(&header), '\t').unwrap();
+//! assert_eq!(indices, vec![1, 3]);
+//! ```
+
 use intspan::IntSpan;
 use std::collections::HashMap;
 

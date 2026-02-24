@@ -1,6 +1,9 @@
 use clap::*;
-use regex::Regex;
 use std::io::BufRead;
+
+use crate::libs::filter::{
+    build_tests, NumericOp, PendingNumeric, PendingRegex, PendingStrEq, PendingSubstr, TestKind,
+};
 
 pub fn make_subcommand() -> Command {
     Command::new("filter")
@@ -220,185 +223,6 @@ Field syntax:
 fn arg_error(msg: &str) -> ! {
     eprintln!("tva filter: {}", msg);
     std::process::exit(1);
-}
-
-enum NumericOp {
-    Gt,
-    Ge,
-    Lt,
-    Le,
-    Eq,
-    Ne,
-}
-
-enum TestKind {
-    Empty { fields: Vec<usize> },
-    NotEmpty { fields: Vec<usize> },
-    Blank { fields: Vec<usize> },
-    NotBlank { fields: Vec<usize> },
-    NumericCmp {
-        fields: Vec<usize>,
-        op: NumericOp,
-        value: f64,
-    },
-    StrEq {
-        fields: Vec<usize>,
-        value: String,
-        case_insensitive: bool,
-    },
-    StrNe {
-        fields: Vec<usize>,
-        value: String,
-        case_insensitive: bool,
-    },
-    StrIn {
-        fields: Vec<usize>,
-        value: String,
-        case_insensitive: bool,
-        negated: bool,
-    },
-    Regex {
-        fields: Vec<usize>,
-        regex: Regex,
-    },
-}
-
-impl TestKind {
-    fn eval(&self, fields: &[&str]) -> bool {
-        match self {
-            TestKind::Empty { fields: idxs } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                fields.get(pos).map(|s| s.is_empty()).unwrap_or(true)
-            }),
-            TestKind::NotEmpty { fields: idxs } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                fields.get(pos).map(|s| !s.is_empty()).unwrap_or(false)
-            }),
-            TestKind::Blank { fields: idxs } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                fields
-                    .get(pos)
-                    .map(|s| s.chars().all(|c| c.is_whitespace()))
-                    .unwrap_or(true)
-            }),
-            TestKind::NotBlank { fields: idxs } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                fields
-                    .get(pos)
-                    .map(|s| s.chars().any(|c| !c.is_whitespace()))
-                    .unwrap_or(false)
-            }),
-            TestKind::NumericCmp {
-                fields: idxs,
-                op,
-                value,
-            } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                let s = match fields.get(pos) {
-                    Some(v) => *v,
-                    None => return false,
-                };
-                let parsed = match s.parse::<f64>() {
-                    Ok(v) => v,
-                    Err(_) => return false,
-                };
-                match op {
-                    NumericOp::Gt => parsed > *value,
-                    NumericOp::Ge => parsed >= *value,
-                    NumericOp::Lt => parsed < *value,
-                    NumericOp::Le => parsed <= *value,
-                    NumericOp::Eq => parsed == *value,
-                    NumericOp::Ne => parsed != *value,
-                }
-            }),
-            TestKind::StrEq {
-                fields: idxs,
-                value,
-                case_insensitive,
-            } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                match fields.get(pos) {
-                    Some(s) => {
-                        if *case_insensitive {
-                            s.eq_ignore_ascii_case(value)
-                        } else {
-                            *s == value
-                        }
-                    }
-                    None => false,
-                }
-            }),
-            TestKind::StrNe {
-                fields: idxs,
-                value,
-                case_insensitive,
-            } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                match fields.get(pos) {
-                    Some(s) => {
-                        if *case_insensitive {
-                            !s.eq_ignore_ascii_case(value)
-                        } else {
-                            *s != value
-                        }
-                    }
-                    None => true,
-                }
-            }),
-            TestKind::StrIn {
-                fields: idxs,
-                value,
-                case_insensitive,
-                negated,
-            } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                let haystack = match fields.get(pos) {
-                    Some(s) => *s,
-                    None => "",
-                };
-                let found = if *case_insensitive {
-                    haystack.to_lowercase().contains(&value.to_lowercase())
-                } else {
-                    haystack.contains(value)
-                };
-                if *negated {
-                    !found
-                } else {
-                    found
-                }
-            }),
-            TestKind::Regex { fields: idxs, regex } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                let s = match fields.get(pos) {
-                    Some(v) => *v,
-                    None => "",
-                };
-                regex.is_match(s)
-            }),
-        }
-    }
-}
-
-struct PendingNumeric {
-    spec: String,
-    op: NumericOp,
-}
-
-struct PendingStrEq {
-    spec: String,
-    case_insensitive: bool,
-    negated: bool,
-}
-
-struct PendingSubstr {
-    spec: String,
-    case_insensitive: bool,
-    negated: bool,
-}
-
-struct PendingRegex {
-    spec: String,
-    case_insensitive: bool,
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
@@ -637,127 +461,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             let fields_vec: Vec<&str> = line.split(delimiter).collect();
 
             let header_ref = header_struct.as_ref();
-            let mut tests: Vec<TestKind> = Vec::new();
-
-            for spec in &empty_specs {
-                let idxs = crate::libs::fields::parse_field_list_with_header(
-                    spec,
-                    header_ref,
-                    delimiter,
-                )
-                .unwrap_or_else(|e| arg_error(&e));
-                tests.push(TestKind::Empty { fields: idxs });
-            }
-            for spec in &not_empty_specs {
-                let idxs = crate::libs::fields::parse_field_list_with_header(
-                    spec,
-                    header_ref,
-                    delimiter,
-                )
-                .unwrap_or_else(|e| arg_error(&e));
-                tests.push(TestKind::NotEmpty { fields: idxs });
-            }
-            for spec in &blank_specs {
-                let idxs = crate::libs::fields::parse_field_list_with_header(
-                    spec,
-                    header_ref,
-                    delimiter,
-                )
-                .unwrap_or_else(|e| arg_error(&e));
-                tests.push(TestKind::Blank { fields: idxs });
-            }
-            for spec in &not_blank_specs {
-                let idxs = crate::libs::fields::parse_field_list_with_header(
-                    spec,
-                    header_ref,
-                    delimiter,
-                )
-                .unwrap_or_else(|e| arg_error(&e));
-                tests.push(TestKind::NotBlank { fields: idxs });
-            }
-
-            for p in &numeric_specs {
-                let (field_part, value_part) = split_spec(&p.spec);
-                let idxs = crate::libs::fields::parse_field_list_with_header(
-                    &field_part,
-                    header_ref,
-                    delimiter,
-                )
-                .unwrap_or_else(|e| arg_error(&e));
-                let value = value_part.parse::<f64>().unwrap_or_else(|_| {
-                    arg_error(&format!("invalid numeric value `{}` in `{}`", value_part, p.spec))
-                });
-                tests.push(TestKind::NumericCmp {
-                    fields: idxs,
-                    op: match p.op {
-                        NumericOp::Gt => NumericOp::Gt,
-                        NumericOp::Ge => NumericOp::Ge,
-                        NumericOp::Lt => NumericOp::Lt,
-                        NumericOp::Le => NumericOp::Le,
-                        NumericOp::Eq => NumericOp::Eq,
-                        NumericOp::Ne => NumericOp::Ne,
-                    },
-                    value,
-                });
-            }
-
-            for p in &str_eq_specs {
-                let (field_part, value_part) = split_spec(&p.spec);
-                let idxs = crate::libs::fields::parse_field_list_with_header(
-                    &field_part,
-                    header_ref,
-                    delimiter,
-                )
-                .unwrap_or_else(|e| arg_error(&e));
-                if p.negated {
-                    tests.push(TestKind::StrNe {
-                        fields: idxs,
-                        value: value_part.to_string(),
-                        case_insensitive: p.case_insensitive,
-                    });
-                } else {
-                    tests.push(TestKind::StrEq {
-                        fields: idxs,
-                        value: value_part.to_string(),
-                        case_insensitive: p.case_insensitive,
-                    });
-                }
-            }
-
-            for p in &substr_specs {
-                let (field_part, value_part) = split_spec(&p.spec);
-                let idxs = crate::libs::fields::parse_field_list_with_header(
-                    &field_part,
-                    header_ref,
-                    delimiter,
-                )
-                .unwrap_or_else(|e| arg_error(&e));
-                tests.push(TestKind::StrIn {
-                    fields: idxs,
-                    value: value_part.to_string(),
-                    case_insensitive: p.case_insensitive,
-                    negated: p.negated,
-                });
-            }
-
-            for p in &regex_specs {
-                let (field_part, pattern) = split_spec(&p.spec);
-                let idxs = crate::libs::fields::parse_field_list_with_header(
-                    &field_part,
-                    header_ref,
-                    delimiter,
-                )
-                .unwrap_or_else(|e| arg_error(&e));
-                let regex = if p.case_insensitive {
-                    Regex::new(&format!("(?i:{})", pattern))
-                } else {
-                    Regex::new(&pattern)
-                }
-                .unwrap_or_else(|e| {
-                    arg_error(&format!("invalid regex `{}`: {}", pattern, e))
-                });
-                tests.push(TestKind::Regex { fields: idxs, regex });
-            }
+            let tests: Vec<TestKind> = build_tests(
+                header_ref,
+                delimiter,
+                &empty_specs,
+                &not_empty_specs,
+                &blank_specs,
+                &not_blank_specs,
+                &numeric_specs,
+                &str_eq_specs,
+                &substr_specs,
+                &regex_specs,
+            )
+            .unwrap_or_else(|e| arg_error(&e));
 
             let mut row_match = if tests.is_empty() {
                 true
@@ -804,16 +520,3 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     Ok(())
 }
-
-fn split_spec(spec: &str) -> (String, String) {
-    if let Some(pos) = spec.rfind(':') {
-        let (left, right) = spec.split_at(pos);
-        (left.to_string(), right[1..].to_string())
-    } else {
-        arg_error(&format!(
-            "missing `:` separator in `{}` (expected <field-list>:<value>)",
-            spec
-        ));
-    }
-}
-

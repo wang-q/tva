@@ -1,3 +1,17 @@
+//! Helpers for formatting numbers for human-readable output.
+//!
+//! The main entry point is [`format_number`], which formats a `f64` using
+//! thousands separators and a configurable number of decimal digits.
+//!
+//! Basic usage:
+//!
+//! ```
+//! use tva::libs::number::format_number;
+//!
+//! assert_eq!(format_number(1234.5, 1), "1,234.5");
+//! assert_eq!(format_number(-1000.0, 0), "-1,000");
+//! ```
+
 pub fn format_number(number: f64, decimal_digits: usize) -> String {
     let sign = if number < 0.0 { -1 } else { 1 };
     let mut number = number.abs();
@@ -64,4 +78,3 @@ mod tests {
         assert_eq!(format_number(1234.0, 5), "1,234.00000");
     }
 }
-

@@ -1,3 +1,29 @@
+//! I/O helpers used across tva commands.
+//!
+//! This module provides thin wrappers around standard I/O to simplify
+//! working with stdin/stdout, regular files, and gzip-compressed inputs.
+//!
+//! Basic usage examples:
+//!
+//! Reading all non-empty lines from a file:
+//!
+//! ```no_run
+//! use tva::libs::io::read_lines;
+//!
+//! let lines = read_lines("data.tsv");
+//! assert!(!lines.is_empty());
+//! ```
+//!
+//! Creating a writer to stdout:
+//!
+//! ```no_run
+//! use std::io::Write;
+//! use tva::libs::io::writer;
+//!
+//! let mut w = writer("stdout");
+//! writeln!(w, "hello\tworld").unwrap();
+//! ```
+
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs::File;
