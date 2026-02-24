@@ -1,0 +1,344 @@
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum OpKind {
+    Count,
+    Sum,
+    Mean,
+    Min,
+    Max,
+    Median,
+    Stdev,
+    Variance,
+    Mad,
+    First,
+    Last,
+    NUnique,
+    Mode,
+}
+
+pub struct Operation {
+    pub kind: OpKind,
+    pub field_idx: Option<usize>, // None for count
+}
+
+pub struct Aggregator {
+    pub count: usize,
+    pub sums: HashMap<usize, f64>,
+    pub sum_sqs: HashMap<usize, f64>, // For variance/stdev
+    pub mins: HashMap<usize, f64>,
+    pub maxs: HashMap<usize, f64>,
+    pub field_counts: HashMap<usize, usize>,
+    pub values: HashMap<usize, Vec<f64>>, // For median/mad
+    pub firsts: HashMap<usize, String>,
+    pub lasts: HashMap<usize, String>,
+    pub value_counts: HashMap<usize, HashMap<String, usize>>, // For mode/nunique
+}
+
+impl Aggregator {
+    pub fn new() -> Self {
+        Self {
+            count: 0,
+            sums: HashMap::new(),
+            sum_sqs: HashMap::new(),
+            mins: HashMap::new(),
+            maxs: HashMap::new(),
+            field_counts: HashMap::new(),
+            values: HashMap::new(),
+            firsts: HashMap::new(),
+            lasts: HashMap::new(),
+            value_counts: HashMap::new(),
+        }
+    }
+
+    pub fn update(&mut self, record: &[&[u8]], ops: &[Operation]) {
+        self.count += 1;
+
+        // Collect fields needed for each type of operation
+        let mut sum_fields = Vec::new();
+        let mut sum_sq_fields = Vec::new();
+        let mut value_fields = Vec::new();
+        let mut first_fields = Vec::new();
+        let mut last_fields = Vec::new();
+        let mut count_fields = Vec::new();
+
+        for op in ops {
+            if let Some(idx) = op.field_idx {
+                match op.kind {
+                    OpKind::Sum | OpKind::Mean => sum_fields.push(idx),
+                    OpKind::Stdev | OpKind::Variance => {
+                        sum_fields.push(idx);
+                        sum_sq_fields.push(idx);
+                    },
+                    OpKind::Median | OpKind::Mad => value_fields.push(idx),
+                    OpKind::First => first_fields.push(idx),
+                    OpKind::Last => last_fields.push(idx),
+                    OpKind::NUnique | OpKind::Mode => count_fields.push(idx),
+                    _ => {}
+                }
+            }
+        }
+        
+        sum_fields.sort_unstable(); sum_fields.dedup();
+        sum_sq_fields.sort_unstable(); sum_sq_fields.dedup();
+        value_fields.sort_unstable(); value_fields.dedup();
+        first_fields.sort_unstable(); first_fields.dedup();
+        last_fields.sort_unstable(); last_fields.dedup();
+        count_fields.sort_unstable(); count_fields.dedup();
+
+        // Handle Sum/Mean/Stdev/Variance
+        for idx in sum_fields {
+            if idx >= record.len() { continue; }
+            let val_bytes = record[idx];
+            if val_bytes.is_empty() { continue; }
+            if let Ok(val_str) = std::str::from_utf8(val_bytes) {
+                if let Ok(val) = val_str.trim().parse::<f64>() {
+                    *self.sums.entry(idx).or_insert(0.0) += val;
+                    *self.field_counts.entry(idx).or_insert(0) += 1;
+                    
+                    if sum_sq_fields.contains(&idx) {
+                        *self.sum_sqs.entry(idx).or_insert(0.0) += val * val;
+                    }
+                }
+            }
+        }
+
+        // Handle Median/Mad (store all values)
+        for idx in value_fields {
+            if idx >= record.len() { continue; }
+            let val_bytes = record[idx];
+            if val_bytes.is_empty() { continue; }
+            if let Ok(val_str) = std::str::from_utf8(val_bytes) {
+                if let Ok(val) = val_str.trim().parse::<f64>() {
+                     self.values.entry(idx).or_default().push(val);
+                }
+            }
+        }
+
+        // Handle First
+        for idx in first_fields {
+            if !self.firsts.contains_key(&idx) {
+                if idx < record.len() {
+                    let val = String::from_utf8_lossy(record[idx]).to_string();
+                    self.firsts.insert(idx, val);
+                } else {
+                    self.firsts.insert(idx, String::new());
+                }
+            }
+        }
+
+        // Handle Last
+        for idx in last_fields {
+             if idx < record.len() {
+                let val = String::from_utf8_lossy(record[idx]).to_string();
+                self.lasts.insert(idx, val);
+            } else {
+                self.lasts.insert(idx, String::new());
+            }
+        }
+
+        // Handle NUnique/Mode
+        for idx in count_fields {
+            if idx < record.len() {
+                let val = String::from_utf8_lossy(record[idx]).to_string();
+                *self.value_counts.entry(idx).or_default().entry(val).or_insert(0) += 1;
+            }
+        }
+
+        // Handle Min/Max
+        for op in ops {
+            if let Some(idx) = op.field_idx {
+                if idx >= record.len() { continue; }
+                let val_bytes = record[idx];
+                if val_bytes.is_empty() { continue; }
+
+                if matches!(op.kind, OpKind::Min | OpKind::Max) {
+                    if let Ok(val_str) = std::str::from_utf8(val_bytes) {
+                        if let Ok(val) = val_str.trim().parse::<f64>() {
+                            match op.kind {
+                                OpKind::Min => {
+                                    let entry = self.mins.entry(idx).or_insert(f64::INFINITY);
+                                    if val < *entry {
+                                        *entry = val;
+                                    }
+                                }
+                                OpKind::Max => {
+                                    let entry = self.maxs.entry(idx).or_insert(f64::NEG_INFINITY);
+                                    if val > *entry {
+                                        *entry = val;
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    pub fn format_results(&self, ops: &[Operation]) -> Vec<String> {
+        let mut values = Vec::new();
+        for op in ops {
+            match op.kind {
+                OpKind::Count => values.push(self.count.to_string()),
+                OpKind::Sum => {
+                    if let Some(idx) = op.field_idx {
+                        let val = self.sums.get(&idx).copied().unwrap_or(0.0);
+                        values.push(val.to_string());
+                    }
+                }
+                OpKind::Mean => {
+                    if let Some(idx) = op.field_idx {
+                        let sum = self.sums.get(&idx).copied().unwrap_or(0.0);
+                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
+                        if count > 0 {
+                            values.push((sum / count as f64).to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::Min => {
+                    if let Some(idx) = op.field_idx {
+                        let val = self.mins.get(&idx).copied().unwrap_or(f64::INFINITY);
+                        if val == f64::INFINITY {
+                            values.push("nan".to_string());
+                        } else {
+                            values.push(val.to_string());
+                        }
+                    }
+                }
+                OpKind::Max => {
+                    if let Some(idx) = op.field_idx {
+                        let val = self.maxs.get(&idx).copied().unwrap_or(f64::NEG_INFINITY);
+                        if val == f64::NEG_INFINITY {
+                            values.push("nan".to_string());
+                        } else {
+                            values.push(val.to_string());
+                        }
+                    }
+                }
+                OpKind::Median => {
+                    if let Some(idx) = op.field_idx {
+                        if let Some(vals) = self.values.get(&idx) {
+                            let mut sorted_vals = vals.clone();
+                            sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                            let len = sorted_vals.len();
+                            if len > 0 {
+                                if len % 2 == 1 {
+                                    values.push(sorted_vals[len / 2].to_string());
+                                } else {
+                                    let mid = len / 2;
+                                    values.push(((sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0).to_string());
+                                }
+                            } else {
+                                values.push("nan".to_string());
+                            }
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::Stdev => {
+                    if let Some(idx) = op.field_idx {
+                        let sum = self.sums.get(&idx).copied().unwrap_or(0.0);
+                        let sum_sq = self.sum_sqs.get(&idx).copied().unwrap_or(0.0);
+                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
+                        
+                        if count > 1 {
+                            let variance = (sum_sq - (sum * sum) / count as f64) / (count as f64 - 1.0);
+                            values.push(variance.sqrt().to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::Variance => {
+                    if let Some(idx) = op.field_idx {
+                        let sum = self.sums.get(&idx).copied().unwrap_or(0.0);
+                        let sum_sq = self.sum_sqs.get(&idx).copied().unwrap_or(0.0);
+                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
+                        
+                        if count > 1 {
+                            let variance = (sum_sq - (sum * sum) / count as f64) / (count as f64 - 1.0);
+                            values.push(variance.to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::Mad => {
+                    if let Some(idx) = op.field_idx {
+                        if let Some(vals) = self.values.get(&idx) {
+                            let mut sorted_vals = vals.clone();
+                            sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                            let len = sorted_vals.len();
+                            if len > 0 {
+                                let median = if len % 2 == 1 {
+                                    sorted_vals[len / 2]
+                                } else {
+                                    let mid = len / 2;
+                                    (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0
+                                };
+                                
+                                let mut deviations: Vec<f64> = vals.iter().map(|v| (v - median).abs()).collect();
+                                deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                                
+                                let mad = if len % 2 == 1 {
+                                    deviations[len / 2]
+                                } else {
+                                    let mid = len / 2;
+                                    (deviations[mid - 1] + deviations[mid]) / 2.0
+                                };
+                                values.push(mad.to_string());
+                            } else {
+                                values.push("nan".to_string());
+                            }
+                        } else {
+                             values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::First => {
+                    if let Some(idx) = op.field_idx {
+                        values.push(self.firsts.get(&idx).cloned().unwrap_or_default());
+                    }
+                }
+                OpKind::Last => {
+                    if let Some(idx) = op.field_idx {
+                        values.push(self.lasts.get(&idx).cloned().unwrap_or_default());
+                    }
+                }
+                OpKind::NUnique => {
+                    if let Some(idx) = op.field_idx {
+                        if let Some(counts) = self.value_counts.get(&idx) {
+                            values.push(counts.len().to_string());
+                        } else {
+                            values.push("0".to_string());
+                        }
+                    }
+                }
+                OpKind::Mode => {
+                    if let Some(idx) = op.field_idx {
+                        if let Some(counts) = self.value_counts.get(&idx) {
+                            if counts.is_empty() {
+                                values.push("".to_string());
+                            } else {
+                                // Sort by count desc, then by value asc
+                                let mut count_vec: Vec<(&String, &usize)> = counts.iter().collect();
+                                count_vec.sort_by(|a, b| {
+                                    b.1.cmp(a.1).then_with(|| a.0.cmp(b.0))
+                                });
+                                values.push(count_vec[0].0.clone());
+                            }
+                        } else {
+                            values.push("".to_string());
+                        }
+                    }
+                }
+            }
+        }
+        values
+    }
+}

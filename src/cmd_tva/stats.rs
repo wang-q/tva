@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::io::BufRead;
 use crate::libs::io::reader;
 use crate::libs::fields;
+use crate::libs::stats::{OpKind, Operation, Aggregator};
 
 pub fn make_subcommand() -> Command {
     Command::new("stats")
@@ -57,6 +58,62 @@ pub fn make_subcommand() -> Command {
                 .help("Calculate max of fields"),
         )
         .arg(
+            Arg::new("median")
+                .long("median")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate median of fields"),
+        )
+        .arg(
+            Arg::new("stdev")
+                .long("stdev")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate standard deviation of fields"),
+        )
+        .arg(
+            Arg::new("variance")
+                .long("variance")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate variance of fields"),
+        )
+        .arg(
+            Arg::new("mad")
+                .long("mad")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate median absolute deviation of fields"),
+        )
+        .arg(
+            Arg::new("first")
+                .long("first")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Get the first value of fields"),
+        )
+        .arg(
+            Arg::new("last")
+                .long("last")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Get the last value of fields"),
+        )
+        .arg(
+            Arg::new("nunique")
+                .long("nunique")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Count the number of unique values"),
+        )
+        .arg(
+            Arg::new("mode")
+                .long("mode")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Get the most frequent value (mode)"),
+        )
+        .arg(
             Arg::new("infiles")
                 .num_args(0..)
                 .index(1)
@@ -64,104 +121,10 @@ pub fn make_subcommand() -> Command {
         )
 }
 
-#[derive(Debug, Clone, PartialEq)]
-enum OpKind {
-    Count,
-    Sum,
-    Mean,
-    Min,
-    Max,
-}
-
 struct OpConfig {
     kind: OpKind,
     spec: Option<String>,
     arg_index: usize,
-}
-
-struct Operation {
-    kind: OpKind,
-    field_idx: Option<usize>, // None for count
-}
-
-struct Aggregator {
-    count: usize,
-    sums: HashMap<usize, f64>,
-    mins: HashMap<usize, f64>,
-    maxs: HashMap<usize, f64>,
-    field_counts: HashMap<usize, usize>,
-}
-
-impl Aggregator {
-    fn new() -> Self {
-        Self {
-            count: 0,
-            sums: HashMap::new(),
-            mins: HashMap::new(),
-            maxs: HashMap::new(),
-            field_counts: HashMap::new(),
-        }
-    }
-
-    fn update(&mut self, record: &[&[u8]], ops: &[Operation]) {
-        self.count += 1;
-
-        // Handle Sum/Mean/FieldCounts separately to ensure single update per field per row
-        // Collect fields needed for sum/mean
-        let mut sum_fields = Vec::new();
-        for op in ops {
-            if matches!(op.kind, OpKind::Sum | OpKind::Mean) {
-                if let Some(idx) = op.field_idx {
-                    sum_fields.push(idx);
-                }
-            }
-        }
-        sum_fields.sort_unstable();
-        sum_fields.dedup();
-
-        for idx in sum_fields {
-            if idx >= record.len() { continue; }
-            let val_bytes = record[idx];
-            if val_bytes.is_empty() { continue; }
-            if let Ok(val_str) = std::str::from_utf8(val_bytes) {
-                if let Ok(val) = val_str.trim().parse::<f64>() {
-                    *self.sums.entry(idx).or_insert(0.0) += val;
-                    *self.field_counts.entry(idx).or_insert(0) += 1;
-                }
-            }
-        }
-
-        // Handle Min/Max
-        for op in ops {
-            if let Some(idx) = op.field_idx {
-                if idx >= record.len() { continue; }
-                let val_bytes = record[idx];
-                if val_bytes.is_empty() { continue; }
-
-                if matches!(op.kind, OpKind::Min | OpKind::Max) {
-                    if let Ok(val_str) = std::str::from_utf8(val_bytes) {
-                        if let Ok(val) = val_str.trim().parse::<f64>() {
-                            match op.kind {
-                                OpKind::Min => {
-                                    let entry = self.mins.entry(idx).or_insert(f64::INFINITY);
-                                    if val < *entry {
-                                        *entry = val;
-                                    }
-                                }
-                                OpKind::Max => {
-                                    let entry = self.maxs.entry(idx).or_insert(f64::NEG_INFINITY);
-                                    if val > *entry {
-                                        *entry = val;
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
@@ -186,6 +149,46 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     if let Some(indices) = matches.indices_of("max") {
         for (i, val) in indices.zip(matches.get_many::<String>("max").unwrap()) {
             op_configs.push(OpConfig { kind: OpKind::Max, spec: Some(val.clone()), arg_index: i });
+        }
+    }
+    if let Some(indices) = matches.indices_of("median") {
+        for (i, val) in indices.zip(matches.get_many::<String>("median").unwrap()) {
+            op_configs.push(OpConfig { kind: OpKind::Median, spec: Some(val.clone()), arg_index: i });
+        }
+    }
+    if let Some(indices) = matches.indices_of("stdev") {
+        for (i, val) in indices.zip(matches.get_many::<String>("stdev").unwrap()) {
+            op_configs.push(OpConfig { kind: OpKind::Stdev, spec: Some(val.clone()), arg_index: i });
+        }
+    }
+    if let Some(indices) = matches.indices_of("variance") {
+        for (i, val) in indices.zip(matches.get_many::<String>("variance").unwrap()) {
+            op_configs.push(OpConfig { kind: OpKind::Variance, spec: Some(val.clone()), arg_index: i });
+        }
+    }
+    if let Some(indices) = matches.indices_of("mad") {
+        for (i, val) in indices.zip(matches.get_many::<String>("mad").unwrap()) {
+            op_configs.push(OpConfig { kind: OpKind::Mad, spec: Some(val.clone()), arg_index: i });
+        }
+    }
+    if let Some(indices) = matches.indices_of("first") {
+        for (i, val) in indices.zip(matches.get_many::<String>("first").unwrap()) {
+            op_configs.push(OpConfig { kind: OpKind::First, spec: Some(val.clone()), arg_index: i });
+        }
+    }
+    if let Some(indices) = matches.indices_of("last") {
+        for (i, val) in indices.zip(matches.get_many::<String>("last").unwrap()) {
+            op_configs.push(OpConfig { kind: OpKind::Last, spec: Some(val.clone()), arg_index: i });
+        }
+    }
+    if let Some(indices) = matches.indices_of("nunique") {
+        for (i, val) in indices.zip(matches.get_many::<String>("nunique").unwrap()) {
+            op_configs.push(OpConfig { kind: OpKind::NUnique, spec: Some(val.clone()), arg_index: i });
+        }
+    }
+    if let Some(indices) = matches.indices_of("mode") {
+        for (i, val) in indices.zip(matches.get_many::<String>("mode").unwrap()) {
+            op_configs.push(OpConfig { kind: OpKind::Mode, spec: Some(val.clone()), arg_index: i });
         }
     }
 
@@ -238,6 +241,14 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                             OpKind::Mean => "_mean",
                             OpKind::Min => "_min",
                             OpKind::Max => "_max",
+                            OpKind::Median => "_median",
+                            OpKind::Stdev => "_stdev",
+                            OpKind::Variance => "_variance",
+                            OpKind::Mad => "_mad",
+                            OpKind::First => "_first",
+                            OpKind::Last => "_last",
+                            OpKind::NUnique => "_nunique",
+                            OpKind::Mode => "_mode",
                             _ => "",
                         };
 
@@ -335,7 +346,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             let agg = &groups[key];
             print!("{}", String::from_utf8_lossy(key));
 
-            let values = format_agg_results(agg, &ops);
+            let values = agg.format_results(&ops);
             if !values.is_empty() {
                 print!("\t{}", values.join("\t"));
             }
@@ -374,57 +385,10 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         }
 
         if !ops.is_empty() {
-            let values = format_agg_results(&aggregator, &ops);
+            let values = aggregator.format_results(&ops);
             println!("{}", values.join("\t"));
         }
     }
 
     Ok(())
-}
-
-fn format_agg_results(agg: &Aggregator, ops: &[Operation]) -> Vec<String> {
-    let mut values = Vec::new();
-    for op in ops {
-        match op.kind {
-            OpKind::Count => values.push(agg.count.to_string()),
-            OpKind::Sum => {
-                if let Some(idx) = op.field_idx {
-                    let val = agg.sums.get(&idx).copied().unwrap_or(0.0);
-                    values.push(val.to_string());
-                }
-            }
-            OpKind::Mean => {
-                if let Some(idx) = op.field_idx {
-                    let sum = agg.sums.get(&idx).copied().unwrap_or(0.0);
-                    let count = agg.field_counts.get(&idx).copied().unwrap_or(0);
-                    if count > 0 {
-                        values.push((sum / count as f64).to_string());
-                    } else {
-                        values.push("nan".to_string());
-                    }
-                }
-            }
-            OpKind::Min => {
-                if let Some(idx) = op.field_idx {
-                    let val = agg.mins.get(&idx).copied().unwrap_or(f64::INFINITY);
-                    if val == f64::INFINITY {
-                        values.push("".to_string());
-                    } else {
-                        values.push(val.to_string());
-                    }
-                }
-            }
-            OpKind::Max => {
-                if let Some(idx) = op.field_idx {
-                    let val = agg.maxs.get(&idx).copied().unwrap_or(f64::NEG_INFINITY);
-                    if val == f64::NEG_INFINITY {
-                        values.push("".to_string());
-                    } else {
-                        values.push(val.to_string());
-                    }
-                }
-            }
-        }
-    }
-    values
 }

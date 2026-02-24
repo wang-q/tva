@@ -64,7 +64,7 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
 在 `tva` 中如果考虑分阶段迁移/重写，可以按目前进展和后续计划理解为：
 - 第一阶段（已完成部分）：从 `number-lines`、`keep-header` 这类“薄壳工具”入手，分别在 `tva` 中落地为 `nl`、`keep-header` 子命令，顺带打磨统一的 IO/字段处理基础设施；对于 `tsv-pretty`，当前由 `tva md` 在“表格美观展示”场景上部分接替其作用，暂不计划做 1:1 迁移。
 - 第二阶段（进行中）：逐步覆盖 `tsv-append`、`tsv-split`、`tsv-sample`、`tsv-uniq`、`tsv-select` 等中等复杂度工具；其中 `tsv-append` / `tsv-split` / `tsv-sample` / `tsv-select` 已分别在 `tva` 中落地为 `append` / `split` / `sample` / `select` 子命令，并配套 CLI/golden 测试；`tsv-uniq` 已在 `tva` 中落地为 `uniq` 子命令，已迁移一批上游 golden 测试并补充 tva 风格的错误处理测试；`tsv-join` 则在 `tva` 中以 `join` 子命令形式落地，当前已经覆盖单 key、多 key、header 感知、按列名/列号指定 join key 与追加字段、`--exclude` anti-join，以及 `--write-all` 左外连接等核心行为，并迁移了大部分上游 `tsv-join/tests/tests.sh` 中的基础与错误场景用例到 Rust CLI 测试（包含 line-buffered、空文件、非 TAB 分隔等场景）；同时在 `join`/`select`/`uniq`/`split`/`sample` 等子命令之间初步完成了字段语法、输入输出抽象与参数错误信息风格的统一，并通过 CLI 测试锁定了新的错误路径和边界行为。
-- 第三阶段（进行中）：已完成 `tsv-filter` 的核心功能迁移，落地为 `filter` 子命令，支持数值/字符串/正则/长度/空值等多种过滤条件及字段间比较，并通过了上游大部分 golden 测试；`tsv-summarize` 的迁移工作也已启动，落地为 `stats` 子命令（意为 statistics，涵盖汇总与统计语义）。
+- 第三阶段（进行中）：已完成 `tsv-filter` 的核心功能迁移，落地为 `filter` 子命令，支持数值/字符串/正则/长度/空值等多种过滤条件及字段间比较，并通过了上游大部分 golden 测试；`tsv-summarize` 的迁移工作也已完成，落地为 `stats` 子命令（意为 statistics，涵盖汇总与统计语义），支持计数、分组、多种统计聚合函数（sum/mean/min/max/median/stdev/variance/mad/first/last/mode/nunique）以及多文件处理，并通过了上游核心 golden 测试。
 - 最后阶段（已启动规划）：在 `join` / `filter` / `stats` 等核心工具对齐的基础上，进一步评估是否需要支持上游的高级特性。
 
 ### 2.2 上游测试资源与迁移策略
@@ -338,3 +338,13 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
     - 字段间比较：支持 `ff-eq`, `ff-ne`, `ff-le` 等字段与字段之间的比较（field-to-field）。
     - 逻辑控制：支持 `--or` 逻辑（待完善，当前实现主要为 AND 链），以及 `--invert` 反转整个过滤结果。
   - 测试：`tests/cli_filter*.rs` 系列文件包含超过 300 个测试用例，全面覆盖了上述各类过滤器的行为，特别是针对数值解析、正则匹配、Unicode 字符串处理以及空字段/缺失字段等边界情况进行了严格验证；测试数据大量复用了上游 `tsv-filter` 的 golden test case。
+- `stats`：
+  - 状态：已实现，作为 `tsv-summarize` 的 Rust 版本子命令，用于对 TSV 数据进行分组统计与汇总。
+  - 实现：
+    - 基础统计：支持 `--count` / `-c` 计算行数，支持 `--header` / `-H` 自动识别表头。
+    - 分组聚合：支持 `--group-by` / `-g` 按指定字段分组，对每组数据进行统计。
+    - 聚合函数：支持 `sum`, `mean`, `min`, `max`, `median`, `stdev`, `variance`, `mad`, `first`, `last`, `mode`, `nunique` 等多种统计指标，可针对特定字段计算。
+    - 字段选择：支持按列号或列名指定分组字段和统计字段，复用 `libs::fields` 统一语法。
+    - 多文件处理：支持多输入文件，自动合并表头（若指定 `--header`），并将缺失字段视为 empty string 处理。
+    - 数值处理：内部使用高精度浮点数计算，并对非数值字段进行自动解析（支持 `nan` / `inf` 等特殊值处理）。
+  - 测试：`tests/cli_stats_tsv_utils.rs` 迁移了上游 `tsv-summarize` 的核心测试用例，覆盖了单文件/多文件、有无 header、各种聚合函数准确性（包括浮点精度验证）、分组逻辑、空文件/空字段处理以及 CRLF 行结束符兼容性；同时 `tests/cli_stats.rs` 提供了针对 Rust 实现特性的补充测试。
