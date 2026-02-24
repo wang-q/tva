@@ -352,12 +352,7 @@ impl TestKind {
                 }
                 left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
                     let l_pos = l.saturating_sub(1);
-                    let r_pos = r.saturating_sub(1);
                     let l_s = match fields.get(l_pos) {
-                        Some(v) => *v,
-                        None => return false,
-                    };
-                    let r_s = match fields.get(r_pos) {
                         Some(v) => *v,
                         None => return false,
                     };
@@ -365,9 +360,18 @@ impl TestKind {
                         Ok(v) => v,
                         Err(_) => return false,
                     };
-                    let r_v = match r_s.parse::<f64>() {
-                        Ok(v) => v,
-                        Err(_) => return false,
+                    let r_v = if l == r {
+                        l_v
+                    } else {
+                        let r_pos = r.saturating_sub(1);
+                        let r_s = match fields.get(r_pos) {
+                            Some(v) => *v,
+                            None => return false,
+                        };
+                        match r_s.parse::<f64>() {
+                            Ok(v) => v,
+                            Err(_) => return false,
+                        }
                     };
                     match op {
                         NumericOp::Gt => l_v > r_v,
@@ -389,6 +393,9 @@ impl TestKind {
                     return false;
                 }
                 left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
+                    if l == r {
+                        return !negated;
+                    }
                     let l_pos = l.saturating_sub(1);
                     let r_pos = r.saturating_sub(1);
                     let l_s = match fields.get(l_pos) {
@@ -422,12 +429,7 @@ impl TestKind {
                 }
                 left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
                     let l_pos = l.saturating_sub(1);
-                    let r_pos = r.saturating_sub(1);
                     let l_s = match fields.get(l_pos) {
-                        Some(v) => *v,
-                        None => return false,
-                    };
-                    let r_s = match fields.get(r_pos) {
                         Some(v) => *v,
                         None => return false,
                     };
@@ -435,9 +437,18 @@ impl TestKind {
                         Ok(v) => v,
                         Err(_) => return false,
                     };
-                    let r_v = match r_s.parse::<f64>() {
-                        Ok(v) => v,
-                        Err(_) => return false,
+                    let r_v = if l == r {
+                        l_v
+                    } else {
+                        let r_pos = r.saturating_sub(1);
+                        let r_s = match fields.get(r_pos) {
+                            Some(v) => *v,
+                            None => return false,
+                        };
+                        match r_s.parse::<f64>() {
+                            Ok(v) => v,
+                            Err(_) => return false,
+                        }
                     };
                     let diff = (l_v - r_v).abs();
                     match op {
@@ -461,12 +472,7 @@ impl TestKind {
                 }
                 left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
                     let l_pos = l.saturating_sub(1);
-                    let r_pos = r.saturating_sub(1);
                     let l_s = match fields.get(l_pos) {
-                        Some(v) => *v,
-                        None => return false,
-                    };
-                    let r_s = match fields.get(r_pos) {
                         Some(v) => *v,
                         None => return false,
                     };
@@ -474,23 +480,41 @@ impl TestKind {
                         Ok(v) => v,
                         Err(_) => return false,
                     };
-                    let r_v = match r_s.parse::<f64>() {
-                        Ok(v) => v,
-                        Err(_) => return false,
-                    };
-                    let denom = l_v.abs().min(r_v.abs());
-                    let rel = if denom == 0.0 {
-                        f64::INFINITY
+                    let r_v = if l == r {
+                        l_v
                     } else {
-                        (l_v - r_v).abs() / denom
+                        let r_pos = r.saturating_sub(1);
+                        let r_s = match fields.get(r_pos) {
+                            Some(v) => *v,
+                            None => return false,
+                        };
+                        match r_s.parse::<f64>() {
+                            Ok(v) => v,
+                            Err(_) => return false,
+                        }
                     };
-                    match op {
-                        NumericOp::Le => rel <= *value,
-                        NumericOp::Gt => rel > *value,
-                        NumericOp::Ge
-                        | NumericOp::Lt
-                        | NumericOp::Eq
-                        | NumericOp::Ne => false,
+
+                    if l_v == r_v {
+                        match op {
+                            NumericOp::Le => 0.0 <= *value,
+                            NumericOp::Gt => 0.0 > *value,
+                            _ => false,
+                        }
+                    } else {
+                        let denom = l_v.abs().min(r_v.abs());
+                        let rel = if denom == 0.0 {
+                            f64::INFINITY
+                        } else {
+                            (l_v - r_v).abs() / denom
+                        };
+                        match op {
+                            NumericOp::Le => rel <= *value,
+                            NumericOp::Gt => rel > *value,
+                            NumericOp::Ge
+                            | NumericOp::Lt
+                            | NumericOp::Eq
+                            | NumericOp::Ne => false,
+                        }
                     }
                 })
             }
@@ -836,12 +860,6 @@ pub fn build_tests(
             ));
         }
         for (l, r) in left_idxs.iter().zip(right_idxs.iter()) {
-            if l == r {
-                return Err(format!(
-                    "Field1 and field2 must be different fields in `{}` (field {})",
-                    p.spec, l
-                ));
-            }
             tests.push(TestKind::FieldFieldNumericCmp {
                 left_fields: vec![*l],
                 right_fields: vec![*r],
@@ -876,12 +894,6 @@ pub fn build_tests(
             ));
         }
         for (l, r) in left_idxs.iter().zip(right_idxs.iter()) {
-            if l == r {
-                return Err(format!(
-                    "Field1 and field2 must be different fields in `{}` (field {})",
-                    p.spec, l
-                ));
-            }
             tests.push(TestKind::FieldFieldStrCmp {
                 left_fields: vec![*l],
                 right_fields: vec![*r],
@@ -919,12 +931,6 @@ pub fn build_tests(
             format!("invalid numeric value `{}` in `{}`", value_part, p.spec)
         })?;
         for (l, r) in left_idxs.iter().zip(right_idxs.iter()) {
-            if l == r {
-                return Err(format!(
-                    "Field1 and field2 must be different fields in `{}` (field {})",
-                    p.spec, l
-                ));
-            }
             tests.push(TestKind::FieldFieldAbsDiffCmp {
                 left_fields: vec![*l],
                 right_fields: vec![*r],
@@ -966,12 +972,6 @@ pub fn build_tests(
             format!("invalid numeric value `{}` in `{}`", value_part, p.spec)
         })?;
         for (l, r) in left_idxs.iter().zip(right_idxs.iter()) {
-            if l == r {
-                return Err(format!(
-                    "Field1 and field2 must be different fields in `{}` (field {})",
-                    p.spec, l
-                ));
-            }
             tests.push(TestKind::FieldFieldRelDiffCmp {
                 left_fields: vec![*l],
                 right_fields: vec![*r],
