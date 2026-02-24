@@ -8,13 +8,20 @@ pub enum OpKind {
     Min,
     Max,
     Median,
+    Q1,
+    Q3,
+    IQR,
     Stdev,
+    CV,
     Variance,
     Mad,
+    Range,
     First,
     Last,
     NUnique,
     Mode,
+    GeoMean,
+    HarmMean,
 }
 
 pub struct Operation {
@@ -26,10 +33,12 @@ pub struct Aggregator {
     pub count: usize,
     pub sums: HashMap<usize, f64>,
     pub sum_sqs: HashMap<usize, f64>, // For variance/stdev
+    pub sum_logs: HashMap<usize, f64>, // For geomean
+    pub sum_invs: HashMap<usize, f64>, // For harmmean
     pub mins: HashMap<usize, f64>,
     pub maxs: HashMap<usize, f64>,
     pub field_counts: HashMap<usize, usize>,
-    pub values: HashMap<usize, Vec<f64>>, // For median/mad
+    pub values: HashMap<usize, Vec<f64>>, // For median/mad/quantiles
     pub firsts: HashMap<usize, String>,
     pub lasts: HashMap<usize, String>,
     pub value_counts: HashMap<usize, HashMap<String, usize>>, // For mode/nunique
@@ -41,6 +50,8 @@ impl Aggregator {
             count: 0,
             sums: HashMap::new(),
             sum_sqs: HashMap::new(),
+            sum_logs: HashMap::new(),
+            sum_invs: HashMap::new(),
             mins: HashMap::new(),
             maxs: HashMap::new(),
             field_counts: HashMap::new(),
@@ -57,6 +68,8 @@ impl Aggregator {
         // Collect fields needed for each type of operation
         let mut sum_fields = Vec::new();
         let mut sum_sq_fields = Vec::new();
+        let mut sum_log_fields = Vec::new();
+        let mut sum_inv_fields = Vec::new();
         let mut value_fields = Vec::new();
         let mut first_fields = Vec::new();
         let mut last_fields = Vec::new();
@@ -66,14 +79,19 @@ impl Aggregator {
             if let Some(idx) = op.field_idx {
                 match op.kind {
                     OpKind::Sum | OpKind::Mean => sum_fields.push(idx),
-                    OpKind::Stdev | OpKind::Variance => {
+                    OpKind::Stdev | OpKind::Variance | OpKind::CV => {
                         sum_fields.push(idx);
                         sum_sq_fields.push(idx);
                     }
-                    OpKind::Median | OpKind::Mad => value_fields.push(idx),
+                    OpKind::GeoMean => sum_log_fields.push(idx),
+                    OpKind::HarmMean => sum_inv_fields.push(idx),
+                    OpKind::Median | OpKind::Mad | OpKind::Q1 | OpKind::Q3 | OpKind::IQR => {
+                        value_fields.push(idx)
+                    }
                     OpKind::First => first_fields.push(idx),
                     OpKind::Last => last_fields.push(idx),
                     OpKind::NUnique | OpKind::Mode => count_fields.push(idx),
+                    OpKind::Range => { /* Handled in Min/Max logic block */ }
                     _ => {}
                 }
             }
@@ -83,6 +101,10 @@ impl Aggregator {
         sum_fields.dedup();
         sum_sq_fields.sort_unstable();
         sum_sq_fields.dedup();
+        sum_log_fields.sort_unstable();
+        sum_log_fields.dedup();
+        sum_inv_fields.sort_unstable();
+        sum_inv_fields.dedup();
         value_fields.sort_unstable();
         value_fields.dedup();
         first_fields.sort_unstable();
@@ -92,28 +114,73 @@ impl Aggregator {
         count_fields.sort_unstable();
         count_fields.dedup();
 
-        // Handle Sum/Mean/Stdev/Variance
-        for idx in sum_fields {
-            if idx >= record.len() {
+        // Handle Sum/Mean/Stdev/Variance/CV
+        for idx in &sum_fields {
+            if *idx >= record.len() {
                 continue;
             }
-            let val_bytes = record[idx];
+            let val_bytes = record[*idx];
             if val_bytes.is_empty() {
                 continue;
             }
             if let Ok(val_str) = std::str::from_utf8(val_bytes) {
                 if let Ok(val) = val_str.trim().parse::<f64>() {
-                    *self.sums.entry(idx).or_insert(0.0) += val;
-                    *self.field_counts.entry(idx).or_insert(0) += 1;
+                    *self.sums.entry(*idx).or_insert(0.0) += val;
+                    *self.field_counts.entry(*idx).or_insert(0) += 1;
 
-                    if sum_sq_fields.contains(&idx) {
-                        *self.sum_sqs.entry(idx).or_insert(0.0) += val * val;
+                    if sum_sq_fields.contains(idx) {
+                        *self.sum_sqs.entry(*idx).or_insert(0.0) += val * val;
                     }
                 }
             }
         }
 
-        // Handle Median/Mad (store all values)
+        // Handle GeoMean
+        for idx in &sum_log_fields {
+            if *idx >= record.len() {
+                continue;
+            }
+            let val_bytes = record[*idx];
+            if val_bytes.is_empty() {
+                continue;
+            }
+            if let Ok(val_str) = std::str::from_utf8(val_bytes) {
+                if let Ok(val) = val_str.trim().parse::<f64>() {
+                    if val > 0.0 {
+                        *self.sum_logs.entry(*idx).or_insert(0.0) += val.ln();
+                        // If field_counts not updated by sum_fields, update here?
+                        // Assuming user might ask for geomean only.
+                        if !sum_fields.contains(idx) {
+                            *self.field_counts.entry(*idx).or_insert(0) += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Handle HarmMean
+        for idx in &sum_inv_fields {
+            if *idx >= record.len() {
+                continue;
+            }
+            let val_bytes = record[*idx];
+            if val_bytes.is_empty() {
+                continue;
+            }
+            if let Ok(val_str) = std::str::from_utf8(val_bytes) {
+                if let Ok(val) = val_str.trim().parse::<f64>() {
+                    if val != 0.0 {
+                        *self.sum_invs.entry(*idx).or_insert(0.0) += 1.0 / val;
+                        if !sum_fields.contains(idx) && !sum_log_fields.contains(idx) {
+                            *self.field_counts.entry(*idx).or_insert(0) += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Handle Median/Mad/Quantiles (store all values)
+
         for idx in value_fields {
             if idx >= record.len() {
                 continue;
@@ -175,18 +242,21 @@ impl Aggregator {
                     continue;
                 }
 
-                if matches!(op.kind, OpKind::Min | OpKind::Max) {
+                if matches!(op.kind, OpKind::Min | OpKind::Max | OpKind::Range) {
                     if let Ok(val_str) = std::str::from_utf8(val_bytes) {
                         if let Ok(val) = val_str.trim().parse::<f64>() {
                             match op.kind {
-                                OpKind::Min => {
+                                OpKind::Min | OpKind::Range => {
                                     let entry =
                                         self.mins.entry(idx).or_insert(f64::INFINITY);
                                     if val < *entry {
                                         *entry = val;
                                     }
                                 }
-                                OpKind::Max => {
+                                _ => {}
+                            }
+                            match op.kind {
+                                OpKind::Max | OpKind::Range => {
                                     let entry = self
                                         .maxs
                                         .entry(idx)
@@ -201,6 +271,24 @@ impl Aggregator {
                     }
                 }
             }
+        }
+    }
+
+    pub fn calculate_quantile(sorted_vals: &[f64], p: f64) -> f64 {
+        let len = sorted_vals.len();
+        if len == 0 {
+            return f64::NAN;
+        }
+        if len == 1 {
+            return sorted_vals[0];
+        }
+        let pos = p * (len - 1) as f64;
+        let i = pos.floor() as usize;
+        let fract = pos - i as f64;
+        if i >= len - 1 {
+            sorted_vals[len - 1]
+        } else {
+            sorted_vals[i] * (1.0 - fract) + sorted_vals[i + 1] * fract
         }
     }
 
@@ -247,22 +335,78 @@ impl Aggregator {
                         }
                     }
                 }
-                OpKind::Median => {
+                OpKind::GeoMean => {
+                    if let Some(idx) = op.field_idx {
+                        let sum_log = self.sum_logs.get(&idx).copied().unwrap_or(0.0);
+                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
+                        if count > 0 {
+                            values.push((sum_log / count as f64).exp().to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::HarmMean => {
+                    if let Some(idx) = op.field_idx {
+                        let sum_inv = self.sum_invs.get(&idx).copied().unwrap_or(0.0);
+                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
+                        if count > 0 && sum_inv != 0.0 {
+                            values.push((count as f64 / sum_inv).to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::Range => {
+                    if let Some(idx) = op.field_idx {
+                        let min = self.mins.get(&idx).copied().unwrap_or(f64::INFINITY);
+                        let max = self.maxs.get(&idx).copied().unwrap_or(f64::NEG_INFINITY);
+                        if min != f64::INFINITY && max != f64::NEG_INFINITY {
+                            values.push((max - min).to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::CV => {
+                    if let Some(idx) = op.field_idx {
+                        let sum = self.sums.get(&idx).copied().unwrap_or(0.0);
+                        let sum_sq = self.sum_sqs.get(&idx).copied().unwrap_or(0.0);
+                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
+
+                        if count > 1 {
+                            let mean = sum / count as f64;
+                            let variance = (sum_sq - (sum * sum) / count as f64)
+                                / (count as f64 - 1.0);
+                            let stdev = variance.sqrt();
+                            if mean != 0.0 {
+                                values.push((stdev / mean).to_string());
+                            } else {
+                                values.push("nan".to_string());
+                            }
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::Median | OpKind::Q1 | OpKind::Q3 | OpKind::IQR => {
                     if let Some(idx) = op.field_idx {
                         if let Some(vals) = self.values.get(&idx) {
                             let mut sorted_vals = vals.clone();
                             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
                             let len = sorted_vals.len();
+
                             if len > 0 {
-                                if len % 2 == 1 {
-                                    values.push(sorted_vals[len / 2].to_string());
-                                } else {
-                                    let mid = len / 2;
-                                    values.push(
-                                        ((sorted_vals[mid - 1] + sorted_vals[mid])
-                                            / 2.0)
-                                            .to_string(),
-                                    );
+                                match op.kind {
+                                    OpKind::Median => values.push(Self::calculate_quantile(&sorted_vals, 0.5).to_string()),
+                                    OpKind::Q1 => values.push(Self::calculate_quantile(&sorted_vals, 0.25).to_string()),
+                                    OpKind::Q3 => values.push(Self::calculate_quantile(&sorted_vals, 0.75).to_string()),
+                                    OpKind::IQR => {
+                                        let q1 = Self::calculate_quantile(&sorted_vals, 0.25);
+                                        let q3 = Self::calculate_quantile(&sorted_vals, 0.75);
+                                        values.push((q3 - q1).to_string());
+                                    }
+                                    _ => {}
                                 }
                             } else {
                                 values.push("nan".to_string());

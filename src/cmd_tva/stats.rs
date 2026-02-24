@@ -114,6 +114,55 @@ pub fn make_subcommand() -> Command {
                 .help("Get the most frequent value (mode)"),
         )
         .arg(
+            Arg::new("geomean")
+                .long("geomean")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate geometric mean of fields"),
+        )
+        .arg(
+            Arg::new("harmmean")
+                .long("harmmean")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate harmonic mean of fields"),
+        )
+        .arg(
+            Arg::new("q1")
+                .long("q1")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate 1st quartile (25th percentile) of fields"),
+        )
+        .arg(
+            Arg::new("q3")
+                .long("q3")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate 3rd quartile (75th percentile) of fields"),
+        )
+        .arg(
+            Arg::new("iqr")
+                .long("iqr")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate interquartile range (Q3-Q1) of fields"),
+        )
+        .arg(
+            Arg::new("cv")
+                .long("cv")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate coefficient of variation (stdev/mean) of fields"),
+        )
+        .arg(
+            Arg::new("range")
+                .long("range")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate range (max-min) of fields"),
+        )
+        .arg(
             Arg::new("infiles")
                 .num_args(0..)
                 .index(1)
@@ -239,6 +288,69 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             });
         }
     }
+    if let Some(indices) = matches.indices_of("geomean") {
+        for (i, val) in indices.zip(matches.get_many::<String>("geomean").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::GeoMean,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("harmmean") {
+        for (i, val) in indices.zip(matches.get_many::<String>("harmmean").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::HarmMean,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("q1") {
+        for (i, val) in indices.zip(matches.get_many::<String>("q1").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::Q1,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("q3") {
+        for (i, val) in indices.zip(matches.get_many::<String>("q3").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::Q3,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("iqr") {
+        for (i, val) in indices.zip(matches.get_many::<String>("iqr").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::IQR,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("cv") {
+        for (i, val) in indices.zip(matches.get_many::<String>("cv").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::CV,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("range") {
+        for (i, val) in indices.zip(matches.get_many::<String>("range").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::Range,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
 
     // Handle count.
     if matches.get_flag("count") {
@@ -311,6 +423,13 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                             OpKind::Last => "_last",
                             OpKind::NUnique => "_nunique",
                             OpKind::Mode => "_mode",
+                            OpKind::GeoMean => "_geomean",
+                            OpKind::HarmMean => "_harmmean",
+                            OpKind::Q1 => "_q1",
+                            OpKind::Q3 => "_q3",
+                            OpKind::IQR => "_iqr",
+                            OpKind::CV => "_cv",
+                            OpKind::Range => "_range",
                             _ => "",
                         };
 

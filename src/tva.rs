@@ -40,7 +40,7 @@ fn main() -> anyhow::Result<()> {
 Tab-separated Values Assistant (tva): small toolbox for working with TSV files.
 
 Currently implemented subcommands:
-* Generic TSV: md, append, join, uniq, nl, transpose, sort, split, longer, wider
+* Generic TSV: md, append, join, uniq, nl, transpose, sort, split, longer, wider, crosstab
 * Table plumbing: keep-header, check
 * Ingestion: from-csv
 * Sampling: sample

@@ -1,16 +1,18 @@
 use crate::libs::fields;
 use crate::libs::fields::Header;
+use crate::libs::stats::Aggregator;
 use clap::*;
 use indexmap::{IndexMap, IndexSet};
+use std::collections::HashMap;
 use std::io::{BufRead, Write};
 
 pub fn make_subcommand() -> Command {
     Command::new("wider")
-        .about("Reshapes a long table into a wide format")
+        .about("Reshapes a long table into a wide format (pivot table)")
         .after_help(
             r###"
 Reshapes a table from long to wide format by spreading a key-value pair across
-multiple columns. This is the inverse of 'longer'.
+multiple columns. This is the inverse of 'longer' and similar to 'crosstab'.
 
 Input:
 - Reads from one or more TSV files or standard input.
@@ -22,7 +24,7 @@ Reshaping behavior:
 - --names-from
   Column(s) containing the new column headers.
 - --values-from
-  Column(s) containing the data values.
+  Column(s) containing the data values. Required unless op is 'count'.
 - --id-cols
   Columns that identify each row. If omitted, all columns except
   'names-from' and 'values-from' are used.
@@ -30,16 +32,25 @@ Reshaping behavior:
   Value to use for missing cells (default: empty).
 - --names-sort
   Sort the resulting column headers alphabetically.
+- --op
+  Aggregation operation to perform when multiple values fall into the same cell.
+  Default is 'last' (last value wins).
 
 Examples:
 1. Spread 'key' and 'value' columns back into wide format
-   tva wider data.tsv --names-from key --values-from value
+   tva wider --names-from key --values-from value
 
 2. Spread 'measurement' column, using 'result' as values
-   tva wider data.tsv --names-from measurement --values-from result
+   tva wider --names-from measurement --values-from result
 
 3. Specify ID columns explicitly (dropping others)
-   tva wider data.tsv --names-from key --values-from val --id-cols id date
+   tva wider --names-from key --values-from val --id-cols id date
+
+4. Count occurrences (crosstab)
+   tva wider --names-from category --id-cols region --op count
+
+5. Calculate sum of values
+   tva wider --names-from category --values-from amount --id-cols region --op sum
 "###,
         )
         .arg(
@@ -57,7 +68,6 @@ Examples:
         .arg(
             Arg::new("values-from")
                 .long("values-from")
-                .required(true)
                 .help("Column(s) containing the data values"),
         )
         .arg(
@@ -85,25 +95,246 @@ Examples:
                 .default_value("stdout")
                 .help("Output filename. [stdout] for screen"),
         )
+        .arg(
+            Arg::new("op")
+                .long("op")
+                .default_value("last")
+                .value_parser([
+                    "count", "sum", "mean", "min", "max", "first", "last",
+                    "median", "q1", "q3", "iqr", "geomean", "harmmean", "cv", "range", "mode", "stdev", "variance"
+                ])
+                .help("Aggregation operation to perform on value column"),
+        )
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Op {
+    Count,
+    Sum,
+    Mean,
+    Min,
+    Max,
+    First,
+    Last,
+    Median,
+    Q1,
+    Q3,
+    IQR,
+    GeoMean,
+    HarmMean,
+    CV,
+    Range,
+    Mode,
+    Stdev,
+    Variance,
+}
+
+struct Cell {
+    count: usize,
+    sum: f64,
+    sum_sq: f64,
+    sum_log: f64,
+    sum_inv: f64,
+    min: f64,
+    max: f64,
+    first: Option<String>,
+    last: Option<String>,
+    values: Vec<f64>,
+    value_counts: HashMap<String, usize>, // For Mode
+}
+
+impl Cell {
+    fn new() -> Self {
+        Self {
+            count: 0,
+            sum: 0.0,
+            sum_sq: 0.0,
+            sum_log: 0.0,
+            sum_inv: 0.0,
+            min: f64::INFINITY,
+            max: f64::NEG_INFINITY,
+            first: None,
+            last: None,
+            values: Vec::new(),
+            value_counts: HashMap::new(),
+        }
+    }
+
+    fn update(&mut self, val_str: &str, op: Op) {
+        self.count += 1;
+
+        if self.first.is_none() {
+            self.first = Some(val_str.to_string());
+        }
+        self.last = Some(val_str.to_string());
+
+        // Mode needs raw strings
+        if op == Op::Mode {
+            *self.value_counts.entry(val_str.to_string()).or_insert(0) += 1;
+        }
+
+        if let Ok(val) = val_str.parse::<f64>() {
+            match op {
+                Op::Sum | Op::Mean | Op::CV | Op::Stdev | Op::Variance => {
+                    self.sum += val;
+                    if matches!(op, Op::CV | Op::Stdev | Op::Variance) {
+                         self.sum_sq += val * val;
+                    }
+                }
+                Op::Min | Op::Range => {
+                    if val < self.min { self.min = val; }
+                    // Range needs max too
+                    if op == Op::Range {
+                        if val > self.max { self.max = val; }
+                    }
+                }
+                Op::Max => {
+                    if val > self.max { self.max = val; }
+                }
+                Op::GeoMean => {
+                    if val > 0.0 {
+                        self.sum_log += val.ln();
+                    }
+                }
+                Op::HarmMean => {
+                    if val != 0.0 {
+                        self.sum_inv += 1.0 / val;
+                    }
+                }
+                Op::Median | Op::Q1 | Op::Q3 | Op::IQR => {
+                    self.values.push(val);
+                }
+                _ => {}
+            }
+
+            if matches!(op, Op::Min | Op::Range) {
+                 if val < self.min { self.min = val; }
+            }
+            if matches!(op, Op::Max | Op::Range) {
+                 if val > self.max { self.max = val; }
+            }
+        }
+    }
+
+    fn result(&self, op: Op) -> String {
+        match op {
+            Op::Count => self.count.to_string(),
+            Op::Sum => self.sum.to_string(),
+            Op::Mean => {
+                if self.count > 0 {
+                    (self.sum / self.count as f64).to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            Op::Min => {
+                if self.min == f64::INFINITY { "nan".to_string() } else { self.min.to_string() }
+            }
+            Op::Max => {
+                if self.max == f64::NEG_INFINITY { "nan".to_string() } else { self.max.to_string() }
+            }
+            Op::First => self.first.clone().unwrap_or_default(),
+            Op::Last => self.last.clone().unwrap_or_default(),
+            Op::GeoMean => {
+                if self.count > 0 {
+                    (self.sum_log / self.count as f64).exp().to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            Op::HarmMean => {
+                if self.count > 0 && self.sum_inv != 0.0 {
+                    (self.count as f64 / self.sum_inv).to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            Op::Range => {
+                if self.min != f64::INFINITY && self.max != f64::NEG_INFINITY {
+                    (self.max - self.min).to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            Op::CV => {
+                if self.count > 1 {
+                    let mean = self.sum / self.count as f64;
+                    let variance = (self.sum_sq - (self.sum * self.sum) / self.count as f64)
+                        / (self.count as f64 - 1.0);
+                    let stdev = variance.sqrt();
+                    if mean != 0.0 {
+                        (stdev / mean).to_string()
+                    } else {
+                        "nan".to_string()
+                    }
+                } else {
+                    "nan".to_string()
+                }
+            }
+            Op::Stdev => {
+                if self.count > 1 {
+                    let variance = (self.sum_sq - (self.sum * self.sum) / self.count as f64)
+                        / (self.count as f64 - 1.0);
+                    variance.sqrt().to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            Op::Variance => {
+                if self.count > 1 {
+                    let variance = (self.sum_sq - (self.sum * self.sum) / self.count as f64)
+                        / (self.count as f64 - 1.0);
+                    variance.to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            Op::Median | Op::Q1 | Op::Q3 | Op::IQR => {
+                let mut sorted_vals = self.values.clone();
+                sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                match op {
+                    Op::Median => Aggregator::calculate_quantile(&sorted_vals, 0.5).to_string(),
+                    Op::Q1 => Aggregator::calculate_quantile(&sorted_vals, 0.25).to_string(),
+                    Op::Q3 => Aggregator::calculate_quantile(&sorted_vals, 0.75).to_string(),
+                    Op::IQR => {
+                        let q1 = Aggregator::calculate_quantile(&sorted_vals, 0.25);
+                        let q3 = Aggregator::calculate_quantile(&sorted_vals, 0.75);
+                        (q3 - q1).to_string()
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            Op::Mode => {
+                if self.value_counts.is_empty() {
+                    "".to_string()
+                } else {
+                     let mut count_vec: Vec<(&String, &usize)> = self.value_counts.iter().collect();
+                     count_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+                     count_vec[0].0.clone()
+                }
+            }
+        }
+    }
 }
 
 struct WiderConfig {
     names_from: String,
-    values_from: String,
+    values_from: Option<String>,
     id_cols: Option<String>,
     fill_value: String,
     sort_names: bool,
+    op: Op,
 }
 
 struct ProcessState {
     // Key: ID columns values
-    // Value: Map of Name -> Value
-    data: IndexMap<Vec<String>, IndexMap<String, String>>,
+    // Value: Map of Name -> Cell
+    data: IndexMap<Vec<String>, IndexMap<String, Cell>>,
     all_names: IndexSet<String>,
 
     // Indices (0-based)
     names_idx: usize,
-    values_idx: usize,
+    values_idx: Option<usize>,
     id_indices: Vec<usize>,
 
     // Header info
@@ -118,7 +349,7 @@ impl ProcessState {
             data: IndexMap::new(),
             all_names: IndexSet::new(),
             names_idx: 0,
-            values_idx: 0,
+            values_idx: None,
             id_indices: Vec::new(),
             header_processed: false,
             output_header_prefix: Vec::new(),
@@ -135,12 +366,41 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None => vec!["stdin".to_string()],
     };
 
+    let op_str = args.get_one::<String>("op").unwrap();
+    let op = match op_str.as_str() {
+        "count" => Op::Count,
+        "sum" => Op::Sum,
+        "mean" => Op::Mean,
+        "min" => Op::Min,
+        "max" => Op::Max,
+        "first" => Op::First,
+        "last" => Op::Last,
+        "median" => Op::Median,
+        "q1" => Op::Q1,
+        "q3" => Op::Q3,
+        "iqr" => Op::IQR,
+        "geomean" => Op::GeoMean,
+        "harmmean" => Op::HarmMean,
+        "cv" => Op::CV,
+        "range" => Op::Range,
+        "mode" => Op::Mode,
+        "stdev" => Op::Stdev,
+        "variance" => Op::Variance,
+        _ => unreachable!(),
+    };
+
+    let values_from = args.get_one::<String>("values-from").cloned();
+    if values_from.is_none() && op != Op::Count {
+        anyhow::bail!("--values-from is required for operations other than count");
+    }
+
     let config = WiderConfig {
         names_from: args.get_one::<String>("names-from").unwrap().clone(),
-        values_from: args.get_one::<String>("values-from").unwrap().clone(),
+        values_from,
         id_cols: args.get_one::<String>("id-cols").cloned(),
         fill_value: args.get_one::<String>("values-fill").unwrap().clone(),
         sort_names: args.get_flag("names-sort"),
+        op,
     };
 
     let mut state = ProcessState::new();
@@ -186,18 +446,22 @@ fn process_file(
         }
         state.names_idx = n_indices[0] - 1;
 
-        let v_indices = fields::parse_field_list_with_header(
-            &config.values_from,
-            Some(&header),
-            '\t',
-        )
-        .map_err(|e| anyhow::anyhow!(e))?;
-        if v_indices.len() != 1 {
-            return Err(anyhow::anyhow!(
-                "Currently only single column supported for --values-from"
-            ));
+        if let Some(v_spec) = &config.values_from {
+            let v_indices = fields::parse_field_list_with_header(
+                v_spec,
+                Some(&header),
+                '\t',
+            )
+            .map_err(|e| anyhow::anyhow!(e))?;
+            if v_indices.len() != 1 {
+                return Err(anyhow::anyhow!(
+                    "Currently only single column supported for --values-from"
+                ));
+            }
+            state.values_idx = Some(v_indices[0] - 1);
+        } else {
+            state.values_idx = None;
         }
-        state.values_idx = v_indices[0] - 1;
 
         if let Some(spec) = &config.id_cols {
             let i_indices =
@@ -207,7 +471,12 @@ fn process_file(
         } else {
             // Default: all except names and values
             for (i, _) in header_fields.iter().enumerate() {
-                if i != state.names_idx && i != state.values_idx {
+                let is_val_idx = if let Some(idx) = state.values_idx {
+                    i == idx
+                } else {
+                    false
+                };
+                if i != state.names_idx && !is_val_idx {
                     state.id_indices.push(i);
                 }
             }
@@ -228,26 +497,15 @@ fn process_file(
                  infile, header_fields.len(), state.first_file_header_len
              ));
         }
-        // Ideally we should also check column names, but for now length check is a basic safeguard.
     }
 
     // Process rows
     for line in reader.lines() {
         let mut line = line?;
         trim_newline(&mut line);
+        if line.is_empty() { continue; }
 
         let fields: Vec<&str> = line.split('\t').collect();
-
-        // Validate fields length against indices
-        let max_idx = std::cmp::max(state.names_idx, state.values_idx);
-        if max_idx >= fields.len() {
-            // Skip malformed lines or error?
-            // To be safe, we can skip or error. Let's error to be strict.
-            // But actually, split('\t') on "A" gives ["A"]. If we need index 1, it fails.
-            // Let's just fill with empty string if missing, to be consistent with previous logic,
-            // BUT previous logic had a bug with trim_end().
-            // If the file is valid TSV, it should have enough columns.
-        }
 
         // Extract ID key
         let mut key: Vec<String> = Vec::with_capacity(state.id_indices.len());
@@ -267,8 +525,12 @@ fn process_file(
         };
 
         // Extract Value
-        let value = if state.values_idx < fields.len() {
-            fields[state.values_idx].to_string()
+        let value = if let Some(idx) = state.values_idx {
+            if idx < fields.len() {
+                fields[idx].to_string()
+            } else {
+                "".to_string()
+            }
         } else {
             "".to_string()
         };
@@ -279,7 +541,9 @@ fn process_file(
             .data
             .entry(key)
             .or_insert_with(IndexMap::new)
-            .insert(name, value);
+            .entry(name)
+            .or_insert_with(Cell::new)
+            .update(&value, config.op);
     }
 
     Ok(())
@@ -329,8 +593,8 @@ fn write_output<W: Write>(
             if !key.is_empty() {
                 write!(writer, "\t")?;
             }
-            if let Some(val) = row_map.get(name) {
-                write!(writer, "{}", val)?;
+            if let Some(cell) = row_map.get(name) {
+                write!(writer, "{}", cell.result(config.op))?;
             } else {
                 write!(writer, "{}", config.fill_value)?;
             }
