@@ -261,7 +261,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         arg_error("data file is required when filter-file is '-'");
     }
 
-    let mut filter_reader = crate::libs::io::reader(&filter_file);
+    let filter_reader = crate::libs::io::reader(&filter_file);
     let mut filter_lines_iter = filter_reader.lines().map_while(Result::ok);
 
     let mut filter_header: Option<crate::libs::fields::Header> = None;
@@ -326,7 +326,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     for input in crate::libs::io::input_sources(&infiles) {
         let reader = input.reader;
         let mut is_first_line = true;
-        let mut data_header: Option<crate::libs::fields::Header> = None;
         let mut data_key_whole_line = false;
         let mut data_key_indices: Option<Vec<usize>> = None;
 
@@ -340,14 +339,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             if has_header && is_first_line {
                 if !header_written {
-                    data_header =
-                        Some(crate::libs::fields::Header::from_line(&line, delimiter));
-
                     let effective_data_spec =
                         data_fields_spec.clone().or_else(|| key_fields_spec.clone());
                     let (whole_line, indices) = parse_join_field_spec(
                         effective_data_spec,
-                        data_header.as_ref(),
+                        Some(&crate::libs::fields::Header::from_line(&line, delimiter)),
                         delimiter,
                     );
                     data_key_whole_line = whole_line;

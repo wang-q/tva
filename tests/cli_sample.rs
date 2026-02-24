@@ -375,6 +375,27 @@ fn sample_weight_field_conflicts_with_prob_and_replace() -> anyhow::Result<()> {
 }
 
 #[test]
+fn sample_weight_field_invalid_field_list_reports_error() -> anyhow::Result<()> {
+    let input = "x\t1\nx\t10\n";
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("sample")
+        .arg("--num")
+        .arg("1")
+        .arg("--weight-field")
+        .arg("0")
+        .write_stdin(input)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("tva sample:"));
+
+    Ok(())
+}
+
+#[test]
 fn sample_key_fields_requires_prob() -> anyhow::Result<()> {
     let input = "k\tv\na\t1\n";
     let mut cmd = cargo_bin_cmd!("tva");

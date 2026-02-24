@@ -33,6 +33,12 @@ Output:
 - By default, output is written to standard output.
 - Use --outfile to write to a file instead.
 
+Field syntax:
+- --key-fields/-k and --weight-field/-w accept the same field list syntax
+  as other tva commands: 1-based indices, ranges, header names, name ranges,
+  and wildcards.
+- Run `tva --help-fields` for a full description shared across tva commands.
+
 Random value printing:
 - Use --print-random to prepend a random value column to sampled rows.
 - Use --gen-random-inorder to generate random values for all rows without

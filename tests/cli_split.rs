@@ -202,6 +202,22 @@ b\t5
 }
 
 #[test]
+fn split_key_fields_invalid_field_list_reports_error() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("split")
+        .arg("--num-files")
+        .arg("2")
+        .arg("--key-fields")
+        .arg("0")
+        .write_stdin("a\t1\nb\t2\n");
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("tva split:"));
+
+    Ok(())
+}
+
+#[test]
 fn split_requires_mode() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     cmd.arg("split");
