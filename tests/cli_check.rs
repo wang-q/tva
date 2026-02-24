@@ -48,12 +48,11 @@ fn check_invalid_structure_from_stdin() -> anyhow::Result<()> {
     cmd.arg("check").write_stdin(input);
     cmd.assert()
         .failure()
-        .stderr(
-            predicate::str::contains("line 2 (2 fields):")
-                .and(predicate::str::contains(
-                    "tva check: structure check failed: line 2 has 2 fields (expected 3)",
-                )),
-        );
+        .stderr(predicate::str::contains("line 2 (2 fields):").and(
+            predicate::str::contains(
+                "tva check: structure check failed: line 2 has 2 fields (expected 3)",
+            ),
+        ));
 
     Ok(())
 }
@@ -66,11 +65,11 @@ fn check_empty_line_zero_fields() -> anyhow::Result<()> {
     cmd.arg("check").write_stdin(input);
     cmd.assert()
         .failure()
-        .stderr(
-            predicate::str::contains("line 2 (0 fields):").and(predicate::str::contains(
+        .stderr(predicate::str::contains("line 2 (0 fields):").and(
+            predicate::str::contains(
                 "tva check: structure check failed: line 2 has 0 fields (expected 2)",
-            )),
-        );
+            ),
+        ));
 
     Ok(())
 }

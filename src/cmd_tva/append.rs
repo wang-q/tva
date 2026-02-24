@@ -181,7 +181,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
 
     for (label, path) in file_mappings {
-        specs.push(InputSpec { path, label: Some(label) });
+        specs.push(InputSpec {
+            path,
+            label: Some(label),
+        });
     }
 
     let source_header_name = source_header.unwrap_or_else(|| "file".to_string());

@@ -120,10 +120,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if infile == "stdin" {
                     if let Some(pos) = pos {
                         let line = pos.line();
-                        eprintln!(
-                            "tva from-csv: invalid CSV at line {}: {}",
-                            line, err
-                        );
+                        eprintln!("tva from-csv: invalid CSV at line {}: {}", line, err);
                     } else {
                         eprintln!("tva from-csv: invalid CSV: {}", err);
                     }
@@ -135,10 +132,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             infile, line, err
                         );
                     } else {
-                        eprintln!(
-                            "tva from-csv: invalid CSV in '{}': {}",
-                            infile, err
-                        );
+                        eprintln!("tva from-csv: invalid CSV in '{}': {}", infile, err);
                     }
                 }
                 std::process::exit(1);

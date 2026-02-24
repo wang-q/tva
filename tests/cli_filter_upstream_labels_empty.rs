@@ -245,11 +245,7 @@ fn upstream_empty_with_other_filter() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "100\t100\t\tAbC\n",
-        "100\t101\t\t\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "100\t100\t\tAbC\n", "100\t101\t\t\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -292,11 +288,7 @@ fn upstream_empty_basic() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "100\t100\t\tAbC\n",
-        "100\t101\t\t\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "100\t100\t\tAbC\n", "100\t101\t\t\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -356,11 +348,7 @@ fn upstream_empty_header_name() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "100\t100\t\tAbC\n",
-        "100\t101\t\t\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "100\t100\t\tAbC\n", "100\t101\t\t\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -516,13 +504,7 @@ fn upstream_empty_onefield() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "\n",
-        "\n",
-        "\n",
-        "\n",
-        "\n",
-    );
+    let expected = concat!("\n", "\n", "\n", "\n", "\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -544,11 +526,7 @@ fn upstream_num_or_empty() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "f1\tf2\tf3\n",
-        "100\t21\t31\n",
-        "100\t24\t33\n",
-    );
+    let expected = concat!("f1\tf2\tf3\n", "100\t21\t31\n", "100\t24\t33\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }

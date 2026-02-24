@@ -2,9 +2,10 @@ use clap::*;
 use std::io::BufRead;
 
 use crate::libs::filter::{
-    build_tests, NumericOp, NumericProp, PendingByteLen, PendingCharLen, PendingFieldFieldAbsDiff,
-    PendingFieldFieldNumeric, PendingFieldFieldRelDiff, PendingFieldFieldStr, PendingNumeric,
-    PendingNumericProp, PendingRegex, PendingStrCmp, PendingStrEq, PendingSubstr, TestKind,
+    build_tests, NumericOp, NumericProp, PendingByteLen, PendingCharLen,
+    PendingFieldFieldAbsDiff, PendingFieldFieldNumeric, PendingFieldFieldRelDiff,
+    PendingFieldFieldStr, PendingNumeric, PendingNumericProp, PendingRegex,
+    PendingStrCmp, PendingStrEq, PendingSubstr, TestKind,
 };
 
 pub fn make_subcommand() -> Command {
@@ -563,42 +564,60 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingNumeric { spec, op: NumericOp::Gt });
+            v.push(PendingNumeric {
+                spec,
+                op: NumericOp::Gt,
+            });
         }
         for spec in args
             .get_many::<String>("ge")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingNumeric { spec, op: NumericOp::Ge });
+            v.push(PendingNumeric {
+                spec,
+                op: NumericOp::Ge,
+            });
         }
         for spec in args
             .get_many::<String>("lt")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingNumeric { spec, op: NumericOp::Lt });
+            v.push(PendingNumeric {
+                spec,
+                op: NumericOp::Lt,
+            });
         }
         for spec in args
             .get_many::<String>("le")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingNumeric { spec, op: NumericOp::Le });
+            v.push(PendingNumeric {
+                spec,
+                op: NumericOp::Le,
+            });
         }
         for spec in args
             .get_many::<String>("eq")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingNumeric { spec, op: NumericOp::Eq });
+            v.push(PendingNumeric {
+                spec,
+                op: NumericOp::Eq,
+            });
         }
         for spec in args
             .get_many::<String>("ne")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingNumeric { spec, op: NumericOp::Ne });
+            v.push(PendingNumeric {
+                spec,
+                op: NumericOp::Ne,
+            });
         }
         v
     };
@@ -610,28 +629,40 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingStrCmp { spec, op: NumericOp::Gt });
+            v.push(PendingStrCmp {
+                spec,
+                op: NumericOp::Gt,
+            });
         }
         for spec in args
             .get_many::<String>("str-ge")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingStrCmp { spec, op: NumericOp::Ge });
+            v.push(PendingStrCmp {
+                spec,
+                op: NumericOp::Ge,
+            });
         }
         for spec in args
             .get_many::<String>("str-lt")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingStrCmp { spec, op: NumericOp::Lt });
+            v.push(PendingStrCmp {
+                spec,
+                op: NumericOp::Lt,
+            });
         }
         for spec in args
             .get_many::<String>("str-le")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingStrCmp { spec, op: NumericOp::Le });
+            v.push(PendingStrCmp {
+                spec,
+                op: NumericOp::Le,
+            });
         }
         v
     };
@@ -949,14 +980,20 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingFieldFieldAbsDiff { spec, op: NumericOp::Le });
+            v.push(PendingFieldFieldAbsDiff {
+                spec,
+                op: NumericOp::Le,
+            });
         }
         for spec in args
             .get_many::<String>("ff-absdiff-gt")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingFieldFieldAbsDiff { spec, op: NumericOp::Gt });
+            v.push(PendingFieldFieldAbsDiff {
+                spec,
+                op: NumericOp::Gt,
+            });
         }
         v
     };
@@ -968,14 +1005,20 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingFieldFieldRelDiff { spec, op: NumericOp::Le });
+            v.push(PendingFieldFieldRelDiff {
+                spec,
+                op: NumericOp::Le,
+            });
         }
         for spec in args
             .get_many::<String>("ff-reldiff-gt")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingFieldFieldRelDiff { spec, op: NumericOp::Gt });
+            v.push(PendingFieldFieldRelDiff {
+                spec,
+                op: NumericOp::Gt,
+            });
         }
         v
     };
@@ -987,42 +1030,60 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingCharLen { spec, op: NumericOp::Gt });
+            v.push(PendingCharLen {
+                spec,
+                op: NumericOp::Gt,
+            });
         }
         for spec in args
             .get_many::<String>("char-len-ge")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingCharLen { spec, op: NumericOp::Ge });
+            v.push(PendingCharLen {
+                spec,
+                op: NumericOp::Ge,
+            });
         }
         for spec in args
             .get_many::<String>("char-len-lt")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingCharLen { spec, op: NumericOp::Lt });
+            v.push(PendingCharLen {
+                spec,
+                op: NumericOp::Lt,
+            });
         }
         for spec in args
             .get_many::<String>("char-len-le")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingCharLen { spec, op: NumericOp::Le });
+            v.push(PendingCharLen {
+                spec,
+                op: NumericOp::Le,
+            });
         }
         for spec in args
             .get_many::<String>("char-len-eq")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingCharLen { spec, op: NumericOp::Eq });
+            v.push(PendingCharLen {
+                spec,
+                op: NumericOp::Eq,
+            });
         }
         for spec in args
             .get_many::<String>("char-len-ne")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingCharLen { spec, op: NumericOp::Ne });
+            v.push(PendingCharLen {
+                spec,
+                op: NumericOp::Ne,
+            });
         }
         v
     };
@@ -1034,42 +1095,60 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingByteLen { spec, op: NumericOp::Gt });
+            v.push(PendingByteLen {
+                spec,
+                op: NumericOp::Gt,
+            });
         }
         for spec in args
             .get_many::<String>("byte-len-ge")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingByteLen { spec, op: NumericOp::Ge });
+            v.push(PendingByteLen {
+                spec,
+                op: NumericOp::Ge,
+            });
         }
         for spec in args
             .get_many::<String>("byte-len-lt")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingByteLen { spec, op: NumericOp::Lt });
+            v.push(PendingByteLen {
+                spec,
+                op: NumericOp::Lt,
+            });
         }
         for spec in args
             .get_many::<String>("byte-len-le")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingByteLen { spec, op: NumericOp::Le });
+            v.push(PendingByteLen {
+                spec,
+                op: NumericOp::Le,
+            });
         }
         for spec in args
             .get_many::<String>("byte-len-eq")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingByteLen { spec, op: NumericOp::Eq });
+            v.push(PendingByteLen {
+                spec,
+                op: NumericOp::Eq,
+            });
         }
         for spec in args
             .get_many::<String>("byte-len-ne")
             .map(|v| v.cloned().collect::<Vec<_>>())
             .unwrap_or_default()
         {
-            v.push(PendingByteLen { spec, op: NumericOp::Ne });
+            v.push(PendingByteLen {
+                spec,
+                op: NumericOp::Ne,
+            });
         }
         v
     };
@@ -1095,7 +1174,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 header_seen = true;
                 if !header_written && !count_only {
                     if let Some(ref lbl) = label_header {
-                        writer.write_fmt(format_args!("{}{}{}\n", line, delimiter, lbl))?;
+                        writer
+                            .write_fmt(format_args!("{}{}{}\n", line, delimiter, lbl))?;
                     } else {
                         writer.write_fmt(format_args!("{}\n", line))?;
                     }
@@ -1161,7 +1241,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             if let Some(_) = label_header {
-                let val = if row_match { &label_pass_val } else { &label_fail_val };
+                let val = if row_match {
+                    &label_pass_val
+                } else {
+                    &label_fail_val
+                };
                 writer.write_fmt(format_args!("{}{}{}\n", line, delimiter, val))?;
                 if line_buffered {
                     writer.flush()?;

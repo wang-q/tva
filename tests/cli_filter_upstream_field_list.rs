@@ -100,9 +100,8 @@ fn upstream_field_list_str_in_fld_2_3_7_ab() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "line\t2_apha\t3_apha\t4_num\t5_num\t6_num\t7_alpha\t8_num\t9_num\n",
-    );
+    let expected =
+        concat!("line\t2_apha\t3_apha\t4_num\t5_num\t6_num\t7_alpha\t8_num\t9_num\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }

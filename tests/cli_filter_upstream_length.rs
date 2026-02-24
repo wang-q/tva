@@ -13,11 +13,7 @@ fn upstream_char_len_eq_3_0() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "100\t100\t\tAbC\n",
-        "100\t101\t\t\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "100\t100\t\tAbC\n", "100\t101\t\t\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -59,9 +55,7 @@ fn upstream_char_len_eq_3_2() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -489,9 +483,7 @@ fn upstream_char_len_lt_1_3_unicode() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "Language\tText 1\tText 2\tText 3\n",
-    );
+    let expected = concat!("Language\tText 1\tText 2\tText 3\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -721,11 +713,7 @@ fn upstream_byte_len_eq_3_0() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "100\t100\t\tAbC\n",
-        "100\t101\t\t\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "100\t100\t\tAbC\n", "100\t101\t\t\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -766,10 +754,7 @@ fn upstream_byte_len_eq_3_2() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "-2\t-2.0\tß\tss\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "-2\t-2.0\tß\tss\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1184,8 +1169,6 @@ fn upstream_byte_len_ne_3_3_unicode() -> anyhow::Result<()> {
     Ok(())
 }
 
-
-
 #[test]
 fn upstream_char_len_ge_text_3_unicode() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
@@ -1283,4 +1266,3 @@ fn upstream_char_len_lt_text_2_3_unicode() -> anyhow::Result<()> {
     assert_eq!(stdout, expected);
     Ok(())
 }
-

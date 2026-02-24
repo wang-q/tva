@@ -178,9 +178,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .cloned()
         .unwrap_or_else(|| "random_value".to_string());
     let compatibility_mode = args.get_flag("compatibility-mode");
-    let key_fields = args
-        .get_one::<String>("key-fields")
-        .map(|s| s.to_string());
+    let key_fields = args.get_one::<String>("key-fields").map(|s| s.to_string());
     let inorder = args.get_flag("inorder");
     let static_seed = args.get_flag("static-seed");
     let seed_value = args.get_one::<u64>("seed-value").cloned().unwrap_or(0);
@@ -341,12 +339,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
 
     if replace && num_opt > 0 {
-        sample_with_replacement(
-            &mut writer,
-            &data_rows,
-            num_opt as usize,
-            &mut rng,
-        )?;
+        sample_with_replacement(&mut writer, &data_rows, num_opt as usize, &mut rng)?;
     } else if let Some(weight_spec) = weight_field {
         weighted_fixed_size_sample(
             &mut writer,
@@ -381,7 +374,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             print_random,
         )?;
     } else {
-        fixed_size_sample(&mut writer, data_rows, num_opt as usize, &mut rng, print_random)?;
+        fixed_size_sample(
+            &mut writer,
+            data_rows,
+            num_opt as usize,
+            &mut rng,
+            print_random,
+        )?;
     }
 
     if !header_written && header_line.is_none() {
@@ -607,10 +606,7 @@ fn weighted_fixed_size_sample(
             continue;
         }
         let w: f64 = w_str.parse().map_err(|_| {
-            anyhow::anyhow!(
-                "tva sample: weight value `{}` is not a valid number",
-                w_str
-            )
+            anyhow::anyhow!("tva sample: weight value `{}` is not a valid number", w_str)
         })?;
         if w <= 0.0 {
             continue;

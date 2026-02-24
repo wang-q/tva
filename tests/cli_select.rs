@@ -32,10 +32,7 @@ fn select_fields_by_name_with_header() -> anyhow::Result<()> {
         .unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    assert_eq!(
-        stdout,
-        "field3\tfield1\n13567\t11567\n23567\t21567\n"
-    );
+    assert_eq!(stdout, "field3\tfield1\n13567\t11567\n23567\t21567\n");
 
     Ok(())
 }
@@ -141,10 +138,7 @@ fn select_exclude_field_by_index() -> anyhow::Result<()> {
         .unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    assert_eq!(
-        stdout,
-        "f1\tf3\n3x3-r1\t31\n3x3-r2\t32\n3x3-r3\t33\n"
-    );
+    assert_eq!(stdout, "f1\tf3\n3x3-r1\t31\n3x3-r2\t32\n3x3-r3\t33\n");
 
     Ok(())
 }
@@ -485,11 +479,7 @@ fn select_error_name_without_header() -> anyhow::Result<()> {
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(
-        stderr.contains("requires header"),
-        "stderr was: {}",
-        stderr
-    );
+    assert!(stderr.contains("requires header"), "stderr was: {}", stderr);
 
     Ok(())
 }

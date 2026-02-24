@@ -14,15 +14,15 @@ fn upstream_no_header_str_in_fld_2_2() -> anyhow::Result<()> {
     let stdout = String::from_utf8(output.stdout).unwrap();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n", // Note: input1.tsv has header, but we are treating it as data line if --header not specified?
-                           // Upstream test: [tsv-filter --str-in-fld 2:2 input1.tsv]
-                           // input1.tsv:
-                           // F1	F2	F3	F4
-                           // 1	1.0	a	A
-                           // 2	2.	b	B
-                           // ...
-                           // Row 1: "F2" contains "2"? Yes.
-                           // Row 2: "1.0" contains "2"? No.
-                           // Row 3: "2." contains "2"? Yes.
+        // Upstream test: [tsv-filter --str-in-fld 2:2 input1.tsv]
+        // input1.tsv:
+        // F1	F2	F3	F4
+        // 1	1.0	a	A
+        // 2	2.	b	B
+        // ...
+        // Row 1: "F2" contains "2"? Yes.
+        // Row 2: "1.0" contains "2"? No.
+        // Row 3: "2." contains "2"? Yes.
         "2\t2.\tb\tB\n",
         "-2\t-2.0\tß\tss\n",
         "100\t102\tabc\tAbC\n",
@@ -49,9 +49,7 @@ fn upstream_no_header_str_eq_3_a() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "1\t1.0\ta\tA\n",
-    );
+    let expected = concat!("1\t1.0\ta\tA\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -68,9 +66,7 @@ fn upstream_no_header_eq_2_1() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "1\t1.0\ta\tA\n",
-    );
+    let expected = concat!("1\t1.0\ta\tA\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -148,10 +144,7 @@ fn upstream_no_header_empty_3() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "100\t100\t\tAbC\n",
-        "100\t101\t\t\n",
-    );
+    let expected = concat!("100\t100\t\tAbC\n", "100\t101\t\t\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -170,10 +163,7 @@ fn upstream_no_header_eq_1_100_empty_3() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "100\t100\t\tAbC\n",
-        "100\t101\t\t\n",
-    );
+    let expected = concat!("100\t100\t\tAbC\n", "100\t101\t\t\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -190,9 +180,7 @@ fn upstream_no_header_str_eq_4_abc() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "10\t10.1\tabc\tABC\n",
-    );
+    let expected = concat!("10\t10.1\tabc\tABC\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -209,9 +197,7 @@ fn upstream_no_header_str_eq_3_beta() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "-2\t-2.0\tß\tss\n",
-    );
+    let expected = concat!("-2\t-2.0\tß\tss\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -228,9 +214,7 @@ fn upstream_no_header_regex_4_asc_c() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "0.0\t100.0\tàßc\tÀssC\n",
-    );
+    let expected = concat!("0.0\t100.0\tàßc\tÀssC\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -490,10 +474,7 @@ fn upstream_delimiter_pipe_eq_2_1() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1|F2|F3|F4\n",
-        "1|1.0|a|A\n",
-    );
+    let expected = concat!("F1|F2|F3|F4\n", "1|1.0|a|A\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }

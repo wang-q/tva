@@ -8,11 +8,7 @@ use std::path::PathBuf;
 fn sample_shuffle_basic() -> anyhow::Result<()> {
     let input = "a\nb\nc\nd\n";
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let output = cmd.arg("sample").write_stdin(input).output().unwrap();
     let out_str = String::from_utf8_lossy(&output.stdout);
 
     let mut lines: Vec<&str> = out_str.lines().collect();
@@ -684,7 +680,10 @@ fn sample_compat_stdin_and_files_from_tsv_sample_inputs() -> anyhow::Result<()> 
     let expected_header = stdin_lines.next().unwrap();
     assert_eq!(header, expected_header);
 
-    fn count_rows_with_header(path: &PathBuf, has_header: bool) -> anyhow::Result<usize> {
+    fn count_rows_with_header(
+        path: &PathBuf,
+        has_header: bool,
+    ) -> anyhow::Result<usize> {
         let contents = fs::read_to_string(path)?;
         let mut it = contents.lines();
         if has_header {

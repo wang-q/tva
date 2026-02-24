@@ -237,7 +237,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         for line in reader.lines().map_while(Result::ok) {
             if has_header && is_first_line {
                 if header.is_none() {
-                    header = Some(crate::libs::fields::Header::from_line(&line, delimiter));
+                    header =
+                        Some(crate::libs::fields::Header::from_line(&line, delimiter));
                     if let Some(ref spec) = fields_spec {
                         if spec.trim() == "0" {
                             key_fields = Some(Vec::new());
@@ -251,7 +252,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             match parsed {
                                 Ok(v) => key_fields = Some(v),
                                 Err(e) => {
-                                arg_error(&e);
+                                    arg_error(&e);
                                 }
                             }
                         }
@@ -285,12 +286,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     if spec.trim() == "0" {
                         key_fields = Some(Vec::new());
                     } else {
-                        let parsed =
-                            crate::libs::fields::parse_field_list_with_header(
-                                spec,
-                                None,
-                                delimiter,
-                            );
+                        let parsed = crate::libs::fields::parse_field_list_with_header(
+                            spec, None, delimiter,
+                        );
                         match parsed {
                             Ok(v) => key_fields = Some(v),
                             Err(e) => {
@@ -329,7 +327,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             let entry = equiv_map.entry(subject).or_insert_with(|| {
                 let id = next_equiv_id;
                 next_equiv_id += 1;
-                EquivEntry { equiv_id: id, count: 0 }
+                EquivEntry {
+                    equiv_id: id,
+                    count: 0,
+                }
             });
             entry.count += 1;
 

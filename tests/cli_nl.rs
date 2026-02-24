@@ -3,10 +3,7 @@ use predicates::prelude::*;
 use std::fs;
 
 fn expected_block(command: &str) -> String {
-    let gold = fs::read_to_string(
-        "tests/data/nl/gold_basic_tests_1.txt",
-    )
-    .unwrap();
+    let gold = fs::read_to_string("tests/data/nl/gold_basic_tests_1.txt").unwrap();
 
     let header = format!("====[number-lines {}]====", command);
     let mut lines = gold.lines();
@@ -295,7 +292,8 @@ fn nl_header_string_from_gold() -> anyhow::Result<()> {
 
 #[test]
 fn nl_multi_file_from_gold() -> anyhow::Result<()> {
-    let expected = expected_block("input1.txt input2.txt empty-file.txt one-line-file.txt");
+    let expected =
+        expected_block("input1.txt input2.txt empty-file.txt one-line-file.txt");
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -315,7 +313,8 @@ fn nl_multi_file_from_gold() -> anyhow::Result<()> {
 
 #[test]
 fn nl_multi_file_reordered_from_gold() -> anyhow::Result<()> {
-    let expected = expected_block("input1.txt one-line-file.txt input2.txt empty-file.txt");
+    let expected =
+        expected_block("input1.txt one-line-file.txt input2.txt empty-file.txt");
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -335,8 +334,9 @@ fn nl_multi_file_reordered_from_gold() -> anyhow::Result<()> {
 
 #[test]
 fn nl_multi_file_with_leading_empty_from_gold() -> anyhow::Result<()> {
-    let expected =
-        expected_block("empty-file.txt input1.txt one-line-file.txt input2.txt input1.txt");
+    let expected = expected_block(
+        "empty-file.txt input1.txt one-line-file.txt input2.txt input1.txt",
+    );
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -377,8 +377,9 @@ fn nl_multi_file_header_second_from_gold() -> anyhow::Result<()> {
 
 #[test]
 fn nl_multi_file_header_mixed_from_gold() -> anyhow::Result<()> {
-    let expected =
-        expected_block("--header input1.txt input2.txt empty-file.txt one-line-file.txt");
+    let expected = expected_block(
+        "--header input1.txt input2.txt empty-file.txt one-line-file.txt",
+    );
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -425,8 +426,9 @@ fn nl_multi_file_header_string_from_gold() -> anyhow::Result<()> {
 
 #[test]
 fn nl_multi_file_header_start_number_from_gold() -> anyhow::Result<()> {
-    let expected =
-        expected_block("--header -n 10 input1.txt one-line-file.txt input2.txt empty-file.txt");
+    let expected = expected_block(
+        "--header -n 10 input1.txt one-line-file.txt input2.txt empty-file.txt",
+    );
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -454,11 +456,7 @@ fn nl_stdin_from_gold() -> anyhow::Result<()> {
     let input = fs::read_to_string("tests/data/nl/input1.txt").unwrap();
 
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("nl")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let output = cmd.arg("nl").write_stdin(input).output().unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
 
     assert_eq!(stdout, expected);
@@ -468,8 +466,9 @@ fn nl_stdin_from_gold() -> anyhow::Result<()> {
 
 #[test]
 fn nl_stdin_multi_file_header_from_gold() -> anyhow::Result<()> {
-    let expected =
-        expected_stdin_block("====[cat input1.txt input2.txt | number-lines --header]====");
+    let expected = expected_stdin_block(
+        "====[cat input1.txt input2.txt | number-lines --header]====",
+    );
 
     let input1 = fs::read_to_string("tests/data/nl/input1.txt").unwrap();
     let input2 = fs::read_to_string("tests/data/nl/input2.txt").unwrap();
@@ -515,9 +514,9 @@ fn nl_stdin_with_args_from_gold() -> anyhow::Result<()> {
 fn nl_help_displays_usage() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     cmd.arg("nl").arg("--help");
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Reads TSV data from files or standard input"));
+    cmd.assert().success().stdout(predicate::str::contains(
+        "Reads TSV data from files or standard input",
+    ));
 
     Ok(())
 }
@@ -527,12 +526,20 @@ fn nl_version_matches_tva() -> anyhow::Result<()> {
     let mut cmd_tva = cargo_bin_cmd!("tva");
     let tva_version = cmd_tva.arg("--version").output().unwrap();
     let tva_version_str = String::from_utf8(tva_version.stdout).unwrap();
-    let tva_version_num = tva_version_str.split_whitespace().last().unwrap().to_string();
+    let tva_version_num = tva_version_str
+        .split_whitespace()
+        .last()
+        .unwrap()
+        .to_string();
 
     let mut cmd_nl = cargo_bin_cmd!("tva");
     let nl_version = cmd_nl.arg("nl").arg("--version").output().unwrap();
     let nl_version_str = String::from_utf8(nl_version.stdout).unwrap();
-    let nl_version_num = nl_version_str.split_whitespace().last().unwrap().to_string();
+    let nl_version_num = nl_version_str
+        .split_whitespace()
+        .last()
+        .unwrap()
+        .to_string();
 
     assert_eq!(nl_version_num, tva_version_num);
 

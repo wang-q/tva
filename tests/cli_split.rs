@@ -237,11 +237,9 @@ fn split_rejects_conflicting_modes() -> anyhow::Result<()> {
         .arg("--num-files")
         .arg("3")
         .write_stdin("1\n2\n3\n");
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "tva split: --lines-per-file/-l cannot be used with --num-files/-n",
-        ));
+    cmd.assert().failure().stderr(predicate::str::contains(
+        "tva split: --lines-per-file/-l cannot be used with --num-files/-n",
+    ));
 
     Ok(())
 }
@@ -279,10 +277,7 @@ fn split_lines_per_file_from_input1x5() -> anyhow::Result<()> {
         contents0,
         "input1x5.txt: line 1\ninput1x5.txt: line 2\ninput1x5.txt: line 3\n"
     );
-    assert_eq!(
-        contents1,
-        "input1x5.txt: line 4\ninput1x5.txt: line 5\n\n"
-    );
+    assert_eq!(contents1, "input1x5.txt: line 4\ninput1x5.txt: line 5\n\n");
 
     Ok(())
 }

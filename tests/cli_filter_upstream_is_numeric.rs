@@ -75,12 +75,7 @@ fn upstream_is_nan() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "f1\tf2\n",
-        "1\tnan\n",
-        "2\tNaN\n",
-        "3\tNAN\n",
-    );
+    let expected = concat!("f1\tf2\n", "1\tnan\n", "2\tNaN\n", "3\tNAN\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -98,12 +93,7 @@ fn upstream_is_infinity() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "f1\tf2\n",
-        "4\tinf\n",
-        "5\t-inf\n",
-        "6\tINF\n",
-    );
+    let expected = concat!("f1\tf2\n", "4\tinf\n", "5\t-inf\n", "6\tINF\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }

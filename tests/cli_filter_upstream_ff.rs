@@ -64,7 +64,8 @@ fn upstream_ff_reldiff_le_1e_7() {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = "F1\tF2\tF3\tF4\n1000\t1000.0\t\t3 empty\n1000\t1000.0\t \t3 1-space\n";
+    let expected =
+        "F1\tF2\tF3\tF4\n1000\t1000.0\t\t3 empty\n1000\t1000.0\t \t3 1-space\n";
     assert_eq!(stdout, expected);
 }
 
@@ -804,7 +805,8 @@ fn upstream_ff_reldiff_le_named_1e_7() {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = "F1\tF2\tF3\tF4\n1000\t1000.0\t\t3 empty\n1000\t1000.0\t \t3 1-space\n";
+    let expected =
+        "F1\tF2\tF3\tF4\n1000\t1000.0\t\t3 empty\n1000\t1000.0\t \t3 1-space\n";
     assert_eq!(stdout, expected);
 }
 
@@ -1255,4 +1257,3 @@ fn upstream_delimiter_pipe_ff_str_ne_3_4() -> anyhow::Result<()> {
     assert_eq!(stdout, expected);
     Ok(())
 }
-

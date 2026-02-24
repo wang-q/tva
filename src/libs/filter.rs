@@ -64,10 +64,18 @@ pub enum NumericProp {
 }
 
 pub enum TestKind {
-    Empty { fields: Vec<usize> },
-    NotEmpty { fields: Vec<usize> },
-    Blank { fields: Vec<usize> },
-    NotBlank { fields: Vec<usize> },
+    Empty {
+        fields: Vec<usize>,
+    },
+    NotEmpty {
+        fields: Vec<usize>,
+    },
+    Blank {
+        fields: Vec<usize>,
+    },
+    NotBlank {
+        fields: Vec<usize>,
+    },
     NumericCmp {
         fields: Vec<usize>,
         op: NumericOp,
@@ -127,13 +135,13 @@ pub enum TestKind {
     FieldFieldAbsDiffCmp {
         left_fields: Vec<usize>,
         right_fields: Vec<usize>,
-        op: NumericOp,   // Only Le or Gt are expected
+        op: NumericOp, // Only Le or Gt are expected
         value: f64,
     },
     FieldFieldRelDiffCmp {
         left_fields: Vec<usize>,
         right_fields: Vec<usize>,
-        op: NumericOp,   // Only Le or Gt are expected
+        op: NumericOp, // Only Le or Gt are expected
         value: f64,
     },
 }
@@ -226,10 +234,7 @@ impl TestKind {
                     NumericOp::Ne => len != *value,
                 }
             }),
-            TestKind::NumericPropTest {
-                fields: idxs,
-                prop,
-            } => idxs.iter().all(|idx| {
+            TestKind::NumericPropTest { fields: idxs, prop } => idxs.iter().all(|idx| {
                 let pos = idx.saturating_sub(1);
                 let s = match fields.get(pos) {
                     Some(v) => *v,
@@ -345,37 +350,34 @@ impl TestKind {
                 if left_fields.len() != right_fields.len() {
                     return false;
                 }
-                left_fields
-                    .iter()
-                    .zip(right_fields.iter())
-                    .all(|(l, r)| {
-                        let l_pos = l.saturating_sub(1);
-                        let r_pos = r.saturating_sub(1);
-                        let l_s = match fields.get(l_pos) {
-                            Some(v) => *v,
-                            None => return false,
-                        };
-                        let r_s = match fields.get(r_pos) {
-                            Some(v) => *v,
-                            None => return false,
-                        };
-                        let l_v = match l_s.parse::<f64>() {
-                            Ok(v) => v,
-                            Err(_) => return false,
-                        };
-                        let r_v = match r_s.parse::<f64>() {
-                            Ok(v) => v,
-                            Err(_) => return false,
-                        };
-                        match op {
-                            NumericOp::Gt => l_v > r_v,
-                            NumericOp::Ge => l_v >= r_v,
-                            NumericOp::Lt => l_v < r_v,
-                            NumericOp::Le => l_v <= r_v,
-                            NumericOp::Eq => l_v == r_v,
-                            NumericOp::Ne => l_v != r_v,
-                        }
-                    })
+                left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
+                    let l_pos = l.saturating_sub(1);
+                    let r_pos = r.saturating_sub(1);
+                    let l_s = match fields.get(l_pos) {
+                        Some(v) => *v,
+                        None => return false,
+                    };
+                    let r_s = match fields.get(r_pos) {
+                        Some(v) => *v,
+                        None => return false,
+                    };
+                    let l_v = match l_s.parse::<f64>() {
+                        Ok(v) => v,
+                        Err(_) => return false,
+                    };
+                    let r_v = match r_s.parse::<f64>() {
+                        Ok(v) => v,
+                        Err(_) => return false,
+                    };
+                    match op {
+                        NumericOp::Gt => l_v > r_v,
+                        NumericOp::Ge => l_v >= r_v,
+                        NumericOp::Lt => l_v < r_v,
+                        NumericOp::Le => l_v <= r_v,
+                        NumericOp::Eq => l_v == r_v,
+                        NumericOp::Ne => l_v != r_v,
+                    }
+                })
             }
             TestKind::FieldFieldStrCmp {
                 left_fields,
@@ -386,27 +388,28 @@ impl TestKind {
                 if left_fields.len() != right_fields.len() {
                     return false;
                 }
-                left_fields
-                    .iter()
-                    .zip(right_fields.iter())
-                    .all(|(l, r)| {
-                        let l_pos = l.saturating_sub(1);
-                        let r_pos = r.saturating_sub(1);
-                        let l_s = match fields.get(l_pos) {
-                            Some(v) => *v,
-                            None => "",
-                        };
-                        let r_s = match fields.get(r_pos) {
-                            Some(v) => *v,
-                            None => "",
-                        };
-                        let eq = if *case_insensitive {
-                            l_s.to_lowercase() == r_s.to_lowercase()
-                        } else {
-                            l_s == r_s
-                        };
-                        if *negated { !eq } else { eq }
-                    })
+                left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
+                    let l_pos = l.saturating_sub(1);
+                    let r_pos = r.saturating_sub(1);
+                    let l_s = match fields.get(l_pos) {
+                        Some(v) => *v,
+                        None => "",
+                    };
+                    let r_s = match fields.get(r_pos) {
+                        Some(v) => *v,
+                        None => "",
+                    };
+                    let eq = if *case_insensitive {
+                        l_s.to_lowercase() == r_s.to_lowercase()
+                    } else {
+                        l_s == r_s
+                    };
+                    if *negated {
+                        !eq
+                    } else {
+                        eq
+                    }
+                })
             }
             TestKind::FieldFieldAbsDiffCmp {
                 left_fields,
@@ -417,35 +420,35 @@ impl TestKind {
                 if left_fields.len() != right_fields.len() {
                     return false;
                 }
-                left_fields
-                    .iter()
-                    .zip(right_fields.iter())
-                    .all(|(l, r)| {
-                        let l_pos = l.saturating_sub(1);
-                        let r_pos = r.saturating_sub(1);
-                        let l_s = match fields.get(l_pos) {
-                            Some(v) => *v,
-                            None => return false,
-                        };
-                        let r_s = match fields.get(r_pos) {
-                            Some(v) => *v,
-                            None => return false,
-                        };
-                        let l_v = match l_s.parse::<f64>() {
-                            Ok(v) => v,
-                            Err(_) => return false,
-                        };
-                        let r_v = match r_s.parse::<f64>() {
-                            Ok(v) => v,
-                            Err(_) => return false,
-                        };
-                        let diff = (l_v - r_v).abs();
-                        match op {
-                            NumericOp::Le => diff <= *value,
-                            NumericOp::Gt => diff > *value,
-                            NumericOp::Ge | NumericOp::Lt | NumericOp::Eq | NumericOp::Ne => false,
-                        }
-                    })
+                left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
+                    let l_pos = l.saturating_sub(1);
+                    let r_pos = r.saturating_sub(1);
+                    let l_s = match fields.get(l_pos) {
+                        Some(v) => *v,
+                        None => return false,
+                    };
+                    let r_s = match fields.get(r_pos) {
+                        Some(v) => *v,
+                        None => return false,
+                    };
+                    let l_v = match l_s.parse::<f64>() {
+                        Ok(v) => v,
+                        Err(_) => return false,
+                    };
+                    let r_v = match r_s.parse::<f64>() {
+                        Ok(v) => v,
+                        Err(_) => return false,
+                    };
+                    let diff = (l_v - r_v).abs();
+                    match op {
+                        NumericOp::Le => diff <= *value,
+                        NumericOp::Gt => diff > *value,
+                        NumericOp::Ge
+                        | NumericOp::Lt
+                        | NumericOp::Eq
+                        | NumericOp::Ne => false,
+                    }
+                })
             }
             TestKind::FieldFieldRelDiffCmp {
                 left_fields,
@@ -456,40 +459,40 @@ impl TestKind {
                 if left_fields.len() != right_fields.len() {
                     return false;
                 }
-                left_fields
-                    .iter()
-                    .zip(right_fields.iter())
-                    .all(|(l, r)| {
-                        let l_pos = l.saturating_sub(1);
-                        let r_pos = r.saturating_sub(1);
-                        let l_s = match fields.get(l_pos) {
-                            Some(v) => *v,
-                            None => return false,
-                        };
-                        let r_s = match fields.get(r_pos) {
-                            Some(v) => *v,
-                            None => return false,
-                        };
-                        let l_v = match l_s.parse::<f64>() {
-                            Ok(v) => v,
-                            Err(_) => return false,
-                        };
-                        let r_v = match r_s.parse::<f64>() {
-                            Ok(v) => v,
-                            Err(_) => return false,
-                        };
-                        let denom = l_v.abs().min(r_v.abs());
-                        let rel = if denom == 0.0 {
-                            f64::INFINITY
-                        } else {
-                            (l_v - r_v).abs() / denom
-                        };
-                        match op {
-                            NumericOp::Le => rel <= *value,
-                            NumericOp::Gt => rel > *value,
-                            NumericOp::Ge | NumericOp::Lt | NumericOp::Eq | NumericOp::Ne => false,
-                        }
-                    })
+                left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
+                    let l_pos = l.saturating_sub(1);
+                    let r_pos = r.saturating_sub(1);
+                    let l_s = match fields.get(l_pos) {
+                        Some(v) => *v,
+                        None => return false,
+                    };
+                    let r_s = match fields.get(r_pos) {
+                        Some(v) => *v,
+                        None => return false,
+                    };
+                    let l_v = match l_s.parse::<f64>() {
+                        Ok(v) => v,
+                        Err(_) => return false,
+                    };
+                    let r_v = match r_s.parse::<f64>() {
+                        Ok(v) => v,
+                        Err(_) => return false,
+                    };
+                    let denom = l_v.abs().min(r_v.abs());
+                    let rel = if denom == 0.0 {
+                        f64::INFINITY
+                    } else {
+                        (l_v - r_v).abs() / denom
+                    };
+                    match op {
+                        NumericOp::Le => rel <= *value,
+                        NumericOp::Gt => rel > *value,
+                        NumericOp::Ge
+                        | NumericOp::Lt
+                        | NumericOp::Eq
+                        | NumericOp::Ne => false,
+                    }
+                })
             }
         }
     }
@@ -550,12 +553,12 @@ pub struct PendingFieldFieldStr {
 }
 
 pub struct PendingFieldFieldAbsDiff {
-    pub spec: String, // FIELD1:FIELD2:NUM
+    pub spec: String,  // FIELD1:FIELD2:NUM
     pub op: NumericOp, // Le or Gt
 }
 
 pub struct PendingFieldFieldRelDiff {
-    pub spec: String, // FIELD1:FIELD2:NUM
+    pub spec: String,  // FIELD1:FIELD2:NUM
     pub op: NumericOp, // Le or Gt
 }
 
@@ -597,44 +600,32 @@ pub fn build_tests(
     let mut tests = Vec::new();
 
     for spec in empty_specs {
-        let idxs = crate::libs::fields::parse_field_list_with_header(
-            spec,
-            header,
-            delimiter,
-        )?;
+        let idxs =
+            crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::Empty { fields: vec![idx] });
         }
     }
 
     for spec in not_empty_specs {
-        let idxs = crate::libs::fields::parse_field_list_with_header(
-            spec,
-            header,
-            delimiter,
-        )?;
+        let idxs =
+            crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::NotEmpty { fields: vec![idx] });
         }
     }
 
     for spec in blank_specs {
-        let idxs = crate::libs::fields::parse_field_list_with_header(
-            spec,
-            header,
-            delimiter,
-        )?;
+        let idxs =
+            crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::Blank { fields: vec![idx] });
         }
     }
 
     for spec in not_blank_specs {
-        let idxs = crate::libs::fields::parse_field_list_with_header(
-            spec,
-            header,
-            delimiter,
-        )?;
+        let idxs =
+            crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::NotBlank { fields: vec![idx] });
         }
@@ -746,9 +737,7 @@ pub fn build_tests(
 
     for p in numeric_prop_specs {
         let idxs = crate::libs::fields::parse_field_list_with_header(
-            &p.spec,
-            header,
-            delimiter,
+            &p.spec, header, delimiter,
         )?;
         for idx in idxs {
             tests.push(TestKind::NumericPropTest {
@@ -831,9 +820,7 @@ pub fn build_tests(
     for p in ff_numeric_specs {
         let (left_part, right_part) = split_spec(&p.spec)?;
         let left_idxs = crate::libs::fields::parse_field_list_with_header(
-            &left_part,
-            header,
-            delimiter,
+            &left_part, header, delimiter,
         )?;
         let right_idxs = crate::libs::fields::parse_field_list_with_header(
             &right_part,
@@ -873,9 +860,7 @@ pub fn build_tests(
     for p in ff_str_specs {
         let (left_part, right_part) = split_spec(&p.spec)?;
         let left_idxs = crate::libs::fields::parse_field_list_with_header(
-            &left_part,
-            header,
-            delimiter,
+            &left_part, header, delimiter,
         )?;
         let right_idxs = crate::libs::fields::parse_field_list_with_header(
             &right_part,
@@ -917,14 +902,10 @@ pub fn build_tests(
             ));
         };
         let left_idxs = crate::libs::fields::parse_field_list_with_header(
-            left_part,
-            header,
-            delimiter,
+            left_part, header, delimiter,
         )?;
         let right_idxs = crate::libs::fields::parse_field_list_with_header(
-            right_part,
-            header,
-            delimiter,
+            right_part, header, delimiter,
         )?;
         if left_idxs.len() != right_idxs.len() {
             return Err(format!(
@@ -968,14 +949,10 @@ pub fn build_tests(
             ));
         };
         let left_idxs = crate::libs::fields::parse_field_list_with_header(
-            left_part,
-            header,
-            delimiter,
+            left_part, header, delimiter,
         )?;
         let right_idxs = crate::libs::fields::parse_field_list_with_header(
-            right_part,
-            header,
-            delimiter,
+            right_part, header, delimiter,
         )?;
         if left_idxs.len() != right_idxs.len() {
             return Err(format!(

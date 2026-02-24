@@ -101,7 +101,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         match parse_key_indices(spec) {
             Ok(v) => v,
             Err(msg) => {
-                return Err(anyhow::anyhow!("invalid key specification `{}`: {}", spec, msg));
+                return Err(anyhow::anyhow!(
+                    "invalid key specification `{}`: {}",
+                    spec,
+                    msg
+                ));
             }
         }
     } else {
@@ -117,17 +121,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if line.is_empty() {
                 rows.push(Vec::new());
             } else {
-                let fields: Vec<String> = line
-                    .split(delimiter)
-                    .map(|s| s.to_string())
-                    .collect();
+                let fields: Vec<String> =
+                    line.split(delimiter).map(|s| s.to_string()).collect();
                 rows.push(fields);
             }
         }
     }
 
     if rows.is_empty() {
-        let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+        let mut writer =
+            crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
         writer.flush()?;
         return Ok(());
     }

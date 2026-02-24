@@ -309,7 +309,8 @@ fn join_basic_line_buffered_header_allow_duplicate_keys_append() -> anyhow::Resu
 }
 
 #[test]
-fn join_basic_line_buffered_header_allow_duplicate_keys_append_whole_line() -> anyhow::Result<()> {
+fn join_basic_line_buffered_header_allow_duplicate_keys_append_whole_line(
+) -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("join")
@@ -901,7 +902,9 @@ fn join_error_duplicate_keys_filter_header_index() -> anyhow::Result<()> {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stderr.contains("tva join: duplicate key with different append values found in filter file"),
+        stderr.contains(
+            "tva join: duplicate key with different append values found in filter file"
+        ),
         "stderr was: {}",
         stderr
     );
@@ -952,7 +955,8 @@ fn join_error_invalid_append_index_noheader() -> anyhow::Result<()> {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stderr.contains("tva join: line has 5 fields, but append index 6 is out of range"),
+        stderr
+            .contains("tva join: line has 5 fields, but append index 6 is out of range"),
         "stderr was: {}",
         stderr
     );
@@ -979,7 +983,8 @@ fn join_error_invalid_append_index_header_filter_header() -> anyhow::Result<()> 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stderr.contains("tva join: line has 5 fields, but append index 6 is out of range"),
+        stderr
+            .contains("tva join: line has 5 fields, but append index 6 is out of range"),
         "stderr was: {}",
         stderr
     );
@@ -1159,7 +1164,8 @@ fn join_error_invalid_whole_line_combo_key_and_fields() -> anyhow::Result<()> {
 }
 
 #[test]
-fn join_error_invalid_whole_line_combo_key_and_fields_header_key_0_2() -> anyhow::Result<()> {
+fn join_error_invalid_whole_line_combo_key_and_fields_header_key_0_2(
+) -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("join")
@@ -1185,7 +1191,8 @@ fn join_error_invalid_whole_line_combo_key_and_fields_header_key_0_2() -> anyhow
 }
 
 #[test]
-fn join_error_invalid_whole_line_combo_key_and_fields_header_data_0_2() -> anyhow::Result<()> {
+fn join_error_invalid_whole_line_combo_key_and_fields_header_data_0_2(
+) -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("join")
@@ -1213,7 +1220,8 @@ fn join_error_invalid_whole_line_combo_key_and_fields_header_data_0_2() -> anyho
 }
 
 #[test]
-fn join_error_invalid_whole_line_combo_key_and_fields_header_data_2_0() -> anyhow::Result<()> {
+fn join_error_invalid_whole_line_combo_key_and_fields_header_data_2_0(
+) -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("join")
@@ -1297,7 +1305,8 @@ fn join_error_invalid_whole_line_combo_append_header_0_2() -> anyhow::Result<()>
 }
 
 #[test]
-fn join_error_invalid_whole_line_combo_key_and_fields_header_name_f2_0() -> anyhow::Result<()> {
+fn join_error_invalid_whole_line_combo_key_and_fields_header_name_f2_0(
+) -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("join")
@@ -1323,7 +1332,8 @@ fn join_error_invalid_whole_line_combo_key_and_fields_header_name_f2_0() -> anyh
 }
 
 #[test]
-fn join_error_invalid_whole_line_combo_key_and_fields_header_name_0_f2() -> anyhow::Result<()> {
+fn join_error_invalid_whole_line_combo_key_and_fields_header_name_0_f2(
+) -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("join")
@@ -1534,7 +1544,9 @@ fn join_error_invalid_header_name_data_fields() -> anyhow::Result<()> {
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
         stderr.contains("tva join: unknown field name `no_field_6`")
-            || stderr.contains("tva join: line has 1 fields, but key index 4 is out of range"),
+            || stderr.contains(
+                "tva join: line has 1 fields, but key index 4 is out of range"
+            ),
         "stderr was: {}",
         stderr
     );
@@ -1570,7 +1582,8 @@ fn join_error_different_number_of_keys_and_data_fields_header() -> anyhow::Resul
 }
 
 #[test]
-fn join_error_different_number_of_keys_and_data_fields_header_name() -> anyhow::Result<()> {
+fn join_error_different_number_of_keys_and_data_fields_header_name() -> anyhow::Result<()>
+{
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("join")
@@ -1669,7 +1682,9 @@ fn join_error_duplicate_keys_header_append_index() -> anyhow::Result<()> {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stderr.contains("tva join: duplicate key with different append values found in filter file"),
+        stderr.contains(
+            "tva join: duplicate key with different append values found in filter file"
+        ),
         "stderr was: {}",
         stderr
     );
@@ -1722,7 +1737,9 @@ fn join_error_duplicate_keys_noheader_append_index() -> anyhow::Result<()> {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stderr.contains("tva join: duplicate key with different append values found in filter file"),
+        stderr.contains(
+            "tva join: duplicate key with different append values found in filter file"
+        ),
         "stderr was: {}",
         stderr
     );

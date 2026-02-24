@@ -33,11 +33,11 @@ fn transpose_invalid_structure_from_stdin() -> anyhow::Result<()> {
     cmd.arg("transpose").write_stdin(input);
     cmd.assert()
         .failure()
-        .stderr(
-            predicate::str::contains("line 2 (2 fields):").and(predicate::str::contains(
-                "tva transpose: structure check failed: line 2 has 2 fields (expected 3)",
-            )),
-        );
+        .stderr(predicate::str::contains("line 2 (2 fields):").and(
+        predicate::str::contains(
+            "tva transpose: structure check failed: line 2 has 2 fields (expected 3)",
+        ),
+    ));
 
     Ok(())
 }

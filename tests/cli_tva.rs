@@ -93,7 +93,10 @@ fn command_nl() -> anyhow::Result<()> {
     let stdout = String::from_utf8(output.stdout).unwrap();
 
     let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines[0], "linenum\tID\tchr_id\tchr_start\tchr_end\tchr_strand\tlength");
+    assert_eq!(
+        lines[0],
+        "linenum\tID\tchr_id\tchr_start\tchr_end\tchr_strand\tlength"
+    );
 
     Ok(())
 }

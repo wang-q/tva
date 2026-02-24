@@ -103,7 +103,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut data: Vec<Vec<String>> = Vec::new();
     for line in reader.lines().map_while(Result::ok) {
-        let fields: Vec<String> = line.split('\t').map(|s: &str| s.to_string()).collect();
+        let fields: Vec<String> =
+            line.split('\t').map(|s: &str| s.to_string()).collect();
         data.push(fields);
     }
 

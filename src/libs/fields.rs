@@ -80,11 +80,11 @@ pub fn parse_numeric_field_list(spec: &str) -> Result<Vec<usize>, String> {
 
         // Handle reverse ranges like "6-4" by swapping them to "4-6"
         if let Some((s, e)) = part.split_once('-') {
-             if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
-                 if start > end {
-                     part = format!("{}-{}", end, start);
-                 }
-             }
+            if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
+                if start > end {
+                    part = format!("{}-{}", end, start);
+                }
+            }
         }
 
         let intspan = IntSpan::from(&part);
@@ -251,15 +251,15 @@ pub fn parse_field_list_with_header(
             && token.chars().all(|c| c.is_ascii_digit() || c == '-');
 
         if is_numeric_like {
-             // Handle reverse ranges like "6-4" by swapping them to "4-6"
-             let mut token_str = token.to_string();
-             if let Some((s, e)) = token_str.split_once('-') {
-                  if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
-                      if start > end {
-                          token_str = format!("{}-{}", end, start);
-                      }
-                  }
-             }
+            // Handle reverse ranges like "6-4" by swapping them to "4-6"
+            let mut token_str = token.to_string();
+            if let Some((s, e)) = token_str.split_once('-') {
+                if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
+                    if start > end {
+                        token_str = format!("{}-{}", end, start);
+                    }
+                }
+            }
 
             let intspan = IntSpan::from(&token_str);
             for e in intspan.elements() {
@@ -290,16 +290,10 @@ pub fn parse_field_list_with_header(
                         split_name_range_token(token)
                     {
                         let start_idx0 = h.get_index(&start_name).ok_or_else(|| {
-                            format!(
-                                "unknown field name `{}` in `{}`",
-                                start_name, spec
-                            )
+                            format!("unknown field name `{}` in `{}`", start_name, spec)
                         })?;
                         let end_idx0 = h.get_index(&end_name).ok_or_else(|| {
-                            format!(
-                                "unknown field name `{}` in `{}`",
-                                end_name, spec
-                            )
+                            format!("unknown field name `{}` in `{}`", end_name, spec)
                         })?;
                         let (lo, hi) = if start_idx0 <= end_idx0 {
                             (start_idx0, end_idx0)
@@ -356,15 +350,15 @@ pub fn parse_field_list_with_header_preserve_order(
             && token.chars().all(|c| c.is_ascii_digit() || c == '-');
 
         if is_numeric_like {
-             // Handle reverse ranges like "6-4" by swapping them to "4-6"
-             let mut token_str = token.to_string();
-             if let Some((s, e)) = token_str.split_once('-') {
-                  if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
-                      if start > end {
-                          token_str = format!("{}-{}", end, start);
-                      }
-                  }
-             }
+            // Handle reverse ranges like "6-4" by swapping them to "4-6"
+            let mut token_str = token.to_string();
+            if let Some((s, e)) = token_str.split_once('-') {
+                if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
+                    if start > end {
+                        token_str = format!("{}-{}", end, start);
+                    }
+                }
+            }
 
             let intspan = IntSpan::from(&token_str);
             for e in intspan.elements() {
@@ -395,16 +389,10 @@ pub fn parse_field_list_with_header_preserve_order(
                         split_name_range_token(token)
                     {
                         let start_idx0 = h.get_index(&start_name).ok_or_else(|| {
-                            format!(
-                                "unknown field name `{}` in `{}`",
-                                start_name, spec
-                            )
+                            format!("unknown field name `{}` in `{}`", start_name, spec)
                         })?;
                         let end_idx0 = h.get_index(&end_name).ok_or_else(|| {
-                            format!(
-                                "unknown field name `{}` in `{}`",
-                                end_name, spec
-                            )
+                            format!("unknown field name `{}` in `{}`", end_name, spec)
                         })?;
                         let (lo, hi) = if start_idx0 <= end_idx0 {
                             (start_idx0, end_idx0)
@@ -503,8 +491,7 @@ mod tests {
             '\t',
         );
         let v =
-            parse_field_list_with_header("run-user_time", Some(&header), '\t')
-                .unwrap();
+            parse_field_list_with_header("run-user_time", Some(&header), '\t').unwrap();
         assert_eq!(v, vec![1, 2, 3]);
     }
 
@@ -514,8 +501,7 @@ mod tests {
             "run\telapsed_time\tuser_time\tsystem_time\tmax_memory",
             '\t',
         );
-        let v =
-            parse_field_list_with_header("*_time", Some(&header), '\t').unwrap();
+        let v = parse_field_list_with_header("*_time", Some(&header), '\t').unwrap();
         assert_eq!(v, vec![2, 3, 4]);
     }
 

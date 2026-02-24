@@ -146,8 +146,9 @@ fn parse_join_field_spec(
     if trimmed == "0" {
         return (true, None);
     }
-    let indices = crate::libs::fields::parse_field_list_with_header(trimmed, header, delimiter)
-        .unwrap_or_else(|e| arg_error(&e));
+    let indices =
+        crate::libs::fields::parse_field_list_with_header(trimmed, header, delimiter)
+            .unwrap_or_else(|e| arg_error(&e));
     (false, Some(indices))
 }
 
@@ -165,9 +166,7 @@ fn parse_append_field_spec(
         return None;
     }
     let indices = crate::libs::fields::parse_field_list_with_header_preserve_order(
-        trimmed,
-        header,
-        delimiter,
+        trimmed, header, delimiter,
     )
     .unwrap_or_else(|e| arg_error(&e));
     if indices.is_empty() {
@@ -223,8 +222,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let filter_file = args.get_one::<String>("filter-file").unwrap().to_string();
     let key_fields_spec: Option<String> = args.get_one::<String>("key-fields").cloned();
-    let data_fields_spec: Option<String> = args.get_one::<String>("data-fields").cloned();
-    let append_fields_spec: Option<String> = args.get_one::<String>("append-fields").cloned();
+    let data_fields_spec: Option<String> =
+        args.get_one::<String>("data-fields").cloned();
+    let append_fields_spec: Option<String> =
+        args.get_one::<String>("append-fields").cloned();
     let write_all_value: Option<String> = args.get_one::<String>("write-all").cloned();
 
     let has_header = args.get_flag("header");
@@ -270,13 +271,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if let Some('\r') = header_line.chars().last() {
                 header_line.pop();
             }
-            filter_header =
-                Some(crate::libs::fields::Header::from_line(&header_line, delimiter));
+            filter_header = Some(crate::libs::fields::Header::from_line(
+                &header_line,
+                delimiter,
+            ));
         }
     }
 
-    let (filter_key_whole_line, filter_key_indices) =
-        parse_join_field_spec(key_fields_spec.clone(), filter_header.as_ref(), delimiter);
+    let (filter_key_whole_line, filter_key_indices) = parse_join_field_spec(
+        key_fields_spec.clone(),
+        filter_header.as_ref(),
+        delimiter,
+    );
     let append_indices =
         parse_append_field_spec(append_fields_spec, filter_header.as_ref(), delimiter);
     let append_count = append_indices.as_ref().map(|v| v.len()).unwrap_or(0);
@@ -317,7 +323,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
 
     let mut header_written = false;
-    let prefix = args.get_one::<String>("prefix").cloned().unwrap_or_default();
+    let prefix = args
+        .get_one::<String>("prefix")
+        .cloned()
+        .unwrap_or_default();
 
     if !has_header && !prefix.is_empty() {
         arg_error("--prefix requires --header");

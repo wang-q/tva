@@ -1,6 +1,5 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 
-
 #[test]
 fn upstream_str_in_fld_3_b() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
@@ -395,10 +394,7 @@ fn upstream_str_in_fld_space() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "-1\t-0.1\tabc def\tabc def\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "-1\t-0.1\tabc def\tabc def\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -416,10 +412,7 @@ fn upstream_str_in_fld_space_val() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "-1\t-0.1\tabc def\tabc def\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "-1\t-0.1\tabc def\tabc def\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -437,10 +430,7 @@ fn upstream_str_in_fld_f3_space() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "-1\t-0.1\tabc def\tabc def\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "-1\t-0.1\tabc def\tabc def\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -458,10 +448,7 @@ fn upstream_str_in_fld_f4_space_val() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "-1\t-0.1\tabc def\tabc def\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "-1\t-0.1\tabc def\tabc def\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -591,9 +578,8 @@ fn upstream_str_in_fld_range_input4() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "line\t2_apha\t3_apha\t4_num\t5_num\t6_num\t7_alpha\t8_num\t9_num\n",
-    );
+    let expected =
+        concat!("line\t2_apha\t3_apha\t4_num\t5_num\t6_num\t7_alpha\t8_num\t9_num\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -802,10 +788,7 @@ fn upstream_pipe_str_in_fld_space() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1|F2|F3|F4\n",
-        "-1|-0.1|abc def|abc def\n",
-    );
+    let expected = concat!("F1|F2|F3|F4\n", "-1|-0.1|abc def|abc def\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -825,10 +808,7 @@ fn upstream_pipe_str_in_fld_val() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1|F2|F3|F4\n",
-        "-1|-0.1|abc def|abc def\n",
-    );
+    let expected = concat!("F1|F2|F3|F4\n", "-1|-0.1|abc def|abc def\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -885,11 +865,7 @@ fn upstream_str_ne_none_100_0() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "f1\tf2\tf3\n",
-        "100\t21\t31\n",
-        "100\t24\t33\n",
-    );
+    let expected = concat!("f1\tf2\tf3\n", "100\t21\t31\n", "100\t24\t33\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -911,11 +887,7 @@ fn upstream_str_ne_none_100_1() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "f1\tf2\tf3\n",
-        "100\t21\t31\n",
-        "100\t24\t33\n",
-    );
+    let expected = concat!("f1\tf2\tf3\n", "100\t21\t31\n", "100\t24\t33\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -997,9 +969,7 @@ fn upstream_str_eq_none_100_4() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "f1\tf2\tf3\n",
-    );
+    let expected = concat!("f1\tf2\tf3\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1017,10 +987,7 @@ fn upstream_str_eq_a_5() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "1\t1.0\ta\tA\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "1\t1.0\ta\tA\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1038,10 +1005,7 @@ fn upstream_str_eq_b_6() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "2\t2.\tb\tB\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "2\t2.\tb\tB\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1084,10 +1048,7 @@ fn upstream_str_eq_abc_8() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "10\t10.1\tabc\tABC\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "10\t10.1\tabc\tABC\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1105,10 +1066,7 @@ fn upstream_str_eq_9() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "-2\t-2.0\tß\tss\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "-2\t-2.0\tß\tss\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1386,10 +1344,7 @@ fn upstream_istr_eq_20() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "-2\t-2.0\tß\tss\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "-2\t-2.0\tß\tss\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1407,10 +1362,7 @@ fn upstream_istr_eq_21() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "-2\t-2.0\tß\tss\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "-2\t-2.0\tß\tss\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1538,10 +1490,7 @@ fn upstream_str_eq_abc_26() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "10\t10.1\tabc\tABC\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "10\t10.1\tabc\tABC\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1559,10 +1508,7 @@ fn upstream_str_eq_27() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-        "-2\t-2.0\tß\tss\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n", "-2\t-2.0\tß\tss\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1894,9 +1840,7 @@ fn upstream_str_eq_a_40() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "1\t1.0\ta\tA\n",
-    );
+    let expected = concat!("1\t1.0\ta\tA\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1913,9 +1857,7 @@ fn upstream_str_eq_abc_noheader_41() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "10\t10.1\tabc\tABC\n",
-    );
+    let expected = concat!("10\t10.1\tabc\tABC\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1932,9 +1874,7 @@ fn upstream_str_eq_noheader_42() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "-2\t-2.0\tß\tss\n",
-    );
+    let expected = concat!("-2\t-2.0\tß\tss\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1954,10 +1894,7 @@ fn upstream_str_eq_a_pipe_43() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1|F2|F3|F4\n",
-        "1|1.0|a|A\n",
-    );
+    let expected = concat!("F1|F2|F3|F4\n", "1|1.0|a|A\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -1977,10 +1914,7 @@ fn upstream_str_eq_pipe_44() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1|F2|F3|F4\n",
-        "-2|-2.0|ß|ss\n",
-    );
+    let expected = concat!("F1|F2|F3|F4\n", "-2|-2.0|ß|ss\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -2075,4 +2009,3 @@ fn upstream_str_lt_b_pipe_47() -> anyhow::Result<()> {
     assert_eq!(stdout, expected);
     Ok(())
 }
-

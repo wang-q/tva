@@ -160,7 +160,8 @@ fn append_header_two_single_column_files_from_gold() -> anyhow::Result<()> {
 
 #[test]
 fn append_header_four_files_from_gold() -> anyhow::Result<()> {
-    let expected = expected_block("-H input3x2.tsv input1x3.tsv input3x5.tsv input1x4.tsv");
+    let expected =
+        expected_block("-H input3x2.tsv input1x3.tsv input3x5.tsv input1x4.tsv");
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -237,7 +238,8 @@ fn append_track_source_two_single_column_files_from_gold() -> anyhow::Result<()>
 
 #[test]
 fn append_track_source_four_files_from_gold() -> anyhow::Result<()> {
-    let expected = expected_block("-t input3x2.tsv input1x3.tsv input3x5.tsv input1x4.tsv");
+    let expected =
+        expected_block("-t input3x2.tsv input1x3.tsv input3x5.tsv input1x4.tsv");
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -276,8 +278,7 @@ fn append_track_source_single_file_from_gold() -> anyhow::Result<()> {
 
 #[test]
 fn append_header_and_track_source_two_files_from_gold() -> anyhow::Result<()> {
-    let expected =
-        expected_block("--header --track-source input3x2.tsv input3x5.tsv");
+    let expected = expected_block("--header --track-source input3x2.tsv input3x5.tsv");
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -360,8 +361,7 @@ fn append_header_and_track_source_single_file_from_gold() -> anyhow::Result<()> 
 
 #[test]
 fn append_source_header_two_files_from_gold() -> anyhow::Result<()> {
-    let expected =
-        expected_block("--source-header source input3x2.tsv input3x5.tsv");
+    let expected = expected_block("--source-header source input3x2.tsv input3x5.tsv");
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -401,9 +401,8 @@ fn append_source_header_two_single_column_files_from_gold() -> anyhow::Result<()
 
 #[test]
 fn append_source_header_four_files_from_gold() -> anyhow::Result<()> {
-    let expected = expected_block(
-        "-s source input3x2.tsv input1x3.tsv input3x5.tsv input1x4.tsv",
-    );
+    let expected =
+        expected_block("-s source input3x2.tsv input1x3.tsv input3x5.tsv input1x4.tsv");
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd

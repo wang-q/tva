@@ -99,7 +99,10 @@ fn upstream_error_ff_absdiff_missing_second_colon() -> anyhow::Result<()> {
         .unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("missing second `:`") || stderr.contains("expected FIELD1:FIELD2:NUM"));
+    assert!(
+        stderr.contains("missing second `:`")
+            || stderr.contains("expected FIELD1:FIELD2:NUM")
+    );
     Ok(())
 }
 
@@ -154,7 +157,9 @@ fn upstream_error_invalid_regex() -> anyhow::Result<()> {
         .unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("regex") || stderr.contains("error") || stderr.contains("parse"));
+    assert!(
+        stderr.contains("regex") || stderr.contains("error") || stderr.contains("parse")
+    );
     Ok(())
 }
 
@@ -189,7 +194,11 @@ fn upstream_error_ff_le_invalid_values() -> anyhow::Result<()> {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     // 3.1 is not an integer field index, treated as field name, but not found
-    assert!(stderr.contains("invalid") || stderr.contains("parse") || stderr.contains("unknown field name"));
+    assert!(
+        stderr.contains("invalid")
+            || stderr.contains("parse")
+            || stderr.contains("unknown field name")
+    );
     Ok(())
 }
 
@@ -206,7 +215,11 @@ fn upstream_error_ff_le_missing_field() -> anyhow::Result<()> {
         .unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("invalid") || stderr.contains("missing") || stderr.contains("mismatched field list"));
+    assert!(
+        stderr.contains("invalid")
+            || stderr.contains("missing")
+            || stderr.contains("mismatched field list")
+    );
     Ok(())
 }
 
@@ -223,7 +236,11 @@ fn upstream_error_ff_str_ne_invalid_field() -> anyhow::Result<()> {
         .unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("not found in header") || stderr.contains("invalid") || stderr.contains("abc"));
+    assert!(
+        stderr.contains("not found in header")
+            || stderr.contains("invalid")
+            || stderr.contains("abc")
+    );
     Ok(())
 }
 
@@ -240,7 +257,10 @@ fn upstream_error_ff_absdiff_le_zero_index() -> anyhow::Result<()> {
         .unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("Zero is not a valid field index") || stderr.contains("must be >= 1"));
+    assert!(
+        stderr.contains("Zero is not a valid field index")
+            || stderr.contains("must be >= 1")
+    );
     Ok(())
 }
 
@@ -257,7 +277,10 @@ fn upstream_error_ff_gt_zero_index() -> anyhow::Result<()> {
         .unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("Zero is not a valid field index") || stderr.contains("must be >= 1"));
+    assert!(
+        stderr.contains("Zero is not a valid field index")
+            || stderr.contains("must be >= 1")
+    );
     Ok(())
 }
 
@@ -363,7 +386,12 @@ fn upstream_error_invalid_spec_empty_field() -> anyhow::Result<()> {
         .unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("Field index 0 is invalid") || stderr.contains("invalid") || stderr.contains("must be >= 1") || stderr.contains("field list cannot be empty"));
+    assert!(
+        stderr.contains("Field index 0 is invalid")
+            || stderr.contains("invalid")
+            || stderr.contains("must be >= 1")
+            || stderr.contains("field list cannot be empty")
+    );
     Ok(())
 }
 
@@ -380,7 +408,11 @@ fn upstream_error_empty_invalid_field() -> anyhow::Result<()> {
         .unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("invalid") || stderr.contains("parse") || stderr.contains("unknown field name"));
+    assert!(
+        stderr.contains("invalid")
+            || stderr.contains("parse")
+            || stderr.contains("unknown field name")
+    );
     Ok(())
 }
 

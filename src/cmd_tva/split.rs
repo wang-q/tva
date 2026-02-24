@@ -177,10 +177,7 @@ fn open_output_file(
 
     let file: Box<dyn Write> = if append {
         Box::new(BufWriter::new(
-            OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&path)?,
+            OpenOptions::new().create(true).append(true).open(&path)?,
         ))
     } else {
         Box::new(BufWriter::new(File::create(&path)?))
@@ -242,8 +239,7 @@ fn get_or_create_output<'a>(
 }
 
 fn parse_key_fields(spec: &str) -> Vec<usize> {
-    crate::libs::fields::parse_numeric_field_list(spec)
-        .unwrap_or_else(|e| arg_error(&e))
+    crate::libs::fields::parse_numeric_field_list(spec).unwrap_or_else(|e| arg_error(&e))
 }
 
 fn key_bucket(line: &str, indices: &[usize], num_files: usize) -> usize {
@@ -268,9 +264,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let header_in_out = args.get_flag("header-in-out");
     let lines_per_file = args.get_one::<u64>("lines-per-file").cloned().unwrap_or(0);
     let num_files = args.get_one::<usize>("num-files").cloned().unwrap_or(0);
-    let key_fields_spec = args
-        .get_one::<String>("key-fields")
-        .map(|s| s.to_string());
+    let key_fields_spec = args.get_one::<String>("key-fields").map(|s| s.to_string());
     let dir_str = args
         .get_one::<String>("dir")
         .cloned()
@@ -283,10 +277,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .get_one::<String>("suffix")
         .cloned()
         .unwrap_or_else(|| ".tsv".to_string());
-    let digit_width = args
-        .get_one::<usize>("digit-width")
-        .cloned()
-        .unwrap_or(0);
+    let digit_width = args.get_one::<usize>("digit-width").cloned().unwrap_or(0);
     let append = args.get_flag("append");
     let static_seed = args.get_flag("static-seed");
     let seed_value = args.get_one::<u64>("seed-value").cloned().unwrap_or(0);

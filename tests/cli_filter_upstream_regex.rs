@@ -62,9 +62,7 @@ fn upstream_iregex_4_sz() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let expected = concat!(
-        "F1\tF2\tF3\tF4\n",
-    );
+    let expected = concat!("F1\tF2\tF3\tF4\n",);
     assert_eq!(stdout, expected);
     Ok(())
 }

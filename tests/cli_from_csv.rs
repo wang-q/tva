@@ -9,11 +9,7 @@ fn from_csv_basic() -> anyhow::Result<()> {
     let input = "color,count\nred,1\ngreen,2\n";
 
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from-csv")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let output = cmd.arg("from-csv").write_stdin(input).output().unwrap();
 
     let stdout = String::from_utf8(output.stdout).unwrap();
     let stdout = normalize_newlines(&stdout);
@@ -29,11 +25,7 @@ fn from_csv_with_quotes_and_commas() -> anyhow::Result<()> {
     let input = "name,comment\n\"a,b\",\"c,d\"\n\"x\"\"y\",z\n";
 
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from-csv")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let output = cmd.arg("from-csv").write_stdin(input).output().unwrap();
 
     let stdout = String::from_utf8(output.stdout).unwrap();
     let stdout = normalize_newlines(&stdout);
@@ -200,7 +192,8 @@ fn from_csv_invalid1_should_fail() -> anyhow::Result<()> {
     let stderr = String::from_utf8_lossy(&output.stderr);
     let stderr = normalize_newlines(&stderr);
     assert!(
-        stderr.contains("tva from-csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'"),
+        stderr
+            .contains("tva from-csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'"),
         "unexpected stderr: {}",
         stderr
     );

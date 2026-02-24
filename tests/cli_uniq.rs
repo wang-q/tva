@@ -2,8 +2,7 @@ use assert_cmd::cargo::cargo_bin_cmd;
 use std::fs;
 
 fn expected_block(command: &str) -> String {
-    let gold =
-        fs::read_to_string("tests/data/uniq/gold_basic_tests_1.txt").unwrap();
+    let gold = fs::read_to_string("tests/data/uniq/gold_basic_tests_1.txt").unwrap();
 
     let header = format!("====[tsv-uniq {}]====", command);
     let mut lines = gold.lines();
@@ -62,11 +61,7 @@ fn command_uniq_stdin() -> anyhow::Result<()> {
     let input_dup = format!("{input}{input}");
 
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("uniq")
-        .write_stdin(input_dup)
-        .output()
-        .unwrap();
+    let output = cmd.arg("uniq").write_stdin(input_dup).output().unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
 
     assert_eq!(stdout.lines().count(), 4);
@@ -134,7 +129,8 @@ fn command_uniq_header_single_header_across_files() -> anyhow::Result<()> {
 }
 
 #[test]
-fn command_uniq_header_named_fields_equivalent_to_numeric_single_file() -> anyhow::Result<()> {
+fn command_uniq_header_named_fields_equivalent_to_numeric_single_file(
+) -> anyhow::Result<()> {
     let input = "tests/data/uniq/input1.tsv";
 
     let mut cmd = cargo_bin_cmd!("tva");
@@ -357,9 +353,9 @@ fn uniq_noheader_fields3_4_from_gold() -> anyhow::Result<()> {
     Ok(())
 }
 
-
 #[test]
-fn command_uniq_header_named_fields_equivalent_to_numeric_multiple_files() -> anyhow::Result<()> {
+fn command_uniq_header_named_fields_equivalent_to_numeric_multiple_files(
+) -> anyhow::Result<()> {
     let input1 = "tests/data/uniq/input1.tsv";
     let input2 = "tests/data/uniq/input2.tsv";
 
@@ -402,11 +398,7 @@ fn command_uniq_ignore_case() -> anyhow::Result<()> {
                  a\n";
 
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("uniq")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let output = cmd.arg("uniq").write_stdin(input).output().unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert_eq!(stdout.lines().count(), 3);
 
@@ -642,11 +634,7 @@ fn uniq_error_field_name_requires_header() -> anyhow::Result<()> {
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(
-        stderr.contains("requires header"),
-        "stderr was: {}",
-        stderr
-    );
+    assert!(stderr.contains("requires header"), "stderr was: {}", stderr);
 
     Ok(())
 }
