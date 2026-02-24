@@ -20,7 +20,7 @@ tva longer [input_files...] --cols <columns> [options]
 
 ### 1. String Data in Column Names
 
-Consider a dataset `relig_income.tsv` where income brackets are spread across column names:
+Consider a dataset `docs/data/relig_income.tsv` where income brackets are spread across column names:
 
 ```tsv
 religion	<$10k	$10-20k	$20-30k
@@ -32,7 +32,7 @@ Buddhist	27	21	30
 To tidy this, we want to turn the income columns into a single `income` variable:
 
 ```bash
-tva longer relig_income.tsv --cols 2-4 --names-to income --values-to count
+tva longer docs/data/relig_income.tsv --cols 2-4 --names-to income --values-to count
 ```
 
 Output:
@@ -46,7 +46,7 @@ Agnostic	$20-30k	60
 
 ### 2. Numeric Data in Column Names
 
-The `billboard.tsv` dataset records song rankings by week (`wk1`, `wk2`, etc.):
+The `docs/data/billboard.tsv` dataset records song rankings by week (`wk1`, `wk2`, etc.):
 
 ```tsv
 artist	track	wk1	wk2	wk3
@@ -57,7 +57,7 @@ artist	track	wk1	wk2	wk3
 We can gather the week columns and strip the "wk" prefix to get a clean number:
 
 ```bash
-tva longer billboard.tsv --cols "wk*" --names-to week --values-to rank --names-prefix "wk" --values-drop-na
+tva longer docs/data/billboard.tsv --cols "wk*" --names-to week --values-to rank --names-prefix "wk" --values-drop-na
 ```
 
 *   **`--names-prefix "wk"`**: Removes "wk" from the start of the column names (e.g., "wk1" -> "1").
@@ -73,7 +73,7 @@ artist	track	week	rank
 
 ### 3. Many Variables in Column Names (Regex Extraction)
 
-Sometimes column names contain multiple pieces of information. For example, in the `who.tsv` dataset, columns like `new_sp_m014` encode:
+Sometimes column names contain multiple pieces of information. For example, in the `docs/data/who.tsv` dataset, columns like `new_sp_m014` encode:
 *   `new`: new cases (constant)
 *   `sp`: diagnosis method
 *   `m`: gender (m/f)
@@ -87,7 +87,7 @@ Afghanistan	AF	AFG	1980	NA	NA
 We can use **`--names-pattern`** with a regular expression to extract these parts into multiple columns:
 
 ```bash
-tva longer who.tsv --cols "new_*" --names-to diagnosis gender age --names-pattern "new_?(.*)_(.)(.*)"
+tva longer docs/data/who.tsv --cols "new_*" --names-to diagnosis gender age --names-pattern "new_?(.*)_(.)(.*)"
 ```
 
 *   **`--names-to`**: We provide 3 names for the 3 capture groups in the regex.
@@ -107,7 +107,7 @@ Afghanistan	AF	AFG	1980	sp	m	014	NA
 
 If column names are consistently separated by a character, you can use **`--names-sep`**.
 
-Input `household.tsv`:
+Input `docs/data/household.tsv`:
 ```tsv
 family	dob_child1	dob_child2	name_child1	name_child2
 1	1998-11-26	2000-01-29	J	K
