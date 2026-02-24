@@ -4,6 +4,7 @@ pub mod filter;
 pub mod from_csv;
 pub mod join;
 pub mod keep_header;
+pub mod longer;
 pub mod md;
 pub mod nl;
 pub mod sample;

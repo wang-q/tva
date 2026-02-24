@@ -72,3 +72,33 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 *   **`join`**: Inner/Left/Outer/Anti joins on specified keys.
 *   **`filter`**: Row filtering with numeric, string, regex, and date predicates.
 *   **`stats`**: Summary statistics (sum, mean, median, mode, etc.) with grouping.
+
+### Planned Features (Inspired by Datamash & R)
+
+*   **`wider` (Pivot/Crosstab)**:
+    *   **Goal**: Reshape "long" data to "wide" format (pivot).
+    *   **Inspiration**: `tidyr::pivot_wider` (R) and `datamash crosstab`.
+    *   **Design**:
+        *   `--rows / -r`: Fields to group by (identifiers). Analogous to `tidyr`'s `id_cols`.
+        *   `--cols / -c`: Fields to pivot into column headers (`names_from`).
+        *   `--values / -v`: Fields to populate cells with (`values_from`).
+        *   `--names-prefix`: String to prepend to output column names.
+        *   `--names-sep`: Separator when joining multiple column names (default: "_").
+        *   `--names-sort`: Sort the resulting column headers.
+        *   `--op`: Aggregation function (count, sum, mean, first, last) when multiple rows match a cell.
+            *   *Note*: This overlaps with `stats` but provides convenience for one-step pivoting.
+            *   *Implementation*: Reuse `libs::stats::Aggregator` logic.
+        *   `--fill`: Value to use for missing cells (default: empty or 0).
+*   **`longer` (Unpivot/Melt)**:
+    *   **Goal**: Reshape "wide" data to "long" format.
+    *   **Inspiration**: `tidyr::pivot_longer`.
+    *   **Design**:
+        *   `--cols`: Columns to unpivot (collapse into key-value pairs).
+        *   `--names-to`: Name of the new key column(s).
+        *   `--values-to`: Name of the new value column.
+        *   `--names-prefix`: Regex to remove matching text from the start of each variable name (e.g., remove "wk" from "wk1").
+        *   `--names-sep`: Separator to split column names into multiple `names-to` columns.
+        *   `--names-pattern`: Regex with groups to extract parts of column names into multiple `names-to` columns.
+        *   `--values-drop-na`: Drop rows where the value is empty/NA.
+*   **Extended Statistics**:
+    *   Add `q1` (25%), `q3` (75%), `iqr`, `skewness`, `kurtosis` to `stats`.
