@@ -171,7 +171,7 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
   - `tests/`：测试脚本与测试数据
   - `dub.json`、`makefile`：构建配置
 - `extras/scripts/`：如 `tsv-sort` / `tsv-sort-fast` 等辅助脚本。
-- CI 与质量相关文件：`.github/workflows/build-test.yml`、`.codecov.yml` 等。
+- CI 与质量相关文件：`.github/workflows/build.yml`、`.github/workflows/publish.yml`、`.github/workflows/codecov.yml` 等。
 
 ## 5. 对 tva 项目的可借鉴点
 
@@ -246,11 +246,11 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
 - 字段列表解析（对应上游 `parseFieldList`）：
   - 状态：在 `libs::fields` 中实现了统一的字段语法解析：
     - 数字字段语法：`parse_numeric_field_list` / `fields_to_ints` / `fields_to_idx` 支持 `1,3-5` 等区间表达式，已被 `uniq`、`md`、`split` 等子命令复用。
-    - header 感知语法：`parse_field_list_with_header` / `parse_field_list_with_header_preserve_order` 支持按列名、通配符（如 `*_time`）、列名区间（如 `run-user_time`）以及带反斜杠转义的特殊字段名（空格、`:`、`-`、`*`、`\001` 等），作为 `tva select` 的字段解析地基，并被 `join`（join/data/append 字段）、`sample`（key/weight 字段）等子命令复用。
+    - header 感知语法：`parse_field_list_with_header` / `parse_field_list_with_header_preserve_order` 支持按列名、通配符（如 `*_time`）、列名区间（如 `run-user_time`）以及带反斜杠转义的特殊字段名（空格、`:`、`-`、`*`、`\001` 等），作为 `tva select` 的字段解析地基，并被 `join`（join/data/append 字段）、`sample`（key/weight 字段）、`stats`（group-by/op 字段）等子命令复用。
   - 测试：在 `libs::fields` 模块内有单元测试，覆盖空输入、重复字段、空白处理、header 模式下的列名/通配符/列名区间以及字段名转义等场景。
 - 输入源抽象（对应上游 `InputSourceRange`）：
   - 状态：已在 `libs::io` 中实现统一输入层：`reader` 处理 `stdin` / `-` / 普通文件 / `.gz` 压缩文件，`InputSource` / `input_sources` 为多输入文件提供一致视图，`has_nonempty_line` 封装“探测是否包含非空行”的逻辑。
-  - 使用情况：当前已被 `nl`、`uniq`、`keep-header`、`check`、`select`、`sample`、`split`、`join` 等子命令复用，作为后续 `tva sort` 等命令的输入基础设施。
+  - 使用情况：当前已被 `nl`、`uniq`、`keep-header`、`check`、`select`、`sample`、`split`、`join`、`stats`、`sort`、`from-csv`、`transpose` 等子命令复用，作为 `tva` 的核心输入基础设施。
 - 数值格式化（对应上游 `formatNumber`）：
   - 状态：在 `libs::number` 中实现了 `format_number`，用于统一数值输出格式，避免难以阅读的浮点尾数。
   - 测试：`libs::number` 模块内有单元测试，覆盖典型的整数和小数格式化场景。
