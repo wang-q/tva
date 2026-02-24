@@ -48,6 +48,8 @@ See [Row Filtering Documentation](docs/filtering.md).
 - **`filter`**: Filter rows based on numeric, string, regex, or date criteria.
 
 ### Ordering
+See [Ordering Documentation](docs/ordering.md).
+
 - **`sort`**: Sort TSV files (external sort for large files).
 - **`reverse`**: Reverse the order of lines (like `tac`), with optional header preservation.
 - **`transpose`**: Transpose rows and columns.

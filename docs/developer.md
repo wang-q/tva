@@ -106,7 +106,7 @@ To help users get started quickly, we aim to provide dedicated documentation fil
     *   `stats`: Summary statistics and grouping.
     *   `bin`: Discretization for histograms.
     *   `uniq`: Deduplication and counting.
-*   **`docs/ordering.md`** (Planned):
+*   **`docs/ordering.md`** (Done):
     *   `sort`: External sort for large files.
     *   `reverse`: Reverse the order of lines.
     *   `transpose`: Transpose rows and columns.
