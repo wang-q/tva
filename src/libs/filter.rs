@@ -987,3 +987,109 @@ pub fn build_tests(
 
     Ok(tests)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_field_field_reldiff_cmp_error_paths() {
+        let test = TestKind::FieldFieldRelDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Le,
+            value: 0.1,
+        };
+
+        // Case 1: Left field missing (index out of bounds)
+        // fields has 0 elements, index 1 (pos 0) is missing
+        assert!(!test.eval(&[]));
+
+        // Case 2: Left field not a number
+        assert!(!test.eval(&["abc", "10.0"]));
+
+        // Case 3: Right field missing
+        // fields has 1 element, index 2 (pos 1) is missing
+        assert!(!test.eval(&["10.0"]));
+
+        // Case 4: Right field not a number
+        assert!(!test.eval(&["10.0", "abc"]));
+    }
+
+    #[test]
+    fn test_field_field_absdiff_cmp_error_paths() {
+        let test = TestKind::FieldFieldAbsDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Le,
+            value: 1.0,
+        };
+
+        // Case 1: Left field missing
+        assert!(!test.eval(&[]));
+
+        // Case 2: Left field not a number
+        assert!(!test.eval(&["abc", "10.0"]));
+
+        // Case 3: Right field missing
+        assert!(!test.eval(&["10.0"]));
+
+        // Case 4: Right field not a number
+        assert!(!test.eval(&["10.0", "abc"]));
+    }
+
+    #[test]
+    fn test_numeric_cmp_error_paths() {
+        let test = TestKind::NumericCmp {
+            fields: vec![1],
+            op: NumericOp::Gt,
+            value: 10.0,
+        };
+
+        // Case 1: Field missing
+        assert!(!test.eval(&[]));
+
+        // Case 2: Field not a number
+        assert!(!test.eval(&["abc"]));
+    }
+
+    #[test]
+    fn test_numeric_prop_test_error_paths() {
+        let test = TestKind::NumericPropTest {
+            fields: vec![1],
+            prop: NumericProp::IsNumeric,
+        };
+
+        // Case 1: Field missing
+        assert!(!test.eval(&[]));
+
+        // Case 2: Field not a number
+        // IsNumeric returns true if it parses, but the implementation is:
+        // match s.parse::<f64>() { Ok(_) => true, Err(_) => return false }
+        // Wait, line 245: Err(_) => return false,
+        // line 248: NumericProp::IsNumeric => true,
+        // So if it fails to parse, it returns false.
+        assert!(!test.eval(&["abc"]));
+    }
+
+    #[test]
+    fn test_field_field_numeric_cmp_error_paths() {
+        let test = TestKind::FieldFieldNumericCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Eq,
+        };
+
+        // Case 1: Left field missing
+        assert!(!test.eval(&[]));
+
+        // Case 2: Left field not a number
+        assert!(!test.eval(&["abc", "10.0"]));
+
+        // Case 3: Right field missing
+        assert!(!test.eval(&["10.0"]));
+
+        // Case 4: Right field not a number
+        assert!(!test.eval(&["10.0", "abc"]));
+    }
+}
