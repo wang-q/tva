@@ -594,4 +594,103 @@ mod tests {
         assert!(h.fields.is_empty());
         assert!(h.index_by_name.is_empty());
     }
+
+    #[test]
+    fn test_parse_numeric_field_list_error_empty_element() {
+        let err = parse_numeric_field_list("1,,2").unwrap_err();
+        assert_eq!(err, "empty field list element in `1,,2`");
+
+        let err = parse_numeric_field_list(",").unwrap_err();
+        assert_eq!(err, "empty field list element in `,`");
+    }
+
+    #[test]
+    fn test_parse_numeric_field_list_error_zero_index() {
+        let err = parse_numeric_field_list("0").unwrap_err();
+        assert_eq!(err, "field index must be >= 1 in `0`");
+
+        let err = parse_numeric_field_list("1,0,2").unwrap_err();
+        assert_eq!(err, "field index must be >= 1 in `1,0,2`");
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_error_empty_element() {
+        let header = Header::from_line("a\tb\tc", '\t');
+        let err = parse_field_list_with_header("1,,c", Some(&header), '\t').unwrap_err();
+        assert_eq!(err, "empty field list element in `1,,c`");
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_error_zero_index() {
+        let header = Header::from_line("a\tb\tc", '\t');
+        let err = parse_field_list_with_header("0,c", Some(&header), '\t').unwrap_err();
+        assert_eq!(err, "field index must be >= 1 in `0,c`");
+    }
+
+    #[test]
+    fn test_tokenize_field_spec_trailing_backslash() {
+        let tokens = tokenize_field_spec(r"col1,col2\");
+        assert_eq!(tokens, vec!["col1", r"col2\"]);
+    }
+
+    #[test]
+    fn test_split_name_range_token_trailing_backslash() {
+        let res = split_name_range_token(r"start-end\");
+        assert_eq!(res, Some(("start".to_string(), r"end\".to_string())));
+    }
+
+    #[test]
+    fn test_split_name_range_token_escaped_dash() {
+        // "start\-end" should be treated as a single name "start-end", not a range
+        let res = split_name_range_token(r"start\-end");
+        assert_eq!(res, None);
+    }
+
+    #[test]
+    fn test_split_name_range_token_trailing_backslash_in_start() {
+        // "start\\-end" -> The dash is not escaped (it is preceded by escaped backslash),
+        // so it splits into "start\" and "end".
+        let res = split_name_range_token(r"start\\-end");
+        assert_eq!(res, Some((r"start\".to_string(), "end".to_string())));
+    }
+
+    #[test]
+    fn test_split_name_range_token_empty_parts() {
+        assert_eq!(split_name_range_token("-"), None);
+        assert_eq!(split_name_range_token("start-"), None);
+        assert_eq!(split_name_range_token("-end"), None);
+    }
+
+    #[test]
+    fn test_unescape_name_pattern_trailing_backslash() {
+        let (res, has_star) = unescape_name_pattern(r"abc\");
+        assert_eq!(res, r"abc\");
+        assert!(!has_star);
+    }
+
+    #[test]
+    fn test_name_matches_pattern_complex() {
+        assert!(name_matches_pattern("foobar", "*bar"));
+        assert!(name_matches_pattern("foobar", "foo*"));
+        assert!(name_matches_pattern("foobar", "*ooba*"));
+        assert!(name_matches_pattern("foobar", "f*b*r"));
+        assert!(!name_matches_pattern("foobar", "f*b*z"));
+
+        // Backtracking test
+        assert!(name_matches_pattern("mississippi", "*sip*"));
+        assert!(name_matches_pattern("abacadae", "*a*e"));
+    }
+
+    #[test]
+    fn test_parse_numeric_field_list_reverse_range() {
+        let v = parse_numeric_field_list("5-3").unwrap();
+        assert_eq!(v, vec![3, 4, 5]);
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_reverse_name_range() {
+        let header = Header::from_line("a\tb\tc", '\t');
+        let v = parse_field_list_with_header("c-a", Some(&header), '\t').unwrap();
+        assert_eq!(v, vec![1, 2, 3]);
+    }
 }
