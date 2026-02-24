@@ -378,3 +378,114 @@ impl Aggregator {
         values
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mean_nan() {
+        let agg = Aggregator::new();
+        // Mean needs count > 0 to not be nan
+        let ops = vec![Operation {
+            kind: OpKind::Mean,
+            field_idx: Some(0),
+        }];
+        let results = agg.format_results(&ops);
+        assert_eq!(results[0], "nan");
+    }
+
+    #[test]
+    fn test_mad_nan_no_entry() {
+        let agg = Aggregator::new();
+        let ops = vec![Operation {
+            kind: OpKind::Mad,
+            field_idx: Some(0),
+        }];
+        let results = agg.format_results(&ops);
+        assert_eq!(results[0], "nan");
+    }
+
+    #[test]
+    fn test_mad_nan_empty_vec() {
+        let mut agg = Aggregator::new();
+        // Manually insert empty vector to trigger the specific branch (L331-332)
+        agg.values.insert(0, vec![]);
+        
+        let ops = vec![Operation {
+            kind: OpKind::Mad,
+            field_idx: Some(0),
+        }];
+        let results = agg.format_results(&ops);
+        assert_eq!(results[0], "nan");
+    }
+
+    #[test]
+    fn test_median_nan_no_entry() {
+        let agg = Aggregator::new();
+        let ops = vec![Operation {
+            kind: OpKind::Median,
+            field_idx: Some(0),
+        }];
+        let results = agg.format_results(&ops);
+        assert_eq!(results[0], "nan");
+    }
+
+    #[test]
+    fn test_median_nan_empty_vec() {
+        let mut agg = Aggregator::new();
+        // Manually insert empty vector to trigger the specific branch (L267-268)
+        agg.values.insert(0, vec![]);
+        
+        let ops = vec![Operation {
+            kind: OpKind::Median,
+            field_idx: Some(0),
+        }];
+        let results = agg.format_results(&ops);
+        assert_eq!(results[0], "nan");
+    }
+
+    #[test]
+    fn test_stdev_nan() {
+        let mut agg = Aggregator::new();
+        // Stdev requires count > 1
+        agg.field_counts.insert(0, 1);
+        agg.sums.insert(0, 10.0);
+        agg.sum_sqs.insert(0, 100.0);
+
+        let ops = vec![Operation {
+            kind: OpKind::Stdev,
+            field_idx: Some(0),
+        }];
+        let results = agg.format_results(&ops);
+        assert_eq!(results[0], "nan");
+    }
+
+    #[test]
+    fn test_variance_nan() {
+        let mut agg = Aggregator::new();
+        // Variance requires count > 1
+        agg.field_counts.insert(0, 1);
+        
+        let ops = vec![Operation {
+            kind: OpKind::Variance,
+            field_idx: Some(0),
+        }];
+        let results = agg.format_results(&ops);
+        assert_eq!(results[0], "nan");
+    }
+
+    #[test]
+    fn test_min_max_nan() {
+        let agg = Aggregator::new();
+        
+        let ops = vec![
+            Operation { kind: OpKind::Min, field_idx: Some(0) },
+            Operation { kind: OpKind::Max, field_idx: Some(0) },
+        ];
+        // format_results processes ops in order
+        let results = agg.format_results(&ops);
+        assert_eq!(results[0], "nan");
+        assert_eq!(results[1], "nan");
+    }
+}
