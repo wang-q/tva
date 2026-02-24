@@ -9,22 +9,27 @@ Fast, reliable TSV processing toolkit in Rust.
 
 ## Overview
 
-`tva` is a high-performance command-line toolkit for processing tabular data (especially TSV files). It is inspired by [eBay's tsv-utils](https://github.com/eBay/tsv-utils) and built in Rust, designed for speed, safety, and modern tooling.
+`tva` (pronounced "Tee-Va") is a high-performance command-line toolkit written in **Rust** for processing tabular data. It brings the safety and speed of modern systems programming to the classic Unix philosophy.
 
-It is designed for:
-- Large files that are too big for Excel or Pandas but too small for distributed systems (Hadoop/Spark).
-- Command-line data pipelines (Unix philosophy).
-- Data exploration, cleaning, and transformation.
+**Inspiration**
 
-## Features & Design
+*   [eBay's tsv-utils](https://github.com/eBay/tsv-utils) (discontinued): The primary reference for functionality and performance.
+*   [GNU Datamash](https://www.gnu.org/software/datamash/): Statistical operations.
+*   [R's tidyr](https://tidyr.tidyverse.org/): Reshaping concepts (`longer`, `wider`).
 
-`tva` follows the **Unix philosophy** and is built for **speed** and **reliability**:
+**Use Cases**
 
-*   **Streaming & Unix-like**: Reads from stdin, writes to stdout, stateless, and pipe-friendly.
-*   **TSV-first**: Optimized for tab-separated data; no complex CSV escaping.
-*   **Header Aware**: Select fields by name (`--fields user_id`) or index, preserving headers automatically.
-*   **Fail-fast**: Strict error handling for data integrity (no silent truncation).
-*   **High Performance**: Single-pass processing with minimal allocation.
+*   **"Middle Data"**: Files too large for Excel/Pandas but too small for distributed systems (Spark/Hadoop).
+*   **Data Pipelines**: Robust CLI-based ETL steps compatible with `awk`, `sort`, etc.
+*   **Exploration**: Fast summary statistics, sampling, and filtering on raw data.
+
+**Design Principles**
+
+*   **Header Aware**: Manipulate columns by name (`--fields user_id`) or index.
+*   **Fail-fast**: Strict validation ensures data integrity (no silent truncation).
+*   **Streaming**: Stateless processing designed for infinite streams and large files.
+*   **TSV-first**: Prioritizes the reliability and simplicity of tab-separated values.
+*   **Performance**: Single-pass execution with minimal memory overhead.
 
 See [Design Documentation](docs/design.md) for details.
 
