@@ -184,13 +184,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         )?;
                         field_indices = Some(idxs);
                         exclude_set = None;
-                    } else {
-                        write_selected_fields(
-                            &mut writer,
-                            &header.fields,
-                            &(1..=header.fields.len()).collect::<Vec<_>>(),
-                            delimiter,
-                        )?;
                     }
 
                     header_written = true;

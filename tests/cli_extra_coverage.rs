@@ -423,6 +423,34 @@ fn test_select_invalid_field_spec() {
         .stderr(predicate::str::contains("field index must be >= 1"));
 }
 
+#[test]
+fn test_select_exclude_with_header() {
+    let input = "h1\th2\th3\nv1\tv2\tv3\n";
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("select")
+        .arg("--header")
+        .arg("--exclude")
+        .arg("2")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("h1\th3\nv1\tv3"));
+}
+
+#[test]
+fn test_select_exclude_by_name_with_header() {
+    let input = "h1\th2\th3\nv1\tv2\tv3\n";
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("select")
+        .arg("--header")
+        .arg("--exclude")
+        .arg("h2")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("h1\th3\nv1\tv3"));
+}
+
 // -------------------------------------------------------------------------------------------------
 // Additional sort.rs coverage tests
 // -------------------------------------------------------------------------------------------------
