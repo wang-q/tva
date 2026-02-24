@@ -73,11 +73,21 @@ pub fn parse_numeric_field_list(spec: &str) -> Result<Vec<usize>, String> {
 
     let mut ints: Vec<i32> = Vec::new();
     for part in tokenize_field_spec(spec) {
-        let part = part.trim();
+        let mut part = part.trim().to_string();
         if part.is_empty() {
             return Err(format!("empty field list element in `{}`", spec));
         }
-        let intspan = IntSpan::from(part);
+
+        // Handle reverse ranges like "6-4" by swapping them to "4-6"
+        if let Some((s, e)) = part.split_once('-') {
+             if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
+                 if start > end {
+                     part = format!("{}-{}", end, start);
+                 }
+             }
+        }
+
+        let intspan = IntSpan::from(&part);
         for e in intspan.elements() {
             if e <= 0 {
                 return Err(format!("field index must be >= 1 in `{}`", spec));
@@ -241,7 +251,17 @@ pub fn parse_field_list_with_header(
             && token.chars().all(|c| c.is_ascii_digit() || c == '-');
 
         if is_numeric_like {
-            let intspan = IntSpan::from(token);
+             // Handle reverse ranges like "6-4" by swapping them to "4-6"
+             let mut token_str = token.to_string();
+             if let Some((s, e)) = token_str.split_once('-') {
+                  if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
+                      if start > end {
+                          token_str = format!("{}-{}", end, start);
+                      }
+                  }
+             }
+
+            let intspan = IntSpan::from(&token_str);
             for e in intspan.elements() {
                 if e <= 0 {
                     return Err(format!("field index must be >= 1 in `{}`", spec));
@@ -336,7 +356,17 @@ pub fn parse_field_list_with_header_preserve_order(
             && token.chars().all(|c| c.is_ascii_digit() || c == '-');
 
         if is_numeric_like {
-            let intspan = IntSpan::from(token);
+             // Handle reverse ranges like "6-4" by swapping them to "4-6"
+             let mut token_str = token.to_string();
+             if let Some((s, e)) = token_str.split_once('-') {
+                  if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
+                      if start > end {
+                          token_str = format!("{}-{}", end, start);
+                      }
+                  }
+             }
+
+            let intspan = IntSpan::from(&token_str);
             for e in intspan.elements() {
                 if e <= 0 {
                     return Err(format!("field index must be >= 1 in `{}`", spec));

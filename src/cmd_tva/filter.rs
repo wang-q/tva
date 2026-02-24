@@ -4,7 +4,7 @@ use std::io::BufRead;
 use crate::libs::filter::{
     build_tests, NumericOp, NumericProp, PendingByteLen, PendingCharLen, PendingFieldFieldAbsDiff,
     PendingFieldFieldNumeric, PendingFieldFieldRelDiff, PendingFieldFieldStr, PendingNumeric,
-    PendingNumericProp, PendingRegex, PendingStrEq, PendingSubstr, TestKind,
+    PendingNumericProp, PendingRegex, PendingStrCmp, PendingStrEq, PendingSubstr, TestKind,
 };
 
 pub fn make_subcommand() -> Command {
@@ -156,6 +156,34 @@ Field syntax:
                 .help("Numeric comparison: FIELD != NUM"),
         )
         // String comparisons
+        .arg(
+            Arg::new("str-gt")
+                .long("str-gt")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("String comparison: FIELD > STR"),
+        )
+        .arg(
+            Arg::new("str-ge")
+                .long("str-ge")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("String comparison: FIELD >= STR"),
+        )
+        .arg(
+            Arg::new("str-lt")
+                .long("str-lt")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("String comparison: FIELD < STR"),
+        )
+        .arg(
+            Arg::new("str-le")
+                .long("str-le")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("String comparison: FIELD <= STR"),
+        )
         .arg(
             Arg::new("str-eq")
                 .long("str-eq")
@@ -571,6 +599,39 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .unwrap_or_default()
         {
             v.push(PendingNumeric { spec, op: NumericOp::Ne });
+        }
+        v
+    };
+
+    let str_cmp_specs = {
+        let mut v = Vec::new();
+        for spec in args
+            .get_many::<String>("str-gt")
+            .map(|v| v.cloned().collect::<Vec<_>>())
+            .unwrap_or_default()
+        {
+            v.push(PendingStrCmp { spec, op: NumericOp::Gt });
+        }
+        for spec in args
+            .get_many::<String>("str-ge")
+            .map(|v| v.cloned().collect::<Vec<_>>())
+            .unwrap_or_default()
+        {
+            v.push(PendingStrCmp { spec, op: NumericOp::Ge });
+        }
+        for spec in args
+            .get_many::<String>("str-lt")
+            .map(|v| v.cloned().collect::<Vec<_>>())
+            .unwrap_or_default()
+        {
+            v.push(PendingStrCmp { spec, op: NumericOp::Lt });
+        }
+        for spec in args
+            .get_many::<String>("str-le")
+            .map(|v| v.cloned().collect::<Vec<_>>())
+            .unwrap_or_default()
+        {
+            v.push(PendingStrCmp { spec, op: NumericOp::Le });
         }
         v
     };
@@ -1060,6 +1121,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 &blank_specs,
                 &not_blank_specs,
                 &numeric_specs,
+                &str_cmp_specs,
                 &char_len_specs,
                 &byte_len_specs,
                 &numeric_prop_specs,

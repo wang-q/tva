@@ -45,6 +45,7 @@
 //! ```
 
 use regex::Regex;
+use unicode_segmentation::UnicodeSegmentation;
 
 pub enum NumericOp {
     Gt,
@@ -95,6 +96,11 @@ pub enum TestKind {
         fields: Vec<usize>,
         value: String,
         case_insensitive: bool,
+    },
+    StrCmp {
+        fields: Vec<usize>,
+        op: NumericOp,
+        value: String,
     },
     StrIn {
         fields: Vec<usize>,
@@ -190,7 +196,7 @@ impl TestKind {
                     Some(v) => *v,
                     None => "",
                 };
-                let len = s.chars().count() as f64;
+                let len = s.graphemes(true).count() as f64;
                 match op {
                     NumericOp::Gt => len > *value,
                     NumericOp::Ge => len >= *value,
@@ -249,7 +255,7 @@ impl TestKind {
                 match fields.get(pos) {
                     Some(s) => {
                         if *case_insensitive {
-                            s.eq_ignore_ascii_case(value)
+                            s.to_lowercase() == value.to_lowercase()
                         } else {
                             *s == value
                         }
@@ -266,12 +272,30 @@ impl TestKind {
                 match fields.get(pos) {
                     Some(s) => {
                         if *case_insensitive {
-                            !s.eq_ignore_ascii_case(value)
+                            s.to_lowercase() != value.to_lowercase()
                         } else {
                             *s != value
                         }
                     }
                     None => true,
+                }
+            }),
+            TestKind::StrCmp {
+                fields: idxs,
+                op,
+                value,
+            } => idxs.iter().all(|idx| {
+                let pos = idx.saturating_sub(1);
+                match fields.get(pos) {
+                    Some(s) => match op {
+                        NumericOp::Gt => *s > value.as_str(),
+                        NumericOp::Ge => *s >= value.as_str(),
+                        NumericOp::Lt => *s < value.as_str(),
+                        NumericOp::Le => *s <= value.as_str(),
+                        NumericOp::Eq => *s == value.as_str(),
+                        NumericOp::Ne => *s != value.as_str(),
+                    },
+                    None => false,
                 }
             }),
             TestKind::StrIn {
@@ -482,6 +506,11 @@ pub struct PendingStrEq {
     pub negated: bool,
 }
 
+pub struct PendingStrCmp {
+    pub spec: String,
+    pub op: NumericOp,
+}
+
 pub struct PendingSubstr {
     pub spec: String,
     pub case_insensitive: bool,
@@ -534,6 +563,9 @@ pub fn split_spec(spec: &str) -> Result<(String, String), String> {
     if let Some(pos) = spec.rfind(':') {
         let (left, right) = spec.split_at(pos);
         Ok((left.to_string(), right[1..].to_string()))
+    } else if let Some(pos) = spec.rfind(' ') {
+        let (left, right) = spec.split_at(pos);
+        Ok((left.to_string(), right[1..].to_string()))
     } else {
         Err(format!(
             "missing `:` separator in `{}` (expected <field-list>:<value>)",
@@ -550,6 +582,7 @@ pub fn build_tests(
     blank_specs: &[String],
     not_blank_specs: &[String],
     numeric_specs: &[PendingNumeric],
+    str_cmp_specs: &[PendingStrCmp],
     char_len_specs: &[PendingCharLen],
     byte_len_specs: &[PendingByteLen],
     numeric_prop_specs: &[PendingNumericProp],
@@ -569,7 +602,9 @@ pub fn build_tests(
             header,
             delimiter,
         )?;
-        tests.push(TestKind::Empty { fields: idxs });
+        for idx in idxs {
+            tests.push(TestKind::Empty { fields: vec![idx] });
+        }
     }
 
     for spec in not_empty_specs {
@@ -578,7 +613,9 @@ pub fn build_tests(
             header,
             delimiter,
         )?;
-        tests.push(TestKind::NotEmpty { fields: idxs });
+        for idx in idxs {
+            tests.push(TestKind::NotEmpty { fields: vec![idx] });
+        }
     }
 
     for spec in blank_specs {
@@ -587,7 +624,9 @@ pub fn build_tests(
             header,
             delimiter,
         )?;
-        tests.push(TestKind::Blank { fields: idxs });
+        for idx in idxs {
+            tests.push(TestKind::Blank { fields: vec![idx] });
+        }
     }
 
     for spec in not_blank_specs {
@@ -596,7 +635,9 @@ pub fn build_tests(
             header,
             delimiter,
         )?;
-        tests.push(TestKind::NotBlank { fields: idxs });
+        for idx in idxs {
+            tests.push(TestKind::NotBlank { fields: vec![idx] });
+        }
     }
 
     for p in numeric_specs {
@@ -609,18 +650,43 @@ pub fn build_tests(
         let value = value_part.parse::<f64>().map_err(|_| {
             format!("invalid numeric value `{}` in `{}`", value_part, p.spec)
         })?;
-        tests.push(TestKind::NumericCmp {
-            fields: idxs,
-            op: match p.op {
-                NumericOp::Gt => NumericOp::Gt,
-                NumericOp::Ge => NumericOp::Ge,
-                NumericOp::Lt => NumericOp::Lt,
-                NumericOp::Le => NumericOp::Le,
-                NumericOp::Eq => NumericOp::Eq,
-                NumericOp::Ne => NumericOp::Ne,
-            },
-            value,
-        });
+        for idx in idxs {
+            tests.push(TestKind::NumericCmp {
+                fields: vec![idx],
+                op: match p.op {
+                    NumericOp::Gt => NumericOp::Gt,
+                    NumericOp::Ge => NumericOp::Ge,
+                    NumericOp::Lt => NumericOp::Lt,
+                    NumericOp::Le => NumericOp::Le,
+                    NumericOp::Eq => NumericOp::Eq,
+                    NumericOp::Ne => NumericOp::Ne,
+                },
+                value,
+            });
+        }
+    }
+
+    for p in str_cmp_specs {
+        let (field_part, value_part) = split_spec(&p.spec)?;
+        let idxs = crate::libs::fields::parse_field_list_with_header(
+            &field_part,
+            header,
+            delimiter,
+        )?;
+        for idx in idxs {
+            tests.push(TestKind::StrCmp {
+                fields: vec![idx],
+                op: match p.op {
+                    NumericOp::Gt => NumericOp::Gt,
+                    NumericOp::Ge => NumericOp::Ge,
+                    NumericOp::Lt => NumericOp::Lt,
+                    NumericOp::Le => NumericOp::Le,
+                    NumericOp::Eq => NumericOp::Eq,
+                    NumericOp::Ne => NumericOp::Ne,
+                },
+                value: value_part.to_string(),
+            });
+        }
     }
 
     for p in char_len_specs {
@@ -633,18 +699,20 @@ pub fn build_tests(
         let value = value_part.parse::<f64>().map_err(|_| {
             format!("invalid length value `{}` in `{}`", value_part, p.spec)
         })?;
-        tests.push(TestKind::CharLenCmp {
-            fields: idxs,
-            op: match p.op {
-                NumericOp::Gt => NumericOp::Gt,
-                NumericOp::Ge => NumericOp::Ge,
-                NumericOp::Lt => NumericOp::Lt,
-                NumericOp::Le => NumericOp::Le,
-                NumericOp::Eq => NumericOp::Eq,
-                NumericOp::Ne => NumericOp::Ne,
-            },
-            value,
-        });
+        for idx in idxs {
+            tests.push(TestKind::CharLenCmp {
+                fields: vec![idx],
+                op: match p.op {
+                    NumericOp::Gt => NumericOp::Gt,
+                    NumericOp::Ge => NumericOp::Ge,
+                    NumericOp::Lt => NumericOp::Lt,
+                    NumericOp::Le => NumericOp::Le,
+                    NumericOp::Eq => NumericOp::Eq,
+                    NumericOp::Ne => NumericOp::Ne,
+                },
+                value,
+            });
+        }
     }
 
     for p in byte_len_specs {
@@ -657,18 +725,20 @@ pub fn build_tests(
         let value = value_part.parse::<f64>().map_err(|_| {
             format!("invalid length value `{}` in `{}`", value_part, p.spec)
         })?;
-        tests.push(TestKind::ByteLenCmp {
-            fields: idxs,
-            op: match p.op {
-                NumericOp::Gt => NumericOp::Gt,
-                NumericOp::Ge => NumericOp::Ge,
-                NumericOp::Lt => NumericOp::Lt,
-                NumericOp::Le => NumericOp::Le,
-                NumericOp::Eq => NumericOp::Eq,
-                NumericOp::Ne => NumericOp::Ne,
-            },
-            value,
-        });
+        for idx in idxs {
+            tests.push(TestKind::ByteLenCmp {
+                fields: vec![idx],
+                op: match p.op {
+                    NumericOp::Gt => NumericOp::Gt,
+                    NumericOp::Ge => NumericOp::Ge,
+                    NumericOp::Lt => NumericOp::Lt,
+                    NumericOp::Le => NumericOp::Le,
+                    NumericOp::Eq => NumericOp::Eq,
+                    NumericOp::Ne => NumericOp::Ne,
+                },
+                value,
+            });
+        }
     }
 
     for p in numeric_prop_specs {
@@ -677,15 +747,17 @@ pub fn build_tests(
             header,
             delimiter,
         )?;
-        tests.push(TestKind::NumericPropTest {
-            fields: idxs,
-            prop: match p.prop {
-                NumericProp::IsNumeric => NumericProp::IsNumeric,
-                NumericProp::IsFinite => NumericProp::IsFinite,
-                NumericProp::IsNaN => NumericProp::IsNaN,
-                NumericProp::IsInfinity => NumericProp::IsInfinity,
-            },
-        });
+        for idx in idxs {
+            tests.push(TestKind::NumericPropTest {
+                fields: vec![idx],
+                prop: match p.prop {
+                    NumericProp::IsNumeric => NumericProp::IsNumeric,
+                    NumericProp::IsFinite => NumericProp::IsFinite,
+                    NumericProp::IsNaN => NumericProp::IsNaN,
+                    NumericProp::IsInfinity => NumericProp::IsInfinity,
+                },
+            });
+        }
     }
 
     for p in str_eq_specs {
@@ -696,17 +768,21 @@ pub fn build_tests(
             delimiter,
         )?;
         if p.negated {
-            tests.push(TestKind::StrNe {
-                fields: idxs,
-                value: value_part.to_string(),
-                case_insensitive: p.case_insensitive,
-            });
+            for idx in idxs {
+                tests.push(TestKind::StrNe {
+                    fields: vec![idx],
+                    value: value_part.clone(),
+                    case_insensitive: p.case_insensitive,
+                });
+            }
         } else {
-            tests.push(TestKind::StrEq {
-                fields: idxs,
-                value: value_part.to_string(),
-                case_insensitive: p.case_insensitive,
-            });
+            for idx in idxs {
+                tests.push(TestKind::StrEq {
+                    fields: vec![idx],
+                    value: value_part.clone(),
+                    case_insensitive: p.case_insensitive,
+                });
+            }
         }
     }
 
@@ -717,12 +793,14 @@ pub fn build_tests(
             header,
             delimiter,
         )?;
-        tests.push(TestKind::StrIn {
-            fields: idxs,
-            value: value_part.to_string(),
-            case_insensitive: p.case_insensitive,
-            negated: p.negated,
-        });
+        for idx in idxs {
+            tests.push(TestKind::StrIn {
+                fields: vec![idx],
+                value: value_part.clone(),
+                case_insensitive: p.case_insensitive,
+                negated: p.negated,
+            });
+        }
     }
 
     for p in regex_specs {
@@ -738,11 +816,13 @@ pub fn build_tests(
             Regex::new(&pattern)
         }
         .map_err(|e| format!("invalid regex `{}`: {}", pattern, e))?;
-        tests.push(TestKind::Regex {
-            fields: idxs,
-            regex,
-            negated: p.negated,
-        });
+        for idx in idxs {
+            tests.push(TestKind::Regex {
+                fields: vec![idx],
+                regex: regex.clone(),
+                negated: p.negated,
+            });
+        }
     }
 
     for p in ff_numeric_specs {
@@ -765,18 +845,26 @@ pub fn build_tests(
                 right_idxs.len()
             ));
         }
-        tests.push(TestKind::FieldFieldNumericCmp {
-            left_fields: left_idxs,
-            right_fields: right_idxs,
-            op: match p.op {
-                NumericOp::Gt => NumericOp::Gt,
-                NumericOp::Ge => NumericOp::Ge,
-                NumericOp::Lt => NumericOp::Lt,
-                NumericOp::Le => NumericOp::Le,
-                NumericOp::Eq => NumericOp::Eq,
-                NumericOp::Ne => NumericOp::Ne,
-            },
-        });
+        for (l, r) in left_idxs.iter().zip(right_idxs.iter()) {
+            if l == r {
+                return Err(format!(
+                    "Field1 and field2 must be different fields in `{}` (field {})",
+                    p.spec, l
+                ));
+            }
+            tests.push(TestKind::FieldFieldNumericCmp {
+                left_fields: vec![*l],
+                right_fields: vec![*r],
+                op: match p.op {
+                    NumericOp::Gt => NumericOp::Gt,
+                    NumericOp::Ge => NumericOp::Ge,
+                    NumericOp::Lt => NumericOp::Lt,
+                    NumericOp::Le => NumericOp::Le,
+                    NumericOp::Eq => NumericOp::Eq,
+                    NumericOp::Ne => NumericOp::Ne,
+                },
+            });
+        }
     }
 
     for p in ff_str_specs {
@@ -799,12 +887,20 @@ pub fn build_tests(
                 right_idxs.len()
             ));
         }
-        tests.push(TestKind::FieldFieldStrCmp {
-            left_fields: left_idxs,
-            right_fields: right_idxs,
-            case_insensitive: p.case_insensitive,
-            negated: p.negated,
-        });
+        for (l, r) in left_idxs.iter().zip(right_idxs.iter()) {
+            if l == r {
+                return Err(format!(
+                    "Field1 and field2 must be different fields in `{}` (field {})",
+                    p.spec, l
+                ));
+            }
+            tests.push(TestKind::FieldFieldStrCmp {
+                left_fields: vec![*l],
+                right_fields: vec![*r],
+                case_insensitive: p.case_insensitive,
+                negated: p.negated,
+            });
+        }
     }
 
     for p in ff_absdiff_specs {
@@ -838,16 +934,24 @@ pub fn build_tests(
         let value = value_part.parse::<f64>().map_err(|_| {
             format!("invalid numeric value `{}` in `{}`", value_part, p.spec)
         })?;
-        tests.push(TestKind::FieldFieldAbsDiffCmp {
-            left_fields: left_idxs,
-            right_fields: right_idxs,
-            op: match p.op {
-                NumericOp::Le => NumericOp::Le,
-                NumericOp::Gt => NumericOp::Gt,
-                _ => return Err("ff-absdiff only supports -le and -gt".to_string()),
-            },
-            value,
-        });
+        for (l, r) in left_idxs.iter().zip(right_idxs.iter()) {
+            if l == r {
+                return Err(format!(
+                    "Field1 and field2 must be different fields in `{}` (field {})",
+                    p.spec, l
+                ));
+            }
+            tests.push(TestKind::FieldFieldAbsDiffCmp {
+                left_fields: vec![*l],
+                right_fields: vec![*r],
+                op: match p.op {
+                    NumericOp::Le => NumericOp::Le,
+                    NumericOp::Gt => NumericOp::Gt,
+                    _ => return Err("ff-absdiff only supports -le and -gt".to_string()),
+                },
+                value,
+            });
+        }
     }
 
     for p in ff_reldiff_specs {
@@ -881,16 +985,24 @@ pub fn build_tests(
         let value = value_part.parse::<f64>().map_err(|_| {
             format!("invalid numeric value `{}` in `{}`", value_part, p.spec)
         })?;
-        tests.push(TestKind::FieldFieldRelDiffCmp {
-            left_fields: left_idxs,
-            right_fields: right_idxs,
-            op: match p.op {
-                NumericOp::Le => NumericOp::Le,
-                NumericOp::Gt => NumericOp::Gt,
-                _ => return Err("ff-reldiff only supports -le and -gt".to_string()),
-            },
-            value,
-        });
+        for (l, r) in left_idxs.iter().zip(right_idxs.iter()) {
+            if l == r {
+                return Err(format!(
+                    "Field1 and field2 must be different fields in `{}` (field {})",
+                    p.spec, l
+                ));
+            }
+            tests.push(TestKind::FieldFieldRelDiffCmp {
+                left_fields: vec![*l],
+                right_fields: vec![*r],
+                op: match p.op {
+                    NumericOp::Le => NumericOp::Le,
+                    NumericOp::Gt => NumericOp::Gt,
+                    _ => return Err("ff-reldiff only supports -le and -gt".to_string()),
+                },
+                value,
+            });
+        }
     }
 
     Ok(tests)
