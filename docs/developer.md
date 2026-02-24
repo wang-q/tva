@@ -72,6 +72,7 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 *   **`join`**: Inner/Left/Outer/Anti joins on specified keys.
 *   **`filter`**: Row filtering with numeric, string, regex, and date predicates.
 *   **`stats`**: Summary statistics (sum, mean, median, mode, etc.) with grouping.
+*   **`longer`**: Reshapes wide to long (pivot_longer). Supports column selection by index/name/wildcard. Requires a header row.
 
 ### Planned Features (Inspired by Datamash & R)
 
@@ -89,16 +90,7 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
             *   *Note*: This overlaps with `stats` but provides convenience for one-step pivoting.
             *   *Implementation*: Reuse `libs::stats::Aggregator` logic.
         *   `--fill`: Value to use for missing cells (default: empty or 0).
-*   **`longer` (Unpivot/Melt)**:
-    *   **Goal**: Reshape "wide" data to "long" format.
-    *   **Inspiration**: `tidyr::pivot_longer`.
-    *   **Design**:
-        *   `--cols`: Columns to unpivot (collapse into key-value pairs).
-        *   `--names-to`: Name of the new key column(s).
-        *   `--values-to`: Name of the new value column.
-        *   `--names-prefix`: Regex to remove matching text from the start of each variable name (e.g., remove "wk" from "wk1").
-        *   `--names-sep`: Separator to split column names into multiple `names-to` columns.
-        *   `--names-pattern`: Regex with groups to extract parts of column names into multiple `names-to` columns.
-        *   `--values-drop-na`: Drop rows where the value is empty/NA.
+*   **`longer` extensions**:
+    *   `--names-prefix`, `--names-sep`, `--names-pattern` for complex column name parsing (regex extraction).
 *   **Extended Statistics**:
     *   Add `q1` (25%), `q3` (75%), `iqr`, `skewness`, `kurtosis` to `stats`.

@@ -142,7 +142,7 @@ fn longer_output_order() -> anyhow::Result<()> {
         .arg("longer")
         .arg("tests/data/longer/input1.tsv")
         .arg("--cols")
-        .arg("2-3") // Only Q1 and Q2
+        .arg("2-3") // Melt Q1 and Q2, leaving Q3 as ID
         .output()?;
 
     let expected = "ID\tQ3\tname\tvalue\nA\t3\tQ1\t1\nA\t3\tQ2\t2\nB\t6\tQ1\t4\nB\t6\tQ2\t5\nC\t9\tQ1\t7\nC\t9\tQ2\t8\n";

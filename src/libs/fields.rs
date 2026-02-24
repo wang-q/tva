@@ -424,6 +424,7 @@ pub fn parse_field_list_with_header_preserve_order(
     Ok(indices)
 }
 
+#[derive(Clone)]
 pub struct Header {
     pub fields: Vec<String>,
     pub index_by_name: HashMap<String, usize>,

@@ -61,6 +61,9 @@ The design of `tva` follows the philosophy of the original `tsv-utils`:
 - **`sort`**: Sort TSV files (external sort for large files).
 - **`transpose`**: Transpose rows and columns.
 
+### Reshaping
+- **`longer`**: Reshape wide to long (unpivot). Requires a header row.
+
 ### Formatting & Utilities
 - **`from-csv`**: Convert CSV to TSV.
 - **`md`**: Convert TSV to Markdown table for display.
@@ -79,7 +82,7 @@ Most commands support selecting fields using a common syntax:
 - **Exclusion**: `--exclude 1,2` (select all except 1 and 2).
 
 ### Header Handling
-- **Flag**: Use `--header` or `-H` to indicate the input file has a header row.
+- **Flag**: Use `--header` or `-H` to indicate the input file has a header row. (Note: `longer` command assumes header by default).
 - **Output**: The header row is propagated to the output (unless explicitly suppressed by a command).
 - **Multi-File Behavior**: When processing multiple files with `--header`:
     - The first file defines the column names.
