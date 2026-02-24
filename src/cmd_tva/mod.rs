@@ -10,5 +10,6 @@ pub mod sample;
 pub mod select;
 pub mod sort;
 pub mod split;
+pub mod stats;
 pub mod transpose;
 pub mod uniq;

@@ -64,8 +64,8 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
 在 `tva` 中如果考虑分阶段迁移/重写，可以按目前进展和后续计划理解为：
 - 第一阶段（已完成部分）：从 `number-lines`、`keep-header` 这类“薄壳工具”入手，分别在 `tva` 中落地为 `nl`、`keep-header` 子命令，顺带打磨统一的 IO/字段处理基础设施；对于 `tsv-pretty`，当前由 `tva md` 在“表格美观展示”场景上部分接替其作用，暂不计划做 1:1 迁移。
 - 第二阶段（进行中）：逐步覆盖 `tsv-append`、`tsv-split`、`tsv-sample`、`tsv-uniq`、`tsv-select` 等中等复杂度工具；其中 `tsv-append` / `tsv-split` / `tsv-sample` / `tsv-select` 已分别在 `tva` 中落地为 `append` / `split` / `sample` / `select` 子命令，并配套 CLI/golden 测试；`tsv-uniq` 已在 `tva` 中落地为 `uniq` 子命令，已迁移一批上游 golden 测试并补充 tva 风格的错误处理测试；`tsv-join` 则在 `tva` 中以 `join` 子命令形式落地，当前已经覆盖单 key、多 key、header 感知、按列名/列号指定 join key 与追加字段、`--exclude` anti-join，以及 `--write-all` 左外连接等核心行为，并迁移了大部分上游 `tsv-join/tests/tests.sh` 中的基础与错误场景用例到 Rust CLI 测试（包含 line-buffered、空文件、非 TAB 分隔等场景）；同时在 `join`/`select`/`uniq`/`split`/`sample` 等子命令之间初步完成了字段语法、输入输出抽象与参数错误信息风格的统一，并通过 CLI 测试锁定了新的错误路径和边界行为。
-- 第三阶段（进行中）：已完成 `tsv-filter` 的核心功能迁移，落地为 `filter` 子命令，支持数值/字符串/正则/长度/空值等多种过滤条件及字段间比较，并通过了上游大部分 golden 测试；`tsv-summarize` 等统计工具仍在规划中。
-- 最后阶段（已启动规划）：在 `join` / `filter` 等核心工具对齐的基础上，进一步评估是否需要支持上游的高级特性，以及对剩余工具（如 `tsv-summarize`）的迁移策略。
+- 第三阶段（进行中）：已完成 `tsv-filter` 的核心功能迁移，落地为 `filter` 子命令，支持数值/字符串/正则/长度/空值等多种过滤条件及字段间比较，并通过了上游大部分 golden 测试；`tsv-summarize` 的迁移工作也已启动，落地为 `stats` 子命令（意为 statistics，涵盖汇总与统计语义）。
+- 最后阶段（已启动规划）：在 `join` / `filter` / `stats` 等核心工具对齐的基础上，进一步评估是否需要支持上游的高级特性。
 
 ### 2.2 上游测试资源与迁移策略
 
@@ -179,11 +179,11 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
 
 1. **子命令规划**
   - 可以参考 tsv-utils 的工具矩阵，逐步扩展 `tva` 的子命令：
-    - 过滤（类似 `tsv-filter`）
-    - 列选择（类似 `tsv-select`）
-    - 去重（当前已有 `uniq` 子命令，对标 `tsv-uniq` 的等价类模式）
-    - 汇总统计（类似 `tsv-summarize`）
-    - 拼接与拆分（类似 `tsv-append` / `tsv-split`）
+    - 过滤（`filter`，已对标 `tsv-filter`）
+    - 列选择（`select`，已对标 `tsv-select`）
+    - 去重（`uniq`，已对标 `tsv-uniq` 的等价类模式）
+    - 汇总统计（`stats`，对标 `tsv-summarize`）
+    - 拼接与拆分（`append` / `split`，已对标 `tsv-append` / `tsv-split`）
 
 2. **字段语法与命名**
    - 统一的字段语法（编号、名称、通配符）可以成为 `tva` 的长期目标。
@@ -221,7 +221,7 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
 6. **统一的 header 处理界面（tva 草案）**
    - 设计目标：
      - 所有“按行/列处理 TSV”的子命令在 header 上行为一致，可预期；
-     - 便于实现“按列名操作”的命令（select/join/append/summarize 等）；
+     - 便于实现“按列名操作”的命令（select/join/append/stats/summarize 等）；
      - 多输入时，对 header 的合并与校验有统一规则。
   - CLI 约定（对表格类子命令通用）：
      - `--header` / `-H`：输入有 header 行，第一行是列名；未显式指定时，默认视为“无 header”，所有行都是数据，只允许用列号（1-based），不允许用列名。
