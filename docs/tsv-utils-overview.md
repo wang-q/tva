@@ -64,7 +64,8 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
 在 `tva` 中如果考虑分阶段迁移/重写，可以按目前进展和后续计划理解为：
 - 第一阶段（已完成部分）：从 `number-lines`、`keep-header` 这类“薄壳工具”入手，分别在 `tva` 中落地为 `nl`、`keep-header` 子命令，顺带打磨统一的 IO/字段处理基础设施；对于 `tsv-pretty`，当前由 `tva md` 在“表格美观展示”场景上部分接替其作用，暂不计划做 1:1 迁移。
 - 第二阶段（进行中）：逐步覆盖 `tsv-append`、`tsv-split`、`tsv-sample`、`tsv-uniq`、`tsv-select` 等中等复杂度工具；其中 `tsv-append` / `tsv-split` / `tsv-sample` / `tsv-select` 已分别在 `tva` 中落地为 `append` / `split` / `sample` / `select` 子命令，并配套 CLI/golden 测试；`tsv-uniq` 已在 `tva` 中落地为 `uniq` 子命令，已迁移一批上游 golden 测试并补充 tva 风格的错误处理测试；`tsv-join` 则在 `tva` 中以 `join` 子命令形式落地，当前已经覆盖单 key、多 key、header 感知、按列名/列号指定 join key 与追加字段、`--exclude` anti-join，以及 `--write-all` 左外连接等核心行为，并迁移了大部分上游 `tsv-join/tests/tests.sh` 中的基础与错误场景用例到 Rust CLI 测试（包含 line-buffered、空文件、非 TAB 分隔等场景）；同时在 `join`/`select`/`uniq`/`split`/`sample` 等子命令之间初步完成了字段语法、输入输出抽象与参数错误信息风格的统一，并通过 CLI 测试锁定了新的错误路径和边界行为。
-- 最后阶段（已启动规划）：在 `join` 已基本对齐上游核心 join 模式的基础上，主要评估是否需要进一步支持上游 `tsv-join` 的高级特性（例如更完整的字段名通配符组合、复杂前缀/重命名策略等），以及在 `tva` 中对 `tsv-filter`、`tsv-summarize` 等“重量级”工具是做完整对标还是按需抽取部分能力。
+- 第三阶段（进行中）：已完成 `tsv-filter` 的核心功能迁移，落地为 `filter` 子命令，支持数值/字符串/正则/长度/空值等多种过滤条件及字段间比较，并通过了上游大部分 golden 测试；`tsv-summarize` 等统计工具仍在规划中。
+- 最后阶段（已启动规划）：在 `join` / `filter` 等核心工具对齐的基础上，进一步评估是否需要支持上游的高级特性，以及对剩余工具（如 `tsv-summarize`）的迁移策略。
 
 ### 2.2 上游测试资源与迁移策略
 
@@ -321,3 +322,19 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
   - 状态：已实现，作为 `tsv-split` 的 Rust 版本子命令，支持按行数拆分（`--lines-per-file/-l`）、纯随机拆分（`--num-files/-n`）以及按 key 随机拆分（`--num-files/-n` 配合 `--key-fields/-k`），并在 `--header-in-out/-H` 模式下将首行 header 写入所有输出文件。
   - 实现：复用 `libs::io::input_sources` 逐行流式读取输入；在行数模式下按固定数据行数轮换输出文件；在随机模式下通过 `RapidRng` 或基于 `rapidhash` 的 key 映射将每行分配到 `N` 个输出桶之一，输出文件名由 `--dir`、`--prefix`、`--suffix` 和 `--digit-width` 共同决定，默认拒绝覆盖已有文件，可通过 `--append/-a` 追加写入。
   - 测试：`tests/cli_split.rs` 中包含多组用例，覆盖按行数拆分、header 复制、多文件随机拆分在 `--static-seed` 下的可重复性，以及按 key 拆分时“同一 key 必然落在同一输出文件”的核心语义。
+- `join`：
+  - 状态：已实现，作为 `tsv-join` 的 Rust 版本子命令，用于将两个 TSV 文件按指定 key 列进行连接（inner join / left outer join / anti-join）。
+  - 实现：支持 `--header` / `-H` 自动识别列名，允许通过列名或列号指定 key 字段（`--key-fields` / `-k`）和追加字段（`--append-fields` / `-a`）；支持 `--exclude` 排除模式（即 anti-join，仅输出在第二个文件中未找到匹配 key 的行）；支持 `--write-all` 左外连接模式（输出所有主文件行，匹配不上的字段留空）；支持 `--prefix` 为追加字段添加前缀以避免列名冲突。
+  - 测试：`tests/cli_join.rs` 中包含大量测试用例，覆盖了单 key / 多 key 连接、header 合并、字段选择与重排、空文件处理以及各种错误场景（如 key 字段不存在、重复 key 等），确保了核心行为与上游一致。
+- `filter`：
+  - 状态：已实现，作为 `tsv-filter` 的 Rust 版本子命令，支持按字段进行数值比较、字符串比较、正则表达式匹配、字段长度检查、空值检查等多种过滤操作，所有条件默认为“与”（AND）关系。
+  - 实现：
+    - 数值比较：支持 `le`, `lt`, `ge`, `gt`, `eq`, `ne` 等操作符，自动解析字段值为数字进行比较。
+    - 字符串比较：支持 `str-eq`, `str-ne`, `str-in-fld`, `istr-in-fld` 等，支持忽略大小写（`i` 前缀）。
+    - 正则表达式：支持 `regex`, `iregex`, `not-regex`, `not-iregex`，基于 Rust `regex` crate 提供高性能匹配。
+    - 字段属性：支持 `is-numeric`, `is-finite`, `is-nan` 等检查。
+    - 长度检查：支持 `char-len-*`, `byte-len-*` 等针对字符数和字节数的长度过滤。
+    - 空值检查：支持 `empty`, `not-empty`, `blank`, `not-blank`。
+    - 字段间比较：支持 `ff-eq`, `ff-ne`, `ff-le` 等字段与字段之间的比较（field-to-field）。
+    - 逻辑控制：支持 `--or` 逻辑（待完善，当前实现主要为 AND 链），以及 `--invert` 反转整个过滤结果。
+  - 测试：`tests/cli_filter*.rs` 系列文件包含超过 300 个测试用例，全面覆盖了上述各类过滤器的行为，特别是针对数值解析、正则匹配、Unicode 字符串处理以及空字段/缺失字段等边界情况进行了严格验证；测试数据大量复用了上游 `tsv-filter` 的 golden test case。
