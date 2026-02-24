@@ -70,9 +70,9 @@ jobs:
 
       - name: Enable static CRT linkage
         run: |
-          mkdir .cargo
-          echo '[target.x86_64-pc-windows-msvc]' >> .cargo/config
-          echo 'rustflags = ["-Ctarget-feature=+crt-static"]' >> .cargo/config
+          New-Item -ItemType Directory -Force -Path .cargo
+          Set-Content -Path .cargo/config.toml -Value "[target.x86_64-pc-windows-msvc]"
+          Add-Content -Path .cargo/config.toml -Value "rustflags = ['-Ctarget-feature=+crt-static']"
       - name: Build
         run: cargo build --verbose --release
       - name: Create zip
