@@ -117,6 +117,230 @@ fn join_basic_line_buffered_header_filter_file() -> anyhow::Result<()> {
 }
 
 #[test]
+fn join_basic_line_buffered_noheader_filter_file() -> anyhow::Result<()> {
+    let mut cmd1 = cargo_bin_cmd!("tva");
+    let output1 = cmd1
+        .arg("join")
+        .arg("--filter-file")
+        .arg("tests/data/join/input1_noheader.tsv")
+        .arg("tests/data/join/input2_noheader.tsv")
+        .output()
+        .unwrap();
+
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output2 = cmd2
+        .arg("join")
+        .arg("--line-buffered")
+        .arg("--filter-file")
+        .arg("tests/data/join/input1_noheader.tsv")
+        .arg("tests/data/join/input2_noheader.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output1.status.success());
+    assert!(output2.status.success());
+
+    let stdout1 = String::from_utf8(output1.stdout).unwrap();
+    let stdout2 = String::from_utf8(output2.stdout).unwrap();
+
+    assert_eq!(stdout1, stdout2);
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_line_buffered_header_key_fields_1() -> anyhow::Result<()> {
+    let mut cmd1 = cargo_bin_cmd!("tva");
+    let output1 = cmd1
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("--key-fields")
+        .arg("1")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output2 = cmd2
+        .arg("join")
+        .arg("--line-buffered")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("--key-fields")
+        .arg("1")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output1.status.success());
+    assert!(output2.status.success());
+
+    let stdout1 = String::from_utf8(output1.stdout).unwrap();
+    let stdout2 = String::from_utf8(output2.stdout).unwrap();
+
+    assert_eq!(stdout1, stdout2);
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_line_buffered_noheader_key_fields_1() -> anyhow::Result<()> {
+    let mut cmd1 = cargo_bin_cmd!("tva");
+    let output1 = cmd1
+        .arg("join")
+        .arg("-f")
+        .arg("tests/data/join/input1_noheader.tsv")
+        .arg("--key-fields")
+        .arg("1")
+        .arg("tests/data/join/input2_noheader.tsv")
+        .output()
+        .unwrap();
+
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output2 = cmd2
+        .arg("join")
+        .arg("--line-buffered")
+        .arg("-f")
+        .arg("tests/data/join/input1_noheader.tsv")
+        .arg("--key-fields")
+        .arg("1")
+        .arg("tests/data/join/input2_noheader.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output1.status.success());
+    assert!(output2.status.success());
+
+    let stdout1 = String::from_utf8(output1.stdout).unwrap();
+    let stdout2 = String::from_utf8(output2.stdout).unwrap();
+
+    assert_eq!(stdout1, stdout2);
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_line_buffered_header_data_fields() -> anyhow::Result<()> {
+    let mut cmd1 = cargo_bin_cmd!("tva");
+    let output1 = cmd1
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("--data-fields")
+        .arg("2")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output2 = cmd2
+        .arg("join")
+        .arg("--line-buffered")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("--data-fields")
+        .arg("2")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output1.status.success());
+    assert!(output2.status.success());
+
+    let stdout1 = String::from_utf8(output1.stdout).unwrap();
+    let stdout2 = String::from_utf8(output2.stdout).unwrap();
+
+    assert_eq!(stdout1, stdout2);
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_line_buffered_header_allow_duplicate_keys_append() -> anyhow::Result<()> {
+    let mut cmd1 = cargo_bin_cmd!("tva");
+    let output1 = cmd1
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("-a")
+        .arg("5")
+        .arg("--allow-duplicate-keys")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output2 = cmd2
+        .arg("join")
+        .arg("--line-buffered")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("-a")
+        .arg("5")
+        .arg("--allow-duplicate-keys")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output1.status.success());
+    assert!(output2.status.success());
+
+    let stdout1 = String::from_utf8(output1.stdout).unwrap();
+    let stdout2 = String::from_utf8(output2.stdout).unwrap();
+
+    assert_eq!(stdout1, stdout2);
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_line_buffered_header_allow_duplicate_keys_append_whole_line() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--line-buffered")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("3")
+        .arg("-d")
+        .arg("2")
+        .arg("-a")
+        .arg("0")
+        .arg("--allow-duplicate-keys")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: field index must be >= 1 in `0`"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
 fn join_basic_inner_join_header_by_index() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
