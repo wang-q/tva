@@ -297,9 +297,7 @@ fn tsv_utils_test_advanced_stats_1() {
 #[test]
 fn tsv_utils_error_test_missing_file() {
     let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("stats")
-        .arg("--count")
-        .arg("no_such_file.tsv");
+    cmd.arg("stats").arg("--count").arg("no_such_file.tsv");
 
     cmd.assert()
         .failure()
@@ -360,7 +358,8 @@ fn tsv_utils_test_stdin_group_by() {
 #[test]
 fn tsv_utils_test_stdin_mixed_files() {
     let mut cmd = cargo_bin_cmd!("tva");
-    let input_b = std::fs::read("tests/data/stats/tsv-utils/input_5field_b.tsv").unwrap();
+    let input_b =
+        std::fs::read("tests/data/stats/tsv-utils/input_5field_b.tsv").unwrap();
 
     // cat input_5field_b.tsv | tva stats ... input_5field_a.tsv - input_5field_c.tsv
     cmd.arg("stats")
@@ -551,9 +550,7 @@ fn tsv_utils_test_empty_file() {
         .arg("--count")
         .arg("tests/data/stats/tsv-utils/empty_file.tsv");
 
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("0"));
+    cmd.assert().success().stdout(predicate::str::contains("0"));
 }
 
 #[test]
@@ -564,9 +561,7 @@ fn tsv_utils_test_header_only() {
         .arg("--count")
         .arg("tests/data/stats/tsv-utils/input_5field_header_only.tsv");
 
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("0"));
+    cmd.assert().success().stdout(predicate::str::contains("0"));
 }
 
 #[test]
@@ -634,9 +629,7 @@ fn tsv_utils_test_1field_no_header() {
         .arg("--count")
         .arg("tests/data/stats/tsv-utils/input_1field_a.tsv");
 
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("7"));
+    cmd.assert().success().stdout(predicate::str::contains("7"));
 }
 
 #[test]
@@ -646,9 +639,7 @@ fn tsv_utils_test_empty_file_no_header() {
         .arg("--count")
         .arg("tests/data/stats/tsv-utils/empty_file.tsv");
 
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("0"));
+    cmd.assert().success().stdout(predicate::str::contains("0"));
 }
 
 #[test]

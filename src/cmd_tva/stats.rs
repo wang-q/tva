@@ -1,9 +1,9 @@
+use crate::libs::fields;
+use crate::libs::io::reader;
+use crate::libs::stats::{Aggregator, OpKind, Operation};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::collections::HashMap;
 use std::io::BufRead;
-use crate::libs::io::reader;
-use crate::libs::fields;
-use crate::libs::stats::{OpKind, Operation, Aggregator};
 
 pub fn make_subcommand() -> Command {
     Command::new("stats")
@@ -133,68 +133,120 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     // Collect operations
     if let Some(indices) = matches.indices_of("sum") {
         for (i, val) in indices.zip(matches.get_many::<String>("sum").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::Sum, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::Sum,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("mean") {
         for (i, val) in indices.zip(matches.get_many::<String>("mean").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::Mean, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::Mean,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("min") {
         for (i, val) in indices.zip(matches.get_many::<String>("min").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::Min, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::Min,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("max") {
         for (i, val) in indices.zip(matches.get_many::<String>("max").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::Max, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::Max,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("median") {
         for (i, val) in indices.zip(matches.get_many::<String>("median").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::Median, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::Median,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("stdev") {
         for (i, val) in indices.zip(matches.get_many::<String>("stdev").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::Stdev, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::Stdev,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("variance") {
         for (i, val) in indices.zip(matches.get_many::<String>("variance").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::Variance, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::Variance,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("mad") {
         for (i, val) in indices.zip(matches.get_many::<String>("mad").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::Mad, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::Mad,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("first") {
         for (i, val) in indices.zip(matches.get_many::<String>("first").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::First, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::First,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("last") {
         for (i, val) in indices.zip(matches.get_many::<String>("last").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::Last, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::Last,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("nunique") {
         for (i, val) in indices.zip(matches.get_many::<String>("nunique").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::NUnique, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::NUnique,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
     if let Some(indices) = matches.indices_of("mode") {
         for (i, val) in indices.zip(matches.get_many::<String>("mode").unwrap()) {
-            op_configs.push(OpConfig { kind: OpKind::Mode, spec: Some(val.clone()), arg_index: i });
+            op_configs.push(OpConfig {
+                kind: OpKind::Mode,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
         }
     }
 
     // Handle count.
     if matches.get_flag("count") {
-        op_configs.push(OpConfig { kind: OpKind::Count, spec: None, arg_index: 0 });
+        op_configs.push(OpConfig {
+            kind: OpKind::Count,
+            spec: None,
+            arg_index: 0,
+        });
     }
 
     op_configs.sort_by_key(|c| c.arg_index);
@@ -224,17 +276,27 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     for config in &op_configs {
         match config.kind {
             OpKind::Count => {
-                ops.push(Operation { kind: OpKind::Count, field_idx: None });
+                ops.push(Operation {
+                    kind: OpKind::Count,
+                    field_idx: None,
+                });
                 output_headers.push("count".to_string());
             }
             _ => {
                 if let Some(spec) = &config.spec {
-                    let indices = fields::parse_field_list_with_header(spec, header.as_ref(), '\t')
-                        .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
+                    let indices = fields::parse_field_list_with_header(
+                        spec,
+                        header.as_ref(),
+                        '\t',
+                    )
+                    .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
 
                     for idx in indices {
                         let field_idx = idx - 1;
-                        ops.push(Operation { kind: config.kind.clone(), field_idx: Some(field_idx) });
+                        ops.push(Operation {
+                            kind: config.kind.clone(),
+                            field_idx: Some(field_idx),
+                        });
 
                         let suffix = match config.kind {
                             OpKind::Sum => "_sum",
@@ -352,7 +414,6 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             }
             println!();
         }
-
     } else {
         let mut aggregator = Aggregator::new();
 

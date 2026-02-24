@@ -69,7 +69,7 @@ impl Aggregator {
                     OpKind::Stdev | OpKind::Variance => {
                         sum_fields.push(idx);
                         sum_sq_fields.push(idx);
-                    },
+                    }
                     OpKind::Median | OpKind::Mad => value_fields.push(idx),
                     OpKind::First => first_fields.push(idx),
                     OpKind::Last => last_fields.push(idx),
@@ -78,24 +78,34 @@ impl Aggregator {
                 }
             }
         }
-        
-        sum_fields.sort_unstable(); sum_fields.dedup();
-        sum_sq_fields.sort_unstable(); sum_sq_fields.dedup();
-        value_fields.sort_unstable(); value_fields.dedup();
-        first_fields.sort_unstable(); first_fields.dedup();
-        last_fields.sort_unstable(); last_fields.dedup();
-        count_fields.sort_unstable(); count_fields.dedup();
+
+        sum_fields.sort_unstable();
+        sum_fields.dedup();
+        sum_sq_fields.sort_unstable();
+        sum_sq_fields.dedup();
+        value_fields.sort_unstable();
+        value_fields.dedup();
+        first_fields.sort_unstable();
+        first_fields.dedup();
+        last_fields.sort_unstable();
+        last_fields.dedup();
+        count_fields.sort_unstable();
+        count_fields.dedup();
 
         // Handle Sum/Mean/Stdev/Variance
         for idx in sum_fields {
-            if idx >= record.len() { continue; }
+            if idx >= record.len() {
+                continue;
+            }
             let val_bytes = record[idx];
-            if val_bytes.is_empty() { continue; }
+            if val_bytes.is_empty() {
+                continue;
+            }
             if let Ok(val_str) = std::str::from_utf8(val_bytes) {
                 if let Ok(val) = val_str.trim().parse::<f64>() {
                     *self.sums.entry(idx).or_insert(0.0) += val;
                     *self.field_counts.entry(idx).or_insert(0) += 1;
-                    
+
                     if sum_sq_fields.contains(&idx) {
                         *self.sum_sqs.entry(idx).or_insert(0.0) += val * val;
                     }
@@ -105,12 +115,16 @@ impl Aggregator {
 
         // Handle Median/Mad (store all values)
         for idx in value_fields {
-            if idx >= record.len() { continue; }
+            if idx >= record.len() {
+                continue;
+            }
             let val_bytes = record[idx];
-            if val_bytes.is_empty() { continue; }
+            if val_bytes.is_empty() {
+                continue;
+            }
             if let Ok(val_str) = std::str::from_utf8(val_bytes) {
                 if let Ok(val) = val_str.trim().parse::<f64>() {
-                     self.values.entry(idx).or_default().push(val);
+                    self.values.entry(idx).or_default().push(val);
                 }
             }
         }
@@ -129,7 +143,7 @@ impl Aggregator {
 
         // Handle Last
         for idx in last_fields {
-             if idx < record.len() {
+            if idx < record.len() {
                 let val = String::from_utf8_lossy(record[idx]).to_string();
                 self.lasts.insert(idx, val);
             } else {
@@ -141,29 +155,42 @@ impl Aggregator {
         for idx in count_fields {
             if idx < record.len() {
                 let val = String::from_utf8_lossy(record[idx]).to_string();
-                *self.value_counts.entry(idx).or_default().entry(val).or_insert(0) += 1;
+                *self
+                    .value_counts
+                    .entry(idx)
+                    .or_default()
+                    .entry(val)
+                    .or_insert(0) += 1;
             }
         }
 
         // Handle Min/Max
         for op in ops {
             if let Some(idx) = op.field_idx {
-                if idx >= record.len() { continue; }
+                if idx >= record.len() {
+                    continue;
+                }
                 let val_bytes = record[idx];
-                if val_bytes.is_empty() { continue; }
+                if val_bytes.is_empty() {
+                    continue;
+                }
 
                 if matches!(op.kind, OpKind::Min | OpKind::Max) {
                     if let Ok(val_str) = std::str::from_utf8(val_bytes) {
                         if let Ok(val) = val_str.trim().parse::<f64>() {
                             match op.kind {
                                 OpKind::Min => {
-                                    let entry = self.mins.entry(idx).or_insert(f64::INFINITY);
+                                    let entry =
+                                        self.mins.entry(idx).or_insert(f64::INFINITY);
                                     if val < *entry {
                                         *entry = val;
                                     }
                                 }
                                 OpKind::Max => {
-                                    let entry = self.maxs.entry(idx).or_insert(f64::NEG_INFINITY);
+                                    let entry = self
+                                        .maxs
+                                        .entry(idx)
+                                        .or_insert(f64::NEG_INFINITY);
                                     if val > *entry {
                                         *entry = val;
                                     }
@@ -176,7 +203,7 @@ impl Aggregator {
             }
         }
     }
-    
+
     pub fn format_results(&self, ops: &[Operation]) -> Vec<String> {
         let mut values = Vec::new();
         for op in ops {
@@ -211,7 +238,8 @@ impl Aggregator {
                 }
                 OpKind::Max => {
                     if let Some(idx) = op.field_idx {
-                        let val = self.maxs.get(&idx).copied().unwrap_or(f64::NEG_INFINITY);
+                        let val =
+                            self.maxs.get(&idx).copied().unwrap_or(f64::NEG_INFINITY);
                         if val == f64::NEG_INFINITY {
                             values.push("nan".to_string());
                         } else {
@@ -230,7 +258,11 @@ impl Aggregator {
                                     values.push(sorted_vals[len / 2].to_string());
                                 } else {
                                     let mid = len / 2;
-                                    values.push(((sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0).to_string());
+                                    values.push(
+                                        ((sorted_vals[mid - 1] + sorted_vals[mid])
+                                            / 2.0)
+                                            .to_string(),
+                                    );
                                 }
                             } else {
                                 values.push("nan".to_string());
@@ -245,9 +277,10 @@ impl Aggregator {
                         let sum = self.sums.get(&idx).copied().unwrap_or(0.0);
                         let sum_sq = self.sum_sqs.get(&idx).copied().unwrap_or(0.0);
                         let count = self.field_counts.get(&idx).copied().unwrap_or(0);
-                        
+
                         if count > 1 {
-                            let variance = (sum_sq - (sum * sum) / count as f64) / (count as f64 - 1.0);
+                            let variance = (sum_sq - (sum * sum) / count as f64)
+                                / (count as f64 - 1.0);
                             values.push(variance.sqrt().to_string());
                         } else {
                             values.push("nan".to_string());
@@ -259,9 +292,10 @@ impl Aggregator {
                         let sum = self.sums.get(&idx).copied().unwrap_or(0.0);
                         let sum_sq = self.sum_sqs.get(&idx).copied().unwrap_or(0.0);
                         let count = self.field_counts.get(&idx).copied().unwrap_or(0);
-                        
+
                         if count > 1 {
-                            let variance = (sum_sq - (sum * sum) / count as f64) / (count as f64 - 1.0);
+                            let variance = (sum_sq - (sum * sum) / count as f64)
+                                / (count as f64 - 1.0);
                             values.push(variance.to_string());
                         } else {
                             values.push("nan".to_string());
@@ -281,10 +315,11 @@ impl Aggregator {
                                     let mid = len / 2;
                                     (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0
                                 };
-                                
-                                let mut deviations: Vec<f64> = vals.iter().map(|v| (v - median).abs()).collect();
+
+                                let mut deviations: Vec<f64> =
+                                    vals.iter().map(|v| (v - median).abs()).collect();
                                 deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                                
+
                                 let mad = if len % 2 == 1 {
                                     deviations[len / 2]
                                 } else {
@@ -296,7 +331,7 @@ impl Aggregator {
                                 values.push("nan".to_string());
                             }
                         } else {
-                             values.push("nan".to_string());
+                            values.push("nan".to_string());
                         }
                     }
                 }
@@ -326,7 +361,8 @@ impl Aggregator {
                                 values.push("".to_string());
                             } else {
                                 // Sort by count desc, then by value asc
-                                let mut count_vec: Vec<(&String, &usize)> = counts.iter().collect();
+                                let mut count_vec: Vec<(&String, &usize)> =
+                                    counts.iter().collect();
                                 count_vec.sort_by(|a, b| {
                                     b.1.cmp(a.1).then_with(|| a.0.cmp(b.0))
                                 });
