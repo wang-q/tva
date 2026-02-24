@@ -28,6 +28,100 @@ fn wider_basic() -> anyhow::Result<()> {
 }
 
 #[test]
+fn wider_implicit_id_multi_col() -> anyhow::Result<()> {
+    // Ref: tidyr test "non-pivoted cols are preserved"
+    // If id-cols is not specified, all other cols are IDs.
+    let mut cmd = cargo_bin_cmd!("tva");
+    let mut file = tempfile::NamedTempFile::new()?;
+    use std::io::Write;
+    writeln!(file, "A\tB\tkey\tval")?;
+    writeln!(file, "1\tx\tk1\t10")?;
+    writeln!(file, "1\tx\tk2\t20")?;
+    writeln!(file, "2\ty\tk1\t30")?;
+    let path = file.path().to_str().unwrap();
+
+    let output = cmd
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("key")
+        .arg("--values-from")
+        .arg("val")
+        // No --id-cols, so A and B should be IDs
+        .output()?;
+
+    // Expected:
+    // A  B  k1  k2
+    // 1  x  10  20
+    // 2  y  30
+    let expected = "A\tB\tk1\tk2\n1\tx\t10\t20\n2\ty\t30\t\n";
+    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn wider_names_sort() -> anyhow::Result<()> {
+    // Ref: tidyr test "can sort column names"
+    let mut cmd = cargo_bin_cmd!("tva");
+    let mut file = tempfile::NamedTempFile::new()?;
+    use std::io::Write;
+    writeln!(file, "ID\tkey\tval")?;
+    writeln!(file, "1\tb\t2")?;
+    writeln!(file, "1\ta\t1")?;
+    writeln!(file, "1\tc\t3")?;
+    let path = file.path().to_str().unwrap();
+
+    let output = cmd
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("key")
+        .arg("--values-from")
+        .arg("val")
+        .arg("--names-sort") // Should sort a, b, c
+        .output()?;
+
+    let expected = "ID\ta\tb\tc\n1\t1\t2\t3\n";
+    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn wider_custom_fill_string() -> anyhow::Result<()> {
+    // Ref: tidyr test "can fill in missing cells"
+    let mut cmd = cargo_bin_cmd!("tva");
+    let mut file = tempfile::NamedTempFile::new()?;
+    use std::io::Write;
+    writeln!(file, "ID\tkey\tval")?;
+    writeln!(file, "1\ta\t1")?;
+    writeln!(file, "2\tb\t2")?;
+    let path = file.path().to_str().unwrap();
+
+    let output = cmd
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("key")
+        .arg("--values-from")
+        .arg("val")
+        .arg("--values-fill")
+        .arg("missing")
+        .arg("--names-sort")
+        .output()?;
+
+    // Expected:
+    // ID a       b
+    // 1  1       missing
+    // 2  missing 2
+    let expected = "ID\ta\tb\n1\t1\tmissing\n2\tmissing\t2\n";
+    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
 fn wider_missing_values() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let mut file = tempfile::NamedTempFile::new()?;
