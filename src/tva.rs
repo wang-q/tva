@@ -25,6 +25,7 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::nl::make_subcommand())
         .subcommand(cmd_tva::keep_header::make_subcommand())
         .subcommand(cmd_tva::longer::make_subcommand())
+        .subcommand(cmd_tva::wider::make_subcommand())
         .subcommand(cmd_tva::check::make_subcommand())
         .subcommand(cmd_tva::transpose::make_subcommand())
         .subcommand(cmd_tva::sort::make_subcommand())
@@ -39,7 +40,7 @@ fn main() -> anyhow::Result<()> {
 Tab-separated Values Assistant (tva): small toolbox for working with TSV files.
 
 Currently implemented subcommands:
-* Generic TSV: md, append, join, uniq, nl, transpose, sort, split, longer
+* Generic TSV: md, append, join, uniq, nl, transpose, sort, split, longer, wider
 * Table plumbing: keep-header, check
 * Ingestion: from-csv
 * Sampling: sample
@@ -66,6 +67,7 @@ Notes:
         Some(("nl", sub_matches)) => cmd_tva::nl::execute(sub_matches),
         Some(("keep-header", sub_matches)) => cmd_tva::keep_header::execute(sub_matches),
         Some(("longer", sub_matches)) => cmd_tva::longer::execute(sub_matches),
+        Some(("wider", sub_matches)) => cmd_tva::wider::execute(sub_matches),
         Some(("check", sub_matches)) => cmd_tva::check::execute(sub_matches),
         Some(("transpose", sub_matches)) => cmd_tva::transpose::execute(sub_matches),
         Some(("sort", sub_matches)) => cmd_tva::sort::execute(sub_matches),

@@ -65,6 +65,8 @@ The design of `tva` follows the philosophy of the original `tsv-utils`:
 See [Reshaping Documentation](docs/reshape.md).
 
 - **`longer`**: Reshape wide to long (unpivot). Requires a header row.
+- **`wider`**: Reshape long to wide (pivot).
+
 
 ### Formatting & Utilities
 - **`from-csv`**: Convert CSV to TSV.

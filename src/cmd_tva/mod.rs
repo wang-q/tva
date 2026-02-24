@@ -14,3 +14,4 @@ pub mod split;
 pub mod stats;
 pub mod transpose;
 pub mod uniq;
+pub mod wider;

@@ -123,6 +123,62 @@ tva longer data.tsv --cols "20*" --names-to year semester --names-sep "_"
 
 This splits `2020_1` into `2020` (year) and `1` (semester).
 
+## `wider` (Long to Wide)
+
+The `wider` command is the inverse of `longer`. It spreads a key-value pair across multiple columns. This is useful when an observation is scattered across multiple rows.
+
+### Basic Usage
+
+```bash
+tva wider [input_files...] --names-from <column> --values-from <column> [options]
+```
+
+*   **`--names-from`**: The column containing the new column names.
+*   **`--values-from`**: The column containing the new column values.
+*   **`--id-cols`**: (Optional) Columns that uniquely identify each row. If not specified, all columns except `names-from` and `values-from` are used.
+*   **`--values-fill`**: (Optional) Value to use for missing cells (default: empty).
+*   **`--names-sort`**: (Optional) Sort the new column names alphabetically.
+
+### Example: US Rent and Income
+
+Consider the dataset `docs/data/us_rent_income.tsv`:
+
+```tsv
+GEOID	NAME	variable	estimate	moe
+01	Alabama	income	24476	136
+01	Alabama	rent	747	3
+02	Alaska	income	32940	508
+02	Alaska	rent	1200	13
+```
+
+Here, `variable` contains the type of measurement (`income` or `rent`), and `estimate` contains the value. To make this easier to compare, we can widen the data:
+
+```bash
+tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estimate
+```
+
+Output:
+```tsv
+GEOID	NAME	income	rent
+01	Alabama	24476	747
+02	Alaska	32940	1200
+...
+```
+
+Note that `moe` (margin of error) is dropped in this operation because we didn't include it in `--id-cols` (it varies by row) or `--values-from`. If we wanted to keep it, we'd need to pivot it too or include it in ID cols (which would create separate rows if they differ). By default, `wider` uses all unspecified columns as ID columns. In this case `GEOID`, `NAME`, and `moe` would be ID columns. Since `moe` is unique to each `variable`, we'd get:
+
+```tsv
+GEOID	NAME	moe	income	rent
+01	Alabama	136	24476
+01	Alabama	3	 	747
+```
+
+This is likely not what we want. To drop `moe` and only use `GEOID` and `NAME` as identifiers:
+
+```bash
+tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estimate --id-cols GEOID,NAME
+```
+
 ## Detailed Options
 
 | Option | Description |

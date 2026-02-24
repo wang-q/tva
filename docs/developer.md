@@ -73,24 +73,10 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 *   **`filter`**: Row filtering with numeric, string, regex, and date predicates.
 *   **`stats`**: Summary statistics (sum, mean, median, mode, etc.) with grouping.
 *   **`longer`**: Reshapes wide to long (pivot_longer). Supports column selection by index/name/wildcard. Features: custom names for key/value columns (`--names-to`, `--values-to`), prefix stripping (`--names-prefix`), complex name parsing (`--names-sep`, `--names-pattern`), and NA dropping (`--values-drop-na`). Requires a header row.
+*   **`wider`**: Reshapes long to wide (pivot_wider). Supports single column for names and values. Features: explicit ID columns (`--id-cols`), missing value filling (`--values-fill`), and column name sorting (`--names-sort`).
 
 ### Planned Features (Inspired by Datamash & R)
 
-*   **`wider` (Pivot/Crosstab)**:
-    *   **Goal**: Reshape "long" data to "wide" format (pivot).
-    *   **Inspiration**: `tidyr::pivot_wider` (R) and `datamash crosstab`.
-    *   **Design**:
-        *   `--rows / -r`: Fields to group by (identifiers). Analogous to `tidyr`'s `id_cols`.
-        *   `--cols / -c`: Fields to pivot into column headers (`names_from`).
-        *   `--values / -v`: Fields to populate cells with (`values_from`).
-        *   `--names-prefix`: String to prepend to output column names.
-        *   `--names-sep`: Separator when joining multiple column names (default: "_").
-        *   `--names-sort`: Sort the resulting column headers.
-        *   `--op`: Aggregation function (count, sum, mean, first, last) when multiple rows match a cell.
-            *   *Note*: This overlaps with `stats` but provides convenience for one-step pivoting.
-            *   *Implementation*: Reuse `libs::stats::Aggregator` logic.
-        *   `--fill`: Value to use for missing cells (default: empty or 0).
-*   **`longer` extensions**:
-    *   (None planned)
 *   **Extended Statistics**:
+
     *   Add `q1` (25%), `q3` (75%), `iqr`, `skewness`, `kurtosis` to `stats`.
