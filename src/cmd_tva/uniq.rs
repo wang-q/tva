@@ -133,6 +133,11 @@ Examples:
         )
 }
 
+fn arg_error(msg: &str) -> ! {
+    eprintln!("tva uniq: {}", msg);
+    std::process::exit(1);
+}
+
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
@@ -151,11 +156,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut chars = delimiter_str.chars();
     let delimiter = chars.next().unwrap_or('\t');
     if chars.next().is_some() {
-        eprintln!(
-            "tva uniq: delimiter must be a single character, got `{}`",
+        arg_error(&format!(
+            "delimiter must be a single character, got `{}`",
             delimiter_str
-        );
-        std::process::exit(1);
+        ));
     }
 
     let ignore_case = args.get_flag("ignore-case");
@@ -184,19 +188,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     if !equiv_mode {
         if args.get_one::<String>("equiv-header").is_some() {
-            eprintln!("tva uniq: --equiv-header requires --equiv");
-            std::process::exit(1);
+            arg_error("--equiv-header requires --equiv");
         }
         if args.get_one::<String>("equiv-start").is_some() {
-            eprintln!("tva uniq: --equiv-start requires --equiv");
-            std::process::exit(1);
+            arg_error("--equiv-start requires --equiv");
         }
     }
 
     if !number_mode {
         if args.get_one::<String>("number-header").is_some() {
-            eprintln!("tva uniq: --number-header requires --number");
-            std::process::exit(1);
+            arg_error("--number-header requires --number");
         }
     }
 
@@ -250,8 +251,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             match parsed {
                                 Ok(v) => key_fields = Some(v),
                                 Err(e) => {
-                                    eprintln!("tva uniq: {}", e);
-                                    std::process::exit(1);
+                                arg_error(&e);
                                 }
                             }
                         }
@@ -294,8 +294,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         match parsed {
                             Ok(v) => key_fields = Some(v),
                             Err(e) => {
-                                eprintln!("tva uniq: {}", e);
-                                std::process::exit(1);
+                                arg_error(&e);
                             }
                         }
                     }

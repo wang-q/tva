@@ -131,6 +131,11 @@ Field syntax:
         )
 }
 
+fn arg_error(msg: &str) -> ! {
+    eprintln!("tva join: {}", msg);
+    std::process::exit(1);
+}
+
 fn parse_join_field_spec(
     spec_opt: Option<String>,
     header: Option<&crate::libs::fields::Header>,
@@ -142,10 +147,7 @@ fn parse_join_field_spec(
         return (true, None);
     }
     let indices = crate::libs::fields::parse_field_list_with_header(trimmed, header, delimiter)
-        .unwrap_or_else(|e| {
-            eprintln!("tva join: {}", e);
-            std::process::exit(1);
-        });
+        .unwrap_or_else(|e| arg_error(&e));
     (false, Some(indices))
 }
 
@@ -167,10 +169,7 @@ fn parse_append_field_spec(
         header,
         delimiter,
     )
-    .unwrap_or_else(|e| {
-        eprintln!("tva join: {}", e);
-        std::process::exit(1);
-    });
+    .unwrap_or_else(|e| arg_error(&e));
     if indices.is_empty() {
         None
     } else {
@@ -240,31 +239,26 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut chars = delimiter_str.chars();
     let delimiter = chars.next().unwrap_or('\t');
     if chars.next().is_some() {
-        eprintln!(
-            "tva join: delimiter must be a single character, got `{}`",
+        arg_error(&format!(
+            "delimiter must be a single character, got `{}`",
             delimiter_str
-        );
-        std::process::exit(1);
+        ));
     }
 
     if exclude && append_fields_spec.is_some() {
-        eprintln!("tva join: --exclude cannot be used with --append-fields");
-        std::process::exit(1);
+        arg_error("--exclude cannot be used with --append-fields");
     }
 
     if exclude && write_all_value.is_some() {
-        eprintln!("tva join: --write-all cannot be used with --exclude");
-        std::process::exit(1);
+        arg_error("--write-all cannot be used with --exclude");
     }
 
     if write_all_value.is_some() && append_fields_spec.is_none() {
-        eprintln!("tva join: --write-all requires --append-fields");
-        std::process::exit(1);
+        arg_error("--write-all requires --append-fields");
     }
 
     if filter_file == "-" && (infiles.len() == 1 && infiles[0] == "stdin") {
-        eprintln!("tva join: data file is required when filter-file is '-'");
-        std::process::exit(1);
+        arg_error("data file is required when filter-file is '-'");
     }
 
     let mut filter_reader = crate::libs::io::reader(&filter_file);
@@ -326,8 +320,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let prefix = args.get_one::<String>("prefix").cloned().unwrap_or_default();
 
     if !has_header && !prefix.is_empty() {
-        eprintln!("tva join: --prefix requires --header");
-        std::process::exit(1);
+        arg_error("--prefix requires --header");
     }
 
     for input in crate::libs::io::input_sources(&infiles) {

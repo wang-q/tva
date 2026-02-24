@@ -21,6 +21,16 @@ Modes:
   fields as a key so that all rows with the same key are written to the same
   output file.
 
+Key fields:
+- --key-fields/-k accepts a numeric field list using 1-based indices and
+  ranges (for example 1,3-5). The selected fields are concatenated to form
+  the key that controls random assignment.
+
+Field syntax:
+- See `tva --help-fields` for the shared field list syntax used across tva
+  commands. Note that tva split currently only accepts numeric indices for
+  --key-fields/-k; header names and wildcards are not yet supported here.
+
 Header behavior:
 - --header-in-out / -H
   Treats the first non-empty line of the input as a header. The header is not
@@ -68,7 +78,7 @@ Output:
                 .long("key-fields")
                 .short('k')
                 .num_args(1)
-                .help("Numeric field list used as key for random assignment by key"),
+                .help("Numeric field list (1-based, ranges allowed) used as key for random assignment by key"),
         )
         .arg(
             Arg::new("dir")
@@ -122,6 +132,11 @@ Output:
                 .value_parser(value_parser!(u64))
                 .help("Explicit 64-bit seed value (non-zero) for the random generator"),
         )
+}
+
+fn arg_error(msg: &str) -> ! {
+    eprintln!("tva split: {}", msg);
+    std::process::exit(1);
 }
 
 struct SplitOutput {
@@ -226,10 +241,9 @@ fn get_or_create_output<'a>(
     Ok(outputs.get_mut(&idx0).unwrap())
 }
 
-fn parse_key_fields(spec: &str) -> anyhow::Result<Vec<usize>> {
-    let indices = crate::libs::fields::parse_numeric_field_list(spec)
-        .map_err(|e| anyhow::anyhow!("tva split: {}", e))?;
-    Ok(indices)
+fn parse_key_fields(spec: &str) -> Vec<usize> {
+    crate::libs::fields::parse_numeric_field_list(spec)
+        .unwrap_or_else(|e| arg_error(&e))
 }
 
 fn key_bucket(line: &str, indices: &[usize], num_files: usize) -> usize {
@@ -278,25 +292,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let seed_value = args.get_one::<u64>("seed-value").cloned().unwrap_or(0);
 
     if lines_per_file == 0 && num_files == 0 {
-        eprintln!(
-            "tva split: either --lines-per-file/-l or --num-files/-n must be specified"
-        );
-        std::process::exit(1);
+        arg_error("either --lines-per-file/-l or --num-files/-n must be specified");
     }
 
     if lines_per_file > 0 && num_files > 0 {
-        eprintln!("tva split: --lines-per-file/-l cannot be used with --num-files/-n");
-        std::process::exit(1);
+        arg_error("--lines-per-file/-l cannot be used with --num-files/-n");
     }
 
     if lines_per_file > 0 && key_fields_spec.is_some() {
-        eprintln!("tva split: --key-fields/-k is only supported with --num-files/-n");
-        std::process::exit(1);
+        arg_error("--key-fields/-k is only supported with --num-files/-n");
     }
 
     if num_files == 0 && key_fields_spec.is_some() {
-        eprintln!("tva split: --key-fields/-k requires --num-files/-n");
-        std::process::exit(1);
+        arg_error("--key-fields/-k requires --num-files/-n");
     }
 
     let dir_path = PathBuf::from(&dir_str);
@@ -328,7 +336,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         if spec.trim().is_empty() {
             None
         } else {
-            Some(parse_key_fields(&spec)?)
+            Some(parse_key_fields(&spec))
         }
     } else {
         None

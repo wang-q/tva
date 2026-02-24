@@ -81,6 +81,11 @@ Output:
         )
 }
 
+fn arg_error(msg: &str) -> ! {
+    eprintln!("tva select: {}", msg);
+    std::process::exit(1);
+}
+
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
@@ -93,13 +98,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let exclude_spec: Option<String> = args.get_one::<String>("exclude").cloned();
 
     if fields_spec.is_none() && exclude_spec.is_none() {
-        eprintln!("tva select: one of --fields/-f or --exclude/-e is required");
-        std::process::exit(1);
+        arg_error("one of --fields/-f or --exclude/-e is required");
     }
 
     if fields_spec.is_some() && exclude_spec.is_some() {
-        eprintln!("tva select: --fields/-f and --exclude/-e cannot be used together");
-        std::process::exit(1);
+        arg_error("--fields/-f and --exclude/-e cannot be used together");
     }
 
     let has_header = args.get_flag("header");
@@ -111,11 +114,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut chars = delimiter_str.chars();
     let delimiter = chars.next().unwrap_or('\t');
     if chars.next().is_some() {
-        eprintln!(
-            "tva select: delimiter must be a single character, got `{}`",
+        arg_error(&format!(
+            "delimiter must be a single character, got `{}`",
             delimiter_str
-        );
-        std::process::exit(1);
+        ));
     }
 
     let mut header_written = false;

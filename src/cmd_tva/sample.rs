@@ -146,6 +146,11 @@ Random value printing:
         )
 }
 
+fn arg_error(msg: &str) -> ! {
+    eprintln!("tva sample: {}", msg);
+    std::process::exit(1);
+}
+
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
@@ -176,54 +181,43 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let replace = args.get_flag("replace");
 
     if num_opt > 0 && prob_opt.is_some() && key_fields.is_none() {
-        eprintln!("tva sample: --num/-n and --prob/-p cannot be used together");
-        std::process::exit(1);
+        arg_error("--num/-n and --prob/-p cannot be used together");
     }
 
     if replace && prob_opt.is_some() {
-        eprintln!("tva sample: --replace/-r cannot be used with --prob/-p");
-        std::process::exit(1);
+        arg_error("--replace/-r cannot be used with --prob/-p");
     }
 
     if replace && num_opt == 0 {
-        eprintln!("tva sample: --replace/-r requires --num/-n greater than 0");
-        std::process::exit(1);
+        arg_error("--replace/-r requires --num/-n greater than 0");
     }
 
     if inorder && (prob_opt.is_some() || replace || num_opt == 0) {
-        eprintln!(
-            "tva sample: --inorder/-i requires --num/-n without --replace/-r or --prob/-p"
-        );
-        std::process::exit(1);
+        arg_error("--inorder/-i requires --num/-n without --replace/-r or --prob/-p");
     }
 
     if weight_field.is_some() && prob_opt.is_some() {
-        eprintln!("tva sample: --weight-field/-w cannot be used with --prob/-p");
-        std::process::exit(1);
+        arg_error("--weight-field/-w cannot be used with --prob/-p");
     }
 
     if weight_field.is_some() && replace {
-        eprintln!("tva sample: --weight-field/-w cannot be used with --replace/-r");
-        std::process::exit(1);
+        arg_error("--weight-field/-w cannot be used with --replace/-r");
     }
 
     if key_fields.is_some() && prob_opt.is_none() {
-        eprintln!("tva sample: --key-fields/-k requires --prob/-p");
-        std::process::exit(1);
+        arg_error("--key-fields/-k requires --prob/-p");
     }
 
     if key_fields.is_some()
         && (num_opt > 0 || replace || weight_field.is_some() || inorder)
     {
-        eprintln!(
-            "tva sample: --key-fields/-k cannot be used with --num/-n, --replace/-r, --inorder/-i, or --weight-field/-w"
+        arg_error(
+            "--key-fields/-k cannot be used with --num/-n, --replace/-r, --inorder/-i, or --weight-field/-w",
         );
-        std::process::exit(1);
     }
 
     if print_random && gen_random_inorder {
-        eprintln!("tva sample: --print-random cannot be used with --gen-random-inorder");
-        std::process::exit(1);
+        arg_error("--print-random cannot be used with --gen-random-inorder");
     }
 
     if gen_random_inorder
@@ -234,24 +228,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             || key_fields.is_some()
             || inorder)
     {
-        eprintln!(
-            "tva sample: --gen-random-inorder cannot be combined with sampling options"
-        );
-        std::process::exit(1);
+        arg_error("--gen-random-inorder cannot be combined with sampling options");
     }
 
     if print_random && replace {
-        eprintln!("tva sample: --print-random is not supported with --replace/-r");
-        std::process::exit(1);
+        arg_error("--print-random is not supported with --replace/-r");
     }
 
     if let Some(p) = prob_opt {
         if !(p > 0.0 && p <= 1.0) {
-            eprintln!(
-                "tva sample: invalid --prob/-p value {} (must satisfy 0.0 < prob <= 1.0)",
+            arg_error(&format!(
+                "invalid --prob/-p value {} (must satisfy 0.0 < prob <= 1.0)",
                 p
-            );
-            std::process::exit(1);
+            ));
         }
     }
 
