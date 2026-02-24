@@ -18,29 +18,15 @@ It is designed for:
 
 ## Features & Design
 
-The design of `tva` follows the philosophy of the original `tsv-utils`:
+`tva` follows the **Unix philosophy** and is built for **speed** and **reliability**:
 
-1.  **Streaming & Unix-like**:
-    *   Tools prefer reading from stdin and writing to stdout.
-    *   Stateless where possible to support infinite streams and large files.
-    *   Designed for Unix pipelines.
+*   **Streaming & Unix-like**: Reads from stdin, writes to stdout, stateless, and pipe-friendly.
+*   **TSV-first**: Optimized for tab-separated data; no complex CSV escaping.
+*   **Header Aware**: Select fields by name (`--fields user_id`) or index, preserving headers automatically.
+*   **Fail-fast**: Strict error handling for data integrity (no silent truncation).
+*   **High Performance**: Single-pass processing with minimal allocation.
 
-2.  **TSV-first**:
-    *   Default separator is TAB.
-    *   Processing revolves around the "Row + Field" model.
-    *   CSV is treated as an import format (`from-csv`), but core logic is TSV-centric.
-
-3.  **Header Awareness & Flexible Selection**:
-    *   Most tools support `--header` / `-H` to handle the first row as column names.
-    *   Select fields by index (`1,3`), name (`user_id`), range (`1-5`), or wildcard (`*_id`).
-
-4.  **Explicit CLI & Fail-fast**:
-    *   Options should be explicit (no "magic" behavior).
-    *   Strict error handling: mismatched field counts or broken headers result in immediate error exit (stderr + non-zero status), rather than silent truncation.
-
-5.  **High Performance**:
-    *   Aim for single-pass processing.
-    *   Avoid unnecessary allocations and sorting.
+See [Design Documentation](docs/design.md) for details.
 
 ## Commands
 
@@ -60,7 +46,6 @@ See [Row Filtering Documentation](docs/filtering.md).
 - **`stats`**: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.
 - **`bin`**: Discretize numeric values into bins (useful for histograms).
 - **`uniq`**: Deduplicate rows or count unique occurrences (supports equivalence classes).
-- **`check`**: Validate TSV file structure (column counts, encoding).
 
 ### Reshaping
 See [Reshaping Documentation](docs/reshape.md).
@@ -84,6 +69,7 @@ See [Reshaping Documentation](docs/reshape.md).
 - **`reverse`**: Reverse the order of lines (like `tac`), with optional header preservation.
 
 ### Formatting & Utilities
+- **`check`**: Validate TSV file structure (column counts, encoding).
 - **`from-csv`**: Convert CSV to TSV.
 - **`md`**: Convert TSV to Markdown table for display.
 - **`nl`**: Add line numbers to rows.

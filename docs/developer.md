@@ -98,11 +98,18 @@ To help users get started quickly, we aim to provide dedicated documentation fil
     *   `select`: Column selection syntax (indices, names, wildcards, ranges).
     *   `slice`: Row selection by index/range.
     *   `sample`: Sampling methods (Bernoulli, Reservoir, Weighted).
+*   **`docs/design.md`** (Done):
+    *   Architecture: Why Rust? Why TSV?
+    *   Design: No escapes, performance, Unix compatibility.
+    *   Comparison: vs `tsv-utils`, `xsv`, `datamash`.
 *   **`docs/statistics.md`** (Planned):
     *   `stats`: Summary statistics and grouping.
     *   `bin`: Discretization for histograms.
     *   `uniq`: Deduplication and counting.
     *   `check`: Structure validation.
+*   **`docs/performance.md`** (Planned):
+    *   Benchmarks: vs `tsv-utils`, `xsv`, `awk`.
+    *   Methodology: Dataset descriptions and test cases.
 *   **`docs/transformation.md`** (Planned):
     *   `join`: Join operations (Inner/Left/Outer/Anti).
     *   `append`: Concatenation with header awareness.

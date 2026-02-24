@@ -45,10 +45,10 @@ Tab-separated Values Assistant (tva): small toolbox for working with TSV files.
 Currently implemented subcommands:
 * Selection & Sampling: select, slice, sample
 * Filtering: filter
-* Statistics & Summary: stats, bin, uniq, check
+* Statistics & Summary: stats, bin, uniq
 * Reshaping: longer, wider
 * Transformation & Combination: join, append, split, sort, transpose, reverse
-* Formatting & Utilities: from-csv, md, nl, keep-header
+* Formatting & Utilities: check, from-csv, md, nl, keep-header
 
 Notes:
 * Run `tva help <SUBCOMMAND>` for detailed usage
