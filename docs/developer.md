@@ -106,17 +106,19 @@ To help users get started quickly, we aim to provide dedicated documentation fil
     *   `stats`: Summary statistics and grouping.
     *   `bin`: Discretization for histograms.
     *   `uniq`: Deduplication and counting.
-    *   `check`: Structure validation.
-*   **`docs/performance.md`** (Planned):
-    *   Benchmarks: vs `tsv-utils`, `xsv`, `awk`.
-    *   Methodology: Dataset descriptions and test cases.
-*   **`docs/transformation.md`** (Planned):
+*   **`docs/ordering.md`** (Planned):
+    *   `sort`: External sort for large files.
+    *   `reverse`: Reverse the order of lines.
+    *   `transpose`: Transpose rows and columns.
+*   **`docs/combining.md`** (Planned):
     *   `join`: Join operations (Inner/Left/Outer/Anti).
     *   `append`: Concatenation with header awareness.
     *   `split`: Splitting files by count/key/random.
-    *   `sort`: External sort for large files.
-    *   `transpose`, `reverse`.
 *   **`docs/formatting.md`** (Planned):
+    *   `check`: Structure validation.
     *   `md`: Markdown conversion.
     *   `from-csv`: CSV import.
     *   `nl`, `keep-header`.
+*   **`docs/performance.md`** (Planned):
+    *   Benchmarks: vs `tsv-utils`, `xsv`, `awk`.
+    *   Methodology: Dataset descriptions and test cases.

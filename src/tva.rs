@@ -43,12 +43,13 @@ fn main() -> anyhow::Result<()> {
 Tab-separated Values Assistant (tva): small toolbox for working with TSV files.
 
 Currently implemented subcommands:
-* Selection & Sampling: select, slice, sample
+* Selection & Sampling: sample, select, slice
 * Filtering: filter
-* Statistics & Summary: stats, bin, uniq
+* Ordering: reverse, sort, transpose
+* Statistics & Summary: bin, stats, uniq
 * Reshaping: longer, wider
-* Transformation & Combination: join, append, split, sort, transpose, reverse
-* Formatting & Utilities: check, from-csv, md, nl, keep-header
+* Combining & Splitting: append, join, split
+* Formatting & Utilities: check, from-csv, keep-header, md, nl
 
 Notes:
 * Run `tva help <SUBCOMMAND>` for detailed usage

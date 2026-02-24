@@ -47,7 +47,14 @@ See [Row Filtering Documentation](docs/filtering.md).
 
 - **`filter`**: Filter rows based on numeric, string, regex, or date criteria.
 
+### Ordering
+- **`sort`**: Sort TSV files (external sort for large files).
+- **`reverse`**: Reverse the order of lines (like `tac`), with optional header preservation.
+- **`transpose`**: Transpose rows and columns.
+
 ### Statistics & Summary
+See [Statistics Documentation](docs/statistics.md).
+
 - **`stats`**: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.
 - **`bin`**: Discretize numeric values into bins (useful for histograms).
 - **`uniq`**: Deduplicate rows or count unique occurrences (supports equivalence classes).
@@ -65,13 +72,10 @@ See [Reshaping Documentation](docs/reshape.md).
 | **Goal** | Summarize to rows | Reshape to columns |
 | **Output** | Long / Tall | Wide / Matrix |
 
-### Transformation & Combination
+### Combining & Splitting
 - **`join`**: Join two files based on common keys (inner, left, outer, anti).
 - **`append`**: Concatenate multiple TSV files, handling headers correctly.
 - **`split`**: Split a file into multiple files (by size, key, or random).
-- **`sort`**: Sort TSV files (external sort for large files).
-- **`transpose`**: Transpose rows and columns.
-- **`reverse`**: Reverse the order of lines (like `tac`), with optional header preservation.
 
 ### Formatting & Utilities
 - **`check`**: Validate TSV file structure (column counts, encoding).
