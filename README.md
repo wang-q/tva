@@ -5,36 +5,92 @@ Fast, reliable TSV processing toolkit in Rust.
 
 [![Build](https://github.com/wang-q/tva/actions/workflows/build.yml/badge.svg)](https://github.com/wang-q/tva/actions)
 [![codecov](https://codecov.io/gh/wang-q/tva/branch/master/graph/badge.svg?token=8toyNHCsVU)](https://codecov.io/gh/wang-q/tva)
-[![license](https://img.shields.io/github/license/wang-q/tva)](https://github.com//wang-q/tva)
+[![license](https://img.shields.io/github/license/wang-q/tva)](https://github.com/wang-q/tva)
 
-## Synopsis
+## Overview
 
-### `tva help`
+`tva` is a high-performance command-line toolkit for processing tabular data (especially TSV files). It is inspired by [eBay's tsv-utils](https://github.com/eBay/tsv-utils) and built in Rust, designed for speed, safety, and modern tooling.
 
-```text
-tva: Tab-separated Values Assistant
+It is designed for:
+- Large files that are too big for Excel or Pandas but too small for distributed systems (Hadoop/Spark).
+- Command-line data pipelines (Unix philosophy).
+- Data exploration, cleaning, and transformation.
 
-Usage: tva [COMMAND]
+## Features & Design
 
-Commands:
-  md     Converts TSV file to markdown table
-  uniq   Deduplicates TSV rows from one or more files
-  nl     Adds line numbers to TSV rows
-  help   Print this message or the help of the given subcommand(s)
+The design of `tva` follows the philosophy of the original `tsv-utils`:
 
-Options:
-  -h, --help     Print help
-  -V, --version  Print version
+1.  **Streaming & Unix-like**:
+    *   Tools prefer reading from stdin and writing to stdout.
+    *   Stateless where possible to support infinite streams and large files.
+    *   Designed for Unix pipelines.
 
+2.  **TSV-first**:
+    *   Default separator is TAB.
+    *   Processing revolves around the "Row + Field" model.
+    *   CSV is treated as an import format (`from-csv`), but core logic is TSV-centric.
 
-Description:
-Tab-separated Values Assistant with subcommands for working with TSV files.
+3.  **Header Awareness & Flexible Selection**:
+    *   Most tools support `--header` / `-H` to handle the first row as column names.
+    *   Select fields by index (`1,3`), name (`user_id`), range (`1-5`), or wildcard (`*_id`).
 
-Subcommand groups:
-* Generic TSV: md, uniq, nl
+4.  **Explicit CLI & Fail-fast**:
+    *   Options should be explicit (no "magic" behavior).
+    *   Strict error handling: mismatched field counts or broken headers result in immediate error exit (stderr + non-zero status), rather than silent truncation.
 
-Notes:
-* Run `tva help <SUBCOMMAND>` for detailed usage
+5.  **High Performance**:
+    *   Aim for single-pass processing.
+    *   Avoid unnecessary allocations and sorting.
+
+## Commands
+
+### Filtering & Selection
+- **`filter`**: Filter rows based on numeric, string, regex, or date criteria.
+- **`select`**: Select, reorder, and rename columns.
+- **`sample`**: Randomly sample rows (Bernoulli, reservoir, weighted).
+
+### Statistics & Summary
+- **`stats`**: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.
+- **`uniq`**: Deduplicate rows or count unique occurrences (supports equivalence classes).
+- **`check`**: Validate TSV file structure (column counts, encoding).
+
+### Transformation & Combination
+- **`join`**: Join two files based on common keys (inner, left, outer, anti).
+- **`append`**: Concatenate multiple TSV files, handling headers correctly.
+- **`split`**: Split a file into multiple files (by size, key, or random).
+- **`sort`**: Sort TSV files (external sort for large files).
+- **`transpose`**: Transpose rows and columns.
+
+### Formatting & Utilities
+- **`from-csv`**: Convert CSV to TSV.
+- **`md`**: Convert TSV to Markdown table for display.
+- **`nl`**: Add line numbers to rows.
+- **`keep-header`**: Run a shell command on the body of a TSV file, preserving the header.
+
+## Common Options & Syntax
+
+### Field Selection
+Most commands support selecting fields using a common syntax:
+- **Index**: `1` (first column), `2` (second column).
+- **Range**: `1-3` (columns 1, 2, 3).
+- **List**: `1,3,5`.
+- **Name**: `user_id` (requires `--header`).
+- **Wildcard**: `user_*` (matches `user_id`, `user_name`, etc.).
+- **Exclusion**: `--exclude 1,2` (select all except 1 and 2).
+
+### Header Handling
+- **Flag**: Use `--header` or `-H` to indicate the input file has a header row.
+- **Output**: The header row is propagated to the output (unless explicitly suppressed by a command).
+- **Multi-File Behavior**: When processing multiple files with `--header`:
+    - The first file defines the column names.
+    - Headers in subsequent files are automatically skipped (assumed to match the first file).
+    - **Validation**: Field counts must be consistent; `tva` fails immediately on jagged rows.
+- **No Header**: Without this flag, the first row is treated as data. Field selection is limited to indices (no names).
+
+## Installation
+
+```bash
+cargo install --path .
 ```
 
 ## Examples
@@ -50,29 +106,6 @@ tva nl tests/genome/ctg.tsv
 
 ```
 
-## Help text style guide
-
-* **`about`**: Third-person singular, describing the TSV operation
-  (e.g., "Converts TSV to markdown table", "Deduplicates TSV rows").
-* **`after_help`**: Use raw string `r###"..."###`.
-    * **Description**: Short paragraph of what the subcommand does and its trade-offs.
-    * **Notes**: Bullet points starting with `*`.
-        * TSV input: `* Supports plain text and gzipped (.gz) TSV files`
-        * Stdin behavior:
-            * Single-input tools (e.g. `md`): `* Reads from stdin if input file is 'stdin' or no input file is given`
-            * Multi-input tools (e.g. `uniq`): `* Reads from stdin if no input file is given or if input file is 'stdin'`
-        * Memory-heavy tools (e.g. `uniq`): `* Keeps a hash for each unique row; does not count occurrences`
-    * **Examples**: Numbered list (`1.`, `2.`) with code blocks indented by 3 spaces.
-* **Arguments**:
-    * **Input**: `infile` (single) or `infiles` (multiple).
-        * Help (single): `Input TSV file to process (default: stdin).`
-        * Help (multiple): `Input TSV file(s) to process`.
-    * **Output**: `outfile` (`-o`, `--outfile`).
-        * Help: `Output filename. [stdout] for screen`.
-* **Terminology**:
-    * Prefer "TSV" when referring to files.
-    * Use "row" / "column" in help text where it makes sense.
-
 ## Author
 
 Qiang Wang <wang-q@outlook.com>
@@ -80,7 +113,4 @@ Qiang Wang <wang-q@outlook.com>
 ## License
 
 MIT.
-
 Copyright by Qiang Wang.
-
-Written by Qiang Wang <wang-q@outlook.com>, 2026-
