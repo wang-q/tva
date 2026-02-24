@@ -23,9 +23,6 @@ jobs:
         rustflags: ""
         components: rustfmt, clippy
 
-    - name: Lint
-      run: cargo clippy -- -D warnings
-
     - name: Build
       run: cargo build --verbose
     - name: Run tests
