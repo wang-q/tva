@@ -350,3 +350,87 @@ fn wider_datamash_scenarios() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn wider_aggregation_ops() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let mut file = tempfile::NamedTempFile::new()?;
+    use std::io::Write;
+    writeln!(file, "ID\tname\tval")?;
+    writeln!(file, "A\tX\t10")?;
+    writeln!(file, "A\tX\t20")?; // Duplicate A-X, values 10 and 20
+    writeln!(file, "B\tY\t5")?;
+    writeln!(file, "B\tY\t15")?; // Duplicate B-Y, values 5 and 15
+    writeln!(file, "C\tZ\t100")?;
+    let path = file.path().to_str().unwrap();
+
+    // 1. Test SUM
+    let output_sum = cmd
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("name")
+        .arg("--values-from")
+        .arg("val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("sum")
+        .output()?;
+
+    // Expected:
+    // ID X   Y   Z
+    // A  30  -   -
+    // B  -   20  -
+    // C  -   -   100
+    // (Actual formatting depends on column order, which is insertion order by default: X, Y, Z)
+    // Empty cells are empty string by default.
+    let expected_sum = "ID\tX\tY\tZ\nA\t30\t\t\nB\t\t20\t\nC\t\t\t100\n";
+    let stdout_sum = String::from_utf8(output_sum.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout_sum, expected_sum);
+
+    // 2. Test MEAN
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output_mean = cmd2
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("name")
+        .arg("--values-from")
+        .arg("val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("mean")
+        .output()?;
+    
+    // A: (10+20)/2 = 15
+    // B: (5+15)/2 = 10
+    // C: 100
+    let expected_mean = "ID\tX\tY\tZ\nA\t15\t\t\nB\t\t10\t\nC\t\t\t100\n";
+    let stdout_mean = String::from_utf8(output_mean.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout_mean, expected_mean);
+
+    // 3. Test COUNT (crosstab)
+    let mut cmd3 = cargo_bin_cmd!("tva");
+    let output_count = cmd3
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("name")
+        // No values-from needed for count
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("count")
+        .output()?;
+
+    // A: 2
+    // B: 2
+    // C: 1
+    let expected_count = "ID\tX\tY\tZ\nA\t2\t\t\nB\t\t2\t\nC\t\t\t1\n";
+    let stdout_count = String::from_utf8(output_count.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout_count, expected_count);
+
+    Ok(())
+}
