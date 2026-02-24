@@ -76,6 +76,7 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 *   **`wider`**: Reshapes long to wide (pivot_wider). Supports single column for names and values. Features: explicit ID columns (`--id-cols`), missing value filling (`--values-fill`), and column name sorting (`--names-sort`).
 *   **`reverse`**: Reverses the order of lines (like `tac`), with optional header preservation.
 *   **`bin`**: Discretizes numeric values into bins (for histograms). Supports custom width and alignment.
+*   **`slice`**: Slice rows by index (keep or drop), supports range selection and header preservation.
 
 ### Planned Features (Inspired by Datamash & R)
 
@@ -84,30 +85,31 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 *   **Fill Missing Values**:
     *   `fill`: Implements forward/backward fill and constant value fill for missing data.
 
-### Design: `slice`
+### Documentation Plan
 
-*   **Goal**: 灵活地切片/分页（按行号选择）和删除行，统一 `head`/`tail`/`sed` 的功能。
-*   **Usage**: `tva slice [options] [infiles]`
-*   **Options**:
-    *   `--rows` (`-r`): 指定要操作的行范围。支持多次指定。
-    *   `--invert` (`-v`): 反转选择逻辑。
-        *   不加 `-v` (Keep Mode): 仅保留 `-r` 选中的行（Whitelist）。
-        *   加 `-v` (Drop Mode): 删除 `-r` 选中的行（Blacklist）。
-    *   `--header` (`-H`): 始终保留第一行作为表头输出。
-        *   **Keep Mode**: 即使第一行不在 `-r` 范围内，也会强制输出。
-        *   **Drop Mode**: 即使第一行在 `-r` 范围内（如 `-r 1-5`），也会强制保留（不被删除）。
-*   **Range Syntax**:
-    *   `N`: 单行 (e.g., `5`)
-    *   `N-M`: 闭区间 (e.g., `5-10`)
-    *   `N-`: 从 N 开始到结束 (e.g., `5-`)
-    *   `-M`: 从开始到 M (e.g., `-5`, 等同于 `1-5`)
-*   **Examples**:
-    *   **Keep (Slicing)**:
-        *   `tva slice -r 10-20 file.tsv`: 仅输出第 10 到 20 行。
-        *   `tva slice -r 1-5 -r 10-15 file.tsv`: 输出第 1-5 行和第 10-15 行。
-    *   **Drop (Excluding)**:
-        *   `tva slice -r 5 -v file.tsv`: 删除第 5 行。
-        *   `tva slice -r 1-5 -v file.tsv`: 删除前 5 行。
-    *   **Header Preservation**:
-        *   `tva slice -H -r 100-110 file.tsv`: 输出表头 + 第 100 到 110 行（分页预览）。
-        *   `tva slice -H -r 1-10 -v file.tsv`: 删除前 10 行数据，但保留表头（即删除第 2-10 行，保留第 1 行）。
+To help users get started quickly, we aim to provide dedicated documentation files for related groups of commands, similar to `docs/reshape.md`.
+
+*   **`docs/reshape.md`** (Done):
+    *   `longer`: Wide to long reshaping.
+    *   `wider`: Long to wide reshaping (pivot).
+*   **`docs/filtering.md`** (Done):
+    *   `filter`: Row filtering syntax (numeric, string, regex, date).
+*   **`docs/selection.md`** (Done):
+    *   `select`: Column selection syntax (indices, names, wildcards, ranges).
+    *   `slice`: Row selection by index/range.
+    *   `sample`: Sampling methods (Bernoulli, Reservoir, Weighted).
+*   **`docs/statistics.md`** (Planned):
+    *   `stats`: Summary statistics and grouping.
+    *   `bin`: Discretization for histograms.
+    *   `uniq`: Deduplication and counting.
+    *   `check`: Structure validation.
+*   **`docs/transformation.md`** (Planned):
+    *   `join`: Join operations (Inner/Left/Outer/Anti).
+    *   `append`: Concatenation with header awareness.
+    *   `split`: Splitting files by count/key/random.
+    *   `sort`: External sort for large files.
+    *   `transpose`, `reverse`.
+*   **`docs/formatting.md`** (Planned):
+    *   `md`: Markdown conversion.
+    *   `from-csv`: CSV import.
+    *   `nl`, `keep-header`.

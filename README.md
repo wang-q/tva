@@ -4,7 +4,7 @@ Tab-separated Values Assistant.
 Fast, reliable TSV processing toolkit in Rust.
 
 [![Build](https://github.com/wang-q/tva/actions/workflows/build.yml/badge.svg)](https://github.com/wang-q/tva/actions)
-[![codecov](https://codecov.io/gh/wang-q/tva/branch/master/graph/badge.svg?token=8toyNHCsVU)](https://codecov.io/gh/wang-q/tva)
+[![codecov](https://codecov.io/gh/wang-q/tva/branch/master/graph/badge.svg)](https://codecov.io/gh/wang-q/tva)
 [![license](https://img.shields.io/github/license/wang-q/tva)](https://github.com/wang-q/tva)
 
 ## Overview
@@ -44,24 +44,23 @@ The design of `tva` follows the philosophy of the original `tsv-utils`:
 
 ## Commands
 
-### Filtering & Selection
-- **`filter`**: Filter rows based on numeric, string, regex, or date criteria.
+### Selection & Sampling
+See [Selection & Sampling Documentation](docs/selection.md).
+
 - **`select`**: Select, reorder, and rename columns.
+- **`slice`**: Slice rows by index (keep or drop). Supports multiple ranges and header preservation.
 - **`sample`**: Randomly sample rows (Bernoulli, reservoir, weighted).
+
+### Filtering
+See [Row Filtering Documentation](docs/filtering.md).
+
+- **`filter`**: Filter rows based on numeric, string, regex, or date criteria.
 
 ### Statistics & Summary
 - **`stats`**: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.
 - **`bin`**: Discretize numeric values into bins (useful for histograms).
 - **`uniq`**: Deduplicate rows or count unique occurrences (supports equivalence classes).
 - **`check`**: Validate TSV file structure (column counts, encoding).
-
-### Transformation & Combination
-- **`join`**: Join two files based on common keys (inner, left, outer, anti).
-- **`append`**: Concatenate multiple TSV files, handling headers correctly.
-- **`split`**: Split a file into multiple files (by size, key, or random).
-- **`sort`**: Sort TSV files (external sort for large files).
-- **`transpose`**: Transpose rows and columns.
-- **`reverse`**: Reverse the order of lines (like `tac`), with optional header preservation.
 
 ### Reshaping
 See [Reshaping Documentation](docs/reshape.md).
@@ -75,6 +74,14 @@ See [Reshaping Documentation](docs/reshape.md).
 | :--- | :--- | :--- |
 | **Goal** | Summarize to rows | Reshape to columns |
 | **Output** | Long / Tall | Wide / Matrix |
+
+### Transformation & Combination
+- **`join`**: Join two files based on common keys (inner, left, outer, anti).
+- **`append`**: Concatenate multiple TSV files, handling headers correctly.
+- **`split`**: Split a file into multiple files (by size, key, or random).
+- **`sort`**: Sort TSV files (external sort for large files).
+- **`transpose`**: Transpose rows and columns.
+- **`reverse`**: Reverse the order of lines (like `tac`), with optional header preservation.
 
 ### Formatting & Utilities
 - **`from-csv`**: Convert CSV to TSV.
