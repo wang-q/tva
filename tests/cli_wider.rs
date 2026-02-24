@@ -113,7 +113,7 @@ fn wider_multi_file_error() -> anyhow::Result<()> {
     use std::io::Write;
     writeln!(file1, "ID\tname\tvalue")?;
     writeln!(file1, "A\tcost\t10")?;
-    
+
     let mut file2 = tempfile::NamedTempFile::new()?;
     // Only 2 columns, but first file had 3
     writeln!(file2, "ID\tvalue")?;
@@ -160,5 +160,100 @@ fn wider_preserve_space() -> anyhow::Result<()> {
     let expected = "ID\tcost\nA\t \n";
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn wider_datamash_scenarios() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+
+    // Scenario 1: Unsorted input with duplicates (mirrors Datamash in2/out2_last_unsorted)
+    // datamash: crosstab 1,2 last 3
+    // tva: wider --names-from 2 --values-from 3 --id-cols 1
+    let mut file1 = tempfile::NamedTempFile::new()?;
+    use std::io::Write;
+    writeln!(file1, "a\tx\t1")?;
+    writeln!(file1, "a\ty\t2")?;
+    writeln!(file1, "a\tx\t3")?;
+    let path1 = file1.path().to_str().unwrap();
+
+    let output1 = cmd
+        .arg("wider")
+        .arg(path1)
+        .arg("--names-from")
+        .arg("2")
+        .arg("--values-from")
+        .arg("3")
+        .arg("--id-cols")
+        .arg("1")
+        .output()?;
+
+    // Expected: a, x=3 (last wins), y=2
+    // tva outputs ID column name first (which is "a" from the header? wait, input has headers?)
+    // Datamash example inputs usually don't have headers unless --header-in is used.
+    // But tva ALWAYS expects headers.
+    // So if I feed the raw datamash input "a\tx\t1" as line 1, tva will treat "a", "x", "1" as HEADERS.
+    // I need to add a header line for tva tests.
+
+    // Retrying Scenario 1 with header
+    let mut file1_h = tempfile::NamedTempFile::new()?;
+    writeln!(file1_h, "ID\tKey\tVal")?;
+    writeln!(file1_h, "a\tx\t1")?;
+    writeln!(file1_h, "a\ty\t2")?;
+    writeln!(file1_h, "a\tx\t3")?;
+    let path1_h = file1_h.path().to_str().unwrap();
+
+    let mut cmd1 = cargo_bin_cmd!("tva");
+    let output1 = cmd1
+        .arg("wider")
+        .arg(path1_h)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .output()?;
+
+    // Expected: ID  x  y
+    //           a   3  2
+    // Note: Column order of x/y depends on appearance order if not sorted.
+    // x appears first (line 2), y appears second (line 3).
+    // So x then y.
+    let expected1 = "ID\tx\ty\na\t3\t2\n";
+    let stdout1 = String::from_utf8(output1.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout1, expected1);
+
+
+    // Scenario 2: Missing values with custom filler (mirrors Datamash in3/out3_xx)
+    // datamash: --filler XX crosstab 1,2 first 3
+    let mut file2 = tempfile::NamedTempFile::new()?;
+    writeln!(file2, "ID\tKey\tVal")?;
+    writeln!(file2, "a\tx\t1")?;
+    writeln!(file2, "a\ty\t2")?;
+    writeln!(file2, "b\tx\t3")?;
+    let path2 = file2.path().to_str().unwrap();
+
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output2 = cmd2
+        .arg("wider")
+        .arg(path2)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--values-fill")
+        .arg("XX")
+        .output()?;
+
+    // Expected: ID x y
+    //           a  1 2
+    //           b  3 XX
+    let expected2 = "ID\tx\ty\na\t1\t2\nb\t3\tXX\n";
+    let stdout2 = String::from_utf8(output2.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout2, expected2);
+
     Ok(())
 }
