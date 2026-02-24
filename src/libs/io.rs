@@ -7,16 +7,22 @@
 //!
 //! Reading all non-empty lines from a file:
 //!
-//! ```no_run
+//! ```
+//! use std::io::Write;
 //! use tva::libs::io::read_lines;
+//! use tempfile::NamedTempFile;
 //!
-//! let lines = read_lines("data.tsv");
+//! let mut file = NamedTempFile::new().unwrap();
+//! writeln!(file, "line1").unwrap();
+//! let path = file.path().to_str().unwrap();
+//!
+//! let lines = read_lines(path);
 //! assert!(!lines.is_empty());
 //! ```
 //!
 //! Creating a writer to stdout:
 //!
-//! ```no_run
+//! ```
 //! use std::io::Write;
 //! use tva::libs::io::writer;
 //!
@@ -42,6 +48,27 @@ pub struct InputSource {
     pub reader: Box<dyn BufRead>,
 }
 
+/// Opens a file or stdin for reading.
+///
+/// If `input` is "stdin" or "-", it reads from standard input.
+/// If the file extension is ".gz", it transparently decompresses the content.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::{Read, Write};
+/// use tva::libs::io::reader;
+/// use tempfile::NamedTempFile;
+///
+/// let mut file = NamedTempFile::new().unwrap();
+/// writeln!(file, "hello").unwrap();
+/// let path = file.path().to_str().unwrap();
+///
+/// let mut r = reader(path);
+/// let mut s = String::new();
+/// r.read_to_string(&mut s).unwrap();
+/// assert!(s.contains("hello"));
+/// ```
 pub fn reader(input: &str) -> Box<dyn BufRead> {
     let reader: Box<dyn BufRead> = if is_stdin_name(input) {
         Box::new(BufReader::new(io::stdin()))
@@ -65,6 +92,26 @@ pub fn reader(input: &str) -> Box<dyn BufRead> {
     reader
 }
 
+/// Creates a list of input sources from filenames.
+///
+/// Each `InputSource` contains the filename, a flag indicating if it is stdin,
+/// and a `BufRead` reader for the content.
+///
+/// # Examples
+///
+/// ```
+/// use tva::libs::io::input_sources;
+/// use tempfile::NamedTempFile;
+///
+/// let file1 = NamedTempFile::new().unwrap();
+/// let file2 = NamedTempFile::new().unwrap();
+/// let inputs = vec![
+///     file1.path().to_str().unwrap().to_string(),
+///     file2.path().to_str().unwrap().to_string()
+/// ];
+/// let sources = input_sources(&inputs);
+/// assert_eq!(sources.len(), 2);
+/// ```
 pub fn input_sources(infiles: &[String]) -> Vec<InputSource> {
     infiles
         .iter()
@@ -80,6 +127,24 @@ pub fn input_sources(infiles: &[String]) -> Vec<InputSource> {
         .collect()
 }
 
+/// Checks if the input contains any non-empty line.
+///
+/// Returns `Ok(true)` if at least one line with non-whitespace characters is found.
+/// It reads lines from the beginning until a non-empty line is found or EOF is reached.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::Write;
+/// use tva::libs::io::has_nonempty_line;
+/// use tempfile::NamedTempFile;
+///
+/// let mut file = NamedTempFile::new().unwrap();
+/// writeln!(file, "content").unwrap();
+/// let path = file.path().to_str().unwrap();
+///
+/// assert!(has_nonempty_line(path).unwrap());
+/// ```
 pub fn has_nonempty_line(input: &str) -> io::Result<bool> {
     let mut reader = reader(input);
     let mut buf = String::new();
@@ -97,6 +162,26 @@ pub fn has_nonempty_line(input: &str) -> io::Result<bool> {
     }
 }
 
+/// Reads all lines from a file into a vector of strings.
+///
+/// It reads the entire file content into memory and splits it by lines.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::Write;
+/// use tva::libs::io::read_lines;
+/// use tempfile::NamedTempFile;
+///
+/// let mut file = NamedTempFile::new().unwrap();
+/// writeln!(file, "line1").unwrap();
+/// writeln!(file, "line2").unwrap();
+/// let path = file.path().to_str().unwrap();
+///
+/// let lines = read_lines(path);
+/// assert_eq!(lines.len(), 2);
+/// assert_eq!(lines[0], "line1");
+/// ```
 pub fn read_lines(input: &str) -> Vec<String> {
     let mut reader = reader(input);
     let mut s = String::new();
@@ -107,6 +192,26 @@ pub fn read_lines(input: &str) -> Vec<String> {
     s.lines().map(|s| s.to_string()).collect::<Vec<String>>()
 }
 
+/// Reads tab-separated key-values replacement pairs from a file.
+///
+/// Each line is treated as a record. The first field is the key, and subsequent fields are values.
+/// Returns a map where the key maps to a vector of values.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::Write;
+/// use tva::libs::io::read_replaces;
+/// use tempfile::NamedTempFile;
+///
+/// let mut file = NamedTempFile::new().unwrap();
+/// writeln!(file, "key1\tval1\tval2").unwrap();
+/// let path = file.path().to_str().unwrap();
+///
+/// let replaces = read_replaces(path);
+/// assert!(replaces.contains_key("key1"));
+/// assert_eq!(replaces["key1"], vec!["val1", "val2"]);
+/// ```
 pub fn read_replaces(input: &str) -> BTreeMap<String, Vec<String>> {
     let mut replaces: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
@@ -124,6 +229,29 @@ pub fn read_replaces(input: &str) -> BTreeMap<String, Vec<String>> {
     replaces
 }
 
+/// Opens a file or stdout for writing.
+///
+/// If `output` is "stdout", it writes to standard output.
+/// Returns a boxed writer that implements `Write`.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::Write;
+/// use tva::libs::io::writer;
+/// use tempfile::NamedTempFile;
+///
+/// let file = NamedTempFile::new().unwrap();
+/// let path = file.path().to_str().unwrap();
+///
+/// {
+///     let mut w = writer(path);
+///     writeln!(w, "result").unwrap();
+/// }
+/// // Verify content
+/// let content = std::fs::read_to_string(path).unwrap();
+/// assert!(content.contains("result"));
+/// ```
 pub fn writer(output: &str) -> Box<dyn Write> {
     let writer: Box<dyn Write> = if output == "stdout" {
         Box::new(BufWriter::new(io::stdout()))
