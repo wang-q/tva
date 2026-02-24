@@ -247,7 +247,7 @@ fn from_csv_gz_matches_plain_csv() -> anyhow::Result<()> {
     let mut cmd_plain = cargo_bin_cmd!("tva");
     let output_plain = cmd_plain
         .arg("from-csv")
-        .arg("qsv-16.1.0/resources/test/boston311-100.csv")
+        .arg("tests/data/from_csv/boston311-100.csv")
         .output()
         .unwrap();
 
@@ -259,7 +259,7 @@ fn from_csv_gz_matches_plain_csv() -> anyhow::Result<()> {
     let mut cmd_gz = cargo_bin_cmd!("tva");
     let output_gz = cmd_gz
         .arg("from-csv")
-        .arg("qsv-16.1.0/resources/test/boston311-100.csv.gz")
+        .arg("tests/data/from_csv/boston311-100.csv.gz")
         .output()
         .unwrap();
 
