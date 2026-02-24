@@ -1,6 +1,18 @@
 # Reshaping Documentation
 
-This document explains how to use the reshaping commands in `tva`: **`longer`** and (planned) **`wider`**. These commands are inspired by the `pivot_longer()` and `pivot_wider()` functions from the R package `tidyr`.
+This document explains how to use the reshaping commands in `tva`: **`longer`** and **`wider`**. These commands are inspired by the `pivot_longer()` and `pivot_wider()` functions from the R package `tidyr`.
+
+## Introduction
+
+Data is often described as "long" or "wide":
+
+*   **Long data**: Has more rows and fewer columns. This format is typically "tidy" and easier for analysis, where each row is an observation and each column is a variable.
+*   **Wide data**: Has more columns and fewer rows. This format is often better for data entry or presentation (e.g., a spreadsheet with years as columns).
+
+`tva` provides tools to switch between these formats:
+
+*   **`longer`**: Reshapes "wide" data into a "long" format.
+*   **`wider`**: Reshapes "long" data into a "wide" format.
 
 ## `longer` (Wide to Long)
 
@@ -125,7 +137,7 @@ This splits `2020_1` into `2020` (year) and `1` (semester).
 
 ## `wider` (Long to Wide)
 
-The `wider` command is the inverse of `longer`. It spreads a key-value pair across multiple columns. This is useful when an observation is scattered across multiple rows.
+The `wider` command is the inverse of `longer`. It spreads a key-value pair across multiple columns, increasing the number of columns and decreasing the number of rows. This is useful for creating summary tables or reshaping data for tools that expect a matrix-like format.
 
 ### Basic Usage
 
@@ -139,7 +151,7 @@ tva wider [input_files...] --names-from <column> --values-from <column> [options
 *   **`--values-fill`**: (Optional) Value to use for missing cells (default: empty).
 *   **`--names-sort`**: (Optional) Sort the new column names alphabetically.
 
-### Example: US Rent and Income
+### Example 1: US Rent and Income
 
 Consider the dataset `docs/data/us_rent_income.tsv`:
 
@@ -165,33 +177,126 @@ GEOID	NAME	income	rent
 ...
 ```
 
-Note that `moe` (margin of error) is dropped in this operation because we didn't include it in `--id-cols` (it varies by row) or `--values-from`. If we wanted to keep it, we'd need to pivot it too or include it in ID cols (which would create separate rows if they differ). By default, `wider` uses all unspecified columns as ID columns. In this case `GEOID`, `NAME`, and `moe` would be ID columns. Since `moe` is unique to each `variable`, we'd get:
+**Understanding ID Columns**:
+By default, `wider` uses all columns *except* `names-from` and `values-from` as ID columns. In this example, `GEOID`, `NAME`, and `moe` are treated as IDs.
+However, `moe` (margin of error) is different for each row (it depends on the variable). If we include it as an ID, we might get multiple rows for the same state if we're not careful.
+In this specific case, since `moe` is unique to the `variable`/`estimate` pair, `wider` handles it, but typically you might want to exclude such columns if they aren't part of the identifier.
 
-```tsv
-GEOID	NAME	moe	income	rent
-01	Alabama	136	24476
-01	Alabama	3	 	747
-```
-
-This is likely not what we want. To drop `moe` and only use `GEOID` and `NAME` as identifiers:
+To explicitly specify that only `GEOID` and `NAME` identify a row (and drop `moe`):
 
 ```bash
 tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estimate --id-cols GEOID,NAME
 ```
 
+### Example 2: Capture-Recapture Data (Filling Missing Values)
+
+The `docs/data/fish_encounters.tsv` dataset describes when fish were detected by monitoring stations. Some fish are seen at some stations but not others.
+
+```tsv
+fish	station	seen
+4842	Release	1
+4842	I80_1	1
+4842	Lisbon	1
+4843	Release	1
+4843	I80_1	1
+4844	Release	1
+```
+
+If we widen this by `station`, we will have missing values for stations where a fish wasn't seen. We can use **`--values-fill`** to fill these gaps with `0`.
+
+```bash
+tva wider docs/data/fish_encounters.tsv --names-from station --values-from seen --values-fill 0
+```
+
+Output:
+```tsv
+fish	Release	I80_1	Lisbon
+4842	1	1	1
+4843	1	1	0
+4844	1	0	0
+```
+
+Without `--values-fill 0`, the missing cells would be empty strings (default).
+
+## Complex Reshaping: Longer then Wider
+
+Sometimes data requires multiple steps to be fully tidy. A common pattern is to make data longer to fix column headers, and then wider to separate variables.
+
+Consider the `docs/data/world_bank_pop.tsv` dataset (a subset):
+
+```tsv
+country	indicator	2000	2001
+ABW	SP.URB.TOTL	42444	43048
+ABW	SP.URB.GROW	1.18	1.41
+AFG	SP.URB.TOTL	4436311	4648139
+AFG	SP.URB.GROW	3.91	4.66
+```
+
+Here, years are in columns (needs `longer`) and variables are in the `indicator` column (needs `wider`). We can pipe `tva` commands to solve this:
+
+```bash
+tva longer docs/data/world_bank_pop.tsv --cols 3-4 --names-to year --values-to value | \
+tva wider --names-from indicator --values-from value
+```
+
+1.  **`longer`**: Reshapes years (cols 3-4) into `year` and `value`.
+2.  **`wider`**: Takes the stream, uses `indicator` for new column names, and fills them with `value`. `country` and `year` automatically become ID columns.
+
+Output:
+```tsv
+country	year	SP.URB.TOTL	SP.URB.GROW
+ABW	2000	42444	1.18
+ABW	2001	43048	1.41
+AFG	2000	4436311	3.91
+AFG	2001	4648139	4.66
+```
+
+## Handling Duplicates (Aggregation)
+
+When widening data, you might encounter multiple rows for the same ID and name combination.
+
+*   **`tidyr`**: Often creates list-columns or requires an aggregation function (`values_fn`).
+*   **`tva`**: Currently **overwrites** previous values with the **last observed value**. It does not support aggregation (like `mean` or `sum`) during the reshape process.
+
+Example using `docs/data/warpbreaks.tsv`:
+```tsv
+wool	tension	breaks
+A	L	26
+A	L	30
+A	L	54
+...
+```
+
+If we widen by `wool` (using `tension` as ID):
+```bash
+tva wider docs/data/warpbreaks.tsv --names-from wool --values-from breaks
+```
+
+For `tension=L` and `wool=A`, there are three values (26, 30, 54). `tva` will use **54** (the last one).
+
+```tsv
+tension	A	B
+L	54	18
+M	29	21
+H	24	28
+```
+
+> **Note**: If your data has duplicates that you want to aggregate (e.g., sum them), you should aggregate the data *before* using `tva wider` (e.g., using `tva agg` if available, or other tools like `awk` or `datamash`).
+
 ## Detailed Options
 
 | Option | Description |
 | :--- | :--- |
-| `--cols <cols>` | **Required.** Columns to include in the reshape. Supports indices (`1`, `1-3`), names (`year`), and wildcards (`wk*`). |
-| `--names-to <names...>` | Name(s) for the new key column(s). Default: `name`. |
-| `--values-to <name>` | Name for the new value column. Default: `value`. |
-| `--values-drop-na` | If set, omits rows where the value cell is empty. |
-| `--names-prefix <str>` | Removes the specified string from the beginning of reshaped column names. |
-| `--names-sep <char>` | Splits column names into multiple columns using a separator character. |
-| `--names-pattern <regex>` | Uses a regular expression with capture groups to extract multiple columns from column names. |
+| `--cols <cols>` | **(Longer Only)** Columns to reshape. Supports indices (`1`, `1-3`), names (`year`), and wildcards (`wk*`). |
+| `--names-to <names...>` | **(Longer Only)** Name(s) for the new key column(s). |
+| `--values-to <name>` | **(Longer Only)** Name for the new value column. |
+| `--names-from <col>` | **(Wider Only)** Column for new headers. |
+| `--values-from <col>` | **(Wider Only)** Column for new values. |
+| `--id-cols <cols>` | **(Wider Only)** Columns identifying rows. |
+| `--values-fill <str>` | **(Wider Only)** Fill value for missing cells. |
+| `--names-sort` | **(Wider Only)** Sort new column headers. |
 
-## Comparison with R `tidyr::pivot_longer`
+## Comparison with R `tidyr`
 
 | Feature | `tidyr::pivot_longer` | `tva longer` |
 | :--- | :--- | :--- |
@@ -200,7 +305,16 @@ tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estim
 | Prefix removal | `names_prefix` | `--names-prefix` |
 | Separator split | `names_sep` | `--names-sep` |
 | Regex extraction | `names_pattern` | `--names-pattern` |
-| Type conversion | `names_transform` | Not supported (use separate tool) |
-| Multiple values | `.value` sentinel | Not directly supported |
 
-`tva longer` brings the power of tidy data reshaping to the command line, allowing for efficient processing of large TSV files without loading them entirely into memory.
+| Feature | `tidyr::pivot_wider` | `tva wider` |
+| :--- | :--- | :--- |
+| Basic pivoting | `names_from`, `values_from` | Supported |
+| ID columns | `id_cols` (default: all others) | `--id-cols` (default: all others) |
+| Fill missing | `values_fill` | `--values-fill` |
+| Sort columns | `names_sort` | `--names-sort` |
+| Aggregation | `values_fn` | Not supported (last value wins) |
+| Multiple values | `values_from = c(a, b)` | Not supported (single column only) |
+| Multiple names | `names_from = c(a, b)` | Not supported (single column only) |
+| Implicit missing | `names_expand`, `id_expand` | Not supported |
+
+`tva` brings the power of tidy data reshaping to the command line, allowing for efficient processing of large TSV files without loading them entirely into memory.
