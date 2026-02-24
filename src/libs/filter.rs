@@ -647,6 +647,9 @@ pub fn build_tests(
             header,
             delimiter,
         )?;
+        if idxs.is_empty() {
+            return Err(format!("field list cannot be empty in `{}`", p.spec));
+        }
         let value = value_part.parse::<f64>().map_err(|_| {
             format!("invalid numeric value `{}` in `{}`", value_part, p.spec)
         })?;
