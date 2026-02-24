@@ -51,6 +51,7 @@ The design of `tva` follows the philosophy of the original `tsv-utils`:
 
 ### Statistics & Summary
 - **`stats`**: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.
+- **`bin`**: Discretize numeric values into bins (useful for histograms).
 - **`uniq`**: Deduplicate rows or count unique occurrences (supports equivalence classes).
 - **`check`**: Validate TSV file structure (column counts, encoding).
 
@@ -60,6 +61,7 @@ The design of `tva` follows the philosophy of the original `tsv-utils`:
 - **`split`**: Split a file into multiple files (by size, key, or random).
 - **`sort`**: Sort TSV files (external sort for large files).
 - **`transpose`**: Transpose rows and columns.
+- **`reverse`**: Reverse the order of lines (like `tac`), with optional header preservation.
 
 ### Reshaping
 See [Reshaping Documentation](docs/reshape.md).

@@ -74,9 +74,11 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 *   **`stats`**: Summary statistics (sum, mean, median, mode, etc.) with grouping.
 *   **`longer`**: Reshapes wide to long (pivot_longer). Supports column selection by index/name/wildcard. Features: custom names for key/value columns (`--names-to`, `--values-to`), prefix stripping (`--names-prefix`), complex name parsing (`--names-sep`, `--names-pattern`), and NA dropping (`--values-drop-na`). Requires a header row.
 *   **`wider`**: Reshapes long to wide (pivot_wider). Supports single column for names and values. Features: explicit ID columns (`--id-cols`), missing value filling (`--values-fill`), and column name sorting (`--names-sort`).
+*   **`reverse`**: Reverses the order of lines (like `tac`), with optional header preservation.
+*   **`bin`**: Discretizes numeric values into bins (for histograms). Supports custom width and alignment.
 
 ### Planned Features (Inspired by Datamash & R)
 
 *   **Extended Statistics**:
-
     *   Add `q1` (25%), `q3` (75%), `iqr`, `skewness`, `kurtosis` to `stats`.
+
