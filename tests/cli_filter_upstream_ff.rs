@@ -933,7 +933,7 @@ fn upstream_ff_str_ne_3_4() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_ff_str_eq_F3_4() -> anyhow::Result<()> {
+fn upstream_ff_str_eq_f3_4() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -955,7 +955,7 @@ fn upstream_ff_str_eq_F3_4() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_ff_str_ne_F3_4() -> anyhow::Result<()> {
+fn upstream_ff_str_ne_f3_4() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -1043,7 +1043,7 @@ fn upstream_ff_istr_ne_3_4() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_ff_istr_eq_F3_4() -> anyhow::Result<()> {
+fn upstream_ff_istr_eq_f3_4() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -1072,7 +1072,7 @@ fn upstream_ff_istr_eq_F3_4() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_ff_istr_ne_F3_4() -> anyhow::Result<()> {
+fn upstream_ff_istr_ne_f3_4() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")

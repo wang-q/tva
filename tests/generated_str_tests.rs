@@ -204,7 +204,7 @@ fn upstream_str_eq_abc_7() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_str_eq_ABC_8() -> anyhow::Result<()> {
+fn upstream_str_eq_abc_8() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -412,7 +412,7 @@ fn upstream_str_gt_b_15() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_istr_eq_ABC_16() -> anyhow::Result<()> {
+fn upstream_istr_eq_abc_16() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -437,7 +437,7 @@ fn upstream_istr_eq_ABC_16() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_istr_eq_aBc_17() -> anyhow::Result<()> {
+fn upstream_istr_eq_abc_17() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -462,7 +462,7 @@ fn upstream_istr_eq_aBc_17() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_istr_eq_SSC_18() -> anyhow::Result<()> {
+fn upstream_istr_eq_ssc_18() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -548,7 +548,7 @@ fn upstream_istr_eq_21() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_istr_eq_C_22() -> anyhow::Result<()> {
+fn upstream_istr_eq_c_22() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -570,7 +570,7 @@ fn upstream_istr_eq_C_22() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_istr_ne_ABC_23() -> anyhow::Result<()> {
+fn upstream_istr_ne_abc_23() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -600,7 +600,7 @@ fn upstream_istr_ne_ABC_23() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_istr_ne_SSC_24() -> anyhow::Result<()> {
+fn upstream_istr_ne_ssc_24() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -658,7 +658,7 @@ fn upstream_str_eq_abc_25() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_str_eq_ABC_26() -> anyhow::Result<()> {
+fn upstream_str_eq_abc_26() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -866,7 +866,7 @@ fn upstream_str_gt_b_33() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_istr_eq_aBc_34() -> anyhow::Result<()> {
+fn upstream_istr_eq_abc_34() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -891,7 +891,7 @@ fn upstream_istr_eq_aBc_34() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_istr_eq_C_35() -> anyhow::Result<()> {
+fn upstream_istr_eq_c_35() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -913,7 +913,7 @@ fn upstream_istr_eq_C_35() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_istr_ne_SSC_36() -> anyhow::Result<()> {
+fn upstream_istr_ne_ssc_36() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -991,7 +991,7 @@ fn upstream_istr_eq_abc_input4_38() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_istr_eq_ABC_input4_39() -> anyhow::Result<()> {
+fn upstream_istr_eq_abc_input4_39() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -1034,7 +1034,7 @@ fn upstream_str_eq_a_40() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_str_eq_ABC_noheader_41() -> anyhow::Result<()> {
+fn upstream_str_eq_abc_noheader_41() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")

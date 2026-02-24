@@ -1,6 +1,4 @@
-    assert_eq!(stdout, expected);
-    Ok(())
-}
+use assert_cmd::cargo::cargo_bin_cmd;
 
 #[test]
 fn upstream_iregex_4_abc() -> anyhow::Result<()> {

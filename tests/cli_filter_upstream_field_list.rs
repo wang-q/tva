@@ -157,7 +157,7 @@ fn upstream_field_list_str_not_in_fld_2_3_ab() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_field_list_or_istr_eq_2_3_abc() -> anyhow::Result<()> {
+fn upstream_field_list_or_istr_eq_2_3_abc_upper() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -181,7 +181,7 @@ fn upstream_field_list_or_istr_eq_2_3_abc() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_field_list_or_istr_eq_2_3_ABC() -> anyhow::Result<()> {
+fn upstream_field_list_or_istr_eq_2_3_abc() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")

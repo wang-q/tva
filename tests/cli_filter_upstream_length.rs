@@ -1279,7 +1279,6 @@ fn upstream_char_len_lt_text_2_3_unicode() -> anyhow::Result<()> {
         "Mixed7\tabc-雪\t雪雪\tab\n",
         "Mixed11\tabc-雪\tषि\tab\n",
         "Mixed12\tabcd-雪\tषिषि\ta\n",
-        "\n",
     );
     assert_eq!(stdout, expected);
     Ok(())

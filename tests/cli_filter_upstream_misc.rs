@@ -1,5 +1,4 @@
 use assert_cmd::cargo::cargo_bin_cmd;
-use std::process::Command;
 
 #[test]
 fn upstream_no_header_str_in_fld_2_2() -> anyhow::Result<()> {
@@ -180,7 +179,7 @@ fn upstream_no_header_eq_1_100_empty_3() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_no_header_str_eq_4_ABC() -> anyhow::Result<()> {
+fn upstream_no_header_str_eq_4_abc() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -218,7 +217,7 @@ fn upstream_no_header_str_eq_3_beta() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_no_header_regex_4_Asc_C() -> anyhow::Result<()> {
+fn upstream_no_header_regex_4_asc_c() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
@@ -237,7 +236,7 @@ fn upstream_no_header_regex_4_Asc_C() -> anyhow::Result<()> {
 }
 
 #[test]
-fn upstream_no_header_regex_4_A_bB_C() -> anyhow::Result<()> {
+fn upstream_no_header_regex_4_a_b_b_c() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
         .arg("filter")
