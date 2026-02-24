@@ -876,3 +876,383 @@ fn upstream_invert_ff_ne() {
     let expected = "F1\tF2\tF3\tF4\n1\t1.0\ta\tA\n2\t2.\tb\tB\n100\t100\tabc\tAbC\n0\t0.0\tz\tAzB\n-2\t-2.0\tß\tss\n100\t100\t\tAbC\n100\t100\tabc\t\n";
     assert_eq!(stdout, expected);
 }
+
+#[test]
+fn upstream_ff_str_eq_3_4() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--ff-str-eq")
+        .arg("3:4")
+        .arg("tests/data/filter/input1.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1\tF2\tF3\tF4\n",
+        "-1\t-0.1\tabc def\tabc def\n",
+        "100\t101\t\t\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_ff_str_ne_3_4() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--ff-str-ne")
+        .arg("3:4")
+        .arg("tests/data/filter/input1.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1\tF2\tF3\tF4\n",
+        "1\t1.0\ta\tA\n",
+        "2\t2.\tb\tB\n",
+        "10\t10.1\tabc\tABC\n",
+        "100\t100\tabc\tAbC\n",
+        "0\t0.0\tz\tAzB\n",
+        "-2\t-2.0\tß\tss\n",
+        "0.\t100.\tàbc\tÀBC\n",
+        "0.0\t100.0\tàßc\tÀssC\n",
+        "-0.0\t-100.0\tàßc\tÀSSC\n",
+        "100\t100\t\tAbC\n",
+        "100\t100\tabc\t\n",
+        "100\t102\tabc\tAbC\n",
+        "100\t103\tabc\tAbC\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_ff_str_eq_F3_4() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--ff-str-eq")
+        .arg("F3:4")
+        .arg("tests/data/filter/input1.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1\tF2\tF3\tF4\n",
+        "-1\t-0.1\tabc def\tabc def\n",
+        "100\t101\t\t\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_ff_str_ne_F3_4() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--ff-str-ne")
+        .arg("F3:4")
+        .arg("tests/data/filter/input1.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1\tF2\tF3\tF4\n",
+        "1\t1.0\ta\tA\n",
+        "2\t2.\tb\tB\n",
+        "10\t10.1\tabc\tABC\n",
+        "100\t100\tabc\tAbC\n",
+        "0\t0.0\tz\tAzB\n",
+        "-2\t-2.0\tß\tss\n",
+        "0.\t100.\tàbc\tÀBC\n",
+        "0.0\t100.0\tàßc\tÀssC\n",
+        "-0.0\t-100.0\tàßc\tÀSSC\n",
+        "100\t100\t\tAbC\n",
+        "100\t100\tabc\t\n",
+        "100\t102\tabc\tAbC\n",
+        "100\t103\tabc\tAbC\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_ff_istr_eq_3_4() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--ff-istr-eq")
+        .arg("3:4")
+        .arg("tests/data/filter/input1.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1\tF2\tF3\tF4\n",
+        "1\t1.0\ta\tA\n",
+        "2\t2.\tb\tB\n",
+        "10\t10.1\tabc\tABC\n",
+        "100\t100\tabc\tAbC\n",
+        "-1\t-0.1\tabc def\tabc def\n",
+        "0.\t100.\tàbc\tÀBC\n",
+        "100\t101\t\t\n",
+        "100\t102\tabc\tAbC\n",
+        "100\t103\tabc\tAbC\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_ff_istr_ne_3_4() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--ff-istr-ne")
+        .arg("3:4")
+        .arg("tests/data/filter/input1.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1\tF2\tF3\tF4\n",
+        "0\t0.0\tz\tAzB\n",
+        "-2\t-2.0\tß\tss\n",
+        "0.0\t100.0\tàßc\tÀssC\n",
+        "-0.0\t-100.0\tàßc\tÀSSC\n",
+        "100\t100\t\tAbC\n",
+        "100\t100\tabc\t\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_ff_istr_eq_F3_4() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--ff-istr-eq")
+        .arg("F3:4")
+        .arg("tests/data/filter/input1.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1\tF2\tF3\tF4\n",
+        "1\t1.0\ta\tA\n",
+        "2\t2.\tb\tB\n",
+        "10\t10.1\tabc\tABC\n",
+        "100\t100\tabc\tAbC\n",
+        "-1\t-0.1\tabc def\tabc def\n",
+        "0.\t100.\tàbc\tÀBC\n",
+        "100\t101\t\t\n",
+        "100\t102\tabc\tAbC\n",
+        "100\t103\tabc\tAbC\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_ff_istr_ne_F3_4() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--ff-istr-ne")
+        .arg("F3:4")
+        .arg("tests/data/filter/input1.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1\tF2\tF3\tF4\n",
+        "0\t0.0\tz\tAzB\n",
+        "-2\t-2.0\tß\tss\n",
+        "0.0\t100.0\tàßc\tÀssC\n",
+        "-0.0\t-100.0\tàßc\tÀSSC\n",
+        "100\t100\t\tAbC\n",
+        "100\t100\tabc\t\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_delimiter_pipe_ff_eq_1_2() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--delimiter")
+        .arg("|")
+        .arg("--ff-eq")
+        .arg("1:2")
+        .arg("tests/data/filter/input2_pipe-sep.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1|F2|F3|F4\n",
+        "1|1.0|a|A\n",
+        "2|2.|b|B\n",
+        "100|100|abc|AbC\n",
+        "0|0.0|z|AzB\n",
+        "-2|-2.0|ß|ss\n",
+        "100|100||AbC\n",
+        "100|100|abc|\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_delimiter_pipe_ff_ne_1_2() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--delimiter")
+        .arg("|")
+        .arg("--ff-ne")
+        .arg("1:2")
+        .arg("tests/data/filter/input2_pipe-sep.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1|F2|F3|F4\n",
+        "10|10.1|abc|ABC\n",
+        "-1|-0.1|abc def|abc def\n",
+        "0.|100.|àbc|ÀBC\n",
+        "0.0|100.0|àßc|ÀssC\n",
+        "-0.0|-100.0|àßc|ÀSSC\n",
+        "100|101||\n",
+        "100|102|abc|AbC\n",
+        "100|103|abc|AbC\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_delimiter_pipe_ff_le_1_2() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--delimiter")
+        .arg("|")
+        .arg("--ff-le")
+        .arg("1:2")
+        .arg("tests/data/filter/input2_pipe-sep.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1|F2|F3|F4\n",
+        "1|1.0|a|A\n",
+        "2|2.|b|B\n",
+        "10|10.1|abc|ABC\n",
+        "100|100|abc|AbC\n",
+        "0|0.0|z|AzB\n",
+        "-1|-0.1|abc def|abc def\n",
+        "-2|-2.0|ß|ss\n",
+        "0.|100.|àbc|ÀBC\n",
+        "0.0|100.0|àßc|ÀssC\n",
+        "100|100||AbC\n",
+        "100|100|abc|\n",
+        "100|101||\n",
+        "100|102|abc|AbC\n",
+        "100|103|abc|AbC\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_delimiter_pipe_ff_lt_1_2() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--delimiter")
+        .arg("|")
+        .arg("--ff-lt")
+        .arg("1:2")
+        .arg("tests/data/filter/input2_pipe-sep.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1|F2|F3|F4\n",
+        "10|10.1|abc|ABC\n",
+        "-1|-0.1|abc def|abc def\n",
+        "0.|100.|àbc|ÀBC\n",
+        "0.0|100.0|àßc|ÀssC\n",
+        "100|101||\n",
+        "100|102|abc|AbC\n",
+        "100|103|abc|AbC\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
+#[test]
+fn upstream_delimiter_pipe_ff_str_ne_3_4() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("filter")
+        .arg("--header")
+        .arg("--delimiter")
+        .arg("|")
+        .arg("--ff-str-ne")
+        .arg("3:4")
+        .arg("tests/data/filter/input2_pipe-sep.tsv")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let expected = concat!(
+        "F1|F2|F3|F4\n",
+        "1|1.0|a|A\n",
+        "2|2.|b|B\n",
+        "10|10.1|abc|ABC\n",
+        "100|100|abc|AbC\n",
+        "0|0.0|z|AzB\n",
+        "-2|-2.0|ß|ss\n",
+        "0.|100.|àbc|ÀBC\n",
+        "0.0|100.0|àßc|ÀssC\n",
+        "-0.0|-100.0|àßc|ÀSSC\n",
+        "100|100||AbC\n",
+        "100|100|abc|\n",
+        "100|102|abc|AbC\n",
+        "100|103|abc|AbC\n",
+    );
+    assert_eq!(stdout, expected);
+    Ok(())
+}
+
