@@ -1,7 +1,7 @@
+use crate::libs::sampling::*;
 use clap::*;
 use rapidhash::RapidRng;
 use std::io::BufRead;
-use crate::libs::sampling::*;
 
 pub fn make_subcommand() -> Command {
     Command::new("sample")

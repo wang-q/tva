@@ -224,7 +224,6 @@ fn wider_datamash_scenarios() -> anyhow::Result<()> {
     let stdout1 = String::from_utf8(output1.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout1, expected1);
 
-
     // Scenario 2: Missing values with custom filler (mirrors Datamash in3/out3_xx)
     // datamash: --filler XX crosstab 1,2 first 3
     let mut file2 = tempfile::NamedTempFile::new()?;

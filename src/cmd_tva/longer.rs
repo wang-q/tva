@@ -1,6 +1,6 @@
-use clap::*;
 use crate::libs::fields;
 use crate::libs::fields::Header;
+use clap::*;
 use regex::Regex;
 use std::collections::HashSet;
 use std::io::{BufRead, Write};
@@ -120,7 +120,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let drop_na = args.get_flag("values-drop-na");
     let names_prefix = args.get_one::<String>("names-prefix");
     let names_sep = args.get_one::<String>("names-sep");
-    let names_pattern = args.get_one::<String>("names-pattern").map(|s| Regex::new(s)).transpose()?;
+    let names_pattern = args
+        .get_one::<String>("names-pattern")
+        .map(|s| Regex::new(s))
+        .transpose()?;
 
     if names_to.len() > 1 && names_sep.is_none() && names_pattern.is_none() {
         return Err(anyhow::anyhow!(
@@ -154,14 +157,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 line.pop();
             }
         }
-        let current_header_fields: Vec<String> = line.split('\t').map(|s| s.to_string()).collect();
+        let current_header_fields: Vec<String> =
+            line.split('\t').map(|s| s.to_string()).collect();
 
         // Initialize indices from the first file
         if melt_indices.is_none() {
             let header = Header::from_fields(current_header_fields.clone());
 
-            let melt_indices_1based = fields::parse_field_list_with_header(cols_spec, Some(&header), '\t')
-                .map_err(|e| anyhow::anyhow!(e))?;
+            let melt_indices_1based =
+                fields::parse_field_list_with_header(cols_spec, Some(&header), '\t')
+                    .map_err(|e| anyhow::anyhow!(e))?;
 
             // Check if any index is out of bounds
             let max_idx = current_header_fields.len();
@@ -175,7 +180,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
             }
 
-            let m_indices: Vec<usize> = melt_indices_1based.iter().map(|&i| i - 1).collect();
+            let m_indices: Vec<usize> =
+                melt_indices_1based.iter().map(|&i| i - 1).collect();
             let melt_set: HashSet<usize> = m_indices.iter().cloned().collect();
 
             // Identify id columns (those not in melt_indices)
@@ -187,7 +193,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             // Write new header
-            let mut new_header_fields: Vec<String> = Vec::with_capacity(i_indices.len() + names_to.len() + 1);
+            let mut new_header_fields: Vec<String> =
+                Vec::with_capacity(i_indices.len() + names_to.len() + 1);
             for &i in &i_indices {
                 new_header_fields.push(current_header_fields[i].clone());
             }

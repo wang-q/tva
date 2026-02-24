@@ -1,6 +1,6 @@
-use clap::*;
 use crate::libs::fields;
 use crate::libs::fields::Header;
+use clap::*;
 use indexmap::{IndexMap, IndexSet};
 use std::io::{BufRead, Write};
 
@@ -154,7 +154,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn process_file(infile: &str, config: &WiderConfig, state: &mut ProcessState) -> anyhow::Result<()> {
+fn process_file(
+    infile: &str,
+    config: &WiderConfig,
+    state: &mut ProcessState,
+) -> anyhow::Result<()> {
     let mut reader = crate::libs::io::reader(infile);
 
     // Read header
@@ -169,23 +173,36 @@ fn process_file(infile: &str, config: &WiderConfig, state: &mut ProcessState) ->
 
     if !state.header_processed {
         // Determine indices
-        let n_indices = fields::parse_field_list_with_header(&config.names_from, Some(&header), '\t')
-            .map_err(|e| anyhow::anyhow!(e))?;
+        let n_indices = fields::parse_field_list_with_header(
+            &config.names_from,
+            Some(&header),
+            '\t',
+        )
+        .map_err(|e| anyhow::anyhow!(e))?;
         if n_indices.len() != 1 {
-             return Err(anyhow::anyhow!("Currently only single column supported for --names-from"));
+            return Err(anyhow::anyhow!(
+                "Currently only single column supported for --names-from"
+            ));
         }
         state.names_idx = n_indices[0] - 1;
 
-        let v_indices = fields::parse_field_list_with_header(&config.values_from, Some(&header), '\t')
-            .map_err(|e| anyhow::anyhow!(e))?;
+        let v_indices = fields::parse_field_list_with_header(
+            &config.values_from,
+            Some(&header),
+            '\t',
+        )
+        .map_err(|e| anyhow::anyhow!(e))?;
         if v_indices.len() != 1 {
-             return Err(anyhow::anyhow!("Currently only single column supported for --values-from"));
+            return Err(anyhow::anyhow!(
+                "Currently only single column supported for --values-from"
+            ));
         }
         state.values_idx = v_indices[0] - 1;
 
         if let Some(spec) = &config.id_cols {
-            let i_indices = fields::parse_field_list_with_header(spec, Some(&header), '\t')
-                .map_err(|e| anyhow::anyhow!(e))?;
+            let i_indices =
+                fields::parse_field_list_with_header(spec, Some(&header), '\t')
+                    .map_err(|e| anyhow::anyhow!(e))?;
             state.id_indices = i_indices.iter().map(|&i| i - 1).collect();
         } else {
             // Default: all except names and values
@@ -206,7 +223,7 @@ fn process_file(infile: &str, config: &WiderConfig, state: &mut ProcessState) ->
     } else {
         // Validate subsequent file headers
         if header_fields.len() != state.first_file_header_len {
-             return Err(anyhow::anyhow!(
+            return Err(anyhow::anyhow!(
                  "File '{}' has {} columns, but first file had {}. All files must have the same column structure.",
                  infile, header_fields.len(), state.first_file_header_len
              ));
@@ -224,12 +241,12 @@ fn process_file(infile: &str, config: &WiderConfig, state: &mut ProcessState) ->
         // Validate fields length against indices
         let max_idx = std::cmp::max(state.names_idx, state.values_idx);
         if max_idx >= fields.len() {
-             // Skip malformed lines or error?
-             // To be safe, we can skip or error. Let's error to be strict.
-             // But actually, split('\t') on "A" gives ["A"]. If we need index 1, it fails.
-             // Let's just fill with empty string if missing, to be consistent with previous logic,
-             // BUT previous logic had a bug with trim_end().
-             // If the file is valid TSV, it should have enough columns.
+            // Skip malformed lines or error?
+            // To be safe, we can skip or error. Let's error to be strict.
+            // But actually, split('\t') on "A" gives ["A"]. If we need index 1, it fails.
+            // Let's just fill with empty string if missing, to be consistent with previous logic,
+            // BUT previous logic had a bug with trim_end().
+            // If the file is valid TSV, it should have enough columns.
         }
 
         // Extract ID key
@@ -258,7 +275,9 @@ fn process_file(infile: &str, config: &WiderConfig, state: &mut ProcessState) ->
 
         state.all_names.insert(name.clone());
 
-        state.data.entry(key)
+        state
+            .data
+            .entry(key)
             .or_insert_with(IndexMap::new)
             .insert(name, value);
     }
@@ -266,7 +285,11 @@ fn process_file(infile: &str, config: &WiderConfig, state: &mut ProcessState) ->
     Ok(())
 }
 
-fn write_output<W: Write>(writer: &mut W, state: &ProcessState, config: &WiderConfig) -> anyhow::Result<()> {
+fn write_output<W: Write>(
+    writer: &mut W,
+    state: &ProcessState,
+    config: &WiderConfig,
+) -> anyhow::Result<()> {
     // Sort names if requested
     let final_names: Vec<String> = if config.sort_names {
         let mut sorted: Vec<String> = state.all_names.iter().cloned().collect();
@@ -285,7 +308,7 @@ fn write_output<W: Write>(writer: &mut W, state: &ProcessState, config: &WiderCo
     }
     for name in &final_names {
         if !state.output_header_prefix.is_empty() {
-             write!(writer, "\t")?;
+            write!(writer, "\t")?;
         }
         write!(writer, "{}", name)?;
     }
@@ -304,7 +327,7 @@ fn write_output<W: Write>(writer: &mut W, state: &ProcessState, config: &WiderCo
         // Write Value cols
         for name in &final_names {
             if !key.is_empty() {
-                 write!(writer, "\t")?;
+                write!(writer, "\t")?;
             }
             if let Some(val) = row_map.get(name) {
                 write!(writer, "{}", val)?;

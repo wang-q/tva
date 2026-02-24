@@ -18,7 +18,9 @@ fn test_select_fields_exclude_conflict() {
         .write_stdin("a\tb\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--fields/-f and --exclude/-e cannot be used together"));
+        .stderr(predicate::str::contains(
+            "--fields/-f and --exclude/-e cannot be used together",
+        ));
 }
 
 #[test]
@@ -28,7 +30,9 @@ fn test_select_missing_args() {
         .write_stdin("a\tb\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("one of --fields/-f or --exclude/-e is required"));
+        .stderr(predicate::str::contains(
+            "one of --fields/-f or --exclude/-e is required",
+        ));
 }
 
 #[test]
@@ -42,7 +46,9 @@ fn test_select_invalid_delimiter() {
         .write_stdin("a\tb\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("delimiter must be a single character"));
+        .stderr(predicate::str::contains(
+            "delimiter must be a single character",
+        ));
 }
 
 #[test]
@@ -114,7 +120,9 @@ fn test_sample_num_prob_conflict() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--num/-n and --prob/-p cannot be used together"));
+        .stderr(predicate::str::contains(
+            "--num/-n and --prob/-p cannot be used together",
+        ));
 }
 
 #[test]
@@ -127,7 +135,9 @@ fn test_sample_replace_prob_conflict() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--replace/-r cannot be used with --prob/-p"));
+        .stderr(predicate::str::contains(
+            "--replace/-r cannot be used with --prob/-p",
+        ));
 }
 
 #[test]
@@ -138,7 +148,9 @@ fn test_sample_replace_no_num() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--replace/-r requires --num/-n greater than 0"));
+        .stderr(predicate::str::contains(
+            "--replace/-r requires --num/-n greater than 0",
+        ));
 }
 
 #[test]
@@ -152,7 +164,9 @@ fn test_sample_inorder_conflicts() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--inorder/-i requires --num/-n without --replace/-r or --prob/-p"));
+        .stderr(predicate::str::contains(
+            "--inorder/-i requires --num/-n without --replace/-r or --prob/-p",
+        ));
 }
 
 #[test]
@@ -166,7 +180,9 @@ fn test_sample_weight_prob_conflict() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--weight-field/-w cannot be used with --prob/-p"));
+        .stderr(predicate::str::contains(
+            "--weight-field/-w cannot be used with --prob/-p",
+        ));
 }
 
 #[test]
@@ -191,7 +207,9 @@ fn test_sample_gen_random_inorder_conflicts() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--gen-random-inorder cannot be combined with sampling options"));
+        .stderr(predicate::str::contains(
+            "--gen-random-inorder cannot be combined with sampling options",
+        ));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -205,7 +223,9 @@ fn test_split_missing_args() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("either --lines-per-file/-l or --num-files/-n must be specified"));
+        .stderr(predicate::str::contains(
+            "either --lines-per-file/-l or --num-files/-n must be specified",
+        ));
 }
 
 #[test]
@@ -219,7 +239,9 @@ fn test_split_lines_num_conflict() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--lines-per-file/-l cannot be used with --num-files/-n"));
+        .stderr(predicate::str::contains(
+            "--lines-per-file/-l cannot be used with --num-files/-n",
+        ));
 }
 
 #[test]
@@ -233,7 +255,9 @@ fn test_split_key_lines_conflict() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--key-fields/-k is only supported with --num-files/-n"));
+        .stderr(predicate::str::contains(
+            "--key-fields/-k is only supported with --num-files/-n",
+        ));
 }
 
 #[test]
@@ -289,7 +313,9 @@ fn test_split_key_no_num() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("either --lines-per-file/-l or --num-files/-n must be specified"));
+        .stderr(predicate::str::contains(
+            "either --lines-per-file/-l or --num-files/-n must be specified",
+        ));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -308,7 +334,9 @@ fn test_sample_weight_replace_conflict() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--weight-field/-w cannot be used with --replace/-r"));
+        .stderr(predicate::str::contains(
+            "--weight-field/-w cannot be used with --replace/-r",
+        ));
 }
 
 #[test]
@@ -320,7 +348,9 @@ fn test_sample_key_no_prob() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--key-fields/-k requires --prob/-p"));
+        .stderr(predicate::str::contains(
+            "--key-fields/-k requires --prob/-p",
+        ));
 }
 
 #[test]
@@ -336,7 +366,9 @@ fn test_sample_key_conflicts() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--key-fields/-k cannot be used with --num/-n"));
+        .stderr(predicate::str::contains(
+            "--key-fields/-k cannot be used with --num/-n",
+        ));
 }
 
 #[test]
@@ -348,7 +380,9 @@ fn test_sample_print_random_gen_random_conflict() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--print-random cannot be used with --gen-random-inorder"));
+        .stderr(predicate::str::contains(
+            "--print-random cannot be used with --gen-random-inorder",
+        ));
 }
 
 #[test]
@@ -362,7 +396,9 @@ fn test_sample_print_random_replace_conflict() {
         .write_stdin("a\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--print-random is not supported with --replace/-r"));
+        .stderr(predicate::str::contains(
+            "--print-random is not supported with --replace/-r",
+        ));
 }
 
 #[test]
@@ -376,7 +412,9 @@ fn test_sample_weight_index_out_of_range() {
         .write_stdin("a\tb\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("weight field index 5 out of range"));
+        .stderr(predicate::str::contains(
+            "weight field index 5 out of range",
+        ));
 }
 
 #[test]
@@ -390,7 +428,9 @@ fn test_sample_weight_invalid_value() {
         .write_stdin("not_a_number\n")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("weight value `not_a_number` is not a valid number"));
+        .stderr(predicate::str::contains(
+            "weight value `not_a_number` is not a valid number",
+        ));
 }
 
 #[test]
@@ -510,7 +550,9 @@ fn test_keep_header_missing_separator() {
         .arg("sort")
         .assert()
         .failure() // Now fails due to missing required command
-        .stderr(predicate::str::contains("required arguments were not provided"));
+        .stderr(predicate::str::contains(
+            "required arguments were not provided",
+        ));
 }
 
 #[test]
@@ -588,7 +630,9 @@ fn test_append_source_header() {
         .arg("tests/data/append/input3x2.tsv")
         .assert()
         .success()
-        .stdout(predicate::str::starts_with("filename\tfield1\tfield2\tfield3"));
+        .stdout(predicate::str::starts_with(
+            "filename\tfield1\tfield2\tfield3",
+        ));
 }
 
 #[test]
@@ -599,7 +643,9 @@ fn test_append_file_mapping() {
         .arg("custom_label=tests/data/append/input3x2.tsv")
         .assert()
         .success()
-        .stdout(predicate::str::contains("custom_label\tfield1\tfield2\tfield3"));
+        .stdout(predicate::str::contains(
+            "custom_label\tfield1\tfield2\tfield3",
+        ));
 }
 
 #[test]
@@ -610,7 +656,9 @@ fn test_append_invalid_file_mapping() {
         .arg("invalid_format")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("invalid --file value `invalid_format`; expected LABEL=FILE"));
+        .stderr(predicate::str::contains(
+            "invalid --file value `invalid_format`; expected LABEL=FILE",
+        ));
 }
 
 #[test]
@@ -699,7 +747,9 @@ fn test_from_csv_stdin_error() {
         .write_stdin(input)
         .assert()
         .failure()
-        .stderr(predicate::str::contains("tva from-csv: invalid CSV at line"));
+        .stderr(predicate::str::contains(
+            "tva from-csv: invalid CSV at line",
+        ));
 }
 
 #[test]
@@ -712,5 +762,7 @@ fn test_from_csv_file_error_no_line_info() {
         .arg("tests/data/from_csv/invalid1.csv")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("tva from-csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'"));
+        .stderr(predicate::str::contains(
+            "tva from-csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'",
+        ));
 }

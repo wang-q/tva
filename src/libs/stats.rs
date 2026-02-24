@@ -411,7 +411,7 @@ mod tests {
         let mut agg = Aggregator::new();
         // Manually insert empty vector to trigger the specific branch (L331-332)
         agg.values.insert(0, vec![]);
-        
+
         let ops = vec![Operation {
             kind: OpKind::Mad,
             field_idx: Some(0),
@@ -436,7 +436,7 @@ mod tests {
         let mut agg = Aggregator::new();
         // Manually insert empty vector to trigger the specific branch (L267-268)
         agg.values.insert(0, vec![]);
-        
+
         let ops = vec![Operation {
             kind: OpKind::Median,
             field_idx: Some(0),
@@ -466,7 +466,7 @@ mod tests {
         let mut agg = Aggregator::new();
         // Variance requires count > 1
         agg.field_counts.insert(0, 1);
-        
+
         let ops = vec![Operation {
             kind: OpKind::Variance,
             field_idx: Some(0),
@@ -478,10 +478,16 @@ mod tests {
     #[test]
     fn test_min_max_nan() {
         let agg = Aggregator::new();
-        
+
         let ops = vec![
-            Operation { kind: OpKind::Min, field_idx: Some(0) },
-            Operation { kind: OpKind::Max, field_idx: Some(0) },
+            Operation {
+                kind: OpKind::Min,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Max,
+                field_idx: Some(0),
+            },
         ];
         // format_results processes ops in order
         let results = agg.format_results(&ops);

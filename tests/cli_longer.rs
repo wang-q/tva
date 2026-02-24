@@ -21,7 +21,8 @@ fn longer_names_sep() -> anyhow::Result<()> {
         .arg("num")
         .output()?;
 
-    let expected = "ID\tunit\tnum\tvalue\nA\twk\t1\t1\nA\twk\t2\t2\nB\twk\t1\t3\nB\twk\t2\t4\n";
+    let expected =
+        "ID\tunit\tnum\tvalue\nA\twk\t1\t1\nA\twk\t2\t2\nB\twk\t1\t3\nB\twk\t2\t4\n";
 
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
@@ -107,7 +108,8 @@ fn longer_interleaved() -> anyhow::Result<()> {
         .arg("2,4")
         .output()?;
 
-    let expected = "ID\tExtra\tname\tvalue\nA\tx\tM1\t1\nA\tx\tM2\t2\nB\ty\tM1\t3\nB\ty\tM2\t4\n";
+    let expected =
+        "ID\tExtra\tname\tvalue\nA\tx\tM1\t1\nA\tx\tM2\t2\nB\ty\tM1\t3\nB\ty\tM2\t4\n";
 
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
