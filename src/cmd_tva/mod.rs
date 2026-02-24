@@ -9,6 +9,7 @@ pub mod longer;
 pub mod md;
 pub mod nl;
 pub mod reverse;
+pub mod slice;
 pub mod sample;
 pub mod select;
 pub mod sort;
