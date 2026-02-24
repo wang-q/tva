@@ -401,7 +401,7 @@ impl TestKind {
                             None => "",
                         };
                         let eq = if *case_insensitive {
-                            l_s.eq_ignore_ascii_case(r_s)
+                            l_s.to_lowercase() == r_s.to_lowercase()
                         } else {
                             l_s == r_s
                         };

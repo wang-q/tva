@@ -1088,7 +1088,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 line.pop();
             }
 
-            if has_header && !header_seen && !line.is_empty() {
+            if has_header && !header_seen {
+                if line.is_empty() {
+                    continue;
+                }
                 header_seen = true;
                 if !header_written && !count_only {
                     if let Some(ref lbl) = label_header {
@@ -1103,10 +1106,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
                 header_struct =
                     Some(crate::libs::fields::Header::from_line(&line, delimiter));
-                continue;
-            }
-
-            if line.is_empty() {
                 continue;
             }
 
