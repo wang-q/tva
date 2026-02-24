@@ -63,8 +63,8 @@ tsv-utils 是一组针对制表数据（尤其是 TSV：Tab Separated Values）�
 
 在 `tva` 中如果考虑分阶段迁移/重写，可以按目前进展和后续计划理解为：
 - 第一阶段（已完成部分）：从 `number-lines`、`keep-header` 这类“薄壳工具”入手，分别在 `tva` 中落地为 `nl`、`keep-header` 子命令，顺带打磨统一的 IO/字段处理基础设施；对于 `tsv-pretty`，当前由 `tva md` 在“表格美观展示”场景上部分接替其作用，暂不计划做 1:1 迁移。
-- 第二阶段（进行中）：逐步覆盖 `tsv-append`、`tsv-split`、`tsv-sample`、`tsv-uniq`、`tsv-select` 等中等复杂度工具；其中 `tsv-append` / `tsv-split` / `tsv-sample` / `tsv-select` 已分别在 `tva` 中落地为 `append` / `split` / `sample` / `select` 子命令，并配套 CLI/golden 测试；`tsv-uniq` 已在 `tva` 中落地为 `uniq` 子命令，已迁移一批上游 golden 测试并补充 tva 风格的错误处理测试；`tsv-join` 的基础 inner join 能力已在 `tva` 中以 `join` 子命令形式落地，当前覆盖单 key、header 感知和按列名/列号指定 join key 及追加字段等核心行为。
-- 最后阶段（已启动规划）：在现有 `join` 子命令的基础上，逐步评估并补齐 `tsv-join` 的其他 join 模式（如 left outer join/anti-join、`--write-all` 等），并在合适时机评估 `tsv-filter`、`tsv-summarize` 等“重量级”工具是否需要完整对标，或只抽取其中一部分能力。
+- 第二阶段（进行中）：逐步覆盖 `tsv-append`、`tsv-split`、`tsv-sample`、`tsv-uniq`、`tsv-select` 等中等复杂度工具；其中 `tsv-append` / `tsv-split` / `tsv-sample` / `tsv-select` 已分别在 `tva` 中落地为 `append` / `split` / `sample` / `select` 子命令，并配套 CLI/golden 测试；`tsv-uniq` 已在 `tva` 中落地为 `uniq` 子命令，已迁移一批上游 golden 测试并补充 tva 风格的错误处理测试；`tsv-join` 则在 `tva` 中以 `join` 子命令形式落地，当前已经覆盖单 key、多 key、header 感知、按列名/列号指定 join key 与追加字段、`--exclude` anti-join，以及 `--write-all` 左外连接等核心行为，并迁移了大部分上游 `tsv-join/tests/tests.sh` 中的基础与错误场景用例到 Rust CLI 测试（包含 line-buffered、空文件、非 TAB 分隔等场景）。
+- 最后阶段（已启动规划）：在 `join` 已基本对齐上游核心 join 模式的基础上，主要评估是否需要进一步支持上游 `tsv-join` 的高级特性（例如更完整的字段名通配符组合、复杂前缀/重命名策略等），以及在 `tva` 中对 `tsv-filter`、`tsv-summarize` 等“重量级”工具是做完整对标还是按需抽取部分能力。
 
 ### 2.2 上游测试资源与迁移策略
 
