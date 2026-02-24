@@ -72,7 +72,7 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 *   **`join`**: Inner/Left/Outer/Anti joins on specified keys.
 *   **`filter`**: Row filtering with numeric, string, regex, and date predicates.
 *   **`stats`**: Summary statistics (sum, mean, median, mode, etc.) with grouping.
-*   **`longer`**: Reshapes wide to long (pivot_longer). Supports column selection by index/name/wildcard. Requires a header row.
+*   **`longer`**: Reshapes wide to long (pivot_longer). Supports column selection by index/name/wildcard. Features: custom names for key/value columns (`--names-to`, `--values-to`), prefix stripping (`--names-prefix`), complex name parsing (`--names-sep`, `--names-pattern`), and NA dropping (`--values-drop-na`). Requires a header row.
 
 ### Planned Features (Inspired by Datamash & R)
 
@@ -91,6 +91,6 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
             *   *Implementation*: Reuse `libs::stats::Aggregator` logic.
         *   `--fill`: Value to use for missing cells (default: empty or 0).
 *   **`longer` extensions**:
-    *   `--names-prefix`, `--names-sep`, `--names-pattern` for complex column name parsing (regex extraction).
+    *   (None planned)
 *   **Extended Statistics**:
     *   Add `q1` (25%), `q3` (75%), `iqr`, `skewness`, `kurtosis` to `stats`.

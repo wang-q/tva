@@ -62,6 +62,8 @@ The design of `tva` follows the philosophy of the original `tsv-utils`:
 - **`transpose`**: Transpose rows and columns.
 
 ### Reshaping
+See [Reshaping Documentation](docs/reshape.md).
+
 - **`longer`**: Reshape wide to long (unpivot). Requires a header row.
 
 ### Formatting & Utilities

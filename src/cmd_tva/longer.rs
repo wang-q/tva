@@ -1,6 +1,7 @@
 use clap::*;
 use crate::libs::fields;
 use crate::libs::fields::Header;
+use regex::Regex;
 use std::collections::HashSet;
 use std::io::{BufRead, Write};
 
@@ -31,6 +32,8 @@ Reshaping behavior:
   The name of the new column that will contain the data values.
 - --values-drop-na
   If set, rows where the value is empty will be omitted from the output.
+- --names-prefix
+  A string to remove from the start of each variable name.
 
 Examples:
 1. Reshape columns 3, 4, and 5 into default "name" and "value" columns
@@ -62,8 +65,9 @@ Examples:
         .arg(
             Arg::new("names-to")
                 .long("names-to")
+                .num_args(1..)
                 .default_value("name")
-                .help("Name of the new key column"),
+                .help("Name of the new key column(s)"),
         )
         .arg(
             Arg::new("values-to")
@@ -72,10 +76,25 @@ Examples:
                 .help("Name of the new value column"),
         )
         .arg(
+            Arg::new("names-pattern")
+                .long("names-pattern")
+                .help("Regex with capture groups to extract parts of column names"),
+        )
+        .arg(
+            Arg::new("names-sep")
+                .long("names-sep")
+                .help("Separator to split column names into multiple columns"),
+        )
+        .arg(
             Arg::new("values-drop-na")
                 .long("values-drop-na")
                 .action(ArgAction::SetTrue)
                 .help("Drop rows where the value is empty"),
+        )
+        .arg(
+            Arg::new("names-prefix")
+                .long("names-prefix")
+                .help("A string to remove from the start of each variable name"),
         )
         .arg(
             Arg::new("outfile")
@@ -96,13 +115,23 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let cols_spec = args.get_one::<String>("cols").unwrap();
-    let names_to = args.get_one::<String>("names-to").unwrap();
+    let names_to: Vec<&String> = args.get_many::<String>("names-to").unwrap().collect();
     let values_to = args.get_one::<String>("values-to").unwrap();
     let drop_na = args.get_flag("values-drop-na");
+    let names_prefix = args.get_one::<String>("names-prefix");
+    let names_sep = args.get_one::<String>("names-sep");
+    let names_pattern = args.get_one::<String>("names-pattern").map(|s| Regex::new(s)).transpose()?;
+
+    if names_to.len() > 1 && names_sep.is_none() && names_pattern.is_none() {
+        return Err(anyhow::anyhow!(
+            "Multiple names-to provided but neither --names-sep nor --names-pattern is specified"
+        ));
+    }
 
     let mut melt_indices: Option<Vec<usize>> = None;
     let mut id_indices: Option<Vec<usize>> = None;
     let mut header_fields: Option<Vec<String>> = None;
+    let mut buffer: Vec<String> = Vec::new();
 
     for infile in &infiles {
         let is_stdin = infile == "stdin";
@@ -158,11 +187,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             // Write new header
-            let mut new_header_fields: Vec<String> = Vec::with_capacity(i_indices.len() + 2);
+            let mut new_header_fields: Vec<String> = Vec::with_capacity(i_indices.len() + names_to.len() + 1);
             for &i in &i_indices {
                 new_header_fields.push(current_header_fields[i].clone());
             }
-            new_header_fields.push(names_to.clone());
+            for name in &names_to {
+                new_header_fields.push(name.to_string());
+            }
             new_header_fields.push(values_to.clone());
             writeln!(writer, "{}", new_header_fields.join("\t"))?;
 
@@ -182,7 +213,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // Process remaining rows
         for line in reader.lines() {
             let line = line?;
-            process_row(&line, &mut writer, m_indices, i_indices, h_fields, drop_na)?;
+            process_row(
+                &line,
+                &mut writer,
+                m_indices,
+                i_indices,
+                h_fields,
+                drop_na,
+                names_prefix,
+                names_sep,
+                names_pattern.as_ref(),
+                names_to.len(),
+                &mut buffer,
+            )?;
         }
     }
 
@@ -196,14 +239,23 @@ fn process_row<W: Write>(
     i_indices: &[usize],
     h_fields: &[String],
     drop_na: bool,
+    names_prefix: Option<&String>,
+    names_sep: Option<&String>,
+    names_pattern: Option<&Regex>,
+    names_to_len: usize,
+    buffer: &mut Vec<String>,
 ) -> anyhow::Result<()> {
-    let fields: Vec<&str> = line.split('\t').collect();
+    buffer.clear();
+    for field in line.split('\t') {
+        buffer.push(field.to_string());
+    }
+    let fields = buffer;
 
     // Pre-build id part of the output line
     let mut id_parts: Vec<&str> = Vec::with_capacity(i_indices.len());
     for &i in i_indices {
         if i < fields.len() {
-            id_parts.push(fields[i]);
+            id_parts.push(&fields[i]);
         } else {
             id_parts.push("");
         }
@@ -211,7 +263,7 @@ fn process_row<W: Write>(
 
     for &melt_idx in m_indices {
         let value = if melt_idx < fields.len() {
-            fields[melt_idx]
+            &fields[melt_idx]
         } else {
             ""
         };
@@ -232,8 +284,56 @@ fn process_row<W: Write>(
             write!(writer, "\t")?;
         }
 
-        // Write variable name and value
-        write!(writer, "{}\t{}", h_fields[melt_idx], value)?;
+        // Write variable name(s) and value
+        let mut name_part = h_fields[melt_idx].as_str();
+        if let Some(prefix) = names_prefix {
+            if let Some(stripped) = name_part.strip_prefix(prefix) {
+                name_part = stripped;
+            }
+        }
+
+        if let Some(regex) = names_pattern {
+            // Regex extraction
+            if let Some(caps) = regex.captures(name_part) {
+                for i in 1..=names_to_len {
+                    if i > 1 {
+                        write!(writer, "\t")?;
+                    }
+                    if let Some(m) = caps.get(i) {
+                        write!(writer, "{}", m.as_str())?;
+                    } else {
+                        // Capture group missing, write empty? or error?
+                        // Writing empty is safer for data loss prevention
+                    }
+                }
+            } else {
+                // No match, write original name or empty?
+                // R's pivot_longer fills with NA if no match. We can write the name in first col and empty in others?
+                // Or just write the name in the first column
+                write!(writer, "{}", name_part)?;
+                for _ in 1..names_to_len {
+                    write!(writer, "\t")?;
+                }
+            }
+        } else if let Some(sep) = names_sep {
+            // Separator split
+            let parts: Vec<&str> = name_part.split(sep).collect();
+            for i in 0..names_to_len {
+                if i > 0 {
+                    write!(writer, "\t")?;
+                }
+                if i < parts.len() {
+                    write!(writer, "{}", parts[i])?;
+                } else {
+                    // Not enough parts
+                }
+            }
+        } else {
+            // Default behavior (single name column)
+            write!(writer, "{}", name_part)?;
+        }
+
+        write!(writer, "\t{}", value)?;
         writeln!(writer)?;
     }
     Ok(())

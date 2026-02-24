@@ -1,6 +1,64 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 
 #[test]
+fn longer_names_sep() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    // Create a temporary input file with complex headers
+    use std::io::Write;
+    let mut file = tempfile::NamedTempFile::new()?;
+    writeln!(file, "ID\twk_1\twk_2\nA\t1\t2\nB\t3\t4")?;
+    let path = file.path().to_str().unwrap();
+
+    let output = cmd
+        .arg("longer")
+        .arg(path)
+        .arg("--cols")
+        .arg("2-3")
+        .arg("--names-sep")
+        .arg("_")
+        .arg("--names-to")
+        .arg("unit")
+        .arg("num")
+        .output()?;
+
+    let expected = "ID\tunit\tnum\tvalue\nA\twk\t1\t1\nA\twk\t2\t2\nB\twk\t1\t3\nB\twk\t2\t4\n";
+
+    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn longer_names_pattern() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    // Create a temporary input file with regex-friendly headers
+    use std::io::Write;
+    let mut file = tempfile::NamedTempFile::new()?;
+    writeln!(file, "ID\tnew_sp_m014\tnew_sp_f014\nA\t1\t2\nB\t3\t4")?;
+    let path = file.path().to_str().unwrap();
+
+    let output = cmd
+        .arg("longer")
+        .arg(path)
+        .arg("--cols")
+        .arg("2-3")
+        .arg("--names-pattern")
+        .arg("new_?(.*)_(.*)")
+        .arg("--names-to")
+        .arg("diagnosis")
+        .arg("gender_age")
+        .output()?;
+
+    let expected = "ID\tdiagnosis\tgender_age\tvalue\nA\tsp\tm014\t1\nA\tsp\tf014\t2\nB\tsp\tm014\t3\nB\tsp\tf014\t4\n";
+
+    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
 fn longer_basic() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -13,6 +71,26 @@ fn longer_basic() -> anyhow::Result<()> {
     let expected = "ID\tname\tvalue\nA\tQ1\t1\nA\tQ2\t2\nA\tQ3\t3\nB\tQ1\t4\nB\tQ2\t5\nB\tQ3\t6\nC\tQ1\t7\nC\tQ2\t8\nC\tQ3\t9\n";
 
     // Normalize line endings for Windows
+    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn longer_names_prefix() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("longer")
+        .arg("tests/data/longer/input1.tsv")
+        .arg("--cols")
+        .arg("2-4")
+        .arg("--names-prefix")
+        .arg("Q")
+        .output()?;
+
+    let expected = "ID\tname\tvalue\nA\t1\t1\nA\t2\t2\nA\t3\t3\nB\t1\t4\nB\t2\t5\nB\t3\t6\nC\t1\t7\nC\t2\t8\nC\t3\t9\n";
+
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
 
