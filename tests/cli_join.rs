@@ -90,6 +90,33 @@ fn join_basic_from_golden_whole_line_key_header() -> anyhow::Result<()> {
 }
 
 #[test]
+fn join_basic_line_buffered_header_filter_file() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--line-buffered")
+        .arg("--header")
+        .arg("--filter-file")
+        .arg("tests/data/join/input1.tsv")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let golden = std::fs::read_to_string("tests/data/join/gold_basic_tests_1.txt")?;
+    let expected = extract_block(
+        &golden,
+        "====[tsv-join --header --filter-file input1.tsv input2.tsv]====",
+    );
+
+    assert_eq!(stdout.trim_end(), expected.trim_end());
+
+    Ok(())
+}
+
+#[test]
 fn join_basic_inner_join_header_by_index() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
@@ -111,6 +138,74 @@ fn join_basic_inner_join_header_by_index() -> anyhow::Result<()> {
         stdout,
         "id\tdv1\tfv1\tfv2\nk1\tx1\tv1a\tv1b\nk2\tx2\tv2a\tv2b\n"
     );
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_write_all_left_outer_join_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("--allow-duplicate-keys")
+        .arg("-k")
+        .arg("2")
+        .arg("-a")
+        .arg("5")
+        .arg("--write-all")
+        .arg("NA")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines[0], "f1\tf2\tf3\tf4\tf5\tf5");
+
+    let mut has_unmatched = false;
+    for line in &lines[1..] {
+        let fields: Vec<&str> = line.split('\t').collect();
+        assert!(fields.len() == 5 || fields.len() == 6);
+        if fields.len() == 6 && fields[5] == "NA" {
+            has_unmatched = true;
+        }
+    }
+    assert!(has_unmatched);
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_write_all_multi_append_fields_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("--allow-duplicate-keys")
+        .arg("-k")
+        .arg("2")
+        .arg("-a")
+        .arg("4,5")
+        .arg("--write-all")
+        .arg("NA")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines[0], "f1\tf2\tf3\tf4\tf5\tf4\tf5");
+
+    assert!(stdout.contains("27\txa\tgg\t44\t45\tNA\tNA"));
 
     Ok(())
 }
@@ -139,6 +234,289 @@ fn join_basic_from_golden_whole_line_key_header_short_opts() -> anyhow::Result<(
     );
 
     assert_eq!(stdout.trim_end(), expected.trim_end());
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_write_all_left_outer_join_noheader() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-f")
+        .arg("tests/data/join/input1_noheader.tsv")
+        .arg("--allow-duplicate-keys")
+        .arg("-k")
+        .arg("2")
+        .arg("-a")
+        .arg("5")
+        .arg("--write-all")
+        .arg("NA")
+        .arg("tests/data/join/input2_noheader.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert!(stdout.contains("27\txa\tgg\t44\t45\tNA"));
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_single_column_filter_header_key_only() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input_1x5.tsv")
+        .arg("-k")
+        .arg("1")
+        .arg("tests/data/join/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let lines: Vec<&str> = stdout.lines().collect();
+
+    assert_eq!(lines[0], "f1\tf2\tf3\tf4\tf5");
+    assert_eq!(lines.len(), 2);
+    assert!(lines[1].starts_with("3\tnnn\tGGG\t336"));
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_single_column_filter_header_data_and_append() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input_1x5.tsv")
+        .arg("-k")
+        .arg("1")
+        .arg("-d")
+        .arg("2")
+        .arg("-a")
+        .arg("1")
+        .arg("tests/data/join/input1.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let expected = concat!(
+        "f1\tf2\tf3\tf4\tf5\tfa\n",
+        "1\tggg\tUUU\t101\t15\tggg\n",
+        "5\tggg\tCCC\t5734\t52\tggg\n",
+        "9\tv\tvv\t97\t91\tv\n",
+    );
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_alternate_delimiter_header_key_only() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--delimiter")
+        .arg(":")
+        .arg("--header")
+        .arg("-k")
+        .arg("1")
+        .arg("-f")
+        .arg("tests/data/join/input_2x3_colon.tsv")
+        .arg("tests/data/join/input_5x4_colon.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let expected = concat!(
+        "Field A:Field B:Field C:Field D:Field E\n",
+        "13:hello world:fast:432:303\n",
+        "101:501:432:12:13\n",
+    );
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_alternate_delimiter_header_with_data_fields() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--delimiter")
+        .arg(":")
+        .arg("--header")
+        .arg("-k")
+        .arg("1")
+        .arg("-d")
+        .arg("5")
+        .arg("-f")
+        .arg("tests/data/join/input_2x3_colon.tsv")
+        .arg("tests/data/join/input_5x4_colon.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let expected = concat!(
+        "Field A:Field B:Field C:Field D:Field E\n",
+        "55:\tabc:501:892:101\n",
+        "101:501:432:12:13\n",
+    );
+
+    assert_eq!(stdout, expected);
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_alternate_delimiter_header_multi_key_append() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--delimiter")
+        .arg(":")
+        .arg("--header")
+        .arg("-k")
+        .arg("1,2")
+        .arg("-d")
+        .arg("5,3")
+        .arg("-a")
+        .arg("1")
+        .arg("-f")
+        .arg("tests/data/join/input_2x3_colon.tsv")
+        .arg("tests/data/join/input_5x4_colon.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(
+        stdout.trim_end(),
+        "Field A:Field B:Field C:Field D:Field E:col a"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_alternate_delimiter_header_named_fields() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--delimiter")
+        .arg(":")
+        .arg("--header")
+        .arg("-d")
+        .arg("col a,col b")
+        .arg("-k")
+        .arg("Field E,Field C")
+        .arg("-a")
+        .arg("Field B")
+        .arg("-f")
+        .arg("tests/data/join/input_5x4_colon.tsv")
+        .arg("tests/data/join/input_2x3_colon.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout.trim_end(), "col a:col b:Field B");
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_empty_filter_noheader() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-f")
+        .arg("tests/data/join/input_emptyfile.tsv")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert!(stdout.is_empty());
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_empty_filter_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-H")
+        .arg("-f")
+        .arg("tests/data/join/input_emptyfile.tsv")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, "f1\tf2\tf3\tf4\tf5\n");
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_empty_data_noheader() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("tests/data/join/input_emptyfile.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert!(stdout.is_empty());
+
+    Ok(())
+}
+
+#[test]
+fn join_basic_empty_data_header() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("-H")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("tests/data/join/input_emptyfile.tsv")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert!(stdout.is_empty());
 
     Ok(())
 }
@@ -239,14 +617,11 @@ fn join_basic_allow_duplicate_keys_header_append_last_wins() -> anyhow::Result<(
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    let golden =
-        std::fs::read_to_string("tsv-utils-master/tsv-join/tests/gold/basic_tests_1.txt")?;
+    let golden = std::fs::read_to_string("tests/data/join/gold_basic_tests_1.txt")?;
     let expected = extract_block(
         &golden,
         "====[tsv-join --header -f input1.tsv -k 2 -a 5 --allow-duplicate-keys input2.tsv]====",
     );
-
-    assert!(expected.starts_with("f1\tf2\tf3\tf4\tf5\tf5"));
     assert_eq!(stdout.trim_end(), expected.trim_end());
 
     Ok(())
@@ -381,6 +756,59 @@ fn join_error_invalid_append_index_header_filter_header() -> anyhow::Result<()> 
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
         stderr.contains("tva join: line has 5 fields, but append index 6 is out of range"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_write_all_requires_append_fields() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("--write-all")
+        .arg("-1")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: --write-all requires --append-fields"),
+        "stderr was: {}",
+        stderr
+    );
+
+    Ok(())
+}
+
+#[test]
+fn join_error_write_all_cannot_be_used_with_exclude() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("join")
+        .arg("--header")
+        .arg("-f")
+        .arg("tests/data/join/input1.tsv")
+        .arg("-k")
+        .arg("2")
+        .arg("--write-all")
+        .arg("-1")
+        .arg("--exclude")
+        .arg("tests/data/join/input2.tsv")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("tva join: --write-all cannot be used with --exclude"),
         "stderr was: {}",
         stderr
     );
