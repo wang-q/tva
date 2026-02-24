@@ -22,8 +22,11 @@ pub fn reader(input: &str) -> Box<dyn BufRead> {
     } else {
         let path = Path::new(input);
         let file = match File::open(path) {
-            Err(why) => panic!("could not open {}: {}", path.display(), why),
             Ok(file) => file,
+            Err(err) => {
+                eprintln!("tva: could not open {}: {}", path.display(), err);
+                std::process::exit(1);
+            }
         };
 
         if path.extension() == Some(OsStr::new("gz")) {
@@ -71,7 +74,10 @@ pub fn has_nonempty_line(input: &str) -> io::Result<bool> {
 pub fn read_lines(input: &str) -> Vec<String> {
     let mut reader = reader(input);
     let mut s = String::new();
-    reader.read_to_string(&mut s).expect("Read error");
+    if let Err(err) = reader.read_to_string(&mut s) {
+        eprintln!("tva: read error from {}: {}", input, err);
+        std::process::exit(1);
+    }
     s.lines().map(|s| s.to_string()).collect::<Vec<String>>()
 }
 
@@ -96,7 +102,14 @@ pub fn writer(output: &str) -> Box<dyn Write> {
     let writer: Box<dyn Write> = if output == "stdout" {
         Box::new(BufWriter::new(io::stdout()))
     } else {
-        Box::new(BufWriter::new(File::create(output).unwrap()))
+        let file = match File::create(output) {
+            Ok(file) => file,
+            Err(err) => {
+                eprintln!("tva: could not create {}: {}", output, err);
+                std::process::exit(1);
+            }
+        };
+        Box::new(BufWriter::new(file))
     };
 
     writer

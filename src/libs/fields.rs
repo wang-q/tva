@@ -1,6 +1,38 @@
 use intspan::IntSpan;
 use std::collections::HashMap;
 
+pub const FIELD_SYNTAX_HELP: &str = r#"Field syntax
+
+Field lists are used across tva commands (select, join, uniq, split, etc.) to
+identify columns. They share a common syntax:
+
+- 1-based numeric indices:
+  1,3,5
+
+- Ranges of indices:
+  1-3,5-7
+
+- Mixed lists and ranges:
+  1,3-5,10
+
+- Header-aware names (with --header):
+  run,time
+
+- Name ranges (inclusive, by header position):
+  run-user_time
+
+- Wildcards on names:
+  *_time
+
+- Escaping special characters in names (space, comma, dash, colon, star, digits):
+  test\ id,run\:id,time\-stamp,\001,\100
+
+Special rules:
+- Index 0 or negative indices are not allowed.
+- In header mode, numeric indices and names can be mixed.
+- Without --header, only numeric indices are allowed; using names is an error.
+"#;
+
 pub fn fields_to_ints(s: &str) -> IntSpan {
     let mut ints = IntSpan::new();
     for p in tokenize_field_spec(s) {

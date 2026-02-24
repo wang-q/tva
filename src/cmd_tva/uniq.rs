@@ -16,6 +16,11 @@ Notes:
 * Keeps a 64-bit hash for each unique key; ~8 bytes of memory per unique row
 * Only the first occurrence of each key is kept; occurrences are not counted
 
+Field syntax:
+- When --header is given, --fields/-f accepts 1-based indices, ranges
+  (1-3,5-7), header names, name ranges (run-user_time), and wildcards (*_time).
+- Run `tva --help-fields` for a full description shared across tva commands.
+
 Examples:
 1. Deduplicate whole rows
    tva uniq tests/genome/ctg.tsv

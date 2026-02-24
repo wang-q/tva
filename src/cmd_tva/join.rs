@@ -29,6 +29,11 @@ Output:
   are appended to each matching data line.
 - When --header is set, exactly one header line is written, with any
   appended filter fields added to the data header.
+
+Field syntax:
+- Field lists support 1-based indices, ranges (1-3,5-7), header names,
+  name ranges (run-user_time), and wildcards (*_time).
+- Run `tva --help-fields` for a full description shared across tva commands.
 "###,
         )
         .arg(

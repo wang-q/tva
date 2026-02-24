@@ -26,6 +26,11 @@ Selection:
 - --exclude/-e drops the listed fields and keeps all others.
 - In header mode, field names and numeric indices can be mixed.
 
+Field syntax:
+- Field lists support 1-based indices, ranges (1-3,5-7), header names,
+  name ranges (run-user_time), and wildcards (*_time).
+- Run `tva --help-fields` for a full description shared across tva commands.
+
 Output:
 - By default, output is written to standard output.
 - Use --outfile to write to a file instead.

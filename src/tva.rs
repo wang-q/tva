@@ -12,6 +12,12 @@ fn main() -> anyhow::Result<()> {
         .propagate_version(true)
         .arg_required_else_help(true)
         .color(ColorChoice::Auto)
+        .arg(
+            Arg::new("help-fields")
+                .long("help-fields")
+                .action(ArgAction::SetTrue)
+                .help("Print help on field syntax and exit"),
+        )
         .subcommand(cmd_tva::md::make_subcommand())
         .subcommand(cmd_tva::append::make_subcommand())
         .subcommand(cmd_tva::join::make_subcommand())
@@ -37,10 +43,19 @@ Currently implemented subcommands:
 
 Notes:
 * Run `tva help <SUBCOMMAND>` for detailed usage
+* Run `tva --help-fields` for shared field syntax used by select/join/uniq/split
 "###,
         );
 
-    match app.get_matches().subcommand() {
+    let matches = app.get_matches();
+
+    if matches.get_flag("help-fields") {
+        use tva::libs::fields::FIELD_SYNTAX_HELP;
+        println!("{}", FIELD_SYNTAX_HELP);
+        return Ok(());
+    }
+
+    match matches.subcommand() {
         Some(("md", sub_matches)) => cmd_tva::md::execute(sub_matches),
         Some(("append", sub_matches)) => cmd_tva::append::execute(sub_matches),
         Some(("join", sub_matches)) => cmd_tva::join::execute(sub_matches),
