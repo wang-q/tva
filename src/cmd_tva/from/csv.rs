@@ -2,9 +2,9 @@ use clap::*;
 use std::io::Write;
 
 pub fn make_subcommand() -> Command {
-    Command::new("from-csv")
+    Command::new("csv")
         .about("Converts CSV input to TSV")
-        .after_help(include_str!("../../docs/help/from_csv.md"))
+        .after_help(include_str!("../../../docs/help/from_csv.md"))
         .arg(
             Arg::new("infile")
                 .num_args(0..=1)
@@ -93,18 +93,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if infile == "stdin" {
                     if let Some(pos) = pos {
                         let line = pos.line();
-                        eprintln!("tva from-csv: invalid CSV at line {}: {}", line, err);
+                        eprintln!("tva from csv: invalid CSV at line {}: {}", line, err);
                     } else {
-                        eprintln!("tva from-csv: invalid CSV: {}", err);
+                        eprintln!("tva from csv: invalid CSV: {}", err);
                     }
                 } else if let Some(pos) = pos {
                     let line = pos.line();
                     eprintln!(
-                        "tva from-csv: invalid CSV in '{}' at line {}: {}",
+                        "tva from csv: invalid CSV in '{}' at line {}: {}",
                         infile, line, err
                     );
                 } else {
-                    eprintln!("tva from-csv: invalid CSV in '{}': {}", infile, err);
+                    eprintln!("tva from csv: invalid CSV in '{}': {}", infile, err);
                 }
                 std::process::exit(1);
             }

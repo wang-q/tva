@@ -715,7 +715,8 @@ fn test_append_subdir_filename_label() {
 #[test]
 fn test_from_csv_invalid_delimiter_length() {
     let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("from-csv")
+    cmd.arg("from")
+        .arg("csv")
         .arg("--delimiter")
         .arg("TAB")
         .write_stdin("a,b\n1,2\n")
@@ -730,7 +731,8 @@ fn test_from_csv_empty_records() {
     // The test confirms that empty lines do not appear in the output.
     let input = "a,b\n\n1,2\n";
     let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("from-csv")
+    cmd.arg("from")
+        .arg("csv")
         .write_stdin(input)
         .assert()
         .success()
@@ -743,12 +745,13 @@ fn test_from_csv_stdin_error() {
     // Case: inconsistent record length (Row 1: 2 fields, Row 2: 3 fields)
     let input = "a,b\n1,2,3\n";
     let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("from-csv")
+    cmd.arg("from")
+        .arg("csv")
         .write_stdin(input)
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "tva from-csv: invalid CSV at line",
+            "tva from csv: invalid CSV at line",
         ));
 }
 
@@ -758,11 +761,12 @@ fn test_from_csv_file_error_no_line_info() {
     // But we can verify the file path is included in the error message for file inputs
     // Using a file that definitely has bad CSV structure
     let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("from-csv")
+    cmd.arg("from")
+        .arg("csv")
         .arg("tests/data/from_csv/invalid1.csv")
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "tva from-csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'",
+            "tva from csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'",
         ));
 }

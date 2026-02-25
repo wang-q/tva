@@ -9,7 +9,7 @@ fn from_csv_basic() -> anyhow::Result<()> {
     let input = "color,count\nred,1\ngreen,2\n";
 
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd.arg("from-csv").write_stdin(input).output().unwrap();
+    let output = cmd.arg("from").arg("csv").write_stdin(input).output().unwrap();
 
     let stdout = String::from_utf8(output.stdout).unwrap();
     let stdout = normalize_newlines(&stdout);
@@ -25,7 +25,7 @@ fn from_csv_with_quotes_and_commas() -> anyhow::Result<()> {
     let input = "name,comment\n\"a,b\",\"c,d\"\n\"x\"\"y\",z\n";
 
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd.arg("from-csv").write_stdin(input).output().unwrap();
+    let output = cmd.arg("from").arg("csv").write_stdin(input).output().unwrap();
 
     let stdout = String::from_utf8(output.stdout).unwrap();
     let stdout = normalize_newlines(&stdout);
@@ -42,7 +42,8 @@ fn from_csv_with_custom_delimiter() -> anyhow::Result<()> {
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("from-csv")
+        .arg("from")
+        .arg("csv")
         .arg("--delimiter")
         .arg(";")
         .write_stdin(input)
@@ -62,7 +63,8 @@ fn from_csv_with_custom_delimiter() -> anyhow::Result<()> {
 fn from_csv_input1_format1_file() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("from-csv")
+        .arg("from")
+        .arg("csv")
         .arg("tests/data/from_csv/input1_format1.csv")
         .output()
         .unwrap();
@@ -107,7 +109,8 @@ a\tab\tabc\tabcd
 fn from_csv_input3_multiline_and_tabs() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("from-csv")
+        .arg("from")
+        .arg("csv")
         .arg("tests/data/from_csv/input3.csv")
         .output()
         .unwrap();
@@ -134,7 +137,8 @@ With TAB\tABC DEF\t123 456
 fn from_csv_input_unicode() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("from-csv")
+        .arg("from")
+        .arg("csv")
         .arg("tests/data/from_csv/input_unicode.csv")
         .output()
         .unwrap();
@@ -159,7 +163,8 @@ suomalainen\tväri vihreä keltainen sininen valkoinen musta\tvihreä\tsininen
 fn from_csv_input_bom() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("from-csv")
+        .arg("from")
+        .arg("csv")
         .arg("tests/data/from_csv/input_bom.csv")
         .output()
         .unwrap();
@@ -182,7 +187,8 @@ ABC\tDEF\tGHI
 fn from_csv_invalid1_should_fail() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("from-csv")
+        .arg("from")
+        .arg("csv")
         .arg("tests/data/from_csv/invalid1.csv")
         .output()
         .unwrap();
@@ -193,7 +199,7 @@ fn from_csv_invalid1_should_fail() -> anyhow::Result<()> {
     let stderr = normalize_newlines(&stderr);
     assert!(
         stderr
-            .contains("tva from-csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'"),
+            .contains("tva from csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'"),
         "unexpected stderr: {}",
         stderr
     );
@@ -210,7 +216,8 @@ fn from_csv_invalid1_should_fail() -> anyhow::Result<()> {
 fn from_csv_invalid2_should_fail() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("from-csv")
+        .arg("from")
+        .arg("csv")
         .arg("tests/data/from_csv/invalid2.csv")
         .output()
         .unwrap();
@@ -226,7 +233,8 @@ fn from_csv_stdin_filename_explicit() -> anyhow::Result<()> {
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
-        .arg("from-csv")
+        .arg("from")
+        .arg("csv")
         .arg("stdin")
         .write_stdin(input)
         .output()
@@ -246,7 +254,8 @@ fn from_csv_gz_matches_plain_csv() -> anyhow::Result<()> {
     // plain CSV
     let mut cmd_plain = cargo_bin_cmd!("tva");
     let output_plain = cmd_plain
-        .arg("from-csv")
+        .arg("from")
+        .arg("csv")
         .arg("tests/data/from_csv/boston311-100.csv")
         .output()
         .unwrap();
@@ -258,7 +267,8 @@ fn from_csv_gz_matches_plain_csv() -> anyhow::Result<()> {
     // gzipped CSV
     let mut cmd_gz = cargo_bin_cmd!("tva");
     let output_gz = cmd_gz
-        .arg("from-csv")
+        .arg("from")
+        .arg("csv")
         .arg("tests/data/from_csv/boston311-100.csv.gz")
         .output()
         .unwrap();

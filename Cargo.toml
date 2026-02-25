@@ -27,7 +27,6 @@ regex = "1.9.1"
 flate2 = "1.0.26"
 
 indexmap = "2.0.0"
-
 intspan = "0.8.7"
 
 rapidhash = { version = "1.4.0", features = ["rng"] }

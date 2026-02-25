@@ -2,7 +2,7 @@ pub mod append;
 pub mod bin;
 pub mod check;
 pub mod filter;
-pub mod from_csv;
+pub mod r#from;
 pub mod join;
 pub mod keep_header;
 pub mod longer;

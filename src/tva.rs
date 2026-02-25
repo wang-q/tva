@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::bin::make_subcommand())
         .subcommand(cmd_tva::check::make_subcommand())
         .subcommand(cmd_tva::filter::make_subcommand())
-        .subcommand(cmd_tva::from_csv::make_subcommand())
+        .subcommand(cmd_tva::r#from::make_subcommand())
         .subcommand(cmd_tva::join::make_subcommand())
         .subcommand(cmd_tva::keep_header::make_subcommand())
         .subcommand(cmd_tva::longer::make_subcommand())
@@ -47,7 +47,7 @@ fn main() -> anyhow::Result<()> {
 * Statistics & Summary: bin, stats, uniq
 * Reshaping: longer, wider
 * Combining & Splitting: append, join, split
-* Formatting & Utilities: check, from-csv, keep-header, md, nl
+* Formatting & Utilities: check, from, keep-header, md, nl
 "###,
         );
 
@@ -64,7 +64,7 @@ fn main() -> anyhow::Result<()> {
         Some(("bin", sub_matches)) => cmd_tva::bin::execute(sub_matches),
         Some(("check", sub_matches)) => cmd_tva::check::execute(sub_matches),
         Some(("filter", sub_matches)) => cmd_tva::filter::execute(sub_matches),
-        Some(("from-csv", sub_matches)) => cmd_tva::from_csv::execute(sub_matches),
+        Some(("from", sub_matches)) => cmd_tva::r#from::execute(sub_matches),
         Some(("join", sub_matches)) => cmd_tva::join::execute(sub_matches),
         Some(("keep-header", sub_matches)) => cmd_tva::keep_header::execute(sub_matches),
         Some(("longer", sub_matches)) => cmd_tva::longer::execute(sub_matches),
