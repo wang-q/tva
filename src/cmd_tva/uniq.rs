@@ -158,11 +158,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     if repeated && at_least <= 1 {
         at_least = 2;
     }
-    if at_least >= 2 && max < at_least {
-        if max != 0 || (!equiv_mode && !number_mode) {
+    if at_least >= 2 && max < at_least
+        && (max != 0 || (!equiv_mode && !number_mode)) {
             max = at_least;
         }
-    }
 
     if !equiv_mode {
         if args.get_one::<String>("equiv-header").is_some() {
@@ -173,11 +172,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
     }
 
-    if !number_mode {
-        if args.get_one::<String>("number-header").is_some() {
+    if !number_mode
+        && args.get_one::<String>("number-header").is_some() {
             arg_error("--number-header requires --number");
         }
-    }
 
     let equiv_header = args
         .get_one::<String>("equiv-header")
@@ -277,7 +275,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
             }
 
-            let subject = if key_fields.as_ref().map_or(true, |v| v.is_empty()) {
+            let subject = if key_fields.as_ref().is_none_or(|v| v.is_empty()) {
                 if ignore_case {
                     let lower = line.to_lowercase();
                     rapidhash(lower.as_bytes())

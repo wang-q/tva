@@ -99,6 +99,15 @@ pub fn make_subcommand() -> Command {
         )
 }
 
+struct SplitConfig<'a> {
+    dir: &'a Path,
+    prefix: &'a str,
+    suffix: &'a str,
+    digit_width: usize,
+    append: bool,
+    header_in_out: bool,
+}
+
 fn arg_error(msg: &str) -> ! {
     eprintln!("tva split: {}", msg);
     std::process::exit(1);
@@ -119,28 +128,23 @@ fn format_index(idx0: usize, digit_width: usize) -> String {
 }
 
 fn open_output_file(
-    dir: &Path,
-    prefix: &str,
-    suffix: &str,
-    digit_width: usize,
+    config: &SplitConfig,
     idx0: usize,
-    append: bool,
-    header_in_out: bool,
     header_line: Option<&str>,
 ) -> anyhow::Result<(Box<dyn Write>, bool)> {
-    let index_str = format_index(idx0, digit_width);
-    let filename = format!("{}{}{}", prefix, index_str, suffix);
-    let path = dir.join(filename);
+    let index_str = format_index(idx0, config.digit_width);
+    let filename = format!("{}{}{}", config.prefix, index_str, config.suffix);
+    let path = config.dir.join(filename);
     let existed = path.exists();
 
-    if existed && !append {
+    if existed && !config.append {
         return Err(anyhow::anyhow!(
             "tva split: output file already exists: {} (use --append/-a to append)",
             path.display()
         ));
     }
 
-    let file: Box<dyn Write> = if append {
+    let file: Box<dyn Write> = if config.append {
         Box::new(BufWriter::new(
             OpenOptions::new().create(true).append(true).open(&path)?,
         ))
@@ -151,9 +155,9 @@ fn open_output_file(
     let mut writer = file;
     let mut header_written = false;
 
-    if header_in_out {
+    if config.header_in_out {
         if let Some(header) = header_line {
-            if !(append && existed) {
+            if !(config.append && existed) {
                 writer.write_all(header.as_bytes())?;
                 writer.write_all(b"\n")?;
                 header_written = true;
@@ -169,12 +173,7 @@ fn open_output_file(
 fn get_or_create_output<'a>(
     outputs: &'a mut BTreeMap<usize, SplitOutput>,
     idx0: usize,
-    dir: &'a Path,
-    prefix: &'a str,
-    suffix: &'a str,
-    digit_width: usize,
-    append: bool,
-    header_in_out: bool,
+    config: &SplitConfig,
     header_line: Option<&'a str>,
 ) -> anyhow::Result<&'a mut SplitOutput> {
     if outputs.contains_key(&idx0) {
@@ -182,13 +181,8 @@ fn get_or_create_output<'a>(
     }
 
     let (writer, header_written) = open_output_file(
-        dir,
-        prefix,
-        suffix,
-        digit_width,
+        config,
         idx0,
-        append,
-        header_in_out,
         header_line,
     )?;
 
@@ -298,29 +292,28 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None
     };
 
+    let config = SplitConfig {
+        dir: &dir_path,
+        prefix: &prefix,
+        suffix: &suffix,
+        digit_width,
+        append,
+        header_in_out,
+    };
+
     if lines_per_file > 0 {
         split_by_line_count(
             &infiles,
-            header_in_out,
+            &config,
             lines_per_file,
-            &dir_path,
-            &prefix,
-            &suffix,
-            digit_width,
-            append,
         )?;
     } else {
         split_randomly(
             &infiles,
-            header_in_out,
+            &config,
             num_files,
             key_indices.as_deref(),
             &mut rng,
-            &dir_path,
-            &prefix,
-            &suffix,
-            digit_width,
-            append,
         )?;
     }
 
@@ -329,13 +322,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
 fn split_by_line_count(
     infiles: &[String],
-    header_in_out: bool,
+    config: &SplitConfig,
     lines_per_file: u64,
-    dir_path: &Path,
-    prefix: &str,
-    suffix: &str,
-    digit_width: usize,
-    append: bool,
 ) -> anyhow::Result<()> {
     let mut header_line: Option<String> = None;
     let mut header_seen = false;
@@ -354,7 +342,7 @@ fn split_by_line_count(
                 line.pop();
             }
 
-            if header_in_out && !header_seen && is_first_nonempty && !line.is_empty() {
+            if config.header_in_out && !header_seen && is_first_nonempty && !line.is_empty() {
                 if header_line.is_none() {
                     header_line = Some(line.clone());
                 }
@@ -367,13 +355,8 @@ fn split_by_line_count(
 
             if current_writer.is_none() || current_lines >= lines_per_file {
                 let (writer, _) = open_output_file(
-                    dir_path,
-                    prefix,
-                    suffix,
-                    digit_width,
+                    config,
                     current_idx0,
-                    append,
-                    header_in_out,
                     header_line.as_deref(),
                 )?;
                 current_writer = Some(writer);
@@ -394,15 +377,10 @@ fn split_by_line_count(
 
 fn split_randomly(
     infiles: &[String],
-    header_in_out: bool,
+    config: &SplitConfig,
     num_files: usize,
     key_indices: Option<&[usize]>,
     rng: &mut Option<RapidRng>,
-    dir_path: &Path,
-    prefix: &str,
-    suffix: &str,
-    digit_width: usize,
-    append: bool,
 ) -> anyhow::Result<()> {
     if num_files == 0 {
         return Err(anyhow::anyhow!(
@@ -425,7 +403,7 @@ fn split_randomly(
                 line.pop();
             }
 
-            if header_in_out && !header_seen && is_first_nonempty && !line.is_empty() {
+            if config.header_in_out && !header_seen && is_first_nonempty && !line.is_empty() {
                 if header_line.is_none() {
                     header_line = Some(line.clone());
                 }
@@ -449,16 +427,11 @@ fn split_randomly(
             let output = get_or_create_output(
                 &mut outputs,
                 idx0,
-                dir_path,
-                prefix,
-                suffix,
-                digit_width,
-                append,
-                header_in_out,
+                config,
                 header_line.as_deref(),
             )?;
 
-            if header_in_out && !output.header_written {
+            if config.header_in_out && !output.header_written {
                 if let Some(header) = header_line.as_deref() {
                     output.writer.write_all(header.as_bytes())?;
                     output.writer.write_all(b"\n")?;

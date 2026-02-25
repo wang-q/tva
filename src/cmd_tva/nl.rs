@@ -85,11 +85,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     for infile in &infiles {
         let is_stdin = infile == "stdin";
 
-        if !is_stdin {
-            if !crate::libs::io::has_nonempty_line(infile)? {
+        if !is_stdin
+            && !crate::libs::io::has_nonempty_line(infile)? {
                 continue;
             }
-        }
 
         let reader = crate::libs::io::reader(infile);
         let mut file_line_num: u64 = 0;

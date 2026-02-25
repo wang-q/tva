@@ -48,6 +48,12 @@ pub struct Aggregator {
     pub string_values: HashMap<usize, Vec<String>>,           // For collapse/rand
 }
 
+impl Default for Aggregator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Aggregator {
     pub fn new() -> Self {
         Self {
@@ -209,14 +215,14 @@ impl Aggregator {
 
         // Handle First
         for idx in first_fields {
-            if !self.firsts.contains_key(&idx) {
+            self.firsts.entry(idx).or_insert_with(|| {
                 if idx < record.len() {
                     let val = String::from_utf8_lossy(record[idx]).to_string();
-                    self.firsts.insert(idx, val);
+                    val
                 } else {
-                    self.firsts.insert(idx, String::new());
+                    String::new()
                 }
-            }
+            });
         }
 
         // Handle Last

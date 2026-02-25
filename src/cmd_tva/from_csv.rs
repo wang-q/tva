@@ -97,16 +97,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     } else {
                         eprintln!("tva from-csv: invalid CSV: {}", err);
                     }
+                } else if let Some(pos) = pos {
+                    let line = pos.line();
+                    eprintln!(
+                        "tva from-csv: invalid CSV in '{}' at line {}: {}",
+                        infile, line, err
+                    );
                 } else {
-                    if let Some(pos) = pos {
-                        let line = pos.line();
-                        eprintln!(
-                            "tva from-csv: invalid CSV in '{}' at line {}: {}",
-                            infile, line, err
-                        );
-                    } else {
-                        eprintln!("tva from-csv: invalid CSV in '{}': {}", infile, err);
-                    }
+                    eprintln!("tva from-csv: invalid CSV in '{}': {}", infile, err);
                 }
                 std::process::exit(1);
             }

@@ -115,12 +115,10 @@ fn split_name_range_token(token: &str) -> Option<(String, String)> {
                 } else {
                     start.push(next);
                 }
+            } else if in_end {
+                end.push('\\');
             } else {
-                if in_end {
-                    end.push('\\');
-                } else {
-                    start.push('\\');
-                }
+                start.push('\\');
             }
         } else if c == '-' && !in_end {
             in_end = true;

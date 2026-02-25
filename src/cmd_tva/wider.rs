@@ -77,7 +77,7 @@ enum Op {
     Median,
     Q1,
     Q3,
-    IQR,
+    Iqr,
     GeoMean,
     HarmMean,
     CV,
@@ -144,11 +144,10 @@ impl Cell {
                         self.min = val;
                     }
                     // Range needs max too
-                    if op == Op::Range {
-                        if val > self.max {
+                    if op == Op::Range
+                        && val > self.max {
                             self.max = val;
                         }
-                    }
                 }
                 Op::Max => {
                     if val > self.max {
@@ -165,22 +164,20 @@ impl Cell {
                         self.sum_inv += 1.0 / val;
                     }
                 }
-                Op::Median | Op::Q1 | Op::Q3 | Op::IQR => {
+                Op::Median | Op::Q1 | Op::Q3 | Op::Iqr => {
                     self.values.push(val);
                 }
                 _ => {}
             }
 
-            if matches!(op, Op::Min | Op::Range) {
-                if val < self.min {
+            if matches!(op, Op::Min | Op::Range)
+                && val < self.min {
                     self.min = val;
                 }
-            }
-            if matches!(op, Op::Max | Op::Range) {
-                if val > self.max {
+            if matches!(op, Op::Max | Op::Range)
+                && val > self.max {
                     self.max = val;
                 }
-            }
         }
     }
 
@@ -268,7 +265,7 @@ impl Cell {
                     "nan".to_string()
                 }
             }
-            Op::Median | Op::Q1 | Op::Q3 | Op::IQR => {
+            Op::Median | Op::Q1 | Op::Q3 | Op::Iqr => {
                 let mut sorted_vals = self.values.clone();
                 sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
                 match op {
@@ -281,7 +278,7 @@ impl Cell {
                     Op::Q3 => {
                         Aggregator::calculate_quantile(&sorted_vals, 0.75).to_string()
                     }
-                    Op::IQR => {
+                    Op::Iqr => {
                         let q1 = Aggregator::calculate_quantile(&sorted_vals, 0.25);
                         let q3 = Aggregator::calculate_quantile(&sorted_vals, 0.75);
                         (q3 - q1).to_string()
@@ -364,7 +361,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         "median" => Op::Median,
         "q1" => Op::Q1,
         "q3" => Op::Q3,
-        "iqr" => Op::IQR,
+        "iqr" => Op::Iqr,
         "geomean" => Op::GeoMean,
         "harmmean" => Op::HarmMean,
         "cv" => Op::CV,
@@ -525,7 +522,7 @@ fn process_file(
         state
             .data
             .entry(key)
-            .or_insert_with(IndexMap::new)
+            .or_default()
             .entry(name)
             .or_insert_with(Cell::new)
             .update(&value, config.op);

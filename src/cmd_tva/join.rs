@@ -127,10 +127,7 @@ fn parse_append_field_spec(
     header: Option<&crate::libs::fields::Header>,
     delimiter: char,
 ) -> Option<Vec<usize>> {
-    let spec = match spec_opt {
-        Some(s) => s,
-        None => return None,
-    };
+    let spec = spec_opt?;
     let trimmed = spec.trim();
     if trimmed.is_empty() {
         return None;
@@ -329,7 +326,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     data_key_indices = indices;
 
                     if !filter_key_whole_line && !data_key_whole_line {
-                        if let (Some(ref fk), Some(ref dk)) =
+                        if let (Some(fk), Some(dk)) =
                             (filter_key_indices.as_ref(), data_key_indices.as_ref())
                         {
                             if fk.len() != dk.len() {
@@ -385,7 +382,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 data_key_indices = indices;
 
                 if !filter_key_whole_line && !data_key_whole_line {
-                    if let (Some(ref fk), Some(ref dk)) =
+                    if let (Some(fk), Some(dk)) =
                         (filter_key_indices.as_ref(), data_key_indices.as_ref())
                     {
                         if fk.len() != dk.len() {

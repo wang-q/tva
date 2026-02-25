@@ -154,7 +154,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     f64::NAN
                 };
 
-                if let Some(_) = new_name {
+                if new_name.is_some() {
                     if binned_val.is_nan() {
                         writeln!(writer, "{}\t", line)?;
                     } else {
@@ -176,7 +176,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
             } else {
                 // Field index out of bounds
-                if let Some(_) = new_name {
+                if new_name.is_some() {
                     writeln!(writer, "{}\t", line)?;
                 } else {
                     writeln!(writer, "{}", line)?;

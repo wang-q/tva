@@ -78,14 +78,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
 
     let cols = expected_fields.unwrap_or(0);
-    let rows = data.len();
 
     for c in 0..cols {
-        for r in 0..rows {
+        for (r, row) in data.iter().enumerate() {
             if r > 0 {
                 writer.write_all(b"\t")?;
             }
-            writer.write_all(data[r][c].as_bytes())?;
+            writer.write_all(row[c].as_bytes())?;
         }
         writer.write_all(b"\n")?;
     }

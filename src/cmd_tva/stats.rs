@@ -546,9 +546,9 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
             let mut line_buf = Vec::new();
             while file_reader.read_until(b'\n', &mut line_buf)? > 0 {
-                if line_buf.ends_with(&[b'\n']) {
+                if line_buf.ends_with(b"\n") {
                     line_buf.pop();
-                    if line_buf.ends_with(&[b'\r']) {
+                    if line_buf.ends_with(b"\r") {
                         line_buf.pop();
                     }
                 }
@@ -565,7 +565,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     }
                 }
 
-                let aggregator = groups.entry(key).or_insert_with(Aggregator::new);
+                let aggregator = groups.entry(key).or_default();
                 aggregator.update(&fields, &ops);
 
                 line_buf.clear();
@@ -602,9 +602,9 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
             let mut line_buf = Vec::new();
             while file_reader.read_until(b'\n', &mut line_buf)? > 0 {
-                if line_buf.ends_with(&[b'\n']) {
+                if line_buf.ends_with(b"\n") {
                     line_buf.pop();
-                    if line_buf.ends_with(&[b'\r']) {
+                    if line_buf.ends_with(b"\r") {
                         line_buf.pop();
                     }
                 }

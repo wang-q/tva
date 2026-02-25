@@ -601,29 +601,33 @@ pub fn split_spec(spec: &str) -> Result<(String, String), String> {
     }
 }
 
+pub struct FilterSpecConfig<'a> {
+    pub empty_specs: &'a [String],
+    pub not_empty_specs: &'a [String],
+    pub blank_specs: &'a [String],
+    pub not_blank_specs: &'a [String],
+    pub numeric_specs: &'a [PendingNumeric],
+    pub str_cmp_specs: &'a [PendingStrCmp],
+    pub char_len_specs: &'a [PendingCharLen],
+    pub byte_len_specs: &'a [PendingByteLen],
+    pub numeric_prop_specs: &'a [PendingNumericProp],
+    pub str_eq_specs: &'a [PendingStrEq],
+    pub substr_specs: &'a [PendingSubstr],
+    pub regex_specs: &'a [PendingRegex],
+    pub ff_numeric_specs: &'a [PendingFieldFieldNumeric],
+    pub ff_str_specs: &'a [PendingFieldFieldStr],
+    pub ff_absdiff_specs: &'a [PendingFieldFieldAbsDiff],
+    pub ff_reldiff_specs: &'a [PendingFieldFieldRelDiff],
+}
+
 pub fn build_tests(
     header: Option<&crate::libs::fields::Header>,
     delimiter: char,
-    empty_specs: &[String],
-    not_empty_specs: &[String],
-    blank_specs: &[String],
-    not_blank_specs: &[String],
-    numeric_specs: &[PendingNumeric],
-    str_cmp_specs: &[PendingStrCmp],
-    char_len_specs: &[PendingCharLen],
-    byte_len_specs: &[PendingByteLen],
-    numeric_prop_specs: &[PendingNumericProp],
-    str_eq_specs: &[PendingStrEq],
-    substr_specs: &[PendingSubstr],
-    regex_specs: &[PendingRegex],
-    ff_numeric_specs: &[PendingFieldFieldNumeric],
-    ff_str_specs: &[PendingFieldFieldStr],
-    ff_absdiff_specs: &[PendingFieldFieldAbsDiff],
-    ff_reldiff_specs: &[PendingFieldFieldRelDiff],
+    config: FilterSpecConfig,
 ) -> Result<Vec<TestKind>, String> {
     let mut tests = Vec::new();
 
-    for spec in empty_specs {
+    for spec in config.empty_specs {
         let idxs =
             crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
@@ -631,7 +635,7 @@ pub fn build_tests(
         }
     }
 
-    for spec in not_empty_specs {
+    for spec in config.not_empty_specs {
         let idxs =
             crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
@@ -639,7 +643,7 @@ pub fn build_tests(
         }
     }
 
-    for spec in blank_specs {
+    for spec in config.blank_specs {
         let idxs =
             crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
@@ -647,7 +651,7 @@ pub fn build_tests(
         }
     }
 
-    for spec in not_blank_specs {
+    for spec in config.not_blank_specs {
         let idxs =
             crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
@@ -655,7 +659,7 @@ pub fn build_tests(
         }
     }
 
-    for p in numeric_specs {
+    for p in config.numeric_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
         let idxs = crate::libs::fields::parse_field_list_with_header(
             &field_part,
@@ -684,7 +688,7 @@ pub fn build_tests(
         }
     }
 
-    for p in str_cmp_specs {
+    for p in config.str_cmp_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
         let idxs = crate::libs::fields::parse_field_list_with_header(
             &field_part,
@@ -707,7 +711,7 @@ pub fn build_tests(
         }
     }
 
-    for p in char_len_specs {
+    for p in config.char_len_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
         let idxs = crate::libs::fields::parse_field_list_with_header(
             &field_part,
@@ -733,7 +737,7 @@ pub fn build_tests(
         }
     }
 
-    for p in byte_len_specs {
+    for p in config.byte_len_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
         let idxs = crate::libs::fields::parse_field_list_with_header(
             &field_part,
@@ -759,7 +763,7 @@ pub fn build_tests(
         }
     }
 
-    for p in numeric_prop_specs {
+    for p in config.numeric_prop_specs {
         let idxs = crate::libs::fields::parse_field_list_with_header(
             &p.spec, header, delimiter,
         )?;
@@ -776,7 +780,7 @@ pub fn build_tests(
         }
     }
 
-    for p in str_eq_specs {
+    for p in config.str_eq_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
         let idxs = crate::libs::fields::parse_field_list_with_header(
             &field_part,
@@ -802,7 +806,7 @@ pub fn build_tests(
         }
     }
 
-    for p in substr_specs {
+    for p in config.substr_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
         let idxs = crate::libs::fields::parse_field_list_with_header(
             &field_part,
@@ -819,7 +823,7 @@ pub fn build_tests(
         }
     }
 
-    for p in regex_specs {
+    for p in config.regex_specs {
         let (field_part, pattern) = split_spec(&p.spec)?;
         let idxs = crate::libs::fields::parse_field_list_with_header(
             &field_part,
@@ -841,7 +845,7 @@ pub fn build_tests(
         }
     }
 
-    for p in ff_numeric_specs {
+    for p in config.ff_numeric_specs {
         let (left_part, right_part) = split_spec(&p.spec)?;
         let left_idxs = crate::libs::fields::parse_field_list_with_header(
             &left_part, header, delimiter,
@@ -875,7 +879,7 @@ pub fn build_tests(
         }
     }
 
-    for p in ff_str_specs {
+    for p in config.ff_str_specs {
         let (left_part, right_part) = split_spec(&p.spec)?;
         let left_idxs = crate::libs::fields::parse_field_list_with_header(
             &left_part, header, delimiter,
@@ -903,7 +907,7 @@ pub fn build_tests(
         }
     }
 
-    for p in ff_absdiff_specs {
+    for p in config.ff_absdiff_specs {
         let (left_and_right, value_part) = split_spec(&p.spec)?;
         let (left_part, right_part) = if let Some(pos) = left_and_right.rfind(':') {
             (&left_and_right[..pos], &left_and_right[pos + 1..])
@@ -944,7 +948,7 @@ pub fn build_tests(
         }
     }
 
-    for p in ff_reldiff_specs {
+    for p in config.ff_reldiff_specs {
         let (left_and_right, value_part) = split_spec(&p.spec)?;
         let (left_part, right_part) = if let Some(pos) = left_and_right.rfind(':') {
             (&left_and_right[..pos], &left_and_right[pos + 1..])

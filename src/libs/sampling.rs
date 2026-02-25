@@ -1,5 +1,21 @@
 use rapidhash::RapidRng;
 
+pub struct WeightedSampleConfig<'a> {
+    pub k: usize,
+    pub has_header: bool,
+    pub header_line: Option<&'a str>,
+    pub weight_spec: &'a str,
+    pub print_random: bool,
+}
+
+pub struct DistinctSampleConfig<'a> {
+    pub prob: f64,
+    pub has_header: bool,
+    pub header_line: Option<&'a str>,
+    pub key_spec: &'a str,
+    pub print_random: bool,
+}
+
 fn write_with_optional_random<W: std::io::Write>(
     writer: &mut W,
     row: &str,
@@ -185,30 +201,29 @@ pub fn fixed_size_sample_inorder<W: std::io::Write>(
 pub fn weighted_fixed_size_sample<W: std::io::Write>(
     writer: &mut W,
     rows: &[String],
-    k: usize,
-    has_header: bool,
-    header_line: Option<&str>,
-    weight_spec: &str,
     rng: &mut RapidRng,
-    print_random: bool,
+    config: WeightedSampleConfig,
 ) -> anyhow::Result<()> {
     use crate::libs::fields::{parse_field_list_with_header, Header};
 
     let n = rows.len();
+    let k = config.k;
 
     if k == 0 || n == 0 {
         return Ok(());
     }
 
     let delimiter = '\t';
-    let header = if has_header {
-        header_line.map(|line| Header::from_line(line, delimiter))
+    let header = if config.has_header {
+        config
+            .header_line
+            .map(|line| Header::from_line(line, delimiter))
     } else {
         None
     };
 
     let field_indices =
-        parse_field_list_with_header(weight_spec, header.as_ref(), delimiter)
+        parse_field_list_with_header(config.weight_spec, header.as_ref(), delimiter)
             .map_err(|e| anyhow::anyhow!("tva sample: {}", e))?;
 
     if field_indices.len() != 1 {
@@ -223,6 +238,7 @@ pub fn weighted_fixed_size_sample<W: std::io::Write>(
 
     for row in rows {
         if row.is_empty() {
+            writer.write_all(b"\n")?;
             continue;
         }
         let cols: Vec<&str> = row.split(delimiter).collect();
@@ -255,7 +271,7 @@ pub fn weighted_fixed_size_sample<W: std::io::Write>(
 
     let limit = k.min(weighted.len());
     for (_, row) in weighted.into_iter().take(limit) {
-        write_with_optional_random(writer, row, rng, print_random, None)?;
+        write_with_optional_random(writer, row, rng, config.print_random, None)?;
     }
 
     Ok(())
@@ -264,29 +280,27 @@ pub fn weighted_fixed_size_sample<W: std::io::Write>(
 pub fn distinct_bernoulli_sample<W: std::io::Write>(
     writer: &mut W,
     rows: &[String],
-    prob: f64,
-    has_header: bool,
-    header_line: Option<&str>,
-    key_spec: &str,
     rng: &mut RapidRng,
-    print_random: bool,
+    config: DistinctSampleConfig,
 ) -> anyhow::Result<()> {
     use crate::libs::fields::{parse_field_list_with_header, Header};
     use std::collections::HashMap;
 
-    if prob <= 0.0 {
+    if config.prob <= 0.0 {
         return Ok(());
     }
 
     let delimiter = '\t';
 
-    let header = if has_header {
-        header_line.map(|line| Header::from_line(line, delimiter))
+    let header = if config.has_header {
+        config
+            .header_line
+            .map(|line| Header::from_line(line, delimiter))
     } else {
         None
     };
 
-    let spec_trimmed = key_spec.trim();
+    let spec_trimmed = config.key_spec.trim();
     let indices = if spec_trimmed == "0" {
         Vec::new()
     } else {
@@ -302,15 +316,10 @@ pub fn distinct_bernoulli_sample<W: std::io::Write>(
             continue;
         }
 
-        let key = if spec_trimmed == "0" {
+        let key = if indices.is_empty() {
             row.clone()
         } else {
             let cols: Vec<&str> = row.split(delimiter).collect();
-            if indices.is_empty() {
-                return Err(anyhow::anyhow!(
-                    "tva sample: --key-fields/-k must select at least one field"
-                ));
-            }
             let mut parts: Vec<&str> = Vec::with_capacity(indices.len());
             for idx in &indices {
                 if *idx == 0 || *idx > cols.len() {
@@ -324,17 +333,13 @@ pub fn distinct_bernoulli_sample<W: std::io::Write>(
             parts.join("\x1f")
         };
 
-        let (keep, rand_val) = if let Some(&(k, v)) = decisions.get(&key) {
-            (k, v)
-        } else {
+        let (keep, r) = decisions.entry(key).or_insert_with(|| {
             let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
-            let k = r < prob;
-            decisions.insert(key, (k, r));
-            (k, r)
-        };
+            (r < config.prob, r)
+        });
 
-        if keep {
-            write_with_optional_random(writer, row, rng, print_random, Some(rand_val))?;
+        if *keep {
+            write_with_optional_random(writer, row, rng, config.print_random, Some(*r))?;
         }
     }
 

@@ -2,7 +2,7 @@ use clap::*;
 use std::io::BufRead;
 
 use crate::libs::filter::{
-    build_tests, NumericOp, NumericProp, PendingByteLen, PendingCharLen,
+    build_tests, FilterSpecConfig, NumericOp, NumericProp, PendingByteLen, PendingCharLen,
     PendingFieldFieldAbsDiff, PendingFieldFieldNumeric, PendingFieldFieldRelDiff,
     PendingFieldFieldStr, PendingNumeric, PendingNumericProp, PendingRegex,
     PendingStrCmp, PendingStrEq, PendingSubstr, TestKind,
@@ -1167,27 +1167,27 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             let fields_vec: Vec<&str> = line.split(delimiter).collect();
 
             let header_ref = header_struct.as_ref();
-            let tests: Vec<TestKind> = build_tests(
-                header_ref,
-                delimiter,
-                &empty_specs,
-                &not_empty_specs,
-                &blank_specs,
-                &not_blank_specs,
-                &numeric_specs,
-                &str_cmp_specs,
-                &char_len_specs,
-                &byte_len_specs,
-                &numeric_prop_specs,
-                &str_eq_specs,
-                &substr_specs,
-                &regex_specs,
-                &ff_numeric_specs,
-                &ff_str_specs,
-                &ff_absdiff_specs,
-                &ff_reldiff_specs,
-            )
-            .unwrap_or_else(|e| arg_error(&e));
+            let filter_config = FilterSpecConfig {
+                empty_specs: &empty_specs,
+                not_empty_specs: &not_empty_specs,
+                blank_specs: &blank_specs,
+                not_blank_specs: &not_blank_specs,
+                numeric_specs: &numeric_specs,
+                str_cmp_specs: &str_cmp_specs,
+                char_len_specs: &char_len_specs,
+                byte_len_specs: &byte_len_specs,
+                numeric_prop_specs: &numeric_prop_specs,
+                str_eq_specs: &str_eq_specs,
+                substr_specs: &substr_specs,
+                regex_specs: &regex_specs,
+                ff_numeric_specs: &ff_numeric_specs,
+                ff_str_specs: &ff_str_specs,
+                ff_absdiff_specs: &ff_absdiff_specs,
+                ff_reldiff_specs: &ff_reldiff_specs,
+            };
+
+            let tests: Vec<TestKind> = build_tests(header_ref, delimiter, filter_config)
+                .unwrap_or_else(|e| arg_error(&e));
 
             let mut row_match = if tests.is_empty() {
                 true
@@ -1215,7 +1215,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 row_match = !row_match;
             }
 
-            if let Some(_) = label_header {
+            if label_header.is_some() {
                 let val = if row_match {
                     &label_pass_val
                 } else {

@@ -98,11 +98,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     for infile in &infiles {
         let is_stdin = infile == "stdin";
-        if !is_stdin {
-            if !crate::libs::io::has_nonempty_line(infile)? {
+        if !is_stdin
+            && !crate::libs::io::has_nonempty_line(infile)? {
                 continue;
             }
-        }
 
         let mut reader = crate::libs::io::reader(infile);
 
@@ -180,17 +179,20 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // Process remaining rows
         for line in reader.lines() {
             let line = line?;
-            process_row(
-                &line,
-                &mut writer,
+            let config = ProcessRowConfig {
                 m_indices,
                 i_indices,
                 h_fields,
                 drop_na,
                 names_prefix,
                 names_sep,
-                names_pattern.as_ref(),
-                names_to.len(),
+                names_pattern: names_pattern.as_ref(),
+                names_to_len: names_to.len(),
+            };
+            process_row(
+                &line,
+                &mut writer,
+                &config,
                 &mut buffer,
             )?;
         }
@@ -199,17 +201,21 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     Ok(())
 }
 
+struct ProcessRowConfig<'a> {
+    m_indices: &'a [usize],
+    i_indices: &'a [usize],
+    h_fields: &'a [String],
+    drop_na: bool,
+    names_prefix: Option<&'a String>,
+    names_sep: Option<&'a String>,
+    names_pattern: Option<&'a Regex>,
+    names_to_len: usize,
+}
+
 fn process_row<W: Write>(
     line: &str,
     writer: &mut W,
-    m_indices: &[usize],
-    i_indices: &[usize],
-    h_fields: &[String],
-    drop_na: bool,
-    names_prefix: Option<&String>,
-    names_sep: Option<&String>,
-    names_pattern: Option<&Regex>,
-    names_to_len: usize,
+    config: &ProcessRowConfig,
     buffer: &mut Vec<String>,
 ) -> anyhow::Result<()> {
     buffer.clear();
@@ -219,8 +225,8 @@ fn process_row<W: Write>(
     let fields = buffer;
 
     // Pre-build id part of the output line
-    let mut id_parts: Vec<&str> = Vec::with_capacity(i_indices.len());
-    for &i in i_indices {
+    let mut id_parts: Vec<&str> = Vec::with_capacity(config.i_indices.len());
+    for &i in config.i_indices {
         if i < fields.len() {
             id_parts.push(&fields[i]);
         } else {
@@ -228,14 +234,14 @@ fn process_row<W: Write>(
         }
     }
 
-    for &melt_idx in m_indices {
+    for &melt_idx in config.m_indices {
         let value = if melt_idx < fields.len() {
             &fields[melt_idx]
         } else {
             ""
         };
 
-        if drop_na && value.is_empty() {
+        if config.drop_na && value.is_empty() {
             continue;
         }
 
@@ -252,17 +258,17 @@ fn process_row<W: Write>(
         }
 
         // Write variable name(s) and value
-        let mut name_part = h_fields[melt_idx].as_str();
-        if let Some(prefix) = names_prefix {
+        let mut name_part = config.h_fields[melt_idx].as_str();
+        if let Some(prefix) = config.names_prefix {
             if let Some(stripped) = name_part.strip_prefix(prefix) {
                 name_part = stripped;
             }
         }
 
-        if let Some(regex) = names_pattern {
+        if let Some(regex) = config.names_pattern {
             // Regex extraction
             if let Some(caps) = regex.captures(name_part) {
-                for i in 1..=names_to_len {
+                for i in 1..=config.names_to_len {
                     if i > 1 {
                         write!(writer, "\t")?;
                     }
@@ -278,14 +284,14 @@ fn process_row<W: Write>(
                 // R's pivot_longer fills with NA if no match. We can write the name in first col and empty in others?
                 // Or just write the name in the first column
                 write!(writer, "{}", name_part)?;
-                for _ in 1..names_to_len {
+                for _ in 1..config.names_to_len {
                     write!(writer, "\t")?;
                 }
             }
-        } else if let Some(sep) = names_sep {
+        } else if let Some(sep) = config.names_sep {
             // Separator split
             let parts: Vec<&str> = name_part.split(sep).collect();
-            for i in 0..names_to_len {
+            for i in 0..config.names_to_len {
                 if i > 0 {
                     write!(writer, "\t")?;
                 }

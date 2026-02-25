@@ -242,11 +242,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             is_first_nonempty = false;
 
-            if prob_opt.is_some() {
-                data_rows.push(line);
-            } else {
-                data_rows.push(line);
-            }
+            data_rows.push(line);
         }
     }
 
@@ -284,16 +280,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     if let Some(p) = prob_opt {
         if let Some(ref key_spec) = key_fields {
-            distinct_bernoulli_sample(
-                &mut writer,
-                &data_rows,
-                p,
+            let config = DistinctSampleConfig {
+                prob: p,
                 has_header,
-                header_line.as_deref(),
+                header_line: header_line.as_deref(),
                 key_spec,
-                &mut rng,
                 print_random,
-            )?;
+            };
+            distinct_bernoulli_sample(&mut writer, &data_rows, &mut rng, config)?;
         } else {
             bernoulli_sample(&mut writer, &data_rows, p, &mut rng, print_random)?;
         }
@@ -303,16 +297,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     if replace && num_opt > 0 {
         sample_with_replacement(&mut writer, &data_rows, num_opt as usize, &mut rng)?;
     } else if let Some(weight_spec) = weight_field {
-        weighted_fixed_size_sample(
-            &mut writer,
-            &data_rows,
-            num_opt as usize,
+        let config = WeightedSampleConfig {
+            k: num_opt as usize,
             has_header,
-            header_line.as_deref(),
-            &weight_spec,
-            &mut rng,
+            header_line: header_line.as_deref(),
+            weight_spec: &weight_spec,
             print_random,
-        )?;
+        };
+        weighted_fixed_size_sample(&mut writer, &data_rows, &mut rng, config)?;
     } else if num_opt == 0 {
         if compatibility_mode {
             compat_random_sample(&mut writer, &data_rows, 0, &mut rng, print_random)?;

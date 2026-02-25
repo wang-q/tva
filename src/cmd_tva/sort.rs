@@ -138,8 +138,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 }
 
 fn compare_rows(
-    a: &Vec<String>,
-    b: &Vec<String>,
+    a: &[String],
+    b: &[String],
     indices: &[usize],
     numeric: bool,
     reverse: bool,
