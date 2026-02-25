@@ -10,6 +10,10 @@ Data analysis often begins with selecting the relevant subset of data:
 *   **`slice`**: Selects rows by their position (index) in the file (e.g., "keep rows 10-20").
 *   **`sample`**: Randomly selects a subset of rows.
 
+## Field Syntax
+
+All tools use a unified syntax to identify fields (columns). See [Field Syntax Documentation](fields.md) for details.
+
 ## `select` (Column Selection)
 
 The `select` command allows you to keep only specific columns, reorder them, and rename them.
