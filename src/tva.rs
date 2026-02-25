@@ -39,10 +39,8 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::uniq::make_subcommand())
         .subcommand(cmd_tva::wider::make_subcommand())
         .after_help(
-            r###"
-Tab-separated Values Assistant (tva): small toolbox for working with TSV files.
+            r###"Currently implemented subcommands:
 
-Currently implemented subcommands:
 * Selection & Sampling: sample, select, slice
 * Filtering: filter
 * Ordering: reverse, sort, transpose
@@ -50,10 +48,6 @@ Currently implemented subcommands:
 * Reshaping: longer, wider
 * Combining & Splitting: append, join, split
 * Formatting & Utilities: check, from-csv, keep-header, md, nl
-
-Notes:
-* Run `tva help <SUBCOMMAND>` for detailed usage
-* Run `tva --help-fields` for shared field syntax used by select/join/uniq/split
 "###,
         );
 
