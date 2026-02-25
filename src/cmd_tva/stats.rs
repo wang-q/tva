@@ -8,6 +8,7 @@ use std::io::BufRead;
 pub fn make_subcommand() -> Command {
     Command::new("stats")
         .about("Calculates summary statistics (like tsv-summarize)")
+        .after_help(include_str!("../../docs/help/stats.md"))
         .arg(
             Arg::new("header")
                 .long("header")
