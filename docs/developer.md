@@ -15,15 +15,6 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 
 ## Architecture & Modules
 
-### Subcommand Implementation Status
-
-<details>
-<summary>Implemented Commands</summary>
-
-`append`, `bin`, `check`, `filter`, `from-csv`, `join`, `keep-header`, `longer`, `md`, `nl`, `reverse`, `sample`, `select`, `slice`, `sort`, `split`, `stats`, `transpose`, `uniq`, `wider`
-
-</details>
-
 ### Planned Features (Inspired by Datamash, R, and qsv)
 
 *   **Extended Statistics**:
@@ -72,19 +63,6 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 
 To help users get started quickly, we aim to provide dedicated documentation files for related groups of commands, similar to `docs/reshape.md`.
 
-<details>
-<summary>Completed Documentation</summary>
-
-*   [Reshape](reshape.md) (`longer`, `wider`)
-*   [Filtering](filtering.md) (`filter`)
-*   [Selection](selection.md) (`select`, `slice`, `sample`)
-*   [Design](design.md) (Architecture, Comparison)
-*   [Statistics](statistics.md) (`stats`, `bin`, `uniq`)
-*   [Ordering](ordering.md) (`sort`, `reverse`, `transpose`)
-*   [Combining](combining.md) (`join`, `append`, `split`)
-*   [Utilities](utilities.md) (`check`, `md`, `from-csv`, `nl`, `keep-header`)
-
-</details>
 *   **`docs/performance.md`** (Planned):
     *   Benchmarks: vs `tsv-utils`, `xsv`, `awk`.
     *   Methodology: Dataset descriptions and test cases.
