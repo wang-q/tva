@@ -180,11 +180,7 @@ fn get_or_create_output<'a>(
         return Ok(outputs.get_mut(&idx0).unwrap());
     }
 
-    let (writer, header_written) = open_output_file(
-        config,
-        idx0,
-        header_line,
-    )?;
+    let (writer, header_written) = open_output_file(config, idx0, header_line)?;
 
     outputs.insert(
         idx0,
@@ -302,11 +298,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     if lines_per_file > 0 {
-        split_by_line_count(
-            &infiles,
-            &config,
-            lines_per_file,
-        )?;
+        split_by_line_count(&infiles, &config, lines_per_file)?;
     } else {
         split_randomly(
             &infiles,
@@ -342,7 +334,11 @@ fn split_by_line_count(
                 line.pop();
             }
 
-            if config.header_in_out && !header_seen && is_first_nonempty && !line.is_empty() {
+            if config.header_in_out
+                && !header_seen
+                && is_first_nonempty
+                && !line.is_empty()
+            {
                 if header_line.is_none() {
                     header_line = Some(line.clone());
                 }
@@ -354,11 +350,8 @@ fn split_by_line_count(
             is_first_nonempty = false;
 
             if current_writer.is_none() || current_lines >= lines_per_file {
-                let (writer, _) = open_output_file(
-                    config,
-                    current_idx0,
-                    header_line.as_deref(),
-                )?;
+                let (writer, _) =
+                    open_output_file(config, current_idx0, header_line.as_deref())?;
                 current_writer = Some(writer);
                 current_lines = 0;
                 current_idx0 += 1;
@@ -403,7 +396,11 @@ fn split_randomly(
                 line.pop();
             }
 
-            if config.header_in_out && !header_seen && is_first_nonempty && !line.is_empty() {
+            if config.header_in_out
+                && !header_seen
+                && is_first_nonempty
+                && !line.is_empty()
+            {
                 if header_line.is_none() {
                     header_line = Some(line.clone());
                 }

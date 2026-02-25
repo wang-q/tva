@@ -98,10 +98,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     for infile in &infiles {
         let is_stdin = infile == "stdin";
-        if !is_stdin
-            && !crate::libs::io::has_nonempty_line(infile)? {
-                continue;
-            }
+        if !is_stdin && !crate::libs::io::has_nonempty_line(infile)? {
+            continue;
+        }
 
         let mut reader = crate::libs::io::reader(infile);
 
@@ -189,12 +188,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 names_pattern: names_pattern.as_ref(),
                 names_to_len: names_to.len(),
             };
-            process_row(
-                &line,
-                &mut writer,
-                &config,
-                &mut buffer,
-            )?;
+            process_row(&line, &mut writer, &config, &mut buffer)?;
         }
     }
 

@@ -144,10 +144,9 @@ impl Cell {
                         self.min = val;
                     }
                     // Range needs max too
-                    if op == Op::Range
-                        && val > self.max {
-                            self.max = val;
-                        }
+                    if op == Op::Range && val > self.max {
+                        self.max = val;
+                    }
                 }
                 Op::Max => {
                     if val > self.max {
@@ -170,14 +169,12 @@ impl Cell {
                 _ => {}
             }
 
-            if matches!(op, Op::Min | Op::Range)
-                && val < self.min {
-                    self.min = val;
-                }
-            if matches!(op, Op::Max | Op::Range)
-                && val > self.max {
-                    self.max = val;
-                }
+            if matches!(op, Op::Min | Op::Range) && val < self.min {
+                self.min = val;
+            }
+            if matches!(op, Op::Max | Op::Range) && val > self.max {
+                self.max = val;
+            }
         }
     }
 

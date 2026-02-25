@@ -2,10 +2,10 @@ use clap::*;
 use std::io::BufRead;
 
 use crate::libs::filter::{
-    build_tests, FilterSpecConfig, NumericOp, NumericProp, PendingByteLen, PendingCharLen,
-    PendingFieldFieldAbsDiff, PendingFieldFieldNumeric, PendingFieldFieldRelDiff,
-    PendingFieldFieldStr, PendingNumeric, PendingNumericProp, PendingRegex,
-    PendingStrCmp, PendingStrEq, PendingSubstr, TestKind,
+    build_tests, FilterSpecConfig, NumericOp, NumericProp, PendingByteLen,
+    PendingCharLen, PendingFieldFieldAbsDiff, PendingFieldFieldNumeric,
+    PendingFieldFieldRelDiff, PendingFieldFieldStr, PendingNumeric, PendingNumericProp,
+    PendingRegex, PendingStrCmp, PendingStrEq, PendingSubstr, TestKind,
 };
 
 pub fn make_subcommand() -> Command {

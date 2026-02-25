@@ -158,10 +158,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     if repeated && at_least <= 1 {
         at_least = 2;
     }
-    if at_least >= 2 && max < at_least
-        && (max != 0 || (!equiv_mode && !number_mode)) {
-            max = at_least;
-        }
+    if at_least >= 2 && max < at_least && (max != 0 || (!equiv_mode && !number_mode)) {
+        max = at_least;
+    }
 
     if !equiv_mode {
         if args.get_one::<String>("equiv-header").is_some() {
@@ -172,10 +171,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
     }
 
-    if !number_mode
-        && args.get_one::<String>("number-header").is_some() {
-            arg_error("--number-header requires --number");
-        }
+    if !number_mode && args.get_one::<String>("number-header").is_some() {
+        arg_error("--number-header requires --number");
+    }
 
     let equiv_header = args
         .get_one::<String>("equiv-header")

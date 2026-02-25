@@ -104,7 +104,9 @@ impl Aggregator {
                     | OpKind::IQR => value_fields.push(idx),
                     OpKind::First => first_fields.push(idx),
                     OpKind::Last => last_fields.push(idx),
-                    OpKind::NUnique | OpKind::Mode | OpKind::Unique => count_fields.push(idx),
+                    OpKind::NUnique | OpKind::Mode | OpKind::Unique => {
+                        count_fields.push(idx)
+                    }
                     OpKind::Collapse | OpKind::Rand => string_fields.push(idx),
                     OpKind::Range => { /* Handled in Min/Max logic block */ }
                     _ => {}
@@ -588,7 +590,8 @@ impl Aggregator {
                                 let seed = std::time::SystemTime::now()
                                     .duration_since(std::time::UNIX_EPOCH)
                                     .unwrap_or_default()
-                                    .as_nanos() as u64;
+                                    .as_nanos()
+                                    as u64;
                                 // Simple mix for slightly better distribution than raw time
                                 let mut x = seed;
                                 x ^= x << 13;

@@ -107,7 +107,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
             }
 
-            for (i, &is_numeric) in is_numeric_column.iter().enumerate().take(num_columns) {
+            for (i, &is_numeric) in
+                is_numeric_column.iter().enumerate().take(num_columns)
+            {
                 if is_numeric {
                     opt_center.remove_n((i + 1) as i32);
                     opt_right.add_n((i + 1) as i32);
