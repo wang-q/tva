@@ -1,6 +1,6 @@
 # Formatting & Utilities Documentation
 
-This document explains how to use the utility commands in `tva`: **`check`**, **`from-csv`**, **`md`**, **`nl`**, and **`keep-header`**.
+This document explains how to use the utility commands in `tva`: **`check`**, **`from`**, **`to`**, **`md`**, **`nl`**, and **`keep-header`**.
 
 ## `check`
 
@@ -25,29 +25,71 @@ Output:
 2 lines, 5 fields
 ```
 
-## `from-csv`
+## `from`
 
-Converts CSV input to TSV.
+Converts other formats (CSV, XLSX) to TSV.
 
 ### Usage
 
 ```bash
-tva from-csv [input] [-o output] [-d delimiter]
+tva from <SUBCOMMAND> [options]
 ```
 
-This command uses a standard CSV parser to handle quoted fields and embedded delimiters correctly, converting them to tab-separated format.
+### Subcommands
+
+*   **`csv`**: Convert CSV to TSV.
+    *   `tva from csv [input] [-o output] [-d delimiter]`
+*   **`xlsx`**: Convert XLSX to TSV.
+    *   `tva from xlsx [input] [--sheet name] [--list-sheets]`
 
 ### Examples
 
 Convert a CSV file to TSV:
 ```bash
-tva from-csv input.csv > output.tsv
+tva from csv docs/data/input.csv > output.tsv
 ```
 
-Convert a semicolon-separated file:
+Convert an Excel sheet to TSV:
 ```bash
-tva from-csv -d ';' input.csv
+tva from xlsx docs/data/formats.xlsx --sheet "Introduction" > output.tsv
 ```
+
+## `to`
+
+Converts TSV to other formats (CSV, XLSX).
+
+### Usage
+
+```bash
+tva to <SUBCOMMAND> [options]
+```
+
+### Subcommands
+
+*   **`csv`**: Convert TSV to CSV.
+    *   `tva to csv [input] [-o output] [-d delimiter]`
+*   **`xlsx`**: Convert TSV to XLSX.
+    *   `tva to xlsx [input] [-o output.xlsx] [-H] [--le col:val] ...`
+
+### Examples
+
+Convert a TSV file to CSV:
+```bash
+tva to csv docs/data/household.tsv > output.csv
+```
+
+Convert a TSV file to XLSX with formatting:
+```bash
+tva to xlsx docs/data/household.tsv -o output.xlsx -H --le 1:2
+```
+
+Convert a TSV file to XLSX with multiple formatting rules:
+```bash
+tva to xlsx docs/data/rocauc.result.tsv -o output.xlsx \
+    -H --le 4:0.5 --ge 4:0.6 --bt 4:0.52:0.58 --str-in-fld 1:m03
+```
+
+![to xlsx output](data/to_xlsx.png)
 
 ## `md`
 

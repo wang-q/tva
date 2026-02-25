@@ -100,8 +100,9 @@ See [Combining Documentation](docs/combining.md).
 ### Formatting & Utilities
 See [Utilities Documentation](docs/utilities.md).
 
+- **`from`**: Convert other formats to TSV (csv, xlsx).
+- **`to`**: Convert TSV to other formats (csv, xlsx).
 - **`check`**: Validate TSV file structure (column counts, encoding).
-- **`from-csv`**: Convert CSV to TSV.
 - **`md`**: Convert TSV to Markdown table for display.
 - **`nl`**: Add line numbers to rows.
 - **`keep-header`**: Run a shell command on the body of a TSV file, preserving the header.
