@@ -38,14 +38,22 @@ cargo test
 ### 源代码组织
 
 - **`src/tva.rs`** - 主程序入口，负责命令行解析和分发。
+    - Uses `clap` for argument parsing.
+    - Enforces consistent flag naming and help text styles.
 - **`src/lib.rs`** - 库入口，导出模块。
 - **`src/cmd_tva/`** - 命令实现模块。每个子命令对应一个 `.rs` 文件（例如 `stats.rs`, `select.rs`）。
 - **`src/libs/`** - 共享工具库和核心逻辑。
   - **`fields.rs`** - 字段选择逻辑 (支持索引、范围、名称)。
+    - Implements the unified field syntax: Numeric intervals (`1,3-5`), header-aware selection (`user_id`, wildcards `*_time`, ranges `start_col-end_col`).
+    - Used by `select`, `join`, `uniq`, `stats`, `sample`, etc.
+  - **`io.rs`** - I/O 辅助函数 (stdin/stdout, gzip 等)。
+    - `reader`: Handles `stdin`, files, and `.gz` decompression transparently.
+    - `InputSource`: Provides a unified view for iterating over multiple input files.
+  - **`number.rs`** - 数字格式化 (千位分隔符等)。
+    - Ensures consistent printing of floating-point numbers across tools.
+    - Implements R-compatible quantile calculations (`stats`).
   - **`stats.rs`** - 统计计算核心逻辑。
   - **`filter.rs`** - 过滤逻辑。
-  - **`io.rs`** - I/O 辅助函数 (stdin/stdout, gzip 等)。
-  - **`number.rs`** - 数字格式化 (千位分隔符等)。
   - **`sampling.rs`** - 随机采样相关逻辑。
 
 ### 命令结构 (Command Structure)
@@ -141,3 +149,26 @@ fn test_example_basic() -> Result<(), Box<dyn std::error::Error>> {
 - 使用 `cargo clippy` 检查潜在问题。
 - 优先使用标准库和项目中已引入的 crate (`csv`, `clap`, `anyhow`, `regex` 等)。
 - 保持代码简洁，注重性能。
+
+## 帮助文本规范 (Help Text Style Guide)
+
+* **`about`**: Third-person singular, describing the TSV operation
+  (e.g., "Converts TSV to markdown table", "Deduplicates TSV rows").
+* **`after_help`**: Use raw string `r###"..."###`.
+    * **Description**: Short paragraph of what the subcommand does and its trade-offs.
+    * **Notes**: Bullet points starting with `*`.
+        * TSV input: `* Supports plain text and gzipped (.gz) TSV files`
+        * Stdin behavior:
+            * Single-input tools (e.g. `md`): `* Reads from stdin if input file is 'stdin' or no input file is given`
+            * Multi-input tools (e.g. `uniq`): `* Reads from stdin if no input file is given or if input file is 'stdin'`
+        * Memory-heavy tools (e.g. `uniq`): `* Keeps a hash for each unique row; does not count occurrences`
+    * **Examples**: Numbered list (`1.`, `2.`) with code blocks indented by 3 spaces.
+* **Arguments**:
+    * **Input**: `infile` (single) or `infiles` (multiple).
+        * Help (single): `Input TSV file to process (default: stdin).`
+        * Help (multiple): `Input TSV file(s) to process`.
+    * **Output**: `outfile` (`-o`, `--outfile`).
+        * Help: `Output filename. [stdout] for screen`.
+* **Terminology**:
+    * Prefer "TSV" when referring to files.
+    *   Use "row" / "column" in help text where it makes sense.

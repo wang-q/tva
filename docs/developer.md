@@ -1,28 +1,5 @@
 # Developer Guide
 
-## Help text style guide
-
-* **`about`**: Third-person singular, describing the TSV operation
-  (e.g., "Converts TSV to markdown table", "Deduplicates TSV rows").
-* **`after_help`**: Use raw string `r###"..."###`.
-    * **Description**: Short paragraph of what the subcommand does and its trade-offs.
-    * **Notes**: Bullet points starting with `*`.
-        * TSV input: `* Supports plain text and gzipped (.gz) TSV files`
-        * Stdin behavior:
-            * Single-input tools (e.g. `md`): `* Reads from stdin if input file is 'stdin' or no input file is given`
-            * Multi-input tools (e.g. `uniq`): `* Reads from stdin if no input file is given or if input file is 'stdin'`
-        * Memory-heavy tools (e.g. `uniq`): `* Keeps a hash for each unique row; does not count occurrences`
-    * **Examples**: Numbered list (`1.`, `2.`) with code blocks indented by 3 spaces.
-* **Arguments**:
-    * **Input**: `infile` (single) or `infiles` (multiple).
-        * Help (single): `Input TSV file to process (default: stdin).`
-        * Help (multiple): `Input TSV file(s) to process`.
-    * **Output**: `outfile` (`-o`, `--outfile`).
-        * Help: `Output filename. [stdout] for screen`.
-* **Terminology**:
-    * Prefer "TSV" when referring to files.
-    *   Use "row" / "column" in help text where it makes sense.
-
 ## Testing Strategy
 
 We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral compatibility.
@@ -38,45 +15,14 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 
 ## Architecture & Modules
 
-### Infrastructure (`src/libs/`)
-
-*   **Field Parsing (`libs::fields`)**:
-    *   Implements the unified field syntax.
-    *   Numeric intervals: `1,3-5`.
-    *   Header-aware selection: `user_id`, wildcards (`*_time`), ranges (`start_col-end_col`), and escape sequences.
-    *   Used by `select`, `join`, `uniq`, `stats`, `sample`, etc.
-*   **Input Abstraction (`libs::io`)**:
-    *   `reader`: Handles `stdin`, files, and `.gz` decompression transparently.
-    *   `InputSource`: Provides a unified view for iterating over multiple input files.
-*   **Number Formatting & Statistics (`libs::number`)**:
-    *   Ensures consistent printing of floating-point numbers across tools.
-    *   Implements R-compatible quantile calculations (`stats`).
-*   **CLI Parsing**:
-    *   Uses `clap` for argument parsing.
-    *   Enforces consistent flag naming and help text styles (as per the guide above).
-
 ### Subcommand Implementation Status
 
-*   **`md`**: Converts TSV to Markdown. Replaces `tsv-pretty` for display purposes.
-*   **`append`**: Concatenates files with header awareness. Supports source tracking (`--track-source`).
-*   **`uniq`**: Deduplicates rows. Supports field selection and equivalence classes.
-*   **`nl`**: Adds line numbers.
-*   **`keep-header`**: Runs shell commands on data rows while preserving headers.
-*   **`check`**: Validates TSV structure (field counts). Fail-fast on jagged rows.
-*   **`transpose`**: Swaps rows and columns. Strict matrix requirement.
-*   **`sort`**: External sort implementation for large TSV files. Supports key selection.
-*   **`from-csv`**: Imports CSV to TSV using Rust's `csv` crate.
-*   **`select`**: Column selection, reordering, and exclusion. Supports rich header syntax.
-*   **`sample`**: Random sampling (Bernoulli, Reservoir, Weighted) and shuffling.
-*   **`split`**: Splits files by line count, random bucket, or key.
-*   **`join`**: Inner/Left/Outer/Anti joins on specified keys.
-*   **`filter`**: Row filtering with numeric, string, regex, and date predicates.
-*   **`stats`**: Summary statistics (sum, mean, median, mode, etc.) with grouping.
-*   **`longer`**: Reshapes wide to long (pivot_longer). Supports column selection by index/name/wildcard. Features: custom names for key/value columns (`--names-to`, `--values-to`), prefix stripping (`--names-prefix`), complex name parsing (`--names-sep`, `--names-pattern`), and NA dropping (`--values-drop-na`). Requires a header row.
-*   **`wider`**: Reshapes long to wide (pivot_wider). Supports single column for names and values. Features: explicit ID columns (`--id-cols`), missing value filling (`--values-fill`), and column name sorting (`--names-sort`).
-*   **`reverse`**: Reverses the order of lines (like `tac`), with optional header preservation.
-*   **`bin`**: Discretizes numeric values into bins (for histograms). Supports custom width and alignment.
-*   **`slice`**: Slice rows by index (keep or drop), supports range selection and header preservation.
+<details>
+<summary>Implemented Commands</summary>
+
+`append`, `bin`, `check`, `filter`, `from-csv`, `join`, `keep-header`, `longer`, `md`, `nl`, `reverse`, `sample`, `select`, `slice`, `sort`, `split`, `stats`, `transpose`, `uniq`, `wider`
+
+</details>
 
 ### Planned Features (Inspired by Datamash, R, and qsv)
 
@@ -100,6 +46,19 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
         *   `pack`: Combines multiple columns into a single string column using a template or separator (e.g., pack "Lat", "Lon" into "Coordinates").
     *   **Densification**:
         *   `complete`: Expose missing combinations of data factors (explicit missing rows).
+*   **dplyr Core Patterns**:
+    *   **Safe Joins**:
+        *   **Concept**: Prevent accidental Cartesian explosions in `join`.
+        *   **Action**: Add `--relationship` flag (e.g., `one-to-one`, `many-to-one`) to validate keys during join. Default to warning or error on unexpected many-to-many matches.
+    *   **Tidy Selection DSL**:
+        *   **Concept**: Decoupled, expressive column selection logic.
+        *   **Action**: Enhance `src/libs/fields.rs` to support regex (`matches('^date_')`), predicates (`where(is_numeric)`), and set operations (`-colA`), usable across `select`, `wider`, `longer`.
+    *   **Window Functions**:
+        *   **Concept**: Context-aware row operations (rank, lead, lag).
+        *   **Action**: Implement sliding window logic for `filter` and `stats` (e.g., `filter --expr "val > mean(val)"` within groups).
+    *   **Torture Testing**:
+        *   **Concept**: Robustness against malformed/edge-case data.
+        *   **Action**: Create `tests/torture/` for fuzzing inputs (empty files, jagged rows, massive columns) to ensure zero panics.
 
 ### Documentation Plan (Inspired by tsv-utils)
 
@@ -113,36 +72,19 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 
 To help users get started quickly, we aim to provide dedicated documentation files for related groups of commands, similar to `docs/reshape.md`.
 
-*   **`docs/reshape.md`** (Done):
-    *   `longer`: Wide to long reshaping.
-    *   `wider`: Long to wide reshaping (pivot).
-*   **`docs/filtering.md`** (Done):
-    *   `filter`: Row filtering syntax (numeric, string, regex, date).
-*   **`docs/selection.md`** (Done):
-    *   `select`: Column selection syntax (indices, names, wildcards, ranges).
-    *   `slice`: Row selection by index/range.
-    *   `sample`: Sampling methods (Bernoulli, Reservoir, Weighted).
-*   **`docs/design.md`** (Done):
-    *   Architecture: Why Rust? Why TSV?
-    *   Design: No escapes, performance, Unix compatibility.
-    *   Comparison: vs `tsv-utils`, `xsv`, `datamash`.
-*   **`docs/statistics.md`** (Planned):
-    *   `stats`: Summary statistics and grouping.
-    *   `bin`: Discretization for histograms.
-    *   `uniq`: Deduplication and counting.
-*   **`docs/ordering.md`** (Done):
-    *   `sort`: External sort for large files.
-    *   `reverse`: Reverse the order of lines.
-    *   `transpose`: Transpose rows and columns.
-*   **`docs/combining.md`** (Planned):
-    *   `join`: Join operations (Inner/Left/Outer/Anti).
-    *   `append`: Concatenation with header awareness.
-    *   `split`: Splitting files by count/key/random.
-*   **`docs/formatting.md`** (Planned):
-    *   `check`: Structure validation.
-    *   `md`: Markdown conversion.
-    *   `from-csv`: CSV import.
-    *   `nl`, `keep-header`.
+<details>
+<summary>Completed Documentation</summary>
+
+*   [Reshape](reshape.md) (`longer`, `wider`)
+*   [Filtering](filtering.md) (`filter`)
+*   [Selection](selection.md) (`select`, `slice`, `sample`)
+*   [Design](design.md) (Architecture, Comparison)
+*   [Statistics](statistics.md) (`stats`, `bin`, `uniq`)
+*   [Ordering](ordering.md) (`sort`, `reverse`, `transpose`)
+*   [Combining](combining.md) (`join`, `append`, `split`)
+*   [Utilities](utilities.md) (`check`, `md`, `from-csv`, `nl`, `keep-header`)
+
+</details>
 *   **`docs/performance.md`** (Planned):
     *   Benchmarks: vs `tsv-utils`, `xsv`, `awk`.
     *   Methodology: Dataset descriptions and test cases.
