@@ -12,7 +12,7 @@ Data analysis often begins with selecting the relevant subset of data:
 
 ## Field Syntax
 
-All tools use a unified syntax to identify fields (columns). See [Field Syntax Documentation](fields.md) for details.
+All tools use a unified syntax to identify fields (columns). See [Field Syntax Documentation](help/fields.md) for details.
 
 ## `select` (Column Selection)
 

@@ -25,7 +25,7 @@
 use intspan::IntSpan;
 use std::collections::HashMap;
 
-pub const FIELD_SYNTAX_HELP: &str = include_str!("../../docs/fields.md");
+pub const FIELD_SYNTAX_HELP: &str = include_str!("../../docs/help/fields.md");
 
 pub fn fields_to_ints(s: &str) -> IntSpan {
     let mut ints = IntSpan::new();
