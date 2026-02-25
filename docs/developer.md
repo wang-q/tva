@@ -51,18 +51,22 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
         *   **Concept**: Robustness against malformed/edge-case data.
         *   **Action**: Create `tests/torture/` for fuzzing inputs (empty files, jagged rows, massive columns) to ensure zero panics.
 
-### Documentation Plan (Inspired by tsv-utils)
+### Documentation Workflow
 
-*   **Reference Structure**:
-    *   Create `docs/tool_reference.md` as a central index linking to individual tool documentation, similar to `tsv-utils/docs/ToolReference.md`.
-    *   Create `docs/common_options.md` to document shared flags (Header handling, Field syntax, Input/Output buffering), reducing redundancy in individual help files.
-*   **Performance**:
-    *   Create `docs/performance.md`: Placeholder for benchmarks against `tsv-utils`, `datamash`, and `qsv`.
+We use [mdBook](https://rust-lang.github.io/mdBook/) to generate the documentation site.
 
-### Implementation Details
+*   **Source**: `docs/` directory.
+*   **Configuration**: `book.toml`.
+*   **Local Build**:
+    ```bash
+    ./build-docs.ps1  # Syncs README.md and runs mdbook build
+    mdbook serve      # For local preview
+    ```
+*   **Deployment**:
+    *   GitHub Actions (`.github/workflows/docs.yml`) automatically builds and deploys to the `gh-pages` branch on push to `master`.
 
-To help users get started quickly, we aim to provide dedicated documentation files for related groups of commands, similar to `docs/reshape.md`.
+### Performance Benchmarking (Planned)
 
-*   **`docs/performance.md`** (Planned):
+*   **`docs/performance.md`**:
     *   Benchmarks: vs `tsv-utils`, `xsv`, `awk`.
     *   Methodology: Dataset descriptions and test cases.
