@@ -15,6 +15,7 @@ pub mod slice;
 pub mod sort;
 pub mod split;
 pub mod stats;
+pub mod to;
 pub mod transpose;
 pub mod uniq;
 pub mod wider;
