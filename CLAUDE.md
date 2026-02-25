@@ -185,3 +185,11 @@ fn test_example_basic() -> Result<(), Box<dyn std::error::Error>> {
 * **Terminology**:
     * Prefer "TSV" when referring to files.
     *   Use "row" / "column" in help text where it makes sense.
+
+## 开发者文档规范
+
+`docs/developer.md` 是供项目开发者参考的内部指南。
+
+*   **语言**: 使用**中文**编写。
+*   **格式**: 避免过多的加粗 (Bold) 或强调格式，以保持在纯文本编辑器中的可读性。
+*   **内容**: 包含测试策略、架构设计、功能计划和开发工作流。
