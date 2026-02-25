@@ -164,6 +164,27 @@ pub fn make_subcommand() -> Command {
                 .help("Calculate range (max-min) of fields"),
         )
         .arg(
+            Arg::new("unique")
+                .long("unique")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("List unique values of fields (comma separated)"),
+        )
+        .arg(
+            Arg::new("collapse")
+                .long("collapse")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("List all values of fields (comma separated)"),
+        )
+        .arg(
+            Arg::new("rand")
+                .long("rand")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Pick a random value from fields"),
+        )
+        .arg(
             Arg::new("infiles")
                 .num_args(0..)
                 .index(1)
@@ -352,6 +373,33 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             });
         }
     }
+    if let Some(indices) = matches.indices_of("unique") {
+        for (i, val) in indices.zip(matches.get_many::<String>("unique").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::Unique,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("collapse") {
+        for (i, val) in indices.zip(matches.get_many::<String>("collapse").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::Collapse,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("rand") {
+        for (i, val) in indices.zip(matches.get_many::<String>("rand").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::Rand,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
 
     // Handle count.
     if matches.get_flag("count") {
@@ -431,6 +479,9 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                             OpKind::IQR => "_iqr",
                             OpKind::CV => "_cv",
                             OpKind::Range => "_range",
+                            OpKind::Unique => "_unique",
+                            OpKind::Collapse => "_collapse",
+                            OpKind::Rand => "_rand",
                             _ => "",
                         };
 

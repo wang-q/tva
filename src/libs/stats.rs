@@ -22,6 +22,9 @@ pub enum OpKind {
     Mode,
     GeoMean,
     HarmMean,
+    Unique,
+    Collapse,
+    Rand,
 }
 
 pub struct Operation {
@@ -41,7 +44,8 @@ pub struct Aggregator {
     pub values: HashMap<usize, Vec<f64>>, // For median/mad/quantiles
     pub firsts: HashMap<usize, String>,
     pub lasts: HashMap<usize, String>,
-    pub value_counts: HashMap<usize, HashMap<String, usize>>, // For mode/nunique
+    pub value_counts: HashMap<usize, HashMap<String, usize>>, // For mode/nunique/unique
+    pub string_values: HashMap<usize, Vec<String>>,           // For collapse/rand
 }
 
 impl Aggregator {
@@ -59,6 +63,7 @@ impl Aggregator {
             firsts: HashMap::new(),
             lasts: HashMap::new(),
             value_counts: HashMap::new(),
+            string_values: HashMap::new(),
         }
     }
 
@@ -74,6 +79,7 @@ impl Aggregator {
         let mut first_fields = Vec::new();
         let mut last_fields = Vec::new();
         let mut count_fields = Vec::new();
+        let mut string_fields = Vec::new();
 
         for op in ops {
             if let Some(idx) = op.field_idx {
@@ -92,7 +98,8 @@ impl Aggregator {
                     | OpKind::IQR => value_fields.push(idx),
                     OpKind::First => first_fields.push(idx),
                     OpKind::Last => last_fields.push(idx),
-                    OpKind::NUnique | OpKind::Mode => count_fields.push(idx),
+                    OpKind::NUnique | OpKind::Mode | OpKind::Unique => count_fields.push(idx),
+                    OpKind::Collapse | OpKind::Rand => string_fields.push(idx),
                     OpKind::Range => { /* Handled in Min/Max logic block */ }
                     _ => {}
                 }
@@ -115,6 +122,8 @@ impl Aggregator {
         last_fields.dedup();
         count_fields.sort_unstable();
         count_fields.dedup();
+        string_fields.sort_unstable();
+        string_fields.dedup();
 
         // Handle Sum/Mean/Stdev/Variance/CV
         for idx in &sum_fields {
@@ -220,7 +229,7 @@ impl Aggregator {
             }
         }
 
-        // Handle NUnique/Mode
+        // Handle NUnique/Mode/Unique
         for idx in count_fields {
             if idx < record.len() {
                 let val = String::from_utf8_lossy(record[idx]).to_string();
@@ -230,6 +239,14 @@ impl Aggregator {
                     .or_default()
                     .entry(val)
                     .or_insert(0) += 1;
+            }
+        }
+
+        // Handle Collapse/Rand
+        for idx in string_fields {
+            if idx < record.len() {
+                let val = String::from_utf8_lossy(record[idx]).to_string();
+                self.string_values.entry(idx).or_default().push(val);
             }
         }
 
@@ -525,6 +542,54 @@ impl Aggregator {
                                     b.1.cmp(a.1).then_with(|| a.0.cmp(b.0))
                                 });
                                 values.push(count_vec[0].0.clone());
+                            }
+                        } else {
+                            values.push("".to_string());
+                        }
+                    }
+                }
+                OpKind::Unique => {
+                    if let Some(idx) = op.field_idx {
+                        if let Some(counts) = self.value_counts.get(&idx) {
+                            let mut keys: Vec<&String> = counts.keys().collect();
+                            keys.sort();
+                            values.push(
+                                keys.into_iter()
+                                    .map(|s| s.as_str())
+                                    .collect::<Vec<&str>>()
+                                    .join(","),
+                            );
+                        } else {
+                            values.push("".to_string());
+                        }
+                    }
+                }
+                OpKind::Collapse => {
+                    if let Some(idx) = op.field_idx {
+                        if let Some(vals) = self.string_values.get(&idx) {
+                            values.push(vals.join(","));
+                        } else {
+                            values.push("".to_string());
+                        }
+                    }
+                }
+                OpKind::Rand => {
+                    if let Some(idx) = op.field_idx {
+                        if let Some(vals) = self.string_values.get(&idx) {
+                            if vals.is_empty() {
+                                values.push("".to_string());
+                            } else {
+                                let seed = std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_nanos() as u64;
+                                // Simple mix for slightly better distribution than raw time
+                                let mut x = seed;
+                                x ^= x << 13;
+                                x ^= x >> 7;
+                                x ^= x << 17;
+                                let index = (x as usize) % vals.len();
+                                values.push(vals[index].clone());
                             }
                         } else {
                             values.push("".to_string());
