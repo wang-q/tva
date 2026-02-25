@@ -26,6 +26,7 @@ Fast, reliable TSV processing toolkit in Rust.
 
 **Design Principles**
 
+*   **Single Binary**: A standalone executable with no dependencies, easy to deploy.
 *   **Header Aware**: Manipulate columns by name or index.
 *   **Fail-fast**: Strict validation ensures data integrity (no silent truncation).
 *   **Streaming**: Stateless processing designed for infinite streams and large files.
@@ -45,11 +46,14 @@ Current release: 0.1.0
 cargo install --force --path .
 ```
 
-Or install the pre-compiled binary via the cross-platform package manager [cbp](https://github.com/wang-q/cbp):
+Or install the pre-compiled binary via the cross-platform package manager [cbp](https://github.com/wang-q/cbp) (supports older Linux systems with glibc 2.17+):
+
 
 ```bash
 cbp install tva
 ```
+
+You can also download the pre-compiled binaries from the [Releases](https://github.com/wang-q/tva/releases) page.
 
 ## Running Examples
 
