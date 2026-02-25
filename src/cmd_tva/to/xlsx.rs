@@ -1,6 +1,7 @@
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use rust_xlsxwriter::{
-    Color, ConditionalFormatCell, ConditionalFormatText, Format, FormatAlign, FormatBorder, Workbook,
+    Color, ConditionalFormatCell, ConditionalFormatText, Format, FormatAlign,
+    FormatBorder, Workbook,
 };
 use std::io::BufRead;
 use std::path::Path;
@@ -31,8 +32,9 @@ pub fn make_subcommand() -> Command {
         .arg(
             Arg::new("header")
                 .long("header")
+                .short('H')
                 .action(ArgAction::SetTrue)
-                .help("Treat first row as header and style it"),
+                .help("Treat first non-empty row as header and style it"),
         )
         .arg(
             Arg::new("font-name")
@@ -168,14 +170,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut row_cursor: u32 = 0;
     let has_header = args.get_flag("header");
 
-    for (i, line) in reader.lines().enumerate() {
+    for (_, line) in reader.lines().enumerate() {
         let line = line?;
         if line.is_empty() {
             continue;
         }
         let fields: Vec<&str> = line.split('\t').collect();
 
-        let format = if i == 0 && has_header {
+        let format = if row_cursor == 0 && has_header {
             &header_format
         } else {
             &normal_format
@@ -225,11 +227,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         .set_format(le_format.clone());
 
                     worksheet.add_conditional_format(
-                        start_row,
-                        col,
-                        end_row,
-                        col,
-                        &condition,
+                        start_row, col, end_row, col, &condition,
                     )?;
                 }
             }
@@ -248,11 +246,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         .set_format(ge_format.clone());
 
                     worksheet.add_conditional_format(
-                        start_row,
-                        col,
-                        end_row,
-                        col,
-                        &condition,
+                        start_row, col, end_row, col, &condition,
                     )?;
                 }
             }
@@ -267,17 +261,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     let max = parts[2].parse::<f64>()?;
 
                     let condition = ConditionalFormatCell::new()
-                        .set_rule(
-                            rust_xlsxwriter::ConditionalFormatCellRule::Between(min, max),
-                        )
+                        .set_rule(rust_xlsxwriter::ConditionalFormatCellRule::Between(
+                            min, max,
+                        ))
                         .set_format(bt_format.clone());
 
                     worksheet.add_conditional_format(
-                        start_row,
-                        col,
-                        end_row,
-                        col,
-                        &condition,
+                        start_row, col, end_row, col, &condition,
                     )?;
                 }
             }
@@ -289,22 +279,21 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     let col = col_str.parse::<u16>()? - 1;
 
                     let condition = ConditionalFormatText::new()
-                        .set_rule(
-                            rust_xlsxwriter::ConditionalFormatTextRule::Contains(text.to_string()),
-                        )
+                        .set_rule(rust_xlsxwriter::ConditionalFormatTextRule::Contains(
+                            text.to_string(),
+                        ))
                         .set_format(contain_format.clone());
 
                     worksheet.add_conditional_format(
-                        start_row,
-                        col,
-                        end_row,
-                        col,
-                        &condition,
+                        start_row, col, end_row, col, &condition,
                     )?;
                 }
             }
         }
     }
+
+    // Autofit the columns.
+    worksheet.autofit();
 
     workbook.save(outfile_path)?;
 

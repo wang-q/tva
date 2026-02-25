@@ -88,7 +88,8 @@ fn from_xlsx_formats_file_default() -> Result<(), Box<dyn std::error::Error>> {
     let file_path = "tests/data/xlsx/formats.xlsx";
 
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd.arg("from")
+    let output = cmd
+        .arg("from")
         .arg("xlsx")
         .arg(file_path)
         .assert()
@@ -110,7 +111,8 @@ fn from_xlsx_formats_file_sheet_borders() -> Result<(), Box<dyn std::error::Erro
     let file_path = "tests/data/xlsx/formats.xlsx";
 
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd.arg("from")
+    let output = cmd
+        .arg("from")
         .arg("xlsx")
         .arg(file_path)
         .arg("--sheet")
