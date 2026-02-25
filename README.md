@@ -82,6 +82,8 @@ See [Combining Documentation](docs/combining.md).
 - **`split`**: Split a file into multiple files (by size, key, or random).
 
 ### Formatting & Utilities
+See [Utilities Documentation](docs/utilities.md).
+
 - **`check`**: Validate TSV file structure (column counts, encoding).
 - **`from-csv`**: Convert CSV to TSV.
 - **`md`**: Convert TSV to Markdown table for display.
