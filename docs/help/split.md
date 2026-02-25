@@ -29,6 +29,6 @@ Header behavior:
 Output:
 *   Files are written to the directory given by --dir (default: current
     directory).
-*   File names are formed as: <prefix><index><suffix>, where <index> is a
+*   File names are formed as: `<prefix><index><suffix>`, where `<index>` is a
     1-based counter optionally zero-padded to --digit-width digits.
 *   By default, existing files are rejected; use --append/-a to append to them.

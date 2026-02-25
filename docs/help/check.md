@@ -15,4 +15,4 @@ Behavior:
     printed to stderr and the command exits with a non-zero status.
 
 Output:
-*   On success, prints: '<N> lines, <M> fields'
+*   On success, prints: `<N> lines, <M> fields`

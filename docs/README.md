@@ -31,7 +31,7 @@ Fast, reliable TSV processing toolkit in Rust.
 *   **TSV-first**: Prioritizes the reliability and simplicity of tab-separated values.
 *   **Performance**: Single-pass execution with minimal memory overhead.
 
-See [Design Documentation](docs/design.md) for details.
+See [Design Documentation](design.md) for details.
 
 
 ## Installation
@@ -65,33 +65,33 @@ Alternatively, you can download individual files from the [docs/data](https://gi
 ## Commands
 
 ### Selection & Sampling
-See [Selection & Sampling Documentation](docs/selection.md).
+See [Selection & Sampling Documentation](selection.md).
 
 - **`select`**: Select and reorder columns.
 - **`slice`**: Slice rows by index (keep or drop). Supports multiple ranges and header preservation.
 - **`sample`**: Randomly sample rows (Bernoulli, reservoir, weighted).
 
 ### Filtering
-See [Row Filtering Documentation](docs/filtering.md).
+See [Row Filtering Documentation](filtering.md).
 
 - **`filter`**: Filter rows based on numeric, string, regex, or date criteria.
 
 ### Ordering
-See [Ordering Documentation](docs/ordering.md).
+See [Ordering Documentation](ordering.md).
 
 - **`sort`**: Sorts rows based on one or more key fields.
 - **`reverse`**: Reverses the order of lines (like `tac`), optionally keeping the header at the top.
 - **`transpose`**: Swaps rows and columns (matrix transposition).
 
 ### Statistics & Summary
-See [Statistics Documentation](docs/statistics.md).
+See [Statistics Documentation](statistics.md).
 
 - **`stats`**: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.
 - **`bin`**: Discretize numeric values into bins (useful for histograms).
 - **`uniq`**: Deduplicate rows or count unique occurrences (supports equivalence classes).
 
 ### Reshaping
-See [Reshaping Documentation](docs/reshape.md).
+See [Reshaping Documentation](reshape.md).
 
 - **`longer`**: Reshape wide to long (unpivot). Requires a header row.
 - **`wider`**: Reshape long to wide (pivot). Supports aggregation via `--op` (sum, count, etc.).
@@ -104,14 +104,14 @@ See [Reshaping Documentation](docs/reshape.md).
 | **Output** | Long / Tall | Wide / Matrix |
 
 ### Combining & Splitting
-See [Combining Documentation](docs/combining.md).
+See [Combining Documentation](combining.md).
 
 - **`join`**: Join two files based on common keys (inner, left, outer, anti).
 - **`append`**: Concatenate multiple TSV files, handling headers correctly.
 - **`split`**: Split a file into multiple files (by size, key, or random).
 
 ### Formatting & Utilities
-See [Utilities Documentation](docs/utilities.md).
+See [Utilities Documentation](utilities.md).
 
 - **`from`**: Convert other formats to TSV (csv, xlsx).
 - **`to`**: Convert TSV to other formats (csv, xlsx).

@@ -96,3 +96,6 @@ Cargo.lock
 **/*.rs.bk
 
 *.tmp
+
+# mdBook output directory
+/book/
