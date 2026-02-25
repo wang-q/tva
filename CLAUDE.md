@@ -23,6 +23,19 @@ cargo build
 cargo build --release
 ```
 
+### 文档构建
+
+项目使用 `mdBook` 构建文档网站。文档源位于 `docs/` 目录。
+根目录的 `README.md` 是主页的源文件，构建时会自动同步到 `docs/README.md`。
+
+```bash
+# 同步 README.md 并构建文档
+./build-docs.ps1
+
+# 本地预览 (需手动同步 README.md 或先运行 build-docs.ps1)
+mdbook serve
+```
+
 Do not use the `cargo build --release` option during development as it takes a long time.
 
 ### 测试
