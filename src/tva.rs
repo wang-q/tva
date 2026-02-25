@@ -35,6 +35,7 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::sort::make_subcommand())
         .subcommand(cmd_tva::split::make_subcommand())
         .subcommand(cmd_tva::stats::make_subcommand())
+        .subcommand(cmd_tva::to::make_subcommand())
         .subcommand(cmd_tva::transpose::make_subcommand())
         .subcommand(cmd_tva::uniq::make_subcommand())
         .subcommand(cmd_tva::wider::make_subcommand())
@@ -77,6 +78,7 @@ fn main() -> anyhow::Result<()> {
         Some(("sort", sub_matches)) => cmd_tva::sort::execute(sub_matches),
         Some(("split", sub_matches)) => cmd_tva::split::execute(sub_matches),
         Some(("stats", sub_matches)) => cmd_tva::stats::execute(sub_matches),
+        Some(("to", sub_matches)) => cmd_tva::to::execute(sub_matches),
         Some(("transpose", sub_matches)) => cmd_tva::transpose::execute(sub_matches),
         Some(("uniq", sub_matches)) => cmd_tva::uniq::execute(sub_matches),
         Some(("wider", sub_matches)) => cmd_tva::wider::execute(sub_matches),
