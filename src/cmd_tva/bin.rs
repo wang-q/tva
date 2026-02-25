@@ -103,7 +103,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     // Pre-check: if field is not numeric, header is required
     let is_numeric_field = field_str.chars().all(|c| c.is_ascii_digit());
     if !is_numeric_field && !header {
-        return Err(anyhow::anyhow!("Field name '{}' requires --header", field_str));
+        return Err(anyhow::anyhow!(
+            "Field name '{}' requires --header",
+            field_str
+        ));
     }
 
     let mut header_written = false;
@@ -111,7 +114,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     // If field is numeric, we can parse it now
     if let Ok(idx) = field_str.parse::<usize>() {
         if idx == 0 {
-             return Err(anyhow::anyhow!("Field index must be >= 1"));
+            return Err(anyhow::anyhow!("Field index must be >= 1"));
         }
         field_idx = Some(idx - 1);
     }
@@ -136,10 +139,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         // Resolve field name if needed
                         if field_idx.is_none() {
                             let headers: Vec<&str> = line.split('\t').collect();
-                            if let Some(pos) = headers.iter().position(|&h| h == field_str) {
+                            if let Some(pos) =
+                                headers.iter().position(|&h| h == field_str)
+                            {
                                 field_idx = Some(pos);
                             } else {
-                                return Err(anyhow::anyhow!("Field '{}' not found in header", field_str));
+                                return Err(anyhow::anyhow!(
+                                    "Field '{}' not found in header",
+                                    field_str
+                                ));
                             }
                         }
                         if let Some(name) = new_name {
@@ -157,7 +165,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             // Process data line
-            let idx = field_idx.ok_or_else(|| anyhow::anyhow!("Field index logic error"))?;
+            let idx =
+                field_idx.ok_or_else(|| anyhow::anyhow!("Field index logic error"))?;
 
             let fields: Vec<&str> = line.split('\t').collect();
 
@@ -172,11 +181,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 };
 
                 if let Some(_) = new_name {
-                     if binned_val.is_nan() {
-                         writeln!(writer, "{}\t", line)?;
-                     } else {
-                         writeln!(writer, "{}\t{}", line, binned_val)?;
-                     }
+                    if binned_val.is_nan() {
+                        writeln!(writer, "{}\t", line)?;
+                    } else {
+                        writeln!(writer, "{}\t{}", line, binned_val)?;
+                    }
                 } else {
                     // Output construction (Replace mode)
                     for (i, field) in fields.iter().enumerate() {
@@ -184,7 +193,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             write!(writer, "\t")?;
                         }
                         if i == idx && !binned_val.is_nan() {
-                             write!(writer, "{}", binned_val)?;
+                            write!(writer, "{}", binned_val)?;
                         } else {
                             write!(writer, "{}", field)?;
                         }

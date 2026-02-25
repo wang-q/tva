@@ -4,38 +4,7 @@ use std::io::{BufRead, Write};
 pub fn make_subcommand() -> Command {
     Command::new("slice")
         .about("Slice rows by index (keep or drop)")
-        .after_help(
-            r###"
-Slice rows by index (1-based).
-
-Can be used to select specific rows (Keep Mode) or exclude them (Drop Mode).
-
-Notes:
-* Supports plain text and gzipped (.gz) TSV files.
-* Reads from stdin if no input file is given.
-* Row indices are 1-based.
-* Multiple ranges can be specified with multiple -r/--rows flags.
-
-Examples:
-1. Keep rows 10 to 20
-   tva slice -r 10-20 file.tsv
-
-2. Keep rows 1-5 and 10-15
-   tva slice -r 1-5 -r 10-15 file.tsv
-
-3. Drop row 5 (exclude it)
-   tva slice -r 5 --invert file.tsv
-
-4. Drop rows 1-5 (exclude header and first 4 data rows)
-   tva slice -r 1-5 --invert file.tsv
-
-5. Drop rows 2-5 but keep header (row 1)
-   tva slice -H -r 2-5 --invert file.tsv
-
-6. Preview with header (Keep rows 100-110 plus header)
-   tva slice -H -r 100-110 file.tsv
-"###,
-        )
+        .after_help(include_str!("../../docs/help/slice.md"))
         .arg(
             Arg::new("infiles")
                 .num_args(0..)
@@ -105,7 +74,7 @@ fn parse_range(s: &str) -> anyhow::Result<Range> {
             return Err(anyhow::anyhow!("Row index must be >= 1"));
         }
         if end < start {
-             return Err(anyhow::anyhow!("Invalid range: end < start"));
+            return Err(anyhow::anyhow!("Invalid range: end < start"));
         }
 
         Ok(Range { start, end })
@@ -174,7 +143,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             // - If invert is false (Keep mode): keep nothing (except header if -H) -> standard behavior
             // - If invert is true (Drop mode): drop nothing -> keep all
             if ranges.is_empty() {
-                 if invert {
+                if invert {
                     // Drop nothing = Keep all
                     writeln!(writer, "{}", line)?;
                 }

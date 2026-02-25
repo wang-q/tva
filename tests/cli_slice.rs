@@ -12,13 +12,8 @@ fn slice_keep_single_range() -> anyhow::Result<()> {
     let path = file.path().to_str().unwrap();
 
     // Keep rows 2-4 (r2, r3, r4)
-    let output = cmd
-        .arg("slice")
-        .arg("-r")
-        .arg("3-5")
-        .arg(path)
-        .output()?;
-    
+    let output = cmd.arg("slice").arg("-r").arg("3-5").arg(path).output()?;
+
     // Original line numbers:
     // 1: h1
     // 2: r1
@@ -26,7 +21,7 @@ fn slice_keep_single_range() -> anyhow::Result<()> {
     // 4: r3
     // 5: r4
     // 6: r5
-    
+
     let expected = "r2\nr3\nr4\n";
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
@@ -50,7 +45,7 @@ fn slice_keep_multiple_ranges() -> anyhow::Result<()> {
         .arg("8-10")
         .arg(path)
         .output()?;
-    
+
     let expected = "1\n2\n3\n8\n9\n10\n";
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
@@ -73,7 +68,7 @@ fn slice_drop_single_row() -> anyhow::Result<()> {
         .arg("--invert")
         .arg(path)
         .output()?;
-    
+
     let expected = "1\n2\n4\n5\n";
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
@@ -98,7 +93,7 @@ fn slice_keep_header_drop_range() -> anyhow::Result<()> {
         .arg("--header")
         .arg(path)
         .output()?;
-    
+
     let expected = "Header\nData3\nData4\n";
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
@@ -121,7 +116,7 @@ fn slice_keep_header_keep_range() -> anyhow::Result<()> {
         .arg("--header")
         .arg(path)
         .output()?;
-    
+
     let expected = "Header\nData3\nData4\n";
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
@@ -137,13 +132,8 @@ fn slice_open_ranges() -> anyhow::Result<()> {
     let path = file.path().to_str().unwrap();
 
     // 4- (4, 5)
-    let output = cmd
-        .arg("slice")
-        .arg("-r")
-        .arg("4-")
-        .arg(path)
-        .output()?;
-    
+    let output = cmd.arg("slice").arg("-r").arg("4-").arg(path).output()?;
+
     let expected = "4\n5\n";
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
@@ -159,13 +149,8 @@ fn slice_start_ranges() -> anyhow::Result<()> {
     let path = file.path().to_str().unwrap();
 
     // -2 (1, 2)
-    let output = cmd
-        .arg("slice")
-        .arg("-r")
-        .arg("-2")
-        .arg(path)
-        .output()?;
-    
+    let output = cmd.arg("slice").arg("-r").arg("-2").arg(path).output()?;
+
     let expected = "1\n2\n";
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     assert_eq!(stdout, expected);
