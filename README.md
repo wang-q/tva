@@ -6,10 +6,13 @@ Fast, reliable TSV processing toolkit in Rust.
 [![Build](https://github.com/wang-q/tva/actions/workflows/build.yml/badge.svg)](https://github.com/wang-q/tva/actions)
 [![codecov](https://codecov.io/gh/wang-q/tva/graph/badge.svg?token=c76YHsQnW7)](https://codecov.io/gh/wang-q/tva)
 [![license](https://img.shields.io/github/license/wang-q/tva)](https://github.com/wang-q/tva)
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://wang-q.github.io/tva/)
 
 ## Overview
 
 `tva` (pronounced "Tee-Va") is a high-performance command-line toolkit written in **Rust** for processing tabular data. It brings the safety and speed of modern systems programming to the classic Unix philosophy.
+
+**[Read the documentation online](https://wang-q.github.io/tva/)**
 
 **Inspiration**
 
@@ -33,6 +36,7 @@ Fast, reliable TSV processing toolkit in Rust.
 
 See [Design Documentation](docs/design.md) for details.
 
+**[Read the full documentation online](https://wang-q.github.io/tva/)**
 
 ## Installation
 
