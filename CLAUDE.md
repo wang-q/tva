@@ -44,6 +44,9 @@ cargo test
   - **`fields.rs`** - 字段选择逻辑 (支持索引、范围、名称)。
   - **`stats.rs`** - 统计计算核心逻辑。
   - **`filter.rs`** - 过滤逻辑。
+  - **`io.rs`** - I/O 辅助函数 (stdin/stdout, gzip 等)。
+  - **`number.rs`** - 数字格式化 (千位分隔符等)。
+  - **`sampling.rs`** - 随机采样相关逻辑。
 
 ### 命令结构 (Command Structure)
 
