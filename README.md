@@ -50,9 +50,9 @@ See [Row Filtering Documentation](docs/filtering.md).
 ### Ordering
 See [Ordering Documentation](docs/ordering.md).
 
-- **`sort`**: Sort TSV files (external sort for large files).
-- **`reverse`**: Reverse the order of lines (like `tac`), with optional header preservation.
-- **`transpose`**: Transpose rows and columns.
+- **`sort`**: Sorts rows based on one or more key fields.
+- **`reverse`**: Reverses the order of lines (like `tac`), optionally keeping the header at the top.
+- **`transpose`**: Swaps rows and columns (matrix transposition).
 
 ### Statistics & Summary
 See [Statistics Documentation](docs/statistics.md).
