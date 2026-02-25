@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate assert_cmd;
 
-use std::process::Command;
-
 #[test]
 fn slice_keep_single_range() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
