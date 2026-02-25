@@ -75,6 +75,8 @@ See [Reshaping Documentation](docs/reshape.md).
 | **Output** | Long / Tall | Wide / Matrix |
 
 ### Combining & Splitting
+See [Combining Documentation](docs/combining.md).
+
 - **`join`**: Join two files based on common keys (inner, left, outer, anti).
 - **`append`**: Concatenate multiple TSV files, handling headers correctly.
 - **`split`**: Split a file into multiple files (by size, key, or random).
