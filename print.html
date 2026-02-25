@@ -1,0 +1,2249 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>tva Documentation</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-2459343d.css">
+        <link rel="stylesheet" href="css/chrome-ae938929.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2bd52ff7.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-c9f040c7.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">tva Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/wang-q/tva" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="tva"><a class="header" href="#tva">tva</a></h1>
+<p>Tab-separated Values Assistant.
+Fast, reliable TSV processing toolkit in Rust.</p>
+<p><a href="https://github.com/wang-q/tva/actions"><img src="https://github.com/wang-q/tva/actions/workflows/build.yml/badge.svg" alt="Build"></a>
+<a href="https://codecov.io/gh/wang-q/tva"><img src="https://codecov.io/gh/wang-q/tva/graph/badge.svg?token=c76YHsQnW7" alt="codecov"></a>
+<a href="https://github.com/wang-q/tva"><img src="https://img.shields.io/github/license/wang-q/tva" alt="license"></a></p>
+<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
+<p><code>tva</code> (pronounced “Tee-Va”) is a high-performance command-line toolkit written in <strong>Rust</strong> for processing tabular data. It brings the safety and speed of modern systems programming to the classic Unix philosophy.</p>
+<p><strong>Inspiration</strong></p>
+<ul>
+<li><a href="https://github.com/eBay/tsv-utils">eBay’s tsv-utils</a> (discontinued): The primary reference for functionality and performance.</li>
+<li><a href="https://www.gnu.org/software/datamash/">GNU Datamash</a>: Statistical operations.</li>
+<li><a href="https://tidyr.tidyverse.org/">R’s tidyr</a>: Reshaping concepts (<code>longer</code>, <code>wider</code>).</li>
+</ul>
+<p><strong>Use Cases</strong></p>
+<ul>
+<li><strong>“Middle Data”</strong>: Files too large for Excel/Pandas but too small for distributed systems (Spark/Hadoop).</li>
+<li><strong>Data Pipelines</strong>: Robust CLI-based ETL steps compatible with <code>awk</code>, <code>sort</code>, etc.</li>
+<li><strong>Exploration</strong>: Fast summary statistics, sampling, and filtering on raw data.</li>
+</ul>
+<p><strong>Design Principles</strong></p>
+<ul>
+<li><strong>Header Aware</strong>: Manipulate columns by name (<code>--fields user_id</code>) or index.</li>
+<li><strong>Fail-fast</strong>: Strict validation ensures data integrity (no silent truncation).</li>
+<li><strong>Streaming</strong>: Stateless processing designed for infinite streams and large files.</li>
+<li><strong>TSV-first</strong>: Prioritizes the reliability and simplicity of tab-separated values.</li>
+<li><strong>Performance</strong>: Single-pass execution with minimal memory overhead.</li>
+</ul>
+<p>See <a href="#tva-design">Design Documentation</a> for details.</p>
+<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
+<p>Current release: 0.1.0</p>
+<pre><code class="language-bash"># Clone the repository and install via cargo
+cargo install --force --path .
+</code></pre>
+<p>Or install the pre-compiled binary via the cross-platform package manager <a href="https://github.com/wang-q/cbp">cbp</a>:</p>
+<pre><code class="language-bash">cbp install tva
+</code></pre>
+<h2 id="running-examples"><a class="header" href="#running-examples">Running Examples</a></h2>
+<p>The examples in the documentation use sample data located in the <code>docs/data/</code> directory. To run these examples yourself, we recommend cloning the repository:</p>
+<pre><code class="language-bash">git clone https://github.com/wang-q/tva.git
+cd tva
+</code></pre>
+<p>Then you can run the commands exactly as shown in the docs (e.g., <code>tva select -f 1 docs/data/input.csv</code>).</p>
+<p>Alternatively, you can download individual files from the <a href="https://github.com/wang-q/tva/tree/master/docs/data">docs/data</a> directory on GitHub.</p>
+<h2 id="commands"><a class="header" href="#commands">Commands</a></h2>
+<h3 id="selection--sampling"><a class="header" href="#selection--sampling">Selection &amp; Sampling</a></h3>
+<p>See <a href="#selection--sampling-documentation">Selection &amp; Sampling Documentation</a>.</p>
+<ul>
+<li><strong><code>select</code></strong>: Select and reorder columns.</li>
+<li><strong><code>slice</code></strong>: Slice rows by index (keep or drop). Supports multiple ranges and header preservation.</li>
+<li><strong><code>sample</code></strong>: Randomly sample rows (Bernoulli, reservoir, weighted).</li>
+</ul>
+<h3 id="filtering"><a class="header" href="#filtering">Filtering</a></h3>
+<p>See <a href="#row-filtering-documentation">Row Filtering Documentation</a>.</p>
+<ul>
+<li><strong><code>filter</code></strong>: Filter rows based on numeric, string, regex, or date criteria.</li>
+</ul>
+<h3 id="ordering"><a class="header" href="#ordering">Ordering</a></h3>
+<p>See <a href="#ordering-documentation">Ordering Documentation</a>.</p>
+<ul>
+<li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
+<li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
+<li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
+</ul>
+<h3 id="statistics--summary"><a class="header" href="#statistics--summary">Statistics &amp; Summary</a></h3>
+<p>See <a href="#statistics-documentation">Statistics Documentation</a>.</p>
+<ul>
+<li><strong><code>stats</code></strong>: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.</li>
+<li><strong><code>bin</code></strong>: Discretize numeric values into bins (useful for histograms).</li>
+<li><strong><code>uniq</code></strong>: Deduplicate rows or count unique occurrences (supports equivalence classes).</li>
+</ul>
+<h3 id="reshaping"><a class="header" href="#reshaping">Reshaping</a></h3>
+<p>See <a href="#reshaping-documentation">Reshaping Documentation</a>.</p>
+<ul>
+<li><strong><code>longer</code></strong>: Reshape wide to long (unpivot). Requires a header row.</li>
+<li><strong><code>wider</code></strong>: Reshape long to wide (pivot). Supports aggregation via <code>--op</code> (sum, count, etc.).</li>
+</ul>
+<p><strong>Comparison: <code>stats</code> vs <code>wider</code></strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>stats</code> (Group By)</th><th style="text-align: left"><code>wider</code> (Pivot)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Goal</strong></td><td style="text-align: left">Summarize to rows</td><td style="text-align: left">Reshape to columns</td></tr>
+<tr><td style="text-align: left"><strong>Output</strong></td><td style="text-align: left">Long / Tall</td><td style="text-align: left">Wide / Matrix</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="combining--splitting"><a class="header" href="#combining--splitting">Combining &amp; Splitting</a></h3>
+<p>See <a href="#combining--splitting-documentation">Combining Documentation</a>.</p>
+<ul>
+<li><strong><code>join</code></strong>: Join two files based on common keys (inner, left, outer, anti).</li>
+<li><strong><code>append</code></strong>: Concatenate multiple TSV files, handling headers correctly.</li>
+<li><strong><code>split</code></strong>: Split a file into multiple files (by size, key, or random).</li>
+</ul>
+<h3 id="formatting--utilities"><a class="header" href="#formatting--utilities">Formatting &amp; Utilities</a></h3>
+<p>See <a href="#formatting--utilities-documentation">Utilities Documentation</a>.</p>
+<ul>
+<li><strong><code>from</code></strong>: Convert other formats to TSV (csv, xlsx).</li>
+<li><strong><code>to</code></strong>: Convert TSV to other formats (csv, xlsx).</li>
+<li><strong><code>check</code></strong>: Validate TSV file structure (column counts, encoding).</li>
+<li><strong><code>md</code></strong>: Convert TSV to Markdown table for display.</li>
+<li><strong><code>nl</code></strong>: Add line numbers to rows.</li>
+<li><strong><code>keep-header</code></strong>: Run a shell command on the body of a TSV file, preserving the header.</li>
+</ul>
+<h2 id="author"><a class="header" href="#author">Author</a></h2>
+<p>Qiang Wang <a href="mailto:wang-q@outlook.com">wang-q@outlook.com</a></p>
+<h2 id="license"><a class="header" href="#license">License</a></h2>
+<p>MIT.
+Copyright by Qiang Wang.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="tva-design"><a class="header" href="#tva-design">tva Design</a></h1>
+<p>This document outlines the core design decisions behind <code>tva</code>, drawing inspiration from the original <a href="https://github.com/eBay/tsv-utils">TSV Utilities</a> by eBay.</p>
+<h2 id="why-tsv"><a class="header" href="#why-tsv">Why TSV?</a></h2>
+<p>The Tab-Separated Values (TSV) format is chosen over Comma-Separated Values (CSV) for several key reasons, especially in data mining and large-scale data processing contexts:</p>
+<h3 id="1-no-escapes--reliability--speed"><a class="header" href="#1-no-escapes--reliability--speed">1. No Escapes = Reliability &amp; Speed</a></h3>
+<ul>
+<li><strong>CSV Complexity</strong>: CSV uses escape characters (usually quotes) to handle delimiters (commas) and newlines within fields. Parsing this requires a state machine, which is slower and prone to errors in ad-hoc scripts.</li>
+<li><strong>TSV Simplicity</strong>: TSV disallows tabs and newlines within fields. This means:
+<ul>
+<li><strong>Parsing is trivial</strong>: <code>split('\t')</code> works reliably.</li>
+<li><strong>Record boundaries are clear</strong>: Every newline is a record separator.</li>
+<li><strong>Performance</strong>: Highly optimized routines can be used to find delimiters.</li>
+<li><strong>Robustness</strong>: No “malformed CSV” errors due to incorrect quoting.</li>
+</ul>
+</li>
+</ul>
+<h3 id="2-unix-tool-compatibility"><a class="header" href="#2-unix-tool-compatibility">2. Unix Tool Compatibility</a></h3>
+<ul>
+<li>Traditional Unix tools (<code>cut</code>, <code>awk</code>, <code>sort</code>, <code>join</code>, <code>uniq</code>) work seamlessly with TSV files by specifying the delimiter (e.g., <code>cut -f1</code>).</li>
+<li><strong>The CSV Problem</strong>: Standard Unix tools fail on CSV files with quoted fields or newlines. This forces CSV toolkits (like <code>xsv</code>) to re-implement standard operations (sorting, joining) just to handle parsing correctly.</li>
+<li><strong>The TSV Advantage</strong>: <code>tva</code> leverages the simplicity of TSV. While <code>tva</code> provides its own <code>sort</code> and <code>join</code> for header awareness and Windows support, the underlying data remains compatible with the vast ecosystem of standard Unix text processing tools.</li>
+</ul>
+<h2 id="why-rust"><a class="header" href="#why-rust">Why Rust?</a></h2>
+<p><code>tva</code> is implemented in Rust, differing from the original TSV Utilities (written in D).</p>
+<h3 id="1-safety--performance"><a class="header" href="#1-safety--performance">1. Safety &amp; Performance</a></h3>
+<ul>
+<li><strong>Memory Safety</strong>: Rust’s ownership model ensures memory safety without a garbage collector, crucial for high-performance data processing tools.</li>
+<li><strong>Zero-Cost Abstractions</strong>: High-level constructs (iterators, closures) compile down to efficient machine code, often matching or beating C/C++.</li>
+<li><strong>Predictable Performance</strong>: No GC pauses means consistent throughput for large datasets.</li>
+</ul>
+<h3 id="2-cross-platform--deployment"><a class="header" href="#2-cross-platform--deployment">2. Cross-Platform &amp; Deployment</a></h3>
+<ul>
+<li><strong>Single Binary</strong>: Rust compiles to a static binary with no runtime dependencies (unlike Python or Java).</li>
+<li><strong>Windows Support</strong>: Rust has first-class support for Windows, making <code>tva</code> easily deployable on non-Unix environments (a key differentiator from many Unix-centric tools).</li>
+</ul>
+<h2 id="design-goals"><a class="header" href="#design-goals">Design Goals</a></h2>
+<h3 id="1-unix-philosophy"><a class="header" href="#1-unix-philosophy">1. Unix Philosophy</a></h3>
+<ul>
+<li><strong>Do One Thing Well</strong>: Each subcommand (<code>filter</code>, <code>select</code>, <code>stats</code>) focuses on a specific task.</li>
+<li><strong>Pipeable</strong>: Tools read from stdin and write to stdout by default, enabling powerful pipelines:
+<pre><code class="language-bash">tva filter --gt score:0.9 data.tsv | tva select name,score | tva sort -k score
+</code></pre>
+</li>
+<li><strong>Streaming</strong>: Stateless where possible to support infinite streams and large files.</li>
+</ul>
+<h3 id="2-header-awareness"><a class="header" href="#2-header-awareness">2. Header Awareness</a></h3>
+<ul>
+<li>Unlike generic Unix tools, <code>tva</code> is aware of headers.</li>
+<li><strong>Field Selection</strong>: Columns can be selected by name (<code>--fields user_id</code>) rather than just index.</li>
+<li><strong>Header Preservation</strong>: Operations like <code>filter</code> or <code>sample</code> automatically preserve the header row.</li>
+</ul>
+<h3 id="3-tsv-first"><a class="header" href="#3-tsv-first">3. TSV-first</a></h3>
+<ul>
+<li>Default separator is TAB.</li>
+<li>Processing revolves around the “Row + Field” model.</li>
+<li>CSV is treated as an import format (<code>from-csv</code>), but core logic is TSV-centric.</li>
+</ul>
+<h3 id="4-explicit-cli--fail-fast"><a class="header" href="#4-explicit-cli--fail-fast">4. Explicit CLI &amp; Fail-fast</a></h3>
+<ul>
+<li>Options should be explicit (no “magic” behavior).</li>
+<li>Strict error handling: mismatched field counts or broken headers result in immediate error exit (stderr + non-zero status), rather than silent truncation.</li>
+</ul>
+<h3 id="5-high-performance"><a class="header" href="#5-high-performance">5. High Performance</a></h3>
+<ul>
+<li>Aim for single-pass processing.</li>
+<li>Avoid unnecessary allocations and sorting.</li>
+</ul>
+<h2 id="implementation-details"><a class="header" href="#implementation-details">Implementation Details</a></h2>
+<p><code>tva</code> adopts several optimization strategies similar to <code>tsv-utils</code> to ensure high performance:</p>
+<h3 id="1-buffered-io"><a class="header" href="#1-buffered-io">1. Buffered I/O</a></h3>
+<ul>
+<li><strong>Input</strong>: Uses <code>std::io::BufReader</code> to minimize system calls when reading large files. Transparently handles <code>.gz</code> files (via <code>flate2</code>).</li>
+<li><strong>Output</strong>: Uses <code>std::io::BufWriter</code> to batch writes, significantly improving throughput for commands that produce large output.</li>
+</ul>
+<h3 id="2-zero-copy--re-use"><a class="header" href="#2-zero-copy--re-use">2. Zero-Copy &amp; Re-use</a></h3>
+<ul>
+<li><strong>String Reuse</strong>: Where possible, <code>tva</code> reuses allocated string buffers (e.g., via <code>read_line</code> into a cleared String) to avoid the overhead of repeated memory allocation and deallocation.</li>
+<li><strong>Iterator-Based Processing</strong>: Leverages Rust’s iterator lazy evaluation to process data line-by-line without loading entire files into memory, enabling processing of datasets larger than RAM.</li>
+</ul>
+<h2 id="common-behavior--syntax"><a class="header" href="#common-behavior--syntax">Common Behavior &amp; Syntax</a></h2>
+<p><code>tva</code> tools share a consistent set of behaviors and syntax conventions, making them easy to learn and combine.</p>
+<h3 id="field-syntax"><a class="header" href="#field-syntax">Field Syntax</a></h3>
+<p>All tools use a unified syntax to identify fields (columns). See <a href="#field-syntax-2">Field Syntax Documentation</a> for details.</p>
+<ul>
+<li><strong>Index</strong>: <code>1</code> (first column), <code>2</code> (second column).</li>
+<li><strong>Range</strong>: <code>1-3</code> (columns 1, 2, 3).</li>
+<li><strong>List</strong>: <code>1,3,5</code>.</li>
+<li><strong>Name</strong>: <code>user_id</code> (requires <code>--header</code>).</li>
+<li><strong>Wildcard</strong>: <code>user_*</code> (matches <code>user_id</code>, <code>user_name</code>, etc.).</li>
+<li><strong>Exclusion</strong>: <code>--exclude 1,2</code> (select all except 1 and 2).</li>
+</ul>
+<h3 id="header-processing"><a class="header" href="#header-processing">Header Processing</a></h3>
+<ul>
+<li><strong>Input</strong>: Most tools accept a <code>--header</code> (or <code>-H</code>) flag to indicate the first line of input is a header. This enables field selection by name.
+<ul>
+<li>Note: The <code>longer</code> and <code>wider</code> commands assume a header by default.</li>
+</ul>
+</li>
+<li><strong>Output</strong>: When <code>--header</code> is used, <code>tva</code> ensures the header is preserved in the output (unless explicitly suppressed).</li>
+<li><strong>No Header</strong>: Without this flag, the first row is treated as data. Field selection is limited to indices (no names).</li>
+<li><strong>Multiple Files</strong>: If processing multiple files with <code>--header</code>:
+<ul>
+<li>The header from the <strong>first</strong> file is written to output.</li>
+<li>Headers from subsequent files are <strong>skipped</strong> (assumed to be identical to the first).</li>
+<li><strong>Validation</strong>: Field counts must be consistent; <code>tva</code> fails immediately on jagged rows.</li>
+</ul>
+</li>
+</ul>
+<h3 id="multiple-files--standard-input"><a class="header" href="#multiple-files--standard-input">Multiple Files &amp; Standard Input</a></h3>
+<ul>
+<li><strong>Standard Input</strong>: If no files are provided, or if <code>-</code> is used as a filename, <code>tva</code> reads from standard input (stdin).</li>
+<li><strong>Concatenation</strong>: When multiple files are provided, <code>tva</code> processes them sequentially as a single continuous stream of data (logical concatenation).
+<ul>
+<li>Example: <code>tva filter --gt value:10 file1.tsv file2.tsv</code> processes both files.</li>
+</ul>
+</li>
+</ul>
+<h2 id="comparison-with-other-tools"><a class="header" href="#comparison-with-other-tools">Comparison with Other Tools</a></h2>
+<p><code>tva</code> is designed to coexist with and complement other excellent open-source tools for tabular data. It combines the strict, high-performance nature of <code>tsv-utils</code> with the cross-platform accessibility and modern ecosystem of Rust.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>tva</code> (Rust)</th><th style="text-align: left"><code>tsv-utils</code> (D)</th><th style="text-align: left"><code>xsv</code> / <code>qsv</code> (Rust)</th><th style="text-align: left"><code>datamash</code> (C)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Primary Format</strong></td><td style="text-align: left">TSV (Strict)</td><td style="text-align: left">TSV (Strict)</td><td style="text-align: left">CSV (Flexible)</td><td style="text-align: left">TSV (Default)</td></tr>
+<tr><td style="text-align: left"><strong>Escapes</strong></td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">Yes</td><td style="text-align: left">No</td></tr>
+<tr><td style="text-align: left"><strong>Header Aware</strong></td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Partial</td></tr>
+<tr><td style="text-align: left"><strong>Field Syntax</strong></td><td style="text-align: left">Names &amp; Indices</td><td style="text-align: left">Names &amp; Indices</td><td style="text-align: left">Names &amp; Indices</td><td style="text-align: left">Indices</td></tr>
+<tr><td style="text-align: left"><strong>Platform</strong></td><td style="text-align: left">Cross-platform</td><td style="text-align: left">Unix-focused</td><td style="text-align: left">Cross-platform</td><td style="text-align: left">Unix-focused</td></tr>
+<tr><td style="text-align: left"><strong>Performance</strong></td><td style="text-align: left">High</td><td style="text-align: left">High</td><td style="text-align: left">High (CSV cost)</td><td style="text-align: left">High</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="detailed-breakdown"><a class="header" href="#detailed-breakdown">Detailed Breakdown</a></h3>
+<ul>
+<li>
+<p><strong><a href="https://github.com/eBay/tsv-utils-d">tsv-utils</a></strong> (D):</p>
+<ul>
+<li>The direct inspiration for <code>tva</code>. <code>tva</code> aims to be a Rust-based alternative that is easier to install (no D compiler needed) and extends functionality (e.g., <code>sample</code>, <code>slice</code>).</li>
+</ul>
+</li>
+<li>
+<p><strong><a href="https://github.com/BurntSushi/xsv">xsv</a> / <a href="https://github.com/jqnatividad/qsv">qsv</a></strong> (Rust):</p>
+<ul>
+<li>The premier tools for <strong>CSV</strong> processing.</li>
+<li>Because they must handle CSV escapes, they are inherently more complex than TSV-only tools.</li>
+<li>Use these if you must work with CSVs directly; use <code>tva</code> if you can convert to TSV for faster, simpler processing.</li>
+</ul>
+</li>
+<li>
+<p><strong><a href="https://www.gnu.org/software/datamash/">GNU Datamash</a></strong> (C):</p>
+<ul>
+<li>Excellent for statistical operations (groupby, pivot) on TSV files.</li>
+<li><code>tva stats</code> is similar but adds header awareness and named field selection, making it friendlier for interactive use.</li>
+</ul>
+</li>
+<li>
+<p><strong><a href="https://github.com/johnkerl/miller">Miller (mlr)</a></strong> (C):</p>
+<ul>
+<li>A powerful “awk for CSV/TSV/JSON”. Supports many formats and complex transformations.</li>
+<li>Miller is a DSL (Domain Specific Language); <code>tva</code> follows the “do one thing well” Unix philosophy with separate subcommands.</li>
+</ul>
+</li>
+<li>
+<p><strong><a href="https://github.com/wireservice/csvkit">csvkit</a></strong> (Python):</p>
+<ul>
+<li>Very feature-rich but slower due to Python overhead. Great for converting obscure formats (XLSX, DBF) to CSV/TSV.</li>
+</ul>
+</li>
+<li>
+<p><strong><a href="https://www.gnu.org/software/coreutils/">GNU shuf</a></strong> (C):</p>
+<ul>
+<li>Standard tool for random permutations.</li>
+<li><code>tva sample</code> adds specific data science sampling methods: weighted sampling (by column value) and Bernoulli sampling.</li>
+</ul>
+</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="selection--sampling-documentation"><a class="header" href="#selection--sampling-documentation">Selection &amp; Sampling Documentation</a></h1>
+<p>This document explains how to use the selection and sampling commands in <code>tva</code>: <strong><code>select</code></strong>, <strong><code>slice</code></strong>, and <strong><code>sample</code></strong>. These commands allow you to subset your data based on structure (columns) or position (rows).</p>
+<h2 id="introduction"><a class="header" href="#introduction">Introduction</a></h2>
+<p>Data analysis often begins with selecting the relevant subset of data:</p>
+<ul>
+<li><strong><code>select</code></strong>: Selects and reorders columns (e.g., “keep only <code>name</code> and <code>email</code>”).</li>
+<li><strong><code>slice</code></strong>: Selects rows by their position (index) in the file (e.g., “keep rows 10-20”).</li>
+<li><strong><code>sample</code></strong>: Randomly selects a subset of rows.</li>
+</ul>
+<h2 id="field-syntax-1"><a class="header" href="#field-syntax-1">Field Syntax</a></h2>
+<p>All tools use a unified syntax to identify fields (columns). See <a href="#field-syntax-2">Field Syntax Documentation</a> for details.</p>
+<h2 id="select-column-selection"><a class="header" href="#select-column-selection"><code>select</code> (Column Selection)</a></h2>
+<p>The <code>select</code> command allows you to keep only specific columns and reorder them.</p>
+<h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
+<pre><code class="language-bash">tva select [input_files...] --fields &lt;columns&gt;
+</code></pre>
+<ul>
+<li><strong><code>--fields</code> / <code>-f</code></strong>: Comma-separated list of columns to select.
+<ul>
+<li><strong>Names</strong>: <code>name</code>, <code>email</code></li>
+<li><strong>Indices</strong>: <code>1</code>, <code>3</code> (1-based)</li>
+<li><strong>Ranges</strong>: <code>1-3</code>, <code>start_col-end_col</code></li>
+<li><strong>Wildcards</strong>: <code>user_*</code>, <code>*_id</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
+<h4 id="1-select-by-name-and-index"><a class="header" href="#1-select-by-name-and-index">1. Select by Name and Index</a></h4>
+<p>Consider the dataset <code>docs/data/us_rent_income.tsv</code>:</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+01	Alabama	income	24476	136
+01	Alabama	rent	747	3
+02	Alaska	income	32940	508
+...
+</code></pre>
+<p>To keep only the state name (<code>NAME</code>) and the estimate value (<code>estimate</code>):</p>
+<pre><code class="language-bash">tva select docs/data/us_rent_income.tsv -f NAME,estimate
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">NAME	estimate
+Alabama	24476
+Alabama	747
+Alaska	32940
+...
+</code></pre>
+<h4 id="2-reorder-columns"><a class="header" href="#2-reorder-columns">2. Reorder Columns</a></h4>
+<p>You can change the order of columns. Let’s move <code>variable</code> to the first column:</p>
+<pre><code class="language-bash">tva select docs/data/us_rent_income.tsv -f variable,estimate,NAME
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">variable	estimate	NAME
+income	24476	Alabama
+rent	747	Alabama
+income	32940	Alaska
+...
+</code></pre>
+<h4 id="3-select-by-range-and-wildcard"><a class="header" href="#3-select-by-range-and-wildcard">3. Select by Range and Wildcard</a></h4>
+<p>Consider <code>docs/data/billboard.tsv</code> which has many week columns (<code>wk1</code>, <code>wk2</code>, <code>wk3</code>…):</p>
+<pre><code class="language-tsv">artist	track	wk1	wk2	wk3
+2 Pac	Baby Don't Cry	87	82	72
+2Ge+her	The Hardest Part	91	87	92
+</code></pre>
+<p>To select the artist, track, and all week columns:</p>
+<pre><code class="language-bash">tva select docs/data/billboard.tsv -f artist,track,wk*
+</code></pre>
+<p>Or using a range (if you know the indices):</p>
+<pre><code class="language-bash">tva select docs/data/billboard.tsv -f 1-2,3-5
+</code></pre>
+<h2 id="slice-row-selection-by-index"><a class="header" href="#slice-row-selection-by-index"><code>slice</code> (Row Selection by Index)</a></h2>
+<p>The <code>slice</code> command selects rows based on their integer index (position). Indices are 1-based.</p>
+<h3 id="basic-usage-1"><a class="header" href="#basic-usage-1">Basic Usage</a></h3>
+<pre><code class="language-bash">tva slice [input_files...] --rows &lt;range&gt; [options]
+</code></pre>
+<ul>
+<li><strong><code>--rows</code> / <code>-r</code></strong>: The range of rows to keep (e.g., <code>1-10</code>, <code>5</code>, <code>100-</code>). Can be specified multiple times.</li>
+<li><strong><code>--invert</code> / <code>-v</code></strong>: Invert selection (drop the specified rows).</li>
+<li><strong><code>--header</code> / <code>-H</code></strong>: Always preserve the first row (header).</li>
+</ul>
+<h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
+<h4 id="1-keep-specific-range-headbody"><a class="header" href="#1-keep-specific-range-headbody">1. Keep Specific Range (Head/Body)</a></h4>
+<p>To inspect the first 5 rows of <code>docs/data/billboard.tsv</code> (including header):</p>
+<pre><code class="language-bash">tva slice docs/data/billboard.tsv -r 1-5
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">artist	track	wk1	wk2	wk3
+2 Pac	Baby Don't Cry	87	82	72
+2Ge+her	The Hardest Part	91	87	92
+...
+</code></pre>
+<h4 id="2-drop-header-data-only"><a class="header" href="#2-drop-header-data-only">2. Drop Header (Data Only)</a></h4>
+<p>Sometimes you want to process data without the header. You can drop the first row using <code>--invert</code>:</p>
+<pre><code class="language-bash">tva slice docs/data/billboard.tsv -r 1 --invert
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">2 Pac	Baby Don't Cry	87	82	72
+2Ge+her	The Hardest Part	91	87	92
+...
+</code></pre>
+<h4 id="3-keep-header-and-specific-data-rows"><a class="header" href="#3-keep-header-and-specific-data-rows">3. Keep Header and Specific Data Rows</a></h4>
+<p>To keep the header (row 1) and a slice of data from the middle (rows 10-15), use the <code>-H</code> flag:</p>
+<pre><code class="language-bash">tva slice docs/data/us_rent_income.tsv -H -r 10-15
+</code></pre>
+<p>This ensures the first line is always printed, even if it’s not in the range <code>10-15</code>.</p>
+<h2 id="sample-random-sampling"><a class="header" href="#sample-random-sampling"><code>sample</code> (Random Sampling)</a></h2>
+<p>The <code>sample</code> command randomly selects a subset of rows. This is useful for exploring large datasets.</p>
+<h3 id="basic-usage-2"><a class="header" href="#basic-usage-2">Basic Usage</a></h3>
+<pre><code class="language-bash">tva sample [input_files...] [options]
+</code></pre>
+<ul>
+<li><strong><code>--rate</code> / <code>-r</code></strong>: Sampling rate (probability 0.0-1.0). (Bernoulli sampling)</li>
+<li><strong><code>--n</code> / <code>-n</code></strong>: Exact number of rows to sample. (Reservoir sampling)</li>
+<li><strong><code>--seed</code> / <code>-s</code></strong>: Random seed for reproducibility.</li>
+</ul>
+<h3 id="examples-2"><a class="header" href="#examples-2">Examples</a></h3>
+<h4 id="1-sample-by-rate"><a class="header" href="#1-sample-by-rate">1. Sample by Rate</a></h4>
+<p>To keep approximately 10% of the rows from <code>docs/data/us_rent_income.tsv</code>:</p>
+<pre><code class="language-bash">tva sample docs/data/us_rent_income.tsv -r 0.1
+</code></pre>
+<h4 id="2-sample-exact-number"><a class="header" href="#2-sample-exact-number">2. Sample Exact Number</a></h4>
+<p>To pick exactly 5 random rows for inspection:</p>
+<pre><code class="language-bash">tva sample docs/data/us_rent_income.tsv -n 5
+</code></pre>
+<p>Output (example):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+35	New Mexico	rent	809	11
+55	Wisconsin	income	32018	247
+18	Indiana	rent	782	5
+...
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="row-filtering-documentation"><a class="header" href="#row-filtering-documentation">Row Filtering Documentation</a></h1>
+<p>This document explains how to use the <strong><code>filter</code></strong> command in <code>tva</code>. This command allows you to subset your data based on row values.</p>
+<h2 id="filter-row-filtering"><a class="header" href="#filter-row-filtering"><code>filter</code> (Row Filtering)</a></h2>
+<p>The <code>filter</code> command selects rows where a condition is true. It supports numeric, string, regular expression, and date comparisons.</p>
+<h3 id="basic-usage-3"><a class="header" href="#basic-usage-3">Basic Usage</a></h3>
+<pre><code class="language-bash">tva filter [input_files...] [options] &lt;criteria&gt;
+</code></pre>
+<ul>
+<li><strong><code>&lt;criteria&gt;</code></strong>: The condition to check. Format: <code>&lt;column&gt;&lt;operator&gt;&lt;value&gt;</code>.
+<ul>
+<li><strong>Operators</strong>:
+<ul>
+<li><strong>Numeric</strong>: <code>==</code>, <code>!=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>&lt;=</code></li>
+<li><strong>String</strong>: <code>str-eq</code>, <code>str-ne</code>, <code>str-contains</code>, <code>str-starts-with</code>, <code>str-ends-with</code></li>
+<li><strong>Regex</strong>: <code>regex-match</code>, <code>regex-not-match</code></li>
+<li><strong>Date</strong>: <code>date-eq</code>, <code>date-ne</code>, <code>date-gt</code>, <code>date-ge</code>, <code>date-lt</code>, <code>date-le</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="examples-3"><a class="header" href="#examples-3">Examples</a></h3>
+<h4 id="1-numeric-filtering"><a class="header" href="#1-numeric-filtering">1. Numeric Filtering</a></h4>
+<p>Filter rows where the value in column <code>estimate</code> is greater than 30,000 in <code>docs/data/us_rent_income.tsv</code>:</p>
+<pre><code class="language-bash">tva filter docs/data/us_rent_income.tsv --gt estimate:30000
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+02	Alaska	income	32940	508
+04	Arizona	income	31614	242
+06	California	income	33095	172
+...
+</code></pre>
+<h4 id="2-string-filtering"><a class="header" href="#2-string-filtering">2. String Filtering</a></h4>
+<p>Filter rows where the <code>variable</code> column equals “rent” in <code>docs/data/us_rent_income.tsv</code>:</p>
+<pre><code class="language-bash">tva filter docs/data/us_rent_income.tsv --str-eq variable:rent
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+01	Alabama	rent	747	3
+02	Alaska	rent	1200	13
+04	Arizona	rent	976	4
+...
+</code></pre>
+<h4 id="3-regex-filtering"><a class="header" href="#3-regex-filtering">3. Regex Filtering</a></h4>
+<p>Filter rows where the <code>track</code> column contains “Baby” in <code>docs/data/billboard.tsv</code>:</p>
+<pre><code class="language-bash">tva filter docs/data/billboard.tsv --regex-match "track:Baby"
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">artist	track	wk1	wk2	wk3
+2 Pac	Baby Don't Cry	87	82	72
+Beenie Man	Girls Dem Sugar	87	70	63
+...
+</code></pre>
+<h4 id="4-date-filtering"><a class="header" href="#4-date-filtering">4. Date Filtering</a></h4>
+<p>Filter rows where <code>dob_child1</code> is after 1999-01-01 in <code>docs/data/household.tsv</code>:</p>
+<pre><code class="language-bash">tva filter docs/data/household.tsv --date-gt dob_child1:1999-01-01
+</code></pre>
+<p>(Note: Ensure your date format is ISO 8601 YYYY-MM-DD)</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ordering-documentation"><a class="header" href="#ordering-documentation">Ordering Documentation</a></h1>
+<p>This document explains how to use the ordering commands in <code>tva</code>: <strong><code>sort</code></strong>, <strong><code>reverse</code></strong>, and <strong><code>transpose</code></strong>. These commands allow you to rearrange the rows and columns of your data.</p>
+<h2 id="introduction-1"><a class="header" href="#introduction-1">Introduction</a></h2>
+<p>Ordering is a crucial step in data preparation and analysis. You might need to sort data to find the top items, reverse the order to see the most recent entries first, or transpose a matrix to swap rows and columns.</p>
+<ul>
+<li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
+<li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
+<li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
+</ul>
+<h2 id="sort-external-sort"><a class="header" href="#sort-external-sort"><code>sort</code> (External Sort)</a></h2>
+<p>The <code>sort</code> command sorts the lines of a TSV file based on the values in specified columns. It supports both lexicographic (string) and numeric sorting.</p>
+<h3 id="basic-usage-4"><a class="header" href="#basic-usage-4">Basic Usage</a></h3>
+<pre><code class="language-bash">tva sort [input_files...] [options]
+</code></pre>
+<ul>
+<li><strong><code>--key</code> / <code>-k</code></strong>: Specify the field(s) to use as the sort key. You can use 1-based indices (e.g., <code>1</code>, <code>2</code>) or ranges (e.g., <code>2,4-5</code>).</li>
+<li><strong><code>--numeric</code> / <code>-n</code></strong>: Compare the key fields numerically instead of lexicographically.</li>
+<li><strong><code>--reverse</code> / <code>-r</code></strong>: Reverse the sort result (descending order).</li>
+</ul>
+<h3 id="examples-4"><a class="header" href="#examples-4">Examples</a></h3>
+<h4 id="1-sort-by-a-single-column-lexicographic"><a class="header" href="#1-sort-by-a-single-column-lexicographic">1. Sort by a single column (Lexicographic)</a></h4>
+<p>Sort <code>docs/data/us_rent_income.tsv</code> by the <code>NAME</code> column (column 2):</p>
+<pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 2
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">01	Alabama	income	24476	136
+01	Alabama	rent	747	3
+02	Alaska	income	32940	508
+02	Alaska	rent	1200	13
+04	Arizona	income	27517	148
+</code></pre>
+<h4 id="2-sort-numerically"><a class="header" href="#2-sort-numerically">2. Sort numerically</a></h4>
+<p>Sort <code>docs/data/us_rent_income.tsv</code> by the <code>estimate</code> column (column 4) numerically:</p>
+<pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 4 -n
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+05	Arkansas	rent	709	5
+01	Alabama	rent	747	3
+04	Arizona	rent	972	4
+02	Alaska	rent	1200	13
+</code></pre>
+<h4 id="3-sort-by-multiple-columns"><a class="header" href="#3-sort-by-multiple-columns">3. Sort by multiple columns</a></h4>
+<p>Sort first by <code>GEOID</code> (column 1), then by <code>NAME</code> (column 2):</p>
+<pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 1,2
+</code></pre>
+<h2 id="reverse-reverse-lines"><a class="header" href="#reverse-reverse-lines"><code>reverse</code> (Reverse Lines)</a></h2>
+<p>The <code>reverse</code> command reverses the order of lines in the input. This is similar to the Unix <code>tac</code> command but includes features specifically for tabular data, such as header preservation.</p>
+<h3 id="basic-usage-1-1"><a class="header" href="#basic-usage-1-1">Basic Usage</a></h3>
+<pre><code class="language-bash">tva reverse [input_files...] [options]
+</code></pre>
+<ul>
+<li><strong><code>--header</code> / <code>-H</code></strong>: Treat the first line as a header and keep it at the top of the output.</li>
+</ul>
+<h3 id="examples-1-1"><a class="header" href="#examples-1-1">Examples</a></h3>
+<h4 id="1-reverse-a-file-keeping-the-header"><a class="header" href="#1-reverse-a-file-keeping-the-header">1. Reverse a file keeping the header</a></h4>
+<p>Reverse <code>docs/data/us_rent_income.tsv</code> but keep the header line at the top:</p>
+<pre><code class="language-bash">tva reverse docs/data/us_rent_income.tsv --header
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+06	California	rent	1358	3
+06	California	income	29454	109
+05	Arkansas	rent	709	5
+05	Arkansas	income	23789	165
+</code></pre>
+<h2 id="transpose-matrix-transpose"><a class="header" href="#transpose-matrix-transpose"><code>transpose</code> (Matrix Transpose)</a></h2>
+<p>The <code>transpose</code> command swaps the rows and columns of a TSV file. It reads the entire file into memory and performs a matrix transposition.</p>
+<h3 id="basic-usage-2-1"><a class="header" href="#basic-usage-2-1">Basic Usage</a></h3>
+<pre><code class="language-bash">tva transpose [input_file] [options]
+</code></pre>
+<h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
+<ul>
+<li><strong>Strict Mode</strong>: <code>transpose</code> expects a rectangular matrix. All rows must have the same number of columns as the first row. If the file is jagged (rows have different lengths), the command will fail with an error.</li>
+<li><strong>Memory Usage</strong>: Since it reads the whole file, be cautious with very large files.</li>
+</ul>
+<h3 id="examples-2-1"><a class="header" href="#examples-2-1">Examples</a></h3>
+<h4 id="1-transpose-a-table"><a class="header" href="#1-transpose-a-table">1. Transpose a table</a></h4>
+<p>Transpose <code>docs/data/relig_income.tsv</code>:</p>
+<pre><code class="language-bash">tva transpose docs/data/relig_income.tsv
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">religion	Agnostic	Atheist	Buddhist
+&lt;$10k	27	12	27
+$10-20k	34	27	21
+$20-30k	60	37	30
+$30-40k	81	25	34
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="statistics-documentation"><a class="header" href="#statistics-documentation">Statistics Documentation</a></h1>
+<p>This document explains how to use the statistics and summary commands in <code>tva</code>: <strong><code>stats</code></strong>, <strong><code>bin</code></strong>, and <strong><code>uniq</code></strong>. These commands allow you to summarize data, discretize values, and deduplicate rows.</p>
+<h2 id="introduction-2"><a class="header" href="#introduction-2">Introduction</a></h2>
+<ul>
+<li><strong><code>stats</code></strong>: Calculates summary statistics (like sum, mean, max) for fields, optionally grouping by key fields.</li>
+<li><strong><code>bin</code></strong>: Discretizes numeric values into bins (useful for histograms).</li>
+<li><strong><code>uniq</code></strong>: Deduplicates rows based on a key, with options for equivalence classes and occurrence numbering.</li>
+</ul>
+<h2 id="stats-summary-statistics"><a class="header" href="#stats-summary-statistics"><code>stats</code> (Summary Statistics)</a></h2>
+<p>The <code>stats</code> command calculates summary statistics for specified fields. It mimics the functionality of <code>tsv-summarize</code>.</p>
+<h3 id="basic-usage-5"><a class="header" href="#basic-usage-5">Basic Usage</a></h3>
+<pre><code class="language-bash">tva stats [input_files...] [options]
+</code></pre>
+<h3 id="options"><a class="header" href="#options">Options</a></h3>
+<ul>
+<li><strong><code>--header</code> / <code>-H</code></strong>: Treat the first line of each file as a header.</li>
+<li><strong><code>--group-by</code> / <code>-g</code></strong>: Fields to group by (e.g., <code>1</code>, <code>1,2</code>).</li>
+<li><strong><code>--count</code> / <code>-c</code></strong>: Count the number of rows.</li>
+<li><strong><code>--sum</code></strong>: Calculate sum of fields.</li>
+<li><strong><code>--mean</code></strong>: Calculate mean of fields.</li>
+<li><strong><code>--min</code></strong>: Calculate min of fields.</li>
+<li><strong><code>--max</code></strong>: Calculate max of fields.</li>
+<li><strong><code>--median</code></strong>: Calculate median of fields.</li>
+<li><strong><code>--stdev</code></strong>: Calculate standard deviation of fields.</li>
+<li><strong><code>--variance</code></strong>: Calculate variance of fields.</li>
+<li><strong><code>--mad</code></strong>: Calculate median absolute deviation of fields.</li>
+<li><strong><code>--first</code></strong>: Get the first value of fields.</li>
+<li><strong><code>--last</code></strong>: Get the last value of fields.</li>
+<li><strong><code>--unique</code></strong>: List unique values of fields (comma separated).</li>
+<li><strong><code>--collapse</code></strong>: List all values of fields (comma separated).</li>
+<li><strong><code>--rand</code></strong>: Pick a random value from fields.</li>
+</ul>
+<h3 id="examples-5"><a class="header" href="#examples-5">Examples</a></h3>
+<h4 id="1-calculate-basic-stats-for-a-column"><a class="header" href="#1-calculate-basic-stats-for-a-column">1. Calculate basic stats for a column</a></h4>
+<p>Calculate the mean and max of the <code>estimate</code> column in <code>docs/data/us_rent_income.tsv</code>:</p>
+<pre><code class="language-bash">tva stats docs/data/us_rent_income.tsv --header --mean estimate --max estimate
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">estimate_mean	estimate_max
+14316.2	32940
+</code></pre>
+<h4 id="2-group-by-a-column"><a class="header" href="#2-group-by-a-column">2. Group by a column</a></h4>
+<p>Group by <code>variable</code> and calculate the mean of <code>estimate</code>:</p>
+<pre><code class="language-bash">tva stats docs/data/us_rent_income.tsv --header --group-by variable --mean estimate
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">variable	estimate_mean
+income	27635.2
+rent	997.2
+</code></pre>
+<h4 id="3-count-rows-per-group"><a class="header" href="#3-count-rows-per-group">3. Count rows per group</a></h4>
+<p>Count the number of rows for each unique value in <code>NAME</code>:</p>
+<pre><code class="language-bash">tva stats docs/data/us_rent_income.tsv --header --group-by NAME --count
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">NAME	count
+Alabama	2
+Alaska	2
+Arizona	2
+Arkansas	2
+</code></pre>
+<h2 id="bin-discretize-values"><a class="header" href="#bin-discretize-values"><code>bin</code> (Discretize Values)</a></h2>
+<p>The <code>bin</code> command discretizes numeric values into bins. This is useful for creating histograms or grouping continuous data.</p>
+<h3 id="basic-usage-1-2"><a class="header" href="#basic-usage-1-2">Basic Usage</a></h3>
+<pre><code class="language-bash">tva bin [input_files...] --width &lt;width&gt; --field &lt;field&gt; [options]
+</code></pre>
+<h3 id="options-1"><a class="header" href="#options-1">Options</a></h3>
+<ul>
+<li><strong><code>--width</code> / <code>-w</code></strong>: Bin width (bucket size). Required.</li>
+<li><strong><code>--field</code> / <code>-f</code></strong>: Field to bin (1-based index or name). Required.</li>
+<li><strong><code>--min</code> / <code>-m</code></strong>: Alignment/Offset (bin start). Default: 0.0.</li>
+<li><strong><code>--new-name</code></strong>: Append as new column with this name (instead of replacing).</li>
+<li><strong><code>--header</code> / <code>-H</code></strong>: Input has header.</li>
+</ul>
+<h3 id="notes-1"><a class="header" href="#notes-1">Notes</a></h3>
+<ul>
+<li>Formula: <code>floor((value - min) / width) * width + min</code></li>
+<li>Replaces the value in the target field with the bin start (lower bound) unless <code>--new-name</code> is used.</li>
+</ul>
+<h3 id="examples-1-2"><a class="header" href="#examples-1-2">Examples</a></h3>
+<h4 id="1-bin-a-numeric-column"><a class="header" href="#1-bin-a-numeric-column">1. Bin a numeric column</a></h4>
+<p>Bin the <code>breaks</code> column in <code>docs/data/warpbreaks.tsv</code> with a width of 10:</p>
+<pre><code class="language-bash">tva bin docs/data/warpbreaks.tsv --header --width 10 --field breaks
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">wool	tension	breaks
+A	L	20
+A	L	30
+A	L	50
+A	M	10
+</code></pre>
+<h4 id="2-bin-with-alignment"><a class="header" href="#2-bin-with-alignment">2. Bin with alignment</a></h4>
+<p>Bin the <code>breaks</code> column, aligning bins to start at 5:</p>
+<pre><code class="language-bash">tva bin docs/data/warpbreaks.tsv --header --width 10 --min 5 --field breaks
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">wool	tension	breaks
+A	L	25
+A	L	25
+A	L	45
+A	M	15
+</code></pre>
+<h4 id="3-append-bin-as-a-new-column"><a class="header" href="#3-append-bin-as-a-new-column">3. Append bin as a new column</a></h4>
+<p>Bin the <code>breaks</code> column and append the result as <code>breaks_bin</code>:</p>
+<pre><code class="language-bash">tva bin docs/data/warpbreaks.tsv --header --width 10 --field breaks --new-name breaks_bin
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">wool	tension	breaks	breaks_bin
+A	L	26	20
+A	L	30	30
+A	L	54	50
+A	M	18	10
+</code></pre>
+<h2 id="uniq-deduplicate-rows"><a class="header" href="#uniq-deduplicate-rows"><code>uniq</code> (Deduplicate Rows)</a></h2>
+<p>The <code>uniq</code> command deduplicates rows of one or more TSV files without sorting. It uses a hash set to track unique keys.</p>
+<h3 id="basic-usage-2-2"><a class="header" href="#basic-usage-2-2">Basic Usage</a></h3>
+<pre><code class="language-bash">tva uniq [input_files...] [options]
+</code></pre>
+<h3 id="options-2"><a class="header" href="#options-2">Options</a></h3>
+<ul>
+<li><strong><code>--fields</code> / <code>-f</code></strong>: TSV fields (1-based) to use as dedup key.</li>
+<li><strong><code>--header</code> / <code>-H</code></strong>: Treat the first line of each input as a header.</li>
+<li><strong><code>--ignore-case</code> / <code>-i</code></strong>: Ignore case when comparing keys.</li>
+<li><strong><code>--repeated</code> / <code>-r</code></strong>: Output only lines that are repeated based on the key.</li>
+<li><strong><code>--at-least</code> / <code>-a</code></strong>: Output only lines that are repeated at least INT times.</li>
+<li><strong><code>--max</code> / <code>-m</code></strong>: Max number of each unique key to output (zero is ignored).</li>
+<li><strong><code>--equiv</code> / <code>-e</code></strong>: Append equivalence class IDs rather than only uniq entries.</li>
+<li><strong><code>--number</code> / <code>-z</code></strong>: Append occurrence numbers for each key.</li>
+</ul>
+<h3 id="examples-2-2"><a class="header" href="#examples-2-2">Examples</a></h3>
+<h4 id="1-deduplicate-whole-rows"><a class="header" href="#1-deduplicate-whole-rows">1. Deduplicate whole rows</a></h4>
+<pre><code class="language-bash">tva uniq docs/data/us_rent_income.tsv --header
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+01	Alabama	income	24476	136
+01	Alabama	rent	747	3
+02	Alaska	income	32940	508
+</code></pre>
+<h4 id="2-deduplicate-by-a-specific-column"><a class="header" href="#2-deduplicate-by-a-specific-column">2. Deduplicate by a specific column</a></h4>
+<p>Deduplicate based on the <code>NAME</code> column:</p>
+<pre><code class="language-bash">tva uniq docs/data/us_rent_income.tsv --header -f NAME
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+01	Alabama	income	24476	136
+02	Alaska	income	32940	508
+04	Arizona	income	27517	148
+05	Arkansas	income	23789	165
+</code></pre>
+<h4 id="3-output-repeated-lines-only"><a class="header" href="#3-output-repeated-lines-only">3. Output repeated lines only</a></h4>
+<p>Output lines where the <code>NAME</code> column appears more than once:</p>
+<pre><code class="language-bash">tva uniq docs/data/us_rent_income.tsv --header -f NAME --repeated
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+01	Alabama	rent	747	3
+02	Alaska	rent	1200	13
+04	Arizona	rent	972	4
+05	Arkansas	rent	709	5
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="reshaping-documentation"><a class="header" href="#reshaping-documentation">Reshaping Documentation</a></h1>
+<p>This document explains how to use the reshaping commands in <code>tva</code>: <strong><code>longer</code></strong> and <strong><code>wider</code></strong>. These commands are inspired by the <code>pivot_longer()</code> and <code>pivot_wider()</code> functions from the R package <code>tidyr</code>.</p>
+<h2 id="introduction-3"><a class="header" href="#introduction-3">Introduction</a></h2>
+<p>Data is often described as “long” or “wide”:</p>
+<ul>
+<li><strong>Long data</strong>: Has more rows and fewer columns. This format is typically “tidy” and easier for analysis, where each row is an observation and each column is a variable.</li>
+<li><strong>Wide data</strong>: Has more columns and fewer rows. This format is often better for data entry or presentation (e.g., a spreadsheet with years as columns).</li>
+</ul>
+<p><code>tva</code> provides tools to switch between these formats:</p>
+<ul>
+<li><strong><code>longer</code></strong>: Reshapes “wide” data into a “long” format.</li>
+<li><strong><code>wider</code></strong>: Reshapes “long” data into a “wide” format.</li>
+</ul>
+<h2 id="longer-wide-to-long"><a class="header" href="#longer-wide-to-long"><code>longer</code> (Wide to Long)</a></h2>
+<p>The <code>longer</code> command is designed to reshape “wide” data into a “long” format. “Wide” data often has column names that are actually values of a variable. For example, a table might have columns like <code>2020</code>, <code>2021</code>, <code>2022</code> representing years. <code>longer</code> gathers these columns into a pair of key-value columns (e.g., <code>year</code> and <code>population</code>), making the data “longer” (more rows, fewer columns) and easier to analyze.</p>
+<h3 id="basic-usage-6"><a class="header" href="#basic-usage-6">Basic Usage</a></h3>
+<pre><code class="language-bash">tva longer [input_files...] --cols &lt;columns&gt; [options]
+</code></pre>
+<ul>
+<li><strong><code>--cols</code> / <code>-c</code></strong>: Specifies which columns to reshape. You can use column names, indices (1-based), or ranges (e.g., <code>3-5</code>, <code>wk*</code>).</li>
+<li><strong><code>--names-to</code></strong>: The name of the new column that will store the original column headers (default: “name”).</li>
+<li><strong><code>--values-to</code></strong>: The name of the new column that will store the data values (default: “value”).</li>
+</ul>
+<h2 id="examples-6"><a class="header" href="#examples-6">Examples</a></h2>
+<h3 id="1-string-data-in-column-names"><a class="header" href="#1-string-data-in-column-names">1. String Data in Column Names</a></h3>
+<p>Consider a dataset <code>docs/data/relig_income.tsv</code> where income brackets are spread across column names:</p>
+<pre><code class="language-tsv">religion	&lt;$10k	$10-20k	$20-30k
+Agnostic	27	34	60
+Atheist	12	27	37
+Buddhist	27	21	30
+</code></pre>
+<p>To tidy this, we want to turn the income columns into a single <code>income</code> variable:</p>
+<pre><code class="language-bash">tva longer docs/data/relig_income.tsv --cols 2-4 --names-to income --values-to count
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">religion	income	count
+Agnostic	&lt;$10k	27
+Agnostic	$10-20k	34
+Agnostic	$20-30k	60
+...
+</code></pre>
+<h3 id="2-numeric-data-in-column-names"><a class="header" href="#2-numeric-data-in-column-names">2. Numeric Data in Column Names</a></h3>
+<p>The <code>docs/data/billboard.tsv</code> dataset records song rankings by week (<code>wk1</code>, <code>wk2</code>, etc.):</p>
+<pre><code class="language-tsv">artist	track	wk1	wk2	wk3
+2 Pac	Baby Don't Cry	87	82	72
+2Ge+her	The Hardest Part	91	87	92
+</code></pre>
+<p>We can gather the week columns and strip the “wk” prefix to get a clean number:</p>
+<pre><code class="language-bash">tva longer docs/data/billboard.tsv --cols "wk*" --names-to week --values-to rank --names-prefix "wk" --values-drop-na
+</code></pre>
+<ul>
+<li><strong><code>--names-prefix "wk"</code></strong>: Removes “wk” from the start of the column names (e.g., “wk1” -&gt; “1”).</li>
+<li><strong><code>--values-drop-na</code></strong>: Drops rows where the rank is missing (empty).</li>
+</ul>
+<p>Output:</p>
+<pre><code class="language-tsv">artist	track	week	rank
+2 Pac	Baby Don't Cry	1	87
+2 Pac	Baby Don't Cry	2	82
+...
+</code></pre>
+<h3 id="3-many-variables-in-column-names-regex-extraction"><a class="header" href="#3-many-variables-in-column-names-regex-extraction">3. Many Variables in Column Names (Regex Extraction)</a></h3>
+<p>Sometimes column names contain multiple pieces of information. For example, in the <code>docs/data/who.tsv</code> dataset, columns like <code>new_sp_m014</code> encode:</p>
+<ul>
+<li><code>new</code>: new cases (constant)</li>
+<li><code>sp</code>: diagnosis method</li>
+<li><code>m</code>: gender (m/f)</li>
+<li><code>014</code>: age group (0-14)</li>
+</ul>
+<pre><code class="language-tsv">country	iso2	iso3	year	new_sp_m014	new_sp_f014
+Afghanistan	AF	AFG	1980	NA	NA
+</code></pre>
+<p>We can use <strong><code>--names-pattern</code></strong> with a regular expression to extract these parts into multiple columns:</p>
+<pre><code class="language-bash">tva longer docs/data/who.tsv --cols "new_*" --names-to diagnosis gender age --names-pattern "new_?(.*)_(.)(.*)"
+</code></pre>
+<ul>
+<li><strong><code>--names-to</code></strong>: We provide 3 names for the 3 capture groups in the regex.</li>
+<li><strong><code>--names-pattern</code></strong>: The regex <code>new_?(.*)_(.)(.*)</code> captures:
+<ol>
+<li><code>.*</code> (diagnosis, e.g., “sp”)</li>
+<li><code>.</code> (gender, e.g., “m”)</li>
+<li><code>.*</code> (age, e.g., “014”)</li>
+</ol>
+</li>
+</ul>
+<p>Output:</p>
+<pre><code class="language-tsv">country	iso2	iso3	year	diagnosis	gender	age	value
+Afghanistan	AF	AFG	1980	sp	m	014	NA
+...
+</code></pre>
+<h3 id="4-splitting-column-names-with-a-separator"><a class="header" href="#4-splitting-column-names-with-a-separator">4. Splitting Column Names with a Separator</a></h3>
+<p>If column names are consistently separated by a character, you can use <strong><code>--names-sep</code></strong>.</p>
+<p>Input <code>docs/data/household.tsv</code>:</p>
+<pre><code class="language-tsv">family	dob_child1	dob_child2	name_child1	name_child2
+1	1998-11-26	2000-01-29	J	K
+</code></pre>
+<p>(Note: Handling “multiple observations per row” like <code>tidyr</code>’s <code>.value</code> sentinel is not yet fully supported in a single pass, but basic splitting is.)</p>
+<p>For a simpler example, if columns are <code>year_semester</code> (e.g., <code>2020_1</code>, <code>2020_2</code>):</p>
+<pre><code class="language-bash">tva longer data.tsv --cols "20*" --names-to year semester --names-sep "_"
+</code></pre>
+<p>This splits <code>2020_1</code> into <code>2020</code> (year) and <code>1</code> (semester).</p>
+<h2 id="wider-long-to-wide"><a class="header" href="#wider-long-to-wide"><code>wider</code> (Long to Wide)</a></h2>
+<p>The <code>wider</code> command is the inverse of <code>longer</code>. It spreads a key-value pair across multiple columns, increasing the number of columns and decreasing the number of rows. This is useful for creating summary tables or reshaping data for tools that expect a matrix-like format.</p>
+<h3 id="basic-usage-1-3"><a class="header" href="#basic-usage-1-3">Basic Usage</a></h3>
+<pre><code class="language-bash">tva wider [input_files...] --names-from &lt;column&gt; --values-from &lt;column&gt; [options]
+</code></pre>
+<ul>
+<li><strong><code>--names-from</code></strong>: The column containing the new column names.</li>
+<li><strong><code>--values-from</code></strong>: The column containing the new column values.</li>
+<li><strong><code>--id-cols</code></strong>: (Optional) Columns that uniquely identify each row. If not specified, all columns except <code>names-from</code> and <code>values-from</code> are used.</li>
+<li><strong><code>--values-fill</code></strong>: (Optional) Value to use for missing cells (default: empty).</li>
+<li><strong><code>--names-sort</code></strong>: (Optional) Sort the new column headers alphabetically.</li>
+<li><strong><code>--op</code></strong>: (Optional) Aggregation operation (e.g., <code>sum</code>, <code>mean</code>, <code>count</code>, <code>last</code>). Default: <code>last</code>.</li>
+</ul>
+<h3 id="example-1-us-rent-and-income"><a class="header" href="#example-1-us-rent-and-income">Example 1: US Rent and Income</a></h3>
+<p>Consider the dataset <code>docs/data/us_rent_income.tsv</code>:</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+01	Alabama	income	24476	136
+01	Alabama	rent	747	3
+02	Alaska	income	32940	508
+02	Alaska	rent	1200	13
+</code></pre>
+<p>Here, <code>variable</code> contains the type of measurement (<code>income</code> or <code>rent</code>), and <code>estimate</code> contains the value. To make this easier to compare, we can widen the data:</p>
+<pre><code class="language-bash">tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estimate
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">GEOID	NAME	income	rent
+01	Alabama	24476	747
+02	Alaska	32940	1200
+...
+</code></pre>
+<p><strong>Understanding ID Columns</strong>:
+By default, <code>wider</code> uses all columns <em>except</em> <code>names-from</code> and <code>values-from</code> as ID columns. In this example, <code>GEOID</code>, <code>NAME</code>, and <code>moe</code> are treated as IDs.
+However, <code>moe</code> (margin of error) is different for each row (it depends on the variable). If we include it as an ID, we might get multiple rows for the same state if we’re not careful.
+In this specific case, since <code>moe</code> is unique to the <code>variable</code>/<code>estimate</code> pair, <code>wider</code> handles it, but typically you might want to exclude such columns if they aren’t part of the identifier.</p>
+<p>To explicitly specify that only <code>GEOID</code> and <code>NAME</code> identify a row (and drop <code>moe</code>):</p>
+<pre><code class="language-bash">tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estimate --id-cols GEOID,NAME
+</code></pre>
+<h3 id="example-2-capture-recapture-data-filling-missing-values"><a class="header" href="#example-2-capture-recapture-data-filling-missing-values">Example 2: Capture-Recapture Data (Filling Missing Values)</a></h3>
+<p>The <code>docs/data/fish_encounters.tsv</code> dataset describes when fish were detected by monitoring stations. Some fish are seen at some stations but not others.</p>
+<pre><code class="language-tsv">fish	station	seen
+4842	Release	1
+4842	I80_1	1
+4842	Lisbon	1
+4843	Release	1
+4843	I80_1	1
+4844	Release	1
+</code></pre>
+<p>If we widen this by <code>station</code>, we will have missing values for stations where a fish wasn’t seen. We can use <strong><code>--values-fill</code></strong> to fill these gaps with <code>0</code>.</p>
+<pre><code class="language-bash">tva wider docs/data/fish_encounters.tsv --names-from station --values-from seen --values-fill 0
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">fish	Release	I80_1	Lisbon
+4842	1	1	1
+4843	1	1	0
+4844	1	0	0
+</code></pre>
+<p>Without <code>--values-fill 0</code>, the missing cells would be empty strings (default).</p>
+<h2 id="complex-reshaping-longer-then-wider"><a class="header" href="#complex-reshaping-longer-then-wider">Complex Reshaping: Longer then Wider</a></h2>
+<p>Sometimes data requires multiple steps to be fully tidy. A common pattern is to make data longer to fix column headers, and then wider to separate variables.</p>
+<p>Consider the <code>docs/data/world_bank_pop.tsv</code> dataset (a subset):</p>
+<pre><code class="language-tsv">country	indicator	2000	2001
+ABW	SP.URB.TOTL	42444	43048
+ABW	SP.URB.GROW	1.18	1.41
+AFG	SP.URB.TOTL	4436311	4648139
+AFG	SP.URB.GROW	3.91	4.66
+</code></pre>
+<p>Here, years are in columns (needs <code>longer</code>) and variables are in the <code>indicator</code> column (needs <code>wider</code>). We can pipe <code>tva</code> commands to solve this:</p>
+<pre><code class="language-bash">tva longer docs/data/world_bank_pop.tsv --cols 3-4 --names-to year --values-to value | \
+tva wider --names-from indicator --values-from value
+</code></pre>
+<ol>
+<li><strong><code>longer</code></strong>: Reshapes years (cols 3-4) into <code>year</code> and <code>value</code>.</li>
+<li><strong><code>wider</code></strong>: Takes the stream, uses <code>indicator</code> for new column names, and fills them with <code>value</code>. <code>country</code> and <code>year</code> automatically become ID columns.</li>
+</ol>
+<p>Output:</p>
+<pre><code class="language-tsv">country	year	SP.URB.TOTL	SP.URB.GROW
+ABW	2000	42444	1.18
+ABW	2001	43048	1.41
+AFG	2000	4436311	3.91
+AFG	2001	4648139	4.66
+</code></pre>
+<h2 id="handling-duplicates-aggregation"><a class="header" href="#handling-duplicates-aggregation">Handling Duplicates (Aggregation)</a></h2>
+<p>When widening data, you might encounter multiple rows for the same ID and name combination.</p>
+<ul>
+<li><strong><code>tidyr</code></strong>: Often creates list-columns or requires an aggregation function (<code>values_fn</code>).</li>
+<li><strong><code>tva</code></strong>: Supports aggregation via the <strong><code>--op</code></strong> argument.</li>
+</ul>
+<p>By default (<code>--op last</code>), <code>tva</code> <strong>overwrites</strong> previous values with the <strong>last observed value</strong>.</p>
+<p>However, you can specify an operation to aggregate these values, similar to <code>values_fn</code> in <code>tidyr</code> or <code>crosstab</code> in <code>datamash</code>.</p>
+<p>Supported operations: <code>count</code>, <code>sum</code>, <code>mean</code>, <code>min</code>, <code>max</code>, <code>first</code>, <code>last</code>, <code>median</code>, <code>mode</code>, <code>stdev</code>, <code>variance</code>, etc.</p>
+<h3 id="example-summing-values"><a class="header" href="#example-summing-values">Example: Summing values</a></h3>
+<p>Example using <code>docs/data/warpbreaks.tsv</code>:</p>
+<pre><code class="language-tsv">wool	tension	breaks
+A	L	26
+A	L	30
+A	L	54
+...
+</code></pre>
+<p>If we want to sum the breaks for each wool/tension pair:</p>
+<pre><code class="language-bash">tva wider docs/data/warpbreaks.tsv --names-from wool --values-from breaks --op sum
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">tension	A	B
+L	110	54
+M	87	63
+H	72	84
+</code></pre>
+<p>(For A-L: 26 + 30 + 54 = 110)</p>
+<h3 id="example-crosstab-counting"><a class="header" href="#example-crosstab-counting">Example: Crosstab (Counting)</a></h3>
+<p>You can also use <code>wider</code> to create a frequency table (crosstab) by using <code>--op count</code>. In this case, <code>--values-from</code> is optional.</p>
+<pre><code class="language-bash">tva wider docs/data/warpbreaks.tsv --names-from wool --op count
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">tension	A	B
+L	3	3
+M	3	3
+H	3	3
+</code></pre>
+<p>(Each combination appears 3 times in this dataset)</p>
+<h3 id="comparison-stats-vs-wider-aggregation"><a class="header" href="#comparison-stats-vs-wider-aggregation">Comparison: <code>stats</code> vs <code>wider</code> (Aggregation)</a></h3>
+<p>Both <code>tva stats</code> (if available) and <code>tva wider --op ...</code> can aggregate data, but they produce different <strong>structures</strong>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>tva stats</code> (Group By)</th><th style="text-align: left"><code>tva wider</code> (Pivot)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Goal</strong></td><td style="text-align: left">Summarize data into rows</td><td style="text-align: left">Reshape data into columns</td></tr>
+<tr><td style="text-align: left"><strong>Output Shape</strong></td><td style="text-align: left">Long / Tall</td><td style="text-align: left">Wide / Matrix</td></tr>
+<tr><td style="text-align: left"><strong>Columns</strong></td><td style="text-align: left">Fixed (Group + Stat)</td><td style="text-align: left">Dynamic (Values become Headers)</td></tr>
+<tr><td style="text-align: left"><strong>Best For</strong></td><td style="text-align: left">General summaries, reporting</td><td style="text-align: left">Cross-tabulation, heatmaps</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Example</strong>:
+Data:</p>
+<pre><code class="language-tsv">Group   Category    Value
+A       X           10
+A       Y           20
+B       X           30
+B       Y           40
+</code></pre>
+<p><strong><code>tva stats</code></strong> (Sum by Group):</p>
+<pre><code class="language-tsv">Group   Sum_Value
+A       30
+B       70
+</code></pre>
+<p>(Retains vertical structure)</p>
+<p><strong><code>tva wider</code></strong> (Sum, name from Category):</p>
+<pre><code class="language-tsv">Group   X   Y
+A       10  20
+B       30  40
+</code></pre>
+<p>(Spreads categories horizontally)</p>
+<h2 id="detailed-options"><a class="header" href="#detailed-options">Detailed Options</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Option</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>--cols &lt;cols&gt;</code></td><td style="text-align: left"><strong>(Longer Only)</strong> Columns to reshape. Supports indices (<code>1</code>, <code>1-3</code>), names (<code>year</code>), and wildcards (<code>wk*</code>).</td></tr>
+<tr><td style="text-align: left"><code>--names-to &lt;names...&gt;</code></td><td style="text-align: left"><strong>(Longer Only)</strong> Name(s) for the new key column(s).</td></tr>
+<tr><td style="text-align: left"><code>--values-to &lt;name&gt;</code></td><td style="text-align: left"><strong>(Longer Only)</strong> Name for the new value column.</td></tr>
+<tr><td style="text-align: left"><code>--names-from &lt;col&gt;</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Column for new headers.</td></tr>
+<tr><td style="text-align: left"><code>--values-from &lt;col&gt;</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Column for new values.</td></tr>
+<tr><td style="text-align: left"><code>--id-cols &lt;cols&gt;</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Columns identifying rows.</td></tr>
+<tr><td style="text-align: left"><code>--values-fill &lt;str&gt;</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Fill value for missing cells.</td></tr>
+<tr><td style="text-align: left"><code>--names-sort</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Sort new column headers.</td></tr>
+<tr><td style="text-align: left"><code>--op &lt;op&gt;</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Aggregation operation (<code>sum</code>, <code>mean</code>, <code>count</code>, etc.).</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="comparison-with-r-tidyr"><a class="header" href="#comparison-with-r-tidyr">Comparison with R <code>tidyr</code></a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>tidyr::pivot_longer</code></th><th style="text-align: left"><code>tva longer</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Basic pivoting</td><td style="text-align: left"><code>cols</code>, <code>names_to</code>, <code>values_to</code></td><td style="text-align: left">Supported</td></tr>
+<tr><td style="text-align: left">Drop NAs</td><td style="text-align: left"><code>values_drop_na = TRUE</code></td><td style="text-align: left"><code>--values-drop-na</code></td></tr>
+<tr><td style="text-align: left">Prefix removal</td><td style="text-align: left"><code>names_prefix</code></td><td style="text-align: left"><code>--names-prefix</code></td></tr>
+<tr><td style="text-align: left">Separator split</td><td style="text-align: left"><code>names_sep</code></td><td style="text-align: left"><code>--names-sep</code></td></tr>
+<tr><td style="text-align: left">Regex extraction</td><td style="text-align: left"><code>names_pattern</code></td><td style="text-align: left"><code>--names-pattern</code></td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>tidyr::pivot_wider</code></th><th style="text-align: left"><code>tva wider</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Basic pivoting</td><td style="text-align: left"><code>names_from</code>, <code>values_from</code></td><td style="text-align: left">Supported</td></tr>
+<tr><td style="text-align: left">ID columns</td><td style="text-align: left"><code>id_cols</code> (default: all others)</td><td style="text-align: left"><code>--id-cols</code> (default: all others)</td></tr>
+<tr><td style="text-align: left">Fill missing</td><td style="text-align: left"><code>values_fill</code></td><td style="text-align: left"><code>--values-fill</code></td></tr>
+<tr><td style="text-align: left">Sort columns</td><td style="text-align: left"><code>names_sort</code></td><td style="text-align: left"><code>--names-sort</code></td></tr>
+<tr><td style="text-align: left">Aggregation</td><td style="text-align: left"><code>values_fn</code></td><td style="text-align: left"><code>--op</code> (sum, mean, count, etc.)</td></tr>
+<tr><td style="text-align: left">Multiple values</td><td style="text-align: left"><code>values_from = c(a, b)</code></td><td style="text-align: left">Not supported (single column only)</td></tr>
+<tr><td style="text-align: left">Multiple names</td><td style="text-align: left"><code>names_from = c(a, b)</code></td><td style="text-align: left">Not supported (single column only)</td></tr>
+<tr><td style="text-align: left">Implicit missing</td><td style="text-align: left"><code>names_expand</code>, <code>id_expand</code></td><td style="text-align: left">Not supported</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>tva</code> brings the power of tidy data reshaping to the command line, allowing for efficient processing of large TSV files without loading them entirely into memory.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="combining--splitting-documentation"><a class="header" href="#combining--splitting-documentation">Combining &amp; Splitting Documentation</a></h1>
+<p>This document explains how to use the combining and splitting commands in <code>tva</code>: <strong><code>join</code></strong>, <strong><code>append</code></strong>, and <strong><code>split</code></strong>.</p>
+<h2 id="join"><a class="header" href="#join"><code>join</code></a></h2>
+<p>Joins lines from a TSV data stream against a filter file using one or more key fields.</p>
+<h3 id="examples-7"><a class="header" href="#examples-7">Examples</a></h3>
+<h4 id="1-join-two-files-by-a-common-key"><a class="header" href="#1-join-two-files-by-a-common-key">1. Join two files by a common key</a></h4>
+<p>Using <code>docs/data/who.tsv</code> (contains <code>iso3</code>) and <code>docs/data/world_bank_pop.tsv</code> (contains <code>country</code> with ISO3 codes):</p>
+<pre><code class="language-bash">tva join -H --filter-file docs/data/who.tsv --key-fields iso3 --data-fields country docs/data/world_bank_pop.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">country	indicator	2000	2001
+AFG	SP.URB.TOTL	4436311	4648139
+AFG	SP.URB.GROW	3.91	4.66
+</code></pre>
+<h4 id="2-append-fields-from-the-filter-file"><a class="header" href="#2-append-fields-from-the-filter-file">2. Append fields from the filter file</a></h4>
+<p>To add the <code>year</code> column from <code>who.tsv</code> to the output:</p>
+<pre><code class="language-bash">tva join -H --filter-file docs/data/who.tsv -k iso3 -d country --append-fields year docs/data/world_bank_pop.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">country	indicator	2000	2001	year
+AFG	SP.URB.TOTL	4436311	4648139	1980
+AFG	SP.URB.GROW	3.91	4.66	1980
+</code></pre>
+<h2 id="append"><a class="header" href="#append"><code>append</code></a></h2>
+<p>Concatenates TSV files with optional header awareness and source tracking.</p>
+<h3 id="examples-1-3"><a class="header" href="#examples-1-3">Examples</a></h3>
+<h4 id="1-concatenate-files-with-headers"><a class="header" href="#1-concatenate-files-with-headers">1. Concatenate files with headers</a></h4>
+<p>When appending multiple files with headers, use <code>-H</code> to keep only the header from the first file:</p>
+<pre><code class="language-bash">tva append -H docs/data/world_bank_pop.tsv docs/data/world_bank_pop.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">country	indicator	2000	2001
+ABW	SP.URB.TOTL	42444	43048
+ABW	SP.URB.GROW	1.18	1.41
+AFG	SP.URB.TOTL	4436311	4648139
+AFG	SP.URB.GROW	3.91	4.66
+ABW	SP.URB.TOTL	42444	43048
+ABW	SP.URB.GROW	1.18	1.41
+AFG	SP.URB.TOTL	4436311	4648139
+AFG	SP.URB.GROW	3.91	4.66
+</code></pre>
+<h4 id="2-track-source-file"><a class="header" href="#2-track-source-file">2. Track source file</a></h4>
+<p>Add a column indicating the source file:</p>
+<pre><code class="language-bash">tva append -H --track-source docs/data/world_bank_pop.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">file	country	indicator	2000	2001
+world_bank_pop	ABW	SP.URB.TOTL	42444	43048
+world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
+...
+</code></pre>
+<h2 id="split"><a class="header" href="#split"><code>split</code></a></h2>
+<p>Splits TSV rows into multiple output files.</p>
+<h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
+<p>Split <code>file.tsv</code> into multiple files with 1000 lines each:</p>
+<pre><code class="language-bash">tva split --lines-per-file 1000 --header-in-out file.tsv
+</code></pre>
+<p>Split <code>file.tsv</code> into 5 files randomly:</p>
+<pre><code class="language-bash">tva split --num-files 5 --header-in-out file.tsv
+</code></pre>
+<p>Split by key (rows with same key go to same file):</p>
+<pre><code class="language-bash">tva split --num-files 5 --key-fields 1 --header-in-out file.tsv
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="formatting--utilities-documentation"><a class="header" href="#formatting--utilities-documentation">Formatting &amp; Utilities Documentation</a></h1>
+<p>This document explains how to use the utility commands in <code>tva</code>: <strong><code>check</code></strong>, <strong><code>from</code></strong>, <strong><code>to</code></strong>, <strong><code>md</code></strong>, <strong><code>nl</code></strong>, and <strong><code>keep-header</code></strong>.</p>
+<h2 id="check"><a class="header" href="#check"><code>check</code></a></h2>
+<p>Checks TSV file structure for consistent field counts.</p>
+<h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
+<pre><code class="language-bash">tva check [files...]
+</code></pre>
+<p>It validates that every line in the file has the same number of fields as the first line. If a mismatch is found, it reports the error line and exits with a non-zero status.</p>
+<h3 id="examples-8"><a class="header" href="#examples-8">Examples</a></h3>
+<p>Check a single file:</p>
+<pre><code class="language-bash">tva check docs/data/household.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code>2 lines, 5 fields
+</code></pre>
+<h2 id="from"><a class="header" href="#from"><code>from</code></a></h2>
+<p>Converts other formats (CSV, XLSX) to TSV.</p>
+<h3 id="usage-1-1"><a class="header" href="#usage-1-1">Usage</a></h3>
+<pre><code class="language-bash">tva from &lt;SUBCOMMAND&gt; [options]
+</code></pre>
+<h3 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h3>
+<ul>
+<li><strong><code>csv</code></strong>: Convert CSV to TSV.
+<ul>
+<li><code>tva from csv [input] [-o output] [-d delimiter]</code></li>
+</ul>
+</li>
+<li><strong><code>xlsx</code></strong>: Convert XLSX to TSV.
+<ul>
+<li><code>tva from xlsx [input] [--sheet name] [--list-sheets]</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="examples-1-4"><a class="header" href="#examples-1-4">Examples</a></h3>
+<p>Convert a CSV file to TSV:</p>
+<pre><code class="language-bash">tva from csv docs/data/input.csv &gt; output.tsv
+</code></pre>
+<p>Convert an Excel sheet to TSV:</p>
+<pre><code class="language-bash">tva from xlsx docs/data/formats.xlsx --sheet "Introduction" &gt; output.tsv
+</code></pre>
+<h2 id="to"><a class="header" href="#to"><code>to</code></a></h2>
+<p>Converts TSV to other formats (CSV, XLSX).</p>
+<h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
+<pre><code class="language-bash">tva to &lt;SUBCOMMAND&gt; [options]
+</code></pre>
+<h3 id="subcommands-1"><a class="header" href="#subcommands-1">Subcommands</a></h3>
+<ul>
+<li><strong><code>csv</code></strong>: Convert TSV to CSV.
+<ul>
+<li><code>tva to csv [input] [-o output] [-d delimiter]</code></li>
+</ul>
+</li>
+<li><strong><code>xlsx</code></strong>: Convert TSV to XLSX.
+<ul>
+<li><code>tva to xlsx [input] [-o output.xlsx] [-H] [--le col:val] ...</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="examples-2-3"><a class="header" href="#examples-2-3">Examples</a></h3>
+<p>Convert a TSV file to CSV:</p>
+<pre><code class="language-bash">tva to csv docs/data/household.tsv &gt; output.csv
+</code></pre>
+<p>Convert a TSV file to XLSX with formatting:</p>
+<pre><code class="language-bash">tva to xlsx docs/data/household.tsv -o output.xlsx -H --le 1:2
+</code></pre>
+<p>Convert a TSV file to XLSX with multiple formatting rules:</p>
+<pre><code class="language-bash">tva to xlsx docs/data/rocauc.result.tsv -o output.xlsx \
+    -H --le 4:0.5 --ge 4:0.6 --bt 4:0.52:0.58 --str-in-fld 1:m03
+</code></pre>
+<p><img src="data/to_xlsx.png" alt="to xlsx output"></p>
+<h2 id="md"><a class="header" href="#md"><code>md</code></a></h2>
+<p>Converts a TSV file to a Markdown table.</p>
+<h3 id="usage-3"><a class="header" href="#usage-3">Usage</a></h3>
+<pre><code class="language-bash">tva md [file] [options]
+</code></pre>
+<p>Options:</p>
+<ul>
+<li><code>--num</code>: Right-align numeric columns.</li>
+<li><code>--fmt</code>: Format numeric columns (thousands separators, fixed decimals) and implies <code>--num</code>.</li>
+<li><code>--digits &lt;N&gt;</code>: Set decimal precision for <code>--fmt</code> (default: 0).</li>
+<li><code>--center &lt;cols&gt;</code> / <code>--right &lt;cols&gt;</code>: Manually set alignment for specific columns.</li>
+</ul>
+<h3 id="examples-3-1"><a class="header" href="#examples-3-1">Examples</a></h3>
+<p>Basic markdown table:</p>
+<pre><code class="language-bash">tva md docs/data/household.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-markdown">| family | dob_child1 | dob_child2 | name_child1 | name_child2 |
+| ------ | ---------- | ---------- | ----------- | ----------- |
+| 1      | 1998-11-26 | 2000-01-29 | J           | K           |
+</code></pre>
+<p>Format numbers with commas and 2 decimal places:</p>
+<pre><code class="language-bash">tva md docs/data/us_rent_income.tsv --fmt --digits 2
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-markdown">| GEOID | NAME       | variable |  estimate |    moe |
+| ----: | ---------- | -------- | --------: | -----: |
+|  1.00 | Alabama    | income   | 24,476.00 | 136.00 |
+|  1.00 | Alabama    | rent     |    747.00 |   3.00 |
+|  2.00 | Alaska     | income   | 32,940.00 | 508.00 |
+|  2.00 | Alaska     | rent     |  1,200.00 |  13.00 |
+|  4.00 | Arizona    | income   | 27,517.00 | 148.00 |
+|  4.00 | Arizona    | rent     |    972.00 |   4.00 |
+|  5.00 | Arkansas   | income   | 23,789.00 | 165.00 |
+|  5.00 | Arkansas   | rent     |    709.00 |   5.00 |
+|  6.00 | California | income   | 29,454.00 | 109.00 |
+|  6.00 | California | rent     |  1,358.00 |   3.00 |
+</code></pre>
+<h2 id="nl"><a class="header" href="#nl"><code>nl</code></a></h2>
+<p>Adds line numbers to TSV rows.</p>
+<h3 id="usage-4"><a class="header" href="#usage-4">Usage</a></h3>
+<pre><code class="language-bash">tva nl [files...] [options]
+</code></pre>
+<p>Options:</p>
+<ul>
+<li><code>-H</code> / <code>--header</code>: Treat the first line as a header. The header line is not numbered, and a “line” column is added to the header.</li>
+<li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies <code>-H</code>).</li>
+<li><code>-n &lt;N&gt;</code> / <code>--start-number &lt;N&gt;</code>: Start numbering from N (default: 1).</li>
+</ul>
+<h3 id="examples-4-1"><a class="header" href="#examples-4-1">Examples</a></h3>
+<p>Add line numbers (no header logic):</p>
+<pre><code class="language-bash">tva nl docs/data/household.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">1	family	dob_child1	dob_child2	name_child1	name_child2
+2	1	1998-11-26	2000-01-29	J	K
+</code></pre>
+<p>Add line numbers with header awareness:</p>
+<pre><code class="language-bash">tva nl -H docs/data/household.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">line	family	dob_child1	dob_child2	name_child1	name_child2
+1	1	1998-11-26	2000-01-29	J	K
+</code></pre>
+<h2 id="keep-header"><a class="header" href="#keep-header"><code>keep-header</code></a></h2>
+<p>Executes a shell command on the body of a TSV file, preserving the header.</p>
+<h3 id="usage-5"><a class="header" href="#usage-5">Usage</a></h3>
+<pre><code class="language-bash">tva keep-header [files...] -- &lt;command&gt; [args...]
+</code></pre>
+<p>The first line of the first input file is printed immediately. The remaining lines (and all lines from subsequent files) are piped to the specified command. The output of the command is then printed.</p>
+<h3 id="examples-5-1"><a class="header" href="#examples-5-1">Examples</a></h3>
+<p>Sort a file while keeping the header at the top:</p>
+<pre><code class="language-bash">tva keep-header data.tsv -- sort
+</code></pre>
+<p>Grep for a pattern but keep the header:</p>
+<pre><code class="language-bash">tva keep-header docs/data/world_bank_pop.tsv -- grep "AFG"
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">country	indicator	2000	2001
+AFG	SP.URB.TOTL	4436311	4648139
+AFG	SP.URB.GROW	3.91	4.66
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="select"><a class="header" href="#select">select</a></h1>
+<p>Reads TSV data from files or standard input and writes selected fields to
+standard output.</p>
+<p>Fields can be specified by number or, when a header line is present, by field
+name. Field numbers are 1-based and support ranges, for example <code>1,3-5</code>. When
+<code>--header</code> is set, field names from the first header line can be used in the
+field list.</p>
+<p>Input:</p>
+<ul>
+<li>If no input files are given, or an input file is <code>stdin</code>, data is read from
+standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Selection:</p>
+<ul>
+<li>One of <code>--fields</code>/<code>-f</code> or <code>--exclude</code>/<code>-e</code> is required.</li>
+<li><code>--fields</code>/<code>-f</code> keeps only the listed fields, in the order given.</li>
+<li><code>--exclude</code>/<code>-e</code> drops the listed fields and keeps all others.</li>
+<li>In header mode, field names and numeric indices can be mixed.</li>
+</ul>
+<p>Field Syntax:</p>
+<ul>
+<li>Field lists support 1-based indices, ranges (<code>1-3,5-7</code>), header names, name
+ranges (<code>run-user_time</code>), and wildcards (<code>*_time</code>).</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Select by name:
+<code>tva select input.tsv -H -f Name,Age</code></p>
+</li>
+<li>
+<p>Select by index:
+<code>tva select input.tsv -f 1,3</code></p>
+</li>
+<li>
+<p>Exclude columns:
+<code>tva select input.tsv -H -e Password,SSN</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="slice"><a class="header" href="#slice">slice</a></h1>
+<p>Slice rows by index (1-based). Can be used to select specific rows (Keep Mode)
+or exclude them (Drop Mode).</p>
+<p>Notes:</p>
+<ul>
+<li>Supports plain text and gzipped (<code>.gz</code>) TSV files.</li>
+<li>Reads from stdin if no input file is given.</li>
+<li>Row indices are 1-based.</li>
+<li>Multiple ranges can be specified with multiple <code>-r</code>/<code>--rows</code> flags.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Keep rows 10 to 20:
+<code>tva slice -r 10-20 file.tsv</code></p>
+</li>
+<li>
+<p>Keep rows 1-5 and 10-15:
+<code>tva slice -r 1-5 -r 10-15 file.tsv</code></p>
+</li>
+<li>
+<p>Drop row 5 (exclude it):
+<code>tva slice -r 5 --invert file.tsv</code></p>
+</li>
+<li>
+<p>Drop rows 1-5 (exclude header and first 4 data rows):
+<code>tva slice -r 1-5 --invert file.tsv</code></p>
+</li>
+<li>
+<p>Drop rows 2-5 but keep header (row 1):
+<code>tva slice -H -r 2-5 --invert file.tsv</code></p>
+</li>
+<li>
+<p>Preview with header (Keep rows 100-110 plus header):
+<code>tva slice -H -r 100-110 file.tsv</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="sample"><a class="header" href="#sample">sample</a></h1>
+<p>Samples or shuffles tab-separated values (TSV) rows using simple random
+algorithms.</p>
+<p>Modes:</p>
+<ul>
+<li>Default shuffle: With no sampling options, all input data rows are read and
+written in random order.</li>
+<li>Fixed-size sampling (<code>--num</code>/<code>-n</code>): Selects a random sample of N data rows
+and writes them in random order.</li>
+<li>Bernoulli sampling (<code>--prob</code>/<code>-p</code>): For each data row, independently
+includes the row in the output with probability PROB (0.0 &lt; PROB &lt;= 1.0).
+Row order is preserved.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li><code>--header</code> / <code>-H</code>: Treats the first non-empty line of the input as a header.
+The header is always written once at the top of the output. Sampling and
+shuffling are applied only to the remaining data rows.</li>
+</ul>
+<p>Input:</p>
+<ul>
+<li>If no input files are given, or an input file is ‘stdin’, data is read from
+standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li><code>--key-fields</code>/<code>-k</code> and <code>--weight-field</code>/<code>-w</code> accept the same field list
+syntax as other tva commands: 1-based indices, ranges, header names, name
+ranges, and wildcards.</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Random value printing:</p>
+<ul>
+<li>Use <code>--print-random</code> to prepend a random value column to sampled rows.</li>
+<li>Use <code>--gen-random-inorder</code> to generate random values for all rows without
+changing input order.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="filter"><a class="header" href="#filter">filter</a></h1>
+<p>Filters TSV rows by field-based tests.</p>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input; multiple files are processed as one stream.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li><code>--header</code> / <code>-H</code>: Treats the first non-empty line of the input as a header.
+The header is written once at the top of the output. Tests are applied only
+to data rows.</li>
+</ul>
+<p>Tests and logic:</p>
+<ul>
+<li>Multiple tests can be specified. By default, all tests must pass (logical AND).</li>
+<li>Use <code>--or</code> to require that at least one test passes (logical OR).</li>
+<li>Use <code>--invert</code> to invert the overall match result (select non-matching rows).</li>
+<li>Use <code>--count</code> to print only the number of matching data rows.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li>All tests that take a <code>&lt;field-list&gt;</code> argument accept the same field list
+syntax as other tva commands: 1-based indices, ranges, header names, name
+ranges, and wildcards.</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="sort"><a class="header" href="#sort">sort</a></h1>
+<p>Sorts TSV/CSV records by one or more keys.</p>
+<p>Input:</p>
+<ul>
+<li>If no input files are given, or an input file is ‘stdin’, data is read from
+standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Keys:</p>
+<ul>
+<li>Use <code>-k</code>/<code>--key</code> to specify 1-based field indices or ranges (for example:
+<code>2</code>, <code>4-5</code>).</li>
+<li>Multiple keys are supported and are applied in the order given.</li>
+</ul>
+<p>Behavior:</p>
+<ul>
+<li>By default, comparisons are lexicographic.</li>
+<li>With <code>-n</code>/<code>--numeric</code>, comparisons are numeric (floating point).</li>
+<li>With <code>-r</code>/<code>--reverse</code>, the final ordering is reversed.</li>
+<li>For an MxN table, the output contains the same rows sorted by the selected
+key fields.</li>
+<li>Empty fields compare as empty strings in lexicographic mode and as 0 in
+numeric mode.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Writes sorted records to standard output or to the file given by <code>--outfile</code>.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="reverse"><a class="header" href="#reverse">reverse</a></h1>
+<p>Reverses the order of lines (like tac).</p>
+<p>Notes:</p>
+<ul>
+<li>Reads all lines into memory. Large files may exhaust memory.</li>
+<li>Supports plain text and gzipped (<code>.gz</code>) TSV files.</li>
+<li>Reads from stdin if no input file is given.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Reverse a file:
+<code>tva reverse file.tsv</code></p>
+</li>
+<li>
+<p>Reverse a file, keeping the header at the top:
+<code>tva reverse --header file.tsv</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="transpose"><a class="header" href="#transpose">transpose</a></h1>
+<p>Transposes a tab-separated values (TSV) table by swapping rows and columns.</p>
+<p>Behavior:</p>
+<ul>
+<li>Reads a single TSV input as a whole table and performs a matrix transpose.</li>
+<li>Uses the number of fields in the first line as the expected width.</li>
+<li>All subsequent lines must have the same number of fields.</li>
+<li>On mismatch, an error is printed and the command exits with non-zero status.</li>
+</ul>
+<p>Input:</p>
+<ul>
+<li>If no input file is given, or the input file is ‘stdin’, data is read from
+standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>For an MxN matrix (M lines, N fields), writes an NxM matrix.</li>
+<li>If the input is empty, no output is produced.</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li>This command only operates in strict mode; non-rectangular tables are
+rejected.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stats"><a class="header" href="#stats">stats</a></h1>
+<p>Calculates summary statistics (like tsv-summarize).</p>
+<p>Input:</p>
+<ul>
+<li>If no input files are given, or an input file is ‘stdin’, data is read
+from standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+</ul>
+<p>Grouping:</p>
+<ul>
+<li>Supports grouping by one or multiple fields using <code>--group-by</code>.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Calculate basic stats for a column:
+<code>tva stats docs/data/us_rent_income.tsv --header --mean estimate --max estimate</code></p>
+</li>
+<li>
+<p>Group by a column:
+<code>tva stats docs/data/us_rent_income.tsv -H --group-by variable --mean estimate</code></p>
+</li>
+<li>
+<p>Count rows per group:</p>
+</li>
+</ol>
+<ul>
+<li><code>tva stats docs/data/us_rent_income.tsv -H --group-by NAME --count</code></li>
+</ul>
+<ol start="4">
+<li>
+<p>List unique values in a group:
+<code>tva stats docs/data/us_rent_income.tsv -H --group-by variable --unique estimate</code></p>
+</li>
+<li>
+<p>Pick a random value from a group:
+<code>tva stats docs/data/us_rent_income.tsv -H --group-by variable --rand estimate</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="bin"><a class="header" href="#bin">bin</a></h1>
+<p>Discretize numeric values into bins. Useful for creating histograms or grouping
+continuous data.</p>
+<p>Replaces the value in the target field with the bin start (lower bound).
+Formula: <code>floor((value - min) / width) * width + min</code></p>
+<p>Input:</p>
+<ul>
+<li>If no input files are given, or an input file is ‘stdin’, data is read
+from standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>When using multiple files with <code>--header</code>, the header from the first file is
+used, and headers from subsequent files are skipped.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Bin a numeric column with width 10:
+<code>tva bin --width 10 --field 2 file.tsv</code></p>
+</li>
+<li>
+<p>Bin a column, aligning bins to start at 5 (e.g., 5-15, 15-25):
+<code>tva bin --width 10 --min 5 --field 2 file.tsv</code></p>
+</li>
+<li>
+<p>Bin a named column (requires header):
+<code>tva bin --header --width 0.5 --field score file.tsv</code></p>
+</li>
+<li>
+<p>Bin a column and append as new column:
+<code>tva bin --header --width 10 --field Price --new-name Price_bin file.tsv</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="uniq"><a class="header" href="#uniq">uniq</a></h1>
+<p>Deduplicates rows of one or more tab-separated values (TSV) files without
+sorting.</p>
+<p>Input:</p>
+<ul>
+<li>If no input files are given, or an input file is ‘stdin’, data is read
+from standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+</ul>
+<p>Behavior:</p>
+<ul>
+<li>Keeps a 64-bit hash for each unique key; ~8 bytes of memory per unique row.</li>
+<li>Only the first occurrence of each key is kept; occurrences are not counted.</li>
+</ul>
+<p>Field Syntax:</p>
+<ul>
+<li>When <code>--header</code> is given, <code>--fields</code>/<code>-f</code> accepts 1-based indices, ranges
+(<code>1-3,5-7</code>), header names, name ranges (<code>run-user_time</code>), and wildcards
+(<code>*_time</code>).</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Deduplicate whole rows:
+<code>tva uniq tests/genome/ctg.tsv</code></p>
+</li>
+<li>
+<p>Deduplicate by column 2:
+<code>tva uniq tests/genome/ctg.tsv -f 2</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="longer"><a class="header" href="#longer">longer</a></h1>
+<p>Reshapes a table from wide to long format by gathering multiple columns into
+key-value pairs. This command is useful for “tidying” data where some column
+names are actually values of a variable.</p>
+<p>Input:</p>
+<ul>
+<li>Reads from one or more TSV files or standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>The first line is ALWAYS treated as a header.</li>
+<li>When multiple files are provided, the first file’s header determines the
+schema (columns to reshape). Subsequent files must have the same column
+structure; their headers are skipped.</li>
+</ul>
+<p>Reshaping behavior:</p>
+<ul>
+<li><code>--cols</code> / <code>-c</code>: Specifies which columns to reshape (melt). Can be column
+names, indices (1-based), or ranges (e.g., ‘3-5’).</li>
+<li><code>--names-to</code>: The name of the new column that will contain the original
+column headers.</li>
+<li><code>--values-to</code>: The name of the new column that will contain the data values.</li>
+<li><code>--values-drop-na</code>: If set, rows where the value is empty will be omitted
+from the output.</li>
+<li><code>--names-prefix</code>: A string to remove from the start of each variable name.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Reshape columns 3, 4, and 5 into default “name” and “value” columns:
+<code>tva longer data.tsv --cols 3-5</code></p>
+</li>
+<li>
+<p>Reshape columns starting with “wk”, specifying new column names:
+<code>tva longer data.tsv --cols "wk*" --names-to week --values-to rank</code></p>
+</li>
+<li>
+<p>Reshape all columns except the first two:
+<code>tva longer data.tsv --cols 3-</code></p>
+</li>
+<li>
+<p>Process multiple files and save to output:
+<code>tva longer data1.tsv data2.tsv --cols 2-5 --outfile result.tsv</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="wider"><a class="header" href="#wider">wider</a></h1>
+<p>Reshapes a table from long to wide format by spreading a key-value pair across
+multiple columns. This is the inverse of ‘longer’ and similar to ‘crosstab’.</p>
+<p>Input:</p>
+<ul>
+<li>Reads from one or more TSV files or standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>The first line is ALWAYS treated as a header.</li>
+<li>When multiple files are provided, they must have the SAME column structure.</li>
+</ul>
+<p>Reshaping behavior:</p>
+<ul>
+<li><code>--names-from</code>: Column(s) containing the new column headers.</li>
+<li><code>--values-from</code>: Column(s) containing the data values. Required unless op is
+‘count’.</li>
+<li><code>--id-cols</code>: Columns that identify each row. If omitted, all columns except
+‘names-from’ and ‘values-from’ are used.</li>
+<li><code>--values-fill</code>: Value to use for missing cells (default: empty).</li>
+<li><code>--names-sort</code>: Sort the resulting column headers alphabetically.</li>
+<li><code>--op</code>: Aggregation operation to perform when multiple values fall into the
+same cell. Default is ‘last’ (last value wins).</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Spread ‘key’ and ‘value’ columns back into wide format:
+<code>tva wider --names-from key --values-from value</code></p>
+</li>
+<li>
+<p>Spread ‘measurement’ column, using ‘result’ as values:
+<code>tva wider --names-from measurement --values-from result</code></p>
+</li>
+<li>
+<p>Specify ID columns explicitly (dropping others):
+<code>tva wider --names-from key --values-from val --id-cols id date</code></p>
+</li>
+<li>
+<p>Count occurrences (crosstab):
+<code>tva wider --names-from category --id-cols region --op count</code></p>
+</li>
+<li>
+<p>Calculate sum of values:
+<code>tva wider --names-from category --values-from amount --id-cols region --op sum</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="join-1"><a class="header" href="#join-1">join</a></h1>
+<p>Joins lines from a TSV data stream against a filter file using one or more key
+fields.</p>
+<p>Input:</p>
+<ul>
+<li>The filter file is specified with –filter-file and is read into memory.</li>
+<li>Data is read from files or standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+</ul>
+<p>Keys:</p>
+<ul>
+<li>–key-fields/-k selects key fields from the filter file.
+<ul>
+<li>Default: 0 (use entire line as the key).</li>
+</ul>
+</li>
+<li>–data-fields/-d selects key fields from the data stream, if different from
+–key-fields.</li>
+<li>Field lists support numeric indices and, with –header, field names and
+ranges.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Matching lines from the data stream are written to standard output.</li>
+<li>When –append-fields/-a is given, the selected fields from the filter file
+are appended to each matching data line.</li>
+<li>When –header is set, exactly one header line is written, with any appended
+filter fields added to the data header.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li>Field lists support 1-based indices, ranges (1-3,5-7), header names, name
+ranges (run-user_time), and wildcards (*_time).</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="append-1"><a class="header" href="#append-1">append</a></h1>
+<p>Concatenates tab-separated values (TSV) files, similar to Unix <code>cat</code>, but with
+header awareness and optional source tracking.</p>
+<p>Header behavior:</p>
+<ul>
+<li>–header / -H
+Treats the first line of each input as a header. Only the header from the
+first input is written; later headers are skipped.</li>
+</ul>
+<p>Source tracking:</p>
+<ul>
+<li>–track-source / -t
+Adds a column containing the source name for each data row. For regular
+files, the source name is the file name without extension. For standard
+input, the source name is <code>stdin</code>.</li>
+<li>–source-header / -s STR
+Sets the header for the source column. Implies –header and –track-source.
+Default header name is <code>file</code>.</li>
+<li>–file / -f LABEL=FILE
+Reads FILE and uses LABEL as the source value. Implies –track-source.</li>
+</ul>
+<p>Delimiter:</p>
+<ul>
+<li>–delimiter / -d CHR
+Field delimiter to use when adding the source column. Default: TAB.</li>
+</ul>
+<p>Input:</p>
+<ul>
+<li>If no input files or –file mappings are given, data is read from stdin.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use –outfile to write to a file instead.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="split-1"><a class="header" href="#split-1">split</a></h1>
+<p>Splits tab-separated values (TSV) rows into multiple output files.</p>
+<p>Modes:</p>
+<ul>
+<li>Line count mode (–lines-per-file/-l): Writes a fixed number of data rows to
+each output file before starting a new one.</li>
+<li>Random assignment (–num-files/-n): Assigns each data row to one of N output
+files using a pseudo-random generator.</li>
+<li>Random assignment by key (–num-files/-n, –key-fields/-k): Uses selected
+fields as a key so that all rows with the same key are written to the same
+output file.</li>
+</ul>
+<p>Key fields:</p>
+<ul>
+<li>–key-fields/-k accepts a numeric field list using 1-based indices and
+ranges (for example 1,3-5). The selected fields are concatenated to form
+the key that controls random assignment.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li>See <code>tva --help-fields</code> for the shared field list syntax used across tva
+commands. Note that tva split currently only accepts numeric indices for
+–key-fields/-k; header names and wildcards are not yet supported here.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>–header-in-out / -H
+Treats the first non-empty line of the input as a header. The header is not
+counted against –lines-per-file and is written to every output file.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Files are written to the directory given by –dir (default: current
+directory).</li>
+<li>File names are formed as: <code>&lt;prefix&gt;&lt;index&gt;&lt;suffix&gt;</code>, where <code>&lt;index&gt;</code> is a
+1-based counter optionally zero-padded to –digit-width digits.</li>
+<li>By default, existing files are rejected; use –append/-a to append to them.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="from-csv"><a class="header" href="#from-csv">from-csv</a></h1>
+<p>Reads CSV data from a file or standard input and writes it as TSV.</p>
+<p>The goal is to provide a simple entry point into the tva toolkit for
+CSV sources. Parsing is delegated to the Rust <code>csv</code> crate, so quoted
+fields, embedded delimiters, and newlines are handled according to the
+CSV specification.</p>
+<p>Input:</p>
+<ul>
+<li>If no input file is given, or the input file is ‘stdin’, data is read
+from standard input.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Each CSV record becomes one TSV line.</li>
+<li>Fields are joined with TAB characters.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Convert a CSV file to TSV
+tva from-csv data.csv &gt; data.tsv</p>
+</li>
+<li>
+<p>Read CSV from stdin and convert to TSV
+cat data.csv | tva from-csv &gt; data.tsv</p>
+</li>
+<li>
+<p>Use a custom delimiter
+tva from-csv –delimiter ‘;’ data.csv &gt; data.tsv</p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="check-1"><a class="header" href="#check-1">check</a></h1>
+<p>Validates the structure of TSV input by ensuring that all lines have the
+same number of fields.</p>
+<p>Input:</p>
+<ul>
+<li>If no input files are given, or an input file is ‘stdin’, data is read
+from standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+</ul>
+<p>Behavior:</p>
+<ul>
+<li>The number of fields on the first line is used as the expected count.</li>
+<li>Each subsequent line must have the same number of fields.</li>
+<li>On mismatch, details about the failing line and expected field count are
+printed to stderr and the command exits with a non-zero status.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>On success, prints: <code>&lt;N&gt; lines, &lt;M&gt; fields</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="md-1"><a class="header" href="#md-1">md</a></h1>
+<p>Converts a tab-separated values (TSV) file into a markdown table.</p>
+<p>Notes:</p>
+<ul>
+<li>Supports plain text and gzipped (.gz) TSV files</li>
+<li>Reads from stdin if input file is ‘stdin’</li>
+<li>With <code>--fmt</code>, numeric columns are formatted with thousands separators and
+fixed decimals</li>
+<li>With <code>--num</code>, numeric columns are right-aligned automatically</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Basic markdown table
+tva md tests/genome/ctg.range.tsv –num -c 2</p>
+</li>
+<li>
+<p>Formatted numeric columns
+tva md tests/genome/ctg.range.tsv –fmt –digits 2</p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="nl-1"><a class="header" href="#nl-1">nl</a></h1>
+<p>Reads TSV data from files or standard input and writes each line preceded
+by a line number. This is a simplified, TSV-aware version of the Unix
+<code>nl</code> program and adds support for treating the first input line as a
+header.</p>
+<p>Supports plain text and gzipped (.gz) files. When multiple files are
+given, lines are numbered continuously across files.</p>
+<p>Input:</p>
+<ul>
+<li>If no input files are given, or an input file is ‘stdin’, data is read
+from standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>Completely empty files (only blank lines) are skipped and do not consume
+line numbers.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>–header / -H
+Treats the first line of each file as a header. Only the header from
+the first non-empty file is written; later header lines are skipped
+and not numbered.</li>
+<li>–header-string / -s
+Sets the header text for the line number column (default: ‘line’) and
+implies –header.</li>
+</ul>
+<p>Numbering:</p>
+<ul>
+<li>Line numbers start from –start-number / -n (default: 1, can be negative).</li>
+<li>Numbers increase by 1 for each data line, across all input files.</li>
+<li>Header lines are never numbered.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Number lines of a TSV file
+tva nl tests/genome/ctg.tsv</p>
+</li>
+<li>
+<p>Number lines with a header for the line number column
+tva nl –header –header-string LINENUM tests/genome/ctg.tsv</p>
+</li>
+<li>
+<p>Number lines starting from 100
+tva nl –start-number 100 tests/genome/ctg.tsv</p>
+</li>
+<li>
+<p>Number multiple files, preserving continuous line numbers
+tva nl input1.tsv input2.tsv</p>
+</li>
+<li>
+<p>Read from stdin
+cat input1.tsv | tva nl</p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="keep-header-1"><a class="header" href="#keep-header-1">keep-header</a></h1>
+<p>Runs an external command in a header-aware fashion. The first line of each
+input file is treated as a header. The first header line is written to standard
+output unchanged. All remaining lines (from all files) are sent to the given
+command via standard input, excluding header lines from subsequent files. The
+output produced by the command is appended after the initial header line.</p>
+<p>Usage:
+tva keep-header [file…] – program [args…]</p>
+<p>Notes:</p>
+<ul>
+<li>If no input files are given, data is read from standard input.</li>
+<li>The number of header lines to preserve from the first non-empty input can be
+configured with –lines / -n (default: 1).</li>
+<li>A double dash (–) separates input files from the command to run, similar
+to how the pipe operator (|) separates commands in a shell pipeline.</li>
+<li>The command is run with its standard input connected to the concatenated
+data lines (all lines after the first header line of each file).</li>
+<li>The command’s standard output and standard error are passed through to
+this process.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Sort a file while keeping the header line first
+tva keep-header data.tsv – sort</p>
+</li>
+<li>
+<p>Sort multiple TSV files numerically on field 2, preserving one header
+tva keep-header data1.tsv data2.tsv – sort -t $‘\t’ -k2,2n</p>
+</li>
+<li>
+<p>Read from stdin, filter with grep, and keep the original header
+cat data.tsv | tva keep-header – grep red</p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="field-syntax-2"><a class="header" href="#field-syntax-2">Field Syntax</a></h1>
+<p>All tools use a unified syntax to identify fields (columns). This syntax allows
+selecting fields by index, name, range, or wildcard.</p>
+<ul>
+<li>1-based Indexing</li>
+</ul>
+<ul>
+<li>Fields are numbered starting from 1 (following Unix <code>cut</code>/<code>awk</code> convention).</li>
+<li>Example: <code>1,3,5</code> selects the 1st, 3rd, and 5th columns.</li>
+</ul>
+<ul>
+<li>
+<p>Field Names</p>
+<ul>
+<li>Requires the <code>--header</code> flag (or command-specific header option).</li>
+<li>Names are case-sensitive.</li>
+<li>Example: <code>date,user_id</code> selects columns named “date” and “user_id”.</li>
+</ul>
+</li>
+<li>
+<p>Ranges</p>
+<ul>
+<li>Numeric Ranges: <code>start-end</code>. Example: <code>2-4</code> selects columns 2, 3, and 4.</li>
+<li>Name Ranges: <code>start_col-end_col</code>. Selects all columns from <code>start_col</code> to
+<code>end_col</code> inclusive, based on their order in the header.</li>
+<li>Reverse Ranges: <code>5-3</code> is automatically treated as <code>3-5</code>.</li>
+</ul>
+</li>
+<li>
+<p>Wildcards</p>
+<ul>
+<li><code>*</code> matches any sequence of characters in a field name.</li>
+<li>Example: <code>user_*</code> selects <code>user_id</code>, <code>user_name</code>, etc.</li>
+<li>Example: <code>*_time</code> selects <code>start_time</code>, <code>end_time</code>.</li>
+</ul>
+</li>
+<li>
+<p>Escaping</p>
+<ul>
+<li>Special characters in field names (like space, comma, colon, dash, star)
+must be escaped with <code>\</code>.</li>
+<li>Example: <code>Order\ ID</code> selects the column “Order ID”.</li>
+<li>Example: <code>run\:id</code> selects “run:id”.</li>
+</ul>
+</li>
+<li>
+<p>Exclusion</p>
+<ul>
+<li>Negative selection is typically handled via a separate flag (e.g.,
+<code>--exclude</code> in <code>select</code>), but uses the same field syntax.</li>
+</ul>
+</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-c2a407aa.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+
+    </div>
+    </body>
+</html>
