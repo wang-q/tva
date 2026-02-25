@@ -123,7 +123,23 @@ Output:
 
 Format numbers with commas and 2 decimal places:
 ```bash
-tva md data.tsv --fmt --digits 2
+tva md docs/data/us_rent_income.tsv --fmt --digits 2
+```
+
+Output:
+```markdown
+| GEOID | NAME       | variable |  estimate |    moe |
+| ----: | ---------- | -------- | --------: | -----: |
+|  1.00 | Alabama    | income   | 24,476.00 | 136.00 |
+|  1.00 | Alabama    | rent     |    747.00 |   3.00 |
+|  2.00 | Alaska     | income   | 32,940.00 | 508.00 |
+|  2.00 | Alaska     | rent     |  1,200.00 |  13.00 |
+|  4.00 | Arizona    | income   | 27,517.00 | 148.00 |
+|  4.00 | Arizona    | rent     |    972.00 |   4.00 |
+|  5.00 | Arkansas   | income   | 23,789.00 | 165.00 |
+|  5.00 | Arkansas   | rent     |    709.00 |   5.00 |
+|  6.00 | California | income   | 29,454.00 | 109.00 |
+|  6.00 | California | rent     |  1,358.00 |   3.00 |
 ```
 
 ## `nl`
