@@ -96,6 +96,8 @@ All tools use a unified syntax to identify fields (columns). See [Field Syntax D
 
 ## Comparison with Other Tools
 
+`tva` is designed to coexist with and complement other excellent open-source tools for tabular data. It combines the strict, high-performance nature of `tsv-utils` with the cross-platform accessibility and modern ecosystem of Rust.
+
 | Feature | `tva` (Rust) | `tsv-utils` (D) | `xsv` / `qsv` (Rust) | `datamash` (C) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Primary Format** | TSV (Strict) | TSV (Strict) | CSV (Flexible) | TSV (Default) |
@@ -105,11 +107,15 @@ All tools use a unified syntax to identify fields (columns). See [Field Syntax D
 | **Platform** | Cross-platform | Unix-focused | Cross-platform | Unix-focused |
 | **Performance** | High | High | High (CSV cost) | High |
 
-`tva` combines the strict, high-performance nature of `tsv-utils` with the cross-platform accessibility and modern ecosystem of Rust.
+### Detailed Breakdown
 
-### Other Notable Toolkits
+*   **[tsv-utils](https://github.com/eBay/tsv-utils-d)** (D):
+    *   The direct inspiration for `tva`. `tva` aims to be a Rust-based alternative that is easier to install (no D compiler needed) and extends functionality (e.g., `sample`, `slice`).
 
-There are many other excellent open-source tools for tabular data. `tva` is designed to coexist with and complement them:
+*   **[xsv](https://github.com/BurntSushi/xsv) / [qsv](https://github.com/jqnatividad/qsv)** (Rust):
+    *   The premier tools for **CSV** processing.
+    *   Because they must handle CSV escapes, they are inherently more complex than TSV-only tools.
+    *   Use these if you must work with CSVs directly; use `tva` if you can convert to TSV for faster, simpler processing.
 
 *   **[GNU Datamash](https://www.gnu.org/software/datamash/)** (C):
     *   Excellent for statistical operations (groupby, pivot) on TSV files.
@@ -118,11 +124,6 @@ There are many other excellent open-source tools for tabular data. `tva` is desi
 *   **[Miller (mlr)](https://github.com/johnkerl/miller)** (C):
     *   A powerful "awk for CSV/TSV/JSON". Supports many formats and complex transformations.
     *   Miller is a DSL (Domain Specific Language); `tva` follows the "do one thing well" Unix philosophy with separate subcommands.
-
-*   **[xsv](https://github.com/BurntSushi/xsv) / [qsv](https://github.com/jqnatividad/qsv)** (Rust):
-    *   The premier tools for **CSV** processing.
-    *   Because they must handle CSV escapes, they are inherently more complex than TSV-only tools.
-    *   Use these if you must work with CSVs directly; use `tva` if you can convert to TSV for faster, simpler processing.
 
 *   **[csvkit](https://github.com/wireservice/csvkit)** (Python):
     *   Very feature-rich but slower due to Python overhead. Great for converting obscure formats (XLSX, DBF) to CSV/TSV.
