@@ -26,7 +26,7 @@ Fast, reliable TSV processing toolkit in Rust.
 
 **Design Principles**
 
-*   **Header Aware**: Manipulate columns by name (`--fields user_id`) or index.
+*   **Header Aware**: Manipulate columns by name or index.
 *   **Fail-fast**: Strict validation ensures data integrity (no silent truncation).
 *   **Streaming**: Stateless processing designed for infinite streams and large files.
 *   **TSV-first**: Prioritizes the reliability and simplicity of tab-separated values.
