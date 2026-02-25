@@ -4,23 +4,7 @@ use std::io::{BufRead, Write};
 pub fn make_subcommand() -> Command {
     Command::new("reverse")
         .about("Reverses the order of lines (like tac)")
-        .after_help(
-            r###"
-Reverses the order of lines in the input.
-
-Notes:
-* Reads all lines into memory. Large files may exhaust memory.
-* Supports plain text and gzipped (.gz) TSV files.
-* Reads from stdin if no input file is given.
-
-Examples:
-1. Reverse a file
-   tva reverse file.tsv
-
-2. Reverse a file, keeping the header at the top
-   tva reverse --header file.tsv
-"###,
-        )
+        .after_help(include_str!("../../docs/help/reverse.md"))
         .arg(
             Arg::new("infiles")
                 .num_args(0..)
