@@ -1,16 +1,15 @@
 # slice
 
-Slice rows by index (1-based). Can be used to select specific rows (Keep Mode) or exclude them (Drop Mode).
+Slice rows by index (1-based). Can be used to select specific rows (Keep Mode)
+or exclude them (Drop Mode).
 
-## Notes
-
+Notes:
 *   Supports plain text and gzipped (`.gz`) TSV files.
 *   Reads from stdin if no input file is given.
 *   Row indices are 1-based.
 *   Multiple ranges can be specified with multiple `-r`/`--rows` flags.
 
-## Examples
-
+Examples:
 1. Keep rows 10 to 20:
    `tva slice -r 10-20 file.tsv`
 

@@ -1,6 +1,7 @@
 # Field Syntax
 
-All tools use a unified syntax to identify fields (columns). This syntax allows selecting fields by index, name, range, or wildcard.
+All tools use a unified syntax to identify fields (columns). This syntax allows
+selecting fields by index, name, range, or wildcard.
 
 *   1-based Indexing
   - Fields are numbered starting from 1 (following Unix `cut`/`awk` convention).
@@ -13,7 +14,8 @@ All tools use a unified syntax to identify fields (columns). This syntax allows 
 
 * Ranges
   - Numeric Ranges: `start-end`. Example: `2-4` selects columns 2, 3, and 4.
-  - Name Ranges: `start_col-end_col`. Selects all columns from `start_col` to `end_col` inclusive, based on their order in the header.
+  - Name Ranges: `start_col-end_col`. Selects all columns from `start_col` to
+    `end_col` inclusive, based on their order in the header.
   - Reverse Ranges: `5-3` is automatically treated as `3-5`.
 
 * Wildcards
@@ -22,9 +24,11 @@ All tools use a unified syntax to identify fields (columns). This syntax allows 
   - Example: `*_time` selects `start_time`, `end_time`.
 
 * Escaping
-  - Special characters in field names (like space, comma, colon, dash, star) must be escaped with `\`.
+  - Special characters in field names (like space, comma, colon, dash, star)
+    must be escaped with `\`.
   - Example: `Order\ ID` selects the column "Order ID".
   - Example: `run\:id` selects "run:id".
 
 * Exclusion
-  - Negative selection is typically handled via a separate flag (e.g., `--exclude` in `select`), but uses the same field syntax.
+  - Negative selection is typically handled via a separate flag (e.g.,
+    `--exclude` in `select`), but uses the same field syntax.
