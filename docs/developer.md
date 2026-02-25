@@ -78,12 +78,19 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 *   **`bin`**: Discretizes numeric values into bins (for histograms). Supports custom width and alignment.
 *   **`slice`**: Slice rows by index (keep or drop), supports range selection and header preservation.
 
-### Planned Features (Inspired by Datamash & R)
+### Planned Features (Inspired by Datamash, R, and qsv)
 
 *   **Extended Statistics**:
     *   Add `q1` (25%), `q3` (75%), `iqr`, `skewness`, `kurtosis` to `stats`.
 *   **Fill Missing Values**:
     *   `fill`: Implements forward/backward fill and constant value fill for missing data.
+*   **Indexing Mechanism**:
+    *   **Status**: `tva` is currently primarily stream-based.
+    *   **Reference**: `qsv`'s core advantage is creating inverted indices (`.idx` files) for CSVs. This enables instant `slice`, `count`, and random access on GB-sized files.
+    *   **Proposal**: Consider introducing an optional indexing mechanism for `tva`, particularly for large files requiring multiple passes.
+*   **Apply Command (Complex Transformations)**:
+    *   **Reference**: `qsv apply` supports column transformations based on string, date, math, and even NLP (fuzzy matching, sentiment analysis).
+    *   **Proposal**: `tva`'s `select` currently leans towards selection. Consider enhancing its expression capabilities or adding an `apply` command to handle `datefmt` (date formatting) and `regex_replace`.
 
 ### Documentation Plan
 
