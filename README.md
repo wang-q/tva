@@ -39,9 +39,14 @@ See [Design Documentation](docs/design.md) for details.
 Current release: 0.1.0
 
 ```bash
-cargo install tva
-
+# Clone the repository and install via cargo
 cargo install --force --path .
+```
+
+Or install the pre-compiled binary via the cross-platform package manager [cbp](https://github.com/wang-q/cbp):
+
+```bash
+cbp install tva
 ```
 
 ## Commands
