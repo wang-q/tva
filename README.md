@@ -36,7 +36,7 @@ See [Design Documentation](docs/design.md) for details.
 
 ## Installation
 
-Current release: 0.0.1
+Current release: 0.1.0
 
 ```bash
 cargo install tva
