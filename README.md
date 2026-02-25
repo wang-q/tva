@@ -38,7 +38,7 @@ See [Design Documentation](docs/design.md) for details.
 ### Selection & Sampling
 See [Selection & Sampling Documentation](docs/selection.md).
 
-- **`select`**: Select, reorder, and rename columns.
+- **`select`**: Select and reorder columns.
 - **`slice`**: Slice rows by index (keep or drop). Supports multiple ranges and header preservation.
 - **`sample`**: Randomly sample rows (Bernoulli, reservoir, weighted).
 

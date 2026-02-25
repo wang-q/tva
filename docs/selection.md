@@ -6,7 +6,7 @@ This document explains how to use the selection and sampling commands in `tva`: 
 
 Data analysis often begins with selecting the relevant subset of data:
 
-*   **`select`**: Selects, reorders, and renames columns (e.g., "keep only `name` and `email`").
+*   **`select`**: Selects and reorders columns (e.g., "keep only `name` and `email`").
 *   **`slice`**: Selects rows by their position (index) in the file (e.g., "keep rows 10-20").
 *   **`sample`**: Randomly selects a subset of rows.
 
@@ -16,21 +16,19 @@ All tools use a unified syntax to identify fields (columns). See [Field Syntax D
 
 ## `select` (Column Selection)
 
-The `select` command allows you to keep only specific columns, reorder them, and rename them.
+The `select` command allows you to keep only specific columns and reorder them.
 
 ### Basic Usage
 
 ```bash
-tva select [input_files...] --cols <columns>
+tva select [input_files...] --fields <columns>
 ```
 
-*   **`--cols` / `-c`**: Comma-separated list of columns to select.
+*   **`--fields` / `-f`**: Comma-separated list of columns to select.
     *   **Names**: `name`, `email`
     *   **Indices**: `1`, `3` (1-based)
     *   **Ranges**: `1-3`, `start_col-end_col`
     *   **Wildcards**: `user_*`, `*_id`
-    *   **Exclusion**: `!password` (exclude column)
-    *   **Renaming**: `new_name:old_name`
 
 ### Examples
 
@@ -49,7 +47,7 @@ GEOID	NAME	variable	estimate	moe
 To keep only the state name (`NAME`) and the estimate value (`estimate`):
 
 ```bash
-tva select docs/data/us_rent_income.tsv -c NAME,estimate
+tva select docs/data/us_rent_income.tsv -f NAME,estimate
 ```
 
 Output:
@@ -61,17 +59,17 @@ Alaska	32940
 ...
 ```
 
-#### 2. Reorder and Rename Columns
+#### 2. Reorder Columns
 
-You can change the order of columns and rename them in a single step. Let's move `variable` to the first column and rename `estimate` to `Value`:
+You can change the order of columns. Let's move `variable` to the first column:
 
 ```bash
-tva select docs/data/us_rent_income.tsv -c variable,Value:estimate,State:NAME
+tva select docs/data/us_rent_income.tsv -f variable,estimate,NAME
 ```
 
 Output:
 ```tsv
-variable	Value	State
+variable	estimate	NAME
 income	24476	Alabama
 rent	747	Alabama
 income	32940	Alaska
@@ -91,13 +89,13 @@ artist	track	wk1	wk2	wk3
 To select the artist, track, and all week columns:
 
 ```bash
-tva select docs/data/billboard.tsv -c artist,track,wk*
+tva select docs/data/billboard.tsv -f artist,track,wk*
 ```
 
 Or using a range (if you know the indices):
 
 ```bash
-tva select docs/data/billboard.tsv -c 1-2,3-5
+tva select docs/data/billboard.tsv -f 1-2,3-5
 ```
 
 ## `slice` (Row Selection by Index)

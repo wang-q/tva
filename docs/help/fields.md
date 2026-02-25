@@ -1,9 +1,8 @@
-Field Syntax
-============
+# Field Syntax
 
 All tools use a unified syntax to identify fields (columns). This syntax allows selecting fields by index, name, range, or wildcard.
 
-* 1-based Indexing
+*   1-based Indexing
   - Fields are numbered starting from 1 (following Unix `cut`/`awk` convention).
   - Example: `1,3,5` selects the 1st, 3rd, and 5th columns.
 
