@@ -91,8 +91,25 @@ We reuse the extensive test suite from upstream `tsv-utils` to ensure behavioral
 *   **Apply Command (Complex Transformations)**:
     *   **Reference**: `qsv apply` supports column transformations based on string, date, math, and even NLP (fuzzy matching, sentiment analysis).
     *   **Proposal**: `tva`'s `select` currently leans towards selection. Consider enhancing its expression capabilities or adding an `apply` command to handle `datefmt` (date formatting) and `regex_replace`.
+*   **Tidyr Parity (Advanced Reshaping)**:
+    *   **Multi-measure Pivoting**:
+        *   `longer`: Support `.value` sentinel in `--names-to` to pivot into multiple value columns simultaneously (e.g. `cols = c("x_1", "x_2", "y_1", "y_2")` -> `id, num, x, y`).
+        *   `wider`: Allow `--values-from` to accept multiple columns, creating output columns like `val1_A`, `val1_B`, `val2_A`, `val2_B`.
+    *   **Column Splitting/Merging**:
+        *   `unpack`: Splits a single string column into multiple columns using a separator or regex (e.g., unpack "2023-10-27" into "year", "month", "day").
+        *   `pack`: Combines multiple columns into a single string column using a template or separator (e.g., pack "Lat", "Lon" into "Coordinates").
+    *   **Densification**:
+        *   `complete`: Expose missing combinations of data factors (explicit missing rows).
 
-### Documentation Plan
+### Documentation Plan (Inspired by tsv-utils)
+
+*   **Reference Structure**:
+    *   Create `docs/tool_reference.md` as a central index linking to individual tool documentation, similar to `tsv-utils/docs/ToolReference.md`.
+    *   Create `docs/common_options.md` to document shared flags (Header handling, Field syntax, Input/Output buffering), reducing redundancy in individual help files.
+*   **Performance**:
+    *   Create `docs/performance.md`: Placeholder for benchmarks against `tsv-utils`, `datamash`, and `qsv`.
+
+### Implementation Details
 
 To help users get started quickly, we aim to provide dedicated documentation files for related groups of commands, similar to `docs/reshape.md`.
 
