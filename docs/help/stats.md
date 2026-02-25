@@ -18,4 +18,10 @@ Examples:
     `tva stats docs/data/us_rent_income.tsv -H --group-by variable --mean estimate`
 
 3.  Count rows per group:
-    `tva stats docs/data/us_rent_income.tsv -H --group-by NAME --count`
+ *   `tva stats docs/data/us_rent_income.tsv -H --group-by NAME --count`
+
+4.  List unique values in a group:
+    `tva stats docs/data/us_rent_income.tsv -H --group-by variable --unique estimate`
+
+5.  Pick a random value from a group:
+    `tva stats docs/data/us_rent_income.tsv -H --group-by variable --rand estimate`

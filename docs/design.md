@@ -80,13 +80,23 @@ The Tab-Separated Values (TSV) format is chosen over Comma-Separated Values (CSV
 
 All tools use a unified syntax to identify fields (columns). See [Field Syntax Documentation](help/fields.md) for details.
 
+*   **Index**: `1` (first column), `2` (second column).
+*   **Range**: `1-3` (columns 1, 2, 3).
+*   **List**: `1,3,5`.
+*   **Name**: `user_id` (requires `--header`).
+*   **Wildcard**: `user_*` (matches `user_id`, `user_name`, etc.).
+*   **Exclusion**: `--exclude 1,2` (select all except 1 and 2).
+
 ### Header Processing
 
 *   **Input**: Most tools accept a `--header` (or `-H`) flag to indicate the first line of input is a header. This enables field selection by name.
-*   **Output**: When `--header` is used, `tva` ensures the header is preserved in the output.
+    *   Note: The `longer` and `wider` commands assume a header by default.
+*   **Output**: When `--header` is used, `tva` ensures the header is preserved in the output (unless explicitly suppressed).
+*   **No Header**: Without this flag, the first row is treated as data. Field selection is limited to indices (no names).
 *   **Multiple Files**: If processing multiple files with `--header`:
     *   The header from the **first** file is written to output.
     *   Headers from subsequent files are **skipped** (assumed to be identical to the first).
+    *   **Validation**: Field counts must be consistent; `tva` fails immediately on jagged rows.
 
 ### Multiple Files & Standard Input
 

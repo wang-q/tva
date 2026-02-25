@@ -33,6 +33,17 @@ Fast, reliable TSV processing toolkit in Rust.
 
 See [Design Documentation](docs/design.md) for details.
 
+
+## Installation
+
+Current release: 0.0.1
+
+```bash
+cargo install tva
+
+cargo install --force --path .
+```
+
 ## Commands
 
 ### Selection & Sampling
@@ -89,45 +100,6 @@ See [Utilities Documentation](docs/utilities.md).
 - **`md`**: Convert TSV to Markdown table for display.
 - **`nl`**: Add line numbers to rows.
 - **`keep-header`**: Run a shell command on the body of a TSV file, preserving the header.
-
-## Common Options & Syntax
-
-### Field Selection
-Most commands support selecting fields using a common syntax:
-- **Index**: `1` (first column), `2` (second column).
-- **Range**: `1-3` (columns 1, 2, 3).
-- **List**: `1,3,5`.
-- **Name**: `user_id` (requires `--header`).
-- **Wildcard**: `user_*` (matches `user_id`, `user_name`, etc.).
-- **Exclusion**: `--exclude 1,2` (select all except 1 and 2).
-
-### Header Handling
-- **Flag**: Use `--header` or `-H` to indicate the input file has a header row. (Note: `longer` command assumes header by default).
-- **Output**: The header row is propagated to the output (unless explicitly suppressed by a command).
-- **Multi-File Behavior**: When processing multiple files with `--header`:
-    - The first file defines the column names.
-    - Headers in subsequent files are automatically skipped (assumed to match the first file).
-    - **Validation**: Field counts must be consistent; `tva` fails immediately on jagged rows.
-- **No Header**: Without this flag, the first row is treated as data. Field selection is limited to indices (no names).
-
-## Installation
-
-```bash
-cargo install --path .
-```
-
-## Examples
-
-```bash
-tva md tests/genome/ctg.range.tsv --num -c 2
-tva md tests/genome/ctg.range.tsv --fmt --digits 2
-
-tva uniq tests/genome/ctg.tsv tests/genome/ctg.tsv
-tva uniq tests/genome/ctg.tsv -f 2
-
-tva nl tests/genome/ctg.tsv
-
-```
 
 ## Author
 

@@ -33,6 +33,9 @@ tva stats [input_files...] [options]
 *   **`--mad`**: Calculate median absolute deviation of fields.
 *   **`--first`**: Get the first value of fields.
 *   **`--last`**: Get the last value of fields.
+*   **`--unique`**: List unique values of fields (comma separated).
+*   **`--collapse`**: List all values of fields (comma separated).
+*   **`--rand`**: Pick a random value from fields.
 
 ### Examples
 
