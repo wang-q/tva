@@ -4,6 +4,7 @@
 
 # Developer Info
 - [Design Principles](design.md)
+- [Benchmark Plan](benchmarks.md)
 
 # User Guide
 - [Selection & Sampling](selection.md)

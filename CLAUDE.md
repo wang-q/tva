@@ -186,9 +186,23 @@ fn test_example_basic() -> Result<(), Box<dyn std::error::Error>> {
     * Prefer "TSV" when referring to files.
     *   Use "row" / "column" in help text where it makes sense.
 
+## 用户文档工作流
+
+我们使用 [mdBook](https://rust-lang.github.io/mdBook/) 生成文档网站。
+
+*   源目录: `docs/`。
+*   配置: `book.toml`。
+*   本地构建:
+    ```bash
+    ./build-docs.ps1  # 同步 README.md 并运行 mdbook build
+    mdbook serve      # 用于本地预览
+    ```
+*   部署:
+    *   GitHub Actions (`.github/workflows/docs.yml`) 会在推送到 `master` 时自动构建并部署到 `gh-pages` 分支。
+
 ## 开发者文档规范
 
-`docs/developer.md` 是供项目开发者参考的内部指南。
+`docs/developer.md` 是供项目开发者参考的内部指南，不要包含在最终生成的用户文档（mdBook 站点）中。
 
 *   **语言**: 使用**中文**编写。
 *   **格式**: 避免过多的加粗 (Bold) 或强调格式，以保持在纯文本编辑器中的可读性。
