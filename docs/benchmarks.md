@@ -9,25 +9,27 @@
 *   GNU awk / mawk (C): 行过滤和基本处理的基准。
 *   csvtk (Go): 另一个现代跨平台工具包。
 
-## 2. 关键指标与数据集
-我们将使用大数据集（GB 级）来压力测试流处理能力和内存使用。
+## 2. 测试数据集与策略
 
-*   **数据集来源**:
-    *   **HEPMASS**: [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/HEPMASS)。约 4.8GB，700万行，29列数值数据。
-    *   **FIA Tree Data**: [USDA Forest Service](https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html)。使用 `TREE_GRM_ESTN.csv` 的前 1400 万行 (约 2.7GB)，包含混合文本和数值。
+我们将使用不同规模的数据集来全面评估性能。
 
-*   **数值行过滤**: `tva filter --gt` vs `awk`。
-    *   数据集: HEPMASS (4.8GB)。
-*   **正则行过滤**: `tva filter --regex` vs `grep`/`awk`。
-    *   数据集: FIA Tree Data (2.7GB)。
-*   列选择: `tva select` vs `cut`。
-    *   目标: 测量字段解析开销。
-*   连接: `tva join` vs `join` (Unix) vs `qsv join`。
-    *   场景: 大文件与子集文件基于公共键连接。
-*   统计: `tva stats` vs `datamash`。
-    *   操作: GroupBy + Sum/Mean/Min/Max。
-*   CSV 转 TSV: `tva from csv` vs `qsv fmt`。
-    *   目标: 测量解析速度和正确性（引号处理）。
+### 数据集来源
+
+*   **HEPMASS** (4.8GB): [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/HEPMASS)。
+    *   内容: 约 700万行，29列数值数据。
+    *   用途: 用于**数值行过滤**、**列选择**、**统计摘要**和**文件连接**测试。
+*   **FIA Tree Data** (2.7GB): [USDA Forest Service](https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html)。
+    *   内容: `TREE_GRM_ESTN.csv` 的前 1400 万行，包含混合文本和数值。
+    *   用途: 用于**正则行过滤**和**CSV 转 TSV**测试。
+
+### 测试策略
+
+*   **吞吐量与稳定性 (大文件)**:
+    *   使用完整的 GB 级数据集 (HEPMASS, FIA Tree Data)。
+    *   目标: 压力测试流处理能力、内存稳定性以及 I/O 吞吐量。
+*   **启动开销 (小文件)**:
+    *   使用 **HEPMASS_100k** (~70MB, HEPMASS 的前 10万行)。
+    *   目标: 测试工具的启动开销 (Startup Overhead) 和缓冲策略。对于极短的运行时间，Rust/C 的启动时间差异会更明显。
 
 ## 3. 详细测试场景
 
@@ -35,28 +37,28 @@
 
 *   **数值行过滤 (Numeric Filter)**:
     *   逻辑: 多列数值比较 (例如 `col4 > 0.000025 && col16 > 0.3`)。
-    *   基准: `tva filter` vs `awk` (mawk/gawk)。
+    *   基准: `tva filter` vs `awk` (mawk/gawk) vs `tsv-filter` (D) vs `qsv search` (Rust)。
     *   目的: 测试数值解析和比较的效率。
 *   **正则行过滤 (Regex Filter)**:
     *   逻辑: 针对特定文本列的正则匹配 (例如 `[RD].*(ION[0-2])`)。
-    *   基准: `tva filter --regex` vs `grep` / `awk` / `ripgrep` (如果适用)。
+    *   基准: `tva filter --regex` vs `grep` / `awk` / `ripgrep` (如果适用) vs `tsv-filter` vs `qsv search`。
     *   注意: 区分全行匹配与特定字段匹配。
 *   **列选择 (Column Selection)**:
     *   逻辑: 提取分散的列 (例如 1, 8, 19)。
-    *   基准: `tva select` vs `cut`。
+    *   基准: `tva select` vs `cut` vs `tsv-select` vs `qsv select` vs `csvtk cut`。
     *   注意: 测试不同文件大小。GNU `cut` 在小文件上通常非常快，但在大文件上可能不如流式优化工具。
     *   **短行测试 (Short Lines)**: 针对海量短行数据（如 8600万行，1.7GB）进行测试，主要考察每行处理的固定开销。
 *   **文件连接 (Join)**:
     *   **数据准备**: 将大文件拆分为两个文件（例如：左文件含列 1-15，右文件含列 1, 16-29），并**随机打乱**行顺序，但保留公共键（列 1）。
     *   逻辑: 基于公共键将两个乱序文件重新连接。
-    *   基准: `tva join` vs `join` (Unix - 需先 sort) vs `qsv join`。
+    *   基准: `tva join` vs `join` (Unix - 需先 sort) vs `qsv join` vs `tsv-join` vs `csvtk join`。
     *   目的: 测试哈希表构建和查找的内存与速度平衡。
 *   **统计摘要 (Summary Statistics)**:
     *   逻辑: 计算多个列的 Count, Sum, Min, Max, Mean, Stdev。
-    *   基准: `tva stats` vs `datamash`。
+    *   基准: `tva stats` vs `datamash` vs `tsv-summarize` vs `qsv stats` vs `csvtk summary`。
 *   **CSV 转 TSV (CSV to TSV)**:
     *   逻辑: 处理包含转义字符和嵌入换行符的复杂 CSV。
-    *   基准: `tva from csv` vs `qsv fmt`。
+    *   基准: `tva from csv` vs `qsv fmt` vs `csvtk csv2tab` vs `csv2tsv` (tsv-utils)。
     *   目的: 这是一个高计算密集型任务，测试 CSV 解析器的性能。
 
 ## 4. 执行环境与记录
@@ -65,9 +67,6 @@
 *   **软件版本**:
     *   Rust 编译器版本 (`rustc --version`)。
     *   所有对比工具的版本 (`qsv --version`, `awk --version` 等)。
-*   **文件大小差异**:
-    *   **大文件 (GB级)**: 主要测试吞吐量和内存稳定性。
-    *   **小文件 (MB级)**: 测试启动开销 (Startup Overhead) 和缓冲策略。
 *   **预热 (Warmup)**: 使用 `hyperfine --warmup` 确保文件系统缓存处于一致状态（通常是热缓存状态）。
 
 ## 5. 执行工作流示例
