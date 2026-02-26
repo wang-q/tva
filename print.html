@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ff07dfc0.js";
+            window.path_to_searchindex_js = "searchindex-f37b7703.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-c9f040c7.js"></script>
+        <script src="toc-bd30c85a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -469,6 +469,201 @@ Copyright by Qiang Wang.</p>
 <ul>
 <li>Standard tool for random permutations.</li>
 <li><code>tva sample</code> adds specific data science sampling methods: weighted sampling (by column value) and Bernoulli sampling.</li>
+</ul>
+</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="性能基准测试计划"><a class="header" href="#性能基准测试计划">性能基准测试计划</a></h1>
+<p>我们旨在重现 <a href="https://github.com/eBay/tsv-utils/blob/master/docs/comparative-benchmarks-2017.md">tsv-utils</a> 使用的严格基准测试策略。</p>
+<h2 id="1-基准工具"><a class="header" href="#1-基准工具">1. 基准工具</a></h2>
+<ul>
+<li>tsv-utils (D): 主要性能对标目标。</li>
+<li>qsv (Rust): xsv 的活跃分支，功能超级强大。</li>
+<li>GNU datamash (C): 统计操作的标准。</li>
+<li>GNU awk / mawk (C): 行过滤和基本处理的基准。</li>
+<li>csvtk (Go): 另一个现代跨平台工具包。</li>
+</ul>
+<h2 id="2-关键指标与数据集"><a class="header" href="#2-关键指标与数据集">2. 关键指标与数据集</a></h2>
+<p>我们将使用大数据集（GB 级）来压力测试流处理能力和内存使用。</p>
+<ul>
+<li>
+<p><strong>数据集来源</strong>:</p>
+<ul>
+<li><strong>HEPMASS</strong>: <a href="https://archive.ics.uci.edu/ml/datasets/HEPMASS">UCI Machine Learning Repository</a>。约 4.8GB，700万行，29列数值数据。</li>
+<li><strong>FIA Tree Data</strong>: <a href="https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html">USDA Forest Service</a>。使用 <code>TREE_GRM_ESTN.csv</code> 的前 1400 万行 (约 2.7GB)，包含混合文本和数值。</li>
+</ul>
+</li>
+<li>
+<p><strong>数值行过滤</strong>: <code>tva filter --gt</code> vs <code>awk</code>。</p>
+<ul>
+<li>数据集: HEPMASS (4.8GB)。</li>
+</ul>
+</li>
+<li>
+<p><strong>正则行过滤</strong>: <code>tva filter --regex</code> vs <code>grep</code>/<code>awk</code>。</p>
+<ul>
+<li>数据集: FIA Tree Data (2.7GB)。</li>
+</ul>
+</li>
+<li>
+<p>列选择: <code>tva select</code> vs <code>cut</code>。</p>
+<ul>
+<li>目标: 测量字段解析开销。</li>
+</ul>
+</li>
+<li>
+<p>连接: <code>tva join</code> vs <code>join</code> (Unix) vs <code>qsv join</code>。</p>
+<ul>
+<li>场景: 大文件与子集文件基于公共键连接。</li>
+</ul>
+</li>
+<li>
+<p>统计: <code>tva stats</code> vs <code>datamash</code>。</p>
+<ul>
+<li>操作: GroupBy + Sum/Mean/Min/Max。</li>
+</ul>
+</li>
+<li>
+<p>CSV 转 TSV: <code>tva from csv</code> vs <code>qsv fmt</code>。</p>
+<ul>
+<li>目标: 测量解析速度和正确性（引号处理）。</li>
+</ul>
+</li>
+</ul>
+<h2 id="3-详细测试场景"><a class="header" href="#3-详细测试场景">3. 详细测试场景</a></h2>
+<p>为了确保公平和全面的对比，我们将执行以下具体场景（参考 tsv-utils 2017）：</p>
+<ul>
+<li><strong>数值行过滤 (Numeric Filter)</strong>:
+<ul>
+<li>逻辑: 多列数值比较 (例如 <code>col4 &gt; 0.000025 &amp;&amp; col16 &gt; 0.3</code>)。</li>
+<li>基准: <code>tva filter</code> vs <code>awk</code> (mawk/gawk)。</li>
+<li>目的: 测试数值解析和比较的效率。</li>
+</ul>
+</li>
+<li><strong>正则行过滤 (Regex Filter)</strong>:
+<ul>
+<li>逻辑: 针对特定文本列的正则匹配 (例如 <code>[RD].*(ION[0-2])</code>)。</li>
+<li>基准: <code>tva filter --regex</code> vs <code>grep</code> / <code>awk</code> / <code>ripgrep</code> (如果适用)。</li>
+<li>注意: 区分全行匹配与特定字段匹配。</li>
+</ul>
+</li>
+<li><strong>列选择 (Column Selection)</strong>:
+<ul>
+<li>逻辑: 提取分散的列 (例如 1, 8, 19)。</li>
+<li>基准: <code>tva select</code> vs <code>cut</code>。</li>
+<li>注意: 测试不同文件大小。GNU <code>cut</code> 在小文件上通常非常快，但在大文件上可能不如流式优化工具。</li>
+<li><strong>短行测试 (Short Lines)</strong>: 针对海量短行数据（如 8600万行，1.7GB）进行测试，主要考察每行处理的固定开销。</li>
+</ul>
+</li>
+<li><strong>文件连接 (Join)</strong>:
+<ul>
+<li><strong>数据准备</strong>: 将大文件拆分为两个文件（例如：左文件含列 1-15，右文件含列 1, 16-29），并<strong>随机打乱</strong>行顺序，但保留公共键（列 1）。</li>
+<li>逻辑: 基于公共键将两个乱序文件重新连接。</li>
+<li>基准: <code>tva join</code> vs <code>join</code> (Unix - 需先 sort) vs <code>qsv join</code>。</li>
+<li>目的: 测试哈希表构建和查找的内存与速度平衡。</li>
+</ul>
+</li>
+<li><strong>统计摘要 (Summary Statistics)</strong>:
+<ul>
+<li>逻辑: 计算多个列的 Count, Sum, Min, Max, Mean, Stdev。</li>
+<li>基准: <code>tva stats</code> vs <code>datamash</code>。</li>
+</ul>
+</li>
+<li><strong>CSV 转 TSV (CSV to TSV)</strong>:
+<ul>
+<li>逻辑: 处理包含转义字符和嵌入换行符的复杂 CSV。</li>
+<li>基准: <code>tva from csv</code> vs <code>qsv fmt</code>。</li>
+<li>目的: 这是一个高计算密集型任务，测试 CSV 解析器的性能。</li>
+</ul>
+</li>
+</ul>
+<h2 id="4-执行环境与记录"><a class="header" href="#4-执行环境与记录">4. 执行环境与记录</a></h2>
+<ul>
+<li><strong>硬件记录</strong>: 必须记录 CPU 型号、核心数、RAM 大小以及<strong>磁盘类型</strong> (NVMe SSD 对 I/O 密集型测试影响巨大)。</li>
+<li><strong>软件版本</strong>:
+<ul>
+<li>Rust 编译器版本 (<code>rustc --version</code>)。</li>
+<li>所有对比工具的版本 (<code>qsv --version</code>, <code>awk --version</code> 等)。</li>
+</ul>
+</li>
+<li><strong>文件大小差异</strong>:
+<ul>
+<li><strong>大文件 (GB级)</strong>: 主要测试吞吐量和内存稳定性。</li>
+<li><strong>小文件 (MB级)</strong>: 测试启动开销 (Startup Overhead) 和缓冲策略。</li>
+</ul>
+</li>
+<li><strong>预热 (Warmup)</strong>: 使用 <code>hyperfine --warmup</code> 确保文件系统缓存处于一致状态（通常是热缓存状态）。</li>
+</ul>
+<h2 id="5-执行工作流示例"><a class="header" href="#5-执行工作流示例">5. 执行工作流示例</a></h2>
+<p>我们将使用内联 Bash 脚本与 <code>hyperfine</code> 结合，实现完全自动化的基准测试。</p>
+<pre><code class="language-bash"># 1. 数据准备 (Data Preparation)
+# ------------------------------
+# 下载并解压 HEPMASS (如果不存在)
+if [ ! -f "hepmass.tsv" ]; then
+    echo "Downloading HEPMASS dataset..."
+    curl -O https://archive.ics.uci.edu/ml/machine-learning-databases/00347/all_train.csv.gz
+    gzip -d all_train.csv.gz
+    # 转换为 TSV
+    tva from csv all_train.csv &gt; hepmass.tsv
+fi
+
+# 准备 Join 测试数据 (拆分并乱序)
+if [ ! -f "hepmass_left.tsv" ]; then
+    echo "Preparing Join datasets..."
+    # 添加行号作为唯一键
+    tva number-lines -H --header-name "row_id" hepmass.tsv &gt; hepmass_numbered.tsv
+    # 拆分并打乱
+    tva select -f 1-16 hepmass_numbered.tsv | tsv-sample -H &gt; hepmass_left.tsv
+    tva select -f 1,17-30 hepmass_numbered.tsv | tsv-sample -H &gt; hepmass_right.tsv
+    rm hepmass_numbered.tsv
+fi
+
+# 2. 运行基准测试 (Run Benchmark)
+# ------------------------------
+echo "Running Benchmarks..."
+hyperfine \
+    --warmup 3 \
+    --min-runs 10 \
+    --export-csv benchmark_results.csv \
+    --parameter-scan threads 1 4 \
+    "tva filter --gt 1:0.5 hepmass.tsv" \
+    "awk -F '\t' '\$1 &gt; 0.5' hepmass.tsv" \
+    "tva select -f 1,8,19 hepmass.tsv" \
+    "cut -f 1,8,19 hepmass.tsv"
+
+# 3. 结果处理与可视化 (Process &amp; Visualize)
+# ------------------------------
+# 使用 tva 将 hyperfine 的 CSV 结果转换为 TSV
+tva from csv benchmark_results.csv &gt; benchmark_results.tsv
+
+# 使用 Python 绘图 (内联脚本)
+python3 -c "
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# 读取由 tva 转换的 TSV 数据
+df = pd.read_csv('benchmark_results.tsv', sep='\t')
+
+# 简单的条形图
+plt.figure(figsize=(10, 6))
+sns.barplot(x='mean', y='command', data=df)
+plt.title('Benchmark Results: Execution Time (s)')
+plt.xlabel('Time (seconds)')
+plt.tight_layout()
+plt.savefig('benchmark_plot.png')
+print('Plot saved to benchmark_plot.png')
+"
+</code></pre>
+<h2 id="6-优化目标"><a class="header" href="#6-优化目标">6. 优化目标</a></h2>
+<ul>
+<li><strong>内存使用</strong>: 确保流式命令（filter, select, from-csv）保持 O(1) 内存使用。</li>
+<li><strong>零拷贝</strong>: 尽可能使用零拷贝解析技术（类似 <code>csv</code> crate 的 <code>ByteRecord</code>）。</li>
+<li><strong>I/O 效率</strong>: 确保所有读写操作都经过 <code>BufReader</code>/<code>BufWriter</code> 缓冲。</li>
+<li><strong>构建优化</strong>:
+<ul>
+<li><strong>LTO (Link Time Optimization)</strong>: <code>Cargo.toml</code> 中已启用 <code>lto = true</code>，这对减少二进制大小和提高运行时性能至关重要。</li>
+<li><strong>PGO (Profile Guided Optimization)</strong>: 未来探索方向。使用真实工作负载数据来指导编译器优化，进一步压榨性能。</li>
 </ul>
 </li>
 </ul>
