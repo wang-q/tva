@@ -89,30 +89,37 @@ fi
 if [ ! -f "hepmass_left.tsv" ]; then
     echo "Preparing Join datasets..."
     # 添加行号作为唯一键
-    tva number-lines -H --header-name "row_id" hepmass.tsv > hepmass_numbered.tsv
+    tva nl -H --header-string "row_id" hepmass.tsv > hepmass_numbered.tsv
     # 拆分并打乱
-    tva select -f 1-16 hepmass_numbered.tsv | tsv-sample -H > hepmass_left.tsv
-    tva select -f 1,17-30 hepmass_numbered.tsv | tsv-sample -H > hepmass_right.tsv
+    tva select -f 1-16 hepmass_numbered.tsv | tva sample -H > hepmass_left.tsv
+    tva select -f 1,17-30 hepmass_numbered.tsv | tva sample -H > hepmass_right.tsv
     rm hepmass_numbered.tsv
 fi
 
 # 2. 运行基准测试 (Run Benchmark)
 # ------------------------------
 echo "Running Benchmarks..."
+
+# Scenario 1: Numeric Filter
 hyperfine \
     --warmup 3 \
     --min-runs 10 \
-    --export-csv benchmark_results.csv \
-    --parameter-scan threads 1 4 \
-    "tva filter --gt 1:0.5 hepmass.tsv" \
-    "awk -F '\t' '\$1 > 0.5' hepmass.tsv" \
-    "tva select -f 1,8,19 hepmass.tsv" \
-    "cut -f 1,8,19 hepmass.tsv"
+    --export-csv benchmark_filter.csv \
+    "tva filter --gt 1:0.5 hepmass.tsv > /dev/null" \
+    "awk -F '\t' '\$1 > 0.5' hepmass.tsv > /dev/null"
+
+# Scenario 2: Column Selection
+hyperfine \
+    --warmup 3 \
+    --min-runs 10 \
+    --export-csv benchmark_select.csv \
+    "tva select -f 1,8,19 hepmass.tsv > /dev/null" \
+    "cut -f 1,8,19 hepmass.tsv > /dev/null"
 
 # 3. 结果处理与可视化 (Process & Visualize)
 # ------------------------------
-# 使用 tva 将 hyperfine 的 CSV 结果转换为 TSV
-tva from csv benchmark_results.csv > benchmark_results.tsv
+# 使用 tva 将 hyperfine 的 CSV 结果转换为 TSV (以 Filter 为例)
+tva from csv benchmark_filter.csv > benchmark_filter.tsv
 
 # 使用 Python 绘图 (内联脚本)
 python3 -c "
@@ -121,12 +128,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # 读取由 tva 转换的 TSV 数据
-df = pd.read_csv('benchmark_results.tsv', sep='\t')
+df = pd.read_csv('benchmark_filter.tsv', sep='\t')
 
 # 简单的条形图
 plt.figure(figsize=(10, 6))
 sns.barplot(x='mean', y='command', data=df)
-plt.title('Benchmark Results: Execution Time (s)')
+plt.title('Benchmark Results (Filter): Execution Time (s)')
 plt.xlabel('Time (seconds)')
 plt.tight_layout()
 plt.savefig('benchmark_plot.png')
