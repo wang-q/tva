@@ -97,12 +97,29 @@
     *   目标: 测量解析速度和正确性（引号处理）。
 
 #### 3. 执行环境
+*   **数据准备**:
+    ```bash
+    # 下载 HEPMASS (示例)
+    curl -O https://archive.ics.uci.edu/ml/machine-learning-databases/00347/all_train.csv.gz
+    gzip -d all_train.csv.gz
+    # 转换为 TSV
+    tva from csv all_train.csv > hepmass.tsv
+    ```
+*   **运行测试**:
+    ```bash
+    hyperfine --warmup 3 --min-runs 10 --export-csv results.csv \
+      "tva filter --gt 1:0.5 hepmass.tsv" \
+      "awk '\$1 > 0.5' hepmass.tsv"
+    ```
 *   **工具**: 使用 [hyperfine](https://github.com/sharkdp/hyperfine) 进行自动化基准测试。它能自动处理预热、统计分析和异常值检测。
-*   **配置**:
+*   配置:
     *   预热运行: `--warmup 3`
     *   最小运行次数: `--min-runs 10`
-    *   导出格式: `--export-markdown` 以便直接生成报告。
+    *   导出格式: `--export-csv` (后续使用 `tva from csv` 转换为 TSV 进行处理)。
 *   清晰记录硬件（CPU, RAM, 磁盘 I/O）和操作系统。
+*   可视化:
+    *   使用 `tva from csv` 将结果转换为 TSV。
+    *   使用 Python (Matplotlib/Seaborn) 读取 TSV 数据生成条形图。
 *   优化目标:
     *   流式命令的 O(1) 内存使用。
     *   尽可能零拷贝解析。
