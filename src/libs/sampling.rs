@@ -1,4 +1,6 @@
 use rapidhash::RapidRng;
+use std::cmp::{Ordering, Reverse};
+use std::collections::BinaryHeap;
 use std::io::Write;
 
 pub trait Sampler {
@@ -17,6 +19,32 @@ pub trait Sampler {
 }
 
 pub const INV_U64_MAX_PLUS_1: f64 = 1.0 / (u64::MAX as f64 + 1.0);
+
+#[derive(Debug)]
+pub struct WeightedItem {
+    pub key: f64,
+    pub record: Vec<u8>,
+}
+
+impl PartialEq for WeightedItem {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl Eq for WeightedItem {}
+
+impl PartialOrd for WeightedItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.key.partial_cmp(&other.key)
+    }
+}
+
+impl Ord for WeightedItem {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+    }
+}
 
 fn write_with_optional_random<W: std::io::Write>(
     writer: &mut W,
@@ -43,6 +71,7 @@ fn write_with_optional_random<W: std::io::Write>(
 pub struct BernoulliSampler {
     pub prob: f64,
     pub print_random: bool,
+    pub skip_counter: usize,
 }
 
 impl Sampler for BernoulliSampler {
@@ -52,10 +81,34 @@ impl Sampler for BernoulliSampler {
         writer: &mut W,
         rng: &mut RapidRng,
     ) -> anyhow::Result<()> {
-        let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
-        if r < self.prob {
-            write_with_optional_random(writer, record, rng, self.print_random, Some(r))?;
+        if self.skip_counter > 0 {
+            self.skip_counter -= 1;
+            return Ok(());
         }
+
+        // Process current record (selected)
+        let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
+        // Note: r is only used for output if print_random is true.
+        // The selection decision was implicitly made by skip_counter reaching 0.
+        // However, we need to pass a random value if print_random is set.
+        // And strictly speaking, for Bernoulli sampling, we select with prob p.
+        // If we use skip sampling, we jump to the next selected item.
+        // So this item IS selected.
+        write_with_optional_random(writer, record, rng, self.print_random, Some(r))?;
+
+        // Generate next skip interval
+        // Geometric distribution: P(X=k) = (1-p)^k * p
+        // Variate generation: floor(ln(u) / ln(1-p))
+        if self.prob >= 1.0 {
+            self.skip_counter = 0;
+        } else {
+            let u = rng.next() as f64 * INV_U64_MAX_PLUS_1;
+            // Avoid log(0)
+            let u = if u < 1e-10 { 1e-10 } else { u };
+            let val = u.ln() / (1.0 - self.prob).ln();
+            self.skip_counter = val.floor() as usize;
+        }
+
         Ok(())
     }
     fn finalize<W: Write>(
@@ -114,7 +167,9 @@ impl Sampler for ReservoirSampler {
 pub struct WeightedReservoirSampler {
     pub k: usize,
     pub weight_field_idx: usize,
-    pub weighted: Vec<(f64, Vec<u8>)>,
+    // Use a Min-Heap (via Reverse) to store the top-K items with largest keys.
+    // The root of the heap is the item with the smallest key among the top-K.
+    pub heap: BinaryHeap<Reverse<WeightedItem>>,
 }
 
 impl Sampler for WeightedReservoirSampler {
@@ -124,11 +179,6 @@ impl Sampler for WeightedReservoirSampler {
         _writer: &mut W,
         rng: &mut RapidRng,
     ) -> anyhow::Result<()> {
-        // We need to parse weight field.
-        // To do this efficiently without TsvRow structure, we might need TsvRow logic or simple split.
-        // Since we are decoupling, let's just use memchr iterator logic inline or reuse TsvRow logic if possible.
-        // But Sampler trait takes &[u8]. We can construct TsvRow on fly or just scan.
-
         // field_start
         // field_idx
         let mut weight_bytes = None;
@@ -154,12 +204,36 @@ impl Sampler for WeightedReservoirSampler {
         }
 
         if let Some(w_bytes) = weight_bytes {
+            // Fast parse float?
+            // std::str::from_utf8 is cheap (validation only).
+            // parse::<f64> is reasonably fast.
             if let Ok(w_str) = std::str::from_utf8(w_bytes) {
                 if let Ok(w) = w_str.trim().parse::<f64>() {
                     if w > 0.0 {
                         let u = rng.next() as f64 * INV_U64_MAX_PLUS_1;
-                        let key = -u.ln() / w;
-                        self.weighted.push((key, record.to_vec()));
+                        // A-Res Key: k = u^(1/w).
+                        // Maximize k <=> Maximize ln(k) = ln(u)/w.
+                        let key = u.ln() / w;
+
+                        if self.heap.len() < self.k {
+                            self.heap.push(Reverse(WeightedItem {
+                                key,
+                                record: record.to_vec(),
+                            }));
+                        } else {
+                            // Check if new item is better than the worst in heap
+                            // Heap root is the smallest key (worst of top-K)
+                            // peek() gives &Reverse<WeightedItem>
+                            if let Some(Reverse(min_item)) = self.heap.peek() {
+                                if key > min_item.key {
+                                    self.heap.pop();
+                                    self.heap.push(Reverse(WeightedItem {
+                                        key,
+                                        record: record.to_vec(),
+                                    }));
+                                }
+                            }
+                        }
                     }
                 } else {
                     return Err(std::io::Error::new(
@@ -185,13 +259,34 @@ impl Sampler for WeightedReservoirSampler {
         rng: &mut RapidRng,
         print_random: bool,
     ) -> anyhow::Result<()> {
-        if self.weighted.is_empty() {
+        if self.heap.is_empty() {
             return Ok(());
         }
-        self.weighted.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-        let limit = self.k.min(self.weighted.len());
-        for (_, row) in self.weighted.iter().take(limit) {
-            write_with_optional_random(writer, row, rng, print_random, None)?;
+        // Extract items from heap
+        // Note: BinaryHeap does not guarantee order when iterating.
+        // We need to sort them anyway if we want output order to be meaningful?
+        // Usually weighted sampling doesn't imply sort order, but often output is sorted by key or input order.
+        // tva v0.1.0 sorted by key (ascending/descending?).
+        // Let's sort by key descending (highest probability first) or just dump?
+        // Previous implementation: self.weighted.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        // That was sorting by key ascending (smallest key first).
+        // Since key = -ln(u)/w, smallest key meant largest ln(u)/w (most probable).
+        // Wait, previous code used `key = -u.ln() / w`.
+        // `-ln(u)` is positive. `w` is positive.
+        // Maximize `ln(u)/w` <=> Minimize `-ln(u)/w`.
+        // So previous code kept smallest keys.
+        // And sorted by smallest keys.
+        // So it outputted most probable items first.
+        //
+        // New implementation uses `key = ln(u)/w`.
+        // Largest `key` is most probable.
+        // So we should sort by key descending to match "best first".
+        
+        let mut items: Vec<WeightedItem> = self.heap.drain().map(|Reverse(item)| item).collect();
+        items.sort_by(|a, b| b.key.partial_cmp(&a.key).unwrap_or(Ordering::Equal));
+
+        for item in items {
+            write_with_optional_random(writer, &item.record, rng, print_random, None)?;
         }
         Ok(())
     }

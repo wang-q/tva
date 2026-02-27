@@ -344,9 +344,18 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
                 decisions: std::collections::HashMap::new(),
             })
         } else {
+            // Generate initial skip for Bernoulli sampler
+            let initial_skip = if p >= 1.0 {
+                0
+            } else {
+                let u = rng.next() as f64 * crate::libs::sampling::INV_U64_MAX_PLUS_1;
+                let u = if u < 1e-10 { 1e-10 } else { u };
+                (u.ln() / (1.0 - p).ln()).floor() as usize
+            };
             SamplerEnum::Bernoulli(BernoulliSampler {
                 prob: p,
                 print_random,
+                skip_counter: initial_skip,
             })
         }
     } else if replace && num_opt > 0 {
@@ -358,7 +367,7 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
         SamplerEnum::Weighted(WeightedReservoirSampler {
             k: num_opt as usize,
             weight_field_idx: 0, // To be filled
-            weighted: Vec::new(),
+            heap: std::collections::BinaryHeap::new(),
         })
     } else if num_opt == 0 {
         if compatibility_mode {
@@ -396,7 +405,8 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
 
     // Iterate over files manually to handle headers correctly
     for input in crate::libs::io::raw_input_sources(&infiles) {
-        let mut reader = TsvReader::new(input.reader);
+        // Use a larger buffer (512KB) for better I/O throughput
+        let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_record = true;
 
         if gen_random_inorder && !header_written && header_line.is_some() {
