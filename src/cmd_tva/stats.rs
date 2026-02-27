@@ -1,6 +1,6 @@
-use crate::libs::tsv::fields;
 use crate::libs::io::reader;
 use crate::libs::stats::{Aggregator, OpKind, Operation};
+use crate::libs::tsv::fields;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::collections::HashMap;
 use std::io::BufRead;

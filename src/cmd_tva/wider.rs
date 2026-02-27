@@ -1,6 +1,6 @@
+use crate::libs::stats::Aggregator;
 use crate::libs::tsv::fields;
 use crate::libs::tsv::fields::Header;
-use crate::libs::stats::Aggregator;
 use clap::*;
 use indexmap::{IndexMap, IndexSet};
 use std::collections::HashMap;

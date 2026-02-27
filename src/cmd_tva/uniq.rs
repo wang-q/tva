@@ -211,8 +211,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         for line in reader.lines().map_while(Result::ok) {
             if has_header && is_first_line {
                 if header.is_none() {
-                    header =
-                        Some(crate::libs::tsv::fields::Header::from_line(&line, delimiter));
+                    header = Some(crate::libs::tsv::fields::Header::from_line(
+                        &line, delimiter,
+                    ));
                     if let Some(ref spec) = fields_spec {
                         if spec.trim() == "0" {
                             key_fields = Some(Vec::new());
@@ -260,9 +261,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     if spec.trim() == "0" {
                         key_fields = Some(Vec::new());
                     } else {
-                        let parsed = crate::libs::tsv::fields::parse_field_list_with_header(
-                            spec, None, delimiter,
-                        );
+                        let parsed =
+                            crate::libs::tsv::fields::parse_field_list_with_header(
+                                spec, None, delimiter,
+                            );
                         match parsed {
                             Ok(v) => key_fields = Some(v),
                             Err(e) => {

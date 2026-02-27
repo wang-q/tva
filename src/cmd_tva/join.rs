@@ -116,9 +116,10 @@ fn parse_join_field_spec(
     if trimmed == "0" {
         return (true, None);
     }
-    let indices =
-        crate::libs::tsv::fields::parse_field_list_with_header(trimmed, header, delimiter)
-            .unwrap_or_else(|e| arg_error(&e));
+    let indices = crate::libs::tsv::fields::parse_field_list_with_header(
+        trimmed, header, delimiter,
+    )
+    .unwrap_or_else(|e| arg_error(&e));
     (false, Some(indices))
 }
 
@@ -319,7 +320,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         data_fields_spec.clone().or_else(|| key_fields_spec.clone());
                     let (whole_line, indices) = parse_join_field_spec(
                         effective_data_spec,
-                        Some(&crate::libs::tsv::fields::Header::from_line(&line, delimiter)),
+                        Some(&crate::libs::tsv::fields::Header::from_line(
+                            &line, delimiter,
+                        )),
                         delimiter,
                     );
                     data_key_whole_line = whole_line;

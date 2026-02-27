@@ -63,12 +63,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let reader = crate::libs::io::reader(args.get_one::<String>("infile").unwrap());
 
     let mut opt_center: intspan::IntSpan = if args.contains_id("center") {
-        crate::libs::tsv::fields::fields_to_ints(args.get_one::<String>("center").unwrap())
+        crate::libs::tsv::fields::fields_to_ints(
+            args.get_one::<String>("center").unwrap(),
+        )
     } else {
         intspan::IntSpan::new()
     };
     let mut opt_right: intspan::IntSpan = if args.contains_id("right") {
-        crate::libs::tsv::fields::fields_to_ints(args.get_one::<String>("right").unwrap())
+        crate::libs::tsv::fields::fields_to_ints(
+            args.get_one::<String>("right").unwrap(),
+        )
     } else {
         intspan::IntSpan::new()
     };

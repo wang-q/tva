@@ -628,32 +628,36 @@ pub fn build_tests(
     let mut tests = Vec::new();
 
     for spec in config.empty_specs {
-        let idxs =
-            crate::libs::tsv::fields::parse_field_list_with_header(spec, header, delimiter)?;
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
+            spec, header, delimiter,
+        )?;
         for idx in idxs {
             tests.push(TestKind::Empty { fields: vec![idx] });
         }
     }
 
     for spec in config.not_empty_specs {
-        let idxs =
-            crate::libs::tsv::fields::parse_field_list_with_header(spec, header, delimiter)?;
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
+            spec, header, delimiter,
+        )?;
         for idx in idxs {
             tests.push(TestKind::NotEmpty { fields: vec![idx] });
         }
     }
 
     for spec in config.blank_specs {
-        let idxs =
-            crate::libs::tsv::fields::parse_field_list_with_header(spec, header, delimiter)?;
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
+            spec, header, delimiter,
+        )?;
         for idx in idxs {
             tests.push(TestKind::Blank { fields: vec![idx] });
         }
     }
 
     for spec in config.not_blank_specs {
-        let idxs =
-            crate::libs::tsv::fields::parse_field_list_with_header(spec, header, delimiter)?;
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
+            spec, header, delimiter,
+        )?;
         for idx in idxs {
             tests.push(TestKind::NotBlank { fields: vec![idx] });
         }

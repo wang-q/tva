@@ -194,7 +194,8 @@ fn get_or_create_output<'a>(
 }
 
 fn parse_key_fields(spec: &str) -> Vec<usize> {
-    crate::libs::tsv::fields::parse_numeric_field_list(spec).unwrap_or_else(|e| arg_error(&e))
+    crate::libs::tsv::fields::parse_numeric_field_list(spec)
+        .unwrap_or_else(|e| arg_error(&e))
 }
 
 fn key_bucket(line: &str, indices: &[usize], num_files: usize) -> usize {

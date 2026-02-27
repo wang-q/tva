@@ -109,8 +109,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
                 if !header_written {
                     let line_str = String::from_utf8_lossy(&header_bytes);
-                    let header =
-                        crate::libs::tsv::fields::Header::from_line(&line_str, delimiter);
+                    let header = crate::libs::tsv::fields::Header::from_line(
+                        &line_str, delimiter,
+                    );
 
                     if let Some(ref spec) = fields_spec {
                         field_indices = Some(
