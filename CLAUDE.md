@@ -152,6 +152,8 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 - 集成测试位于 `tests/` 目录下，文件命名为 `cli_<command>.rs`。
 - 测试数据通常放在 `tests/data/<command>/` 目录下。
 - 使用 `assert_cmd` 或类似的库来测试 CLI 调用和输出验证。
+- **稳定性原则 (Zero Panic)**: 任何用户输入（包括畸形数据、二进制文件）都不应导致程序 Panic。必须捕获所有错误并返回友好的错误信息。
+- **基准测试**: 性能敏感的变更必须伴随 `benches/` 下的基准测试结果（使用 `criterion`）。
 
 示例测试结构：
 
@@ -193,7 +195,24 @@ fn test_example_basic() -> Result<(), Box<dyn std::error::Error>> {
     *   **零拷贝 (Zero-Copy)**: 优先使用 `&[u8]` 切片或 `Cow<'a, [u8]>`。
         *   *禁止*: 在热点路径中无谓地将 `&[u8]` 转换为 `String`。
     *   **SIMD**: 使用 `memchr` crate 查找分隔符 (`\t`, `\n`)。
-    *   **缓冲**: 所有文件 I/O 必须包裹在 `BufReader` / `BufWriter` 中（建议缓冲区大小 >= 64KB）。
+    *   **缓冲**: 所有文件 I/O 必须包裹在 `BufReader` / `BufWriter` 中（推荐缓冲区大小 **128KB** 以减少 syscall）。
+
+### 并发与并行策略 (Concurrency Strategy)
+
+1.  **默认单线程 (Single-Threaded Default)**:
+    *   `tva` 的核心命令默认采用单线程流式处理，以保证最低的启动开销和确定的内存使用。
+    *   通过管道 (`|`) 组合命令可以让操作系统负责进程级并行。
+
+2.  **未来并行方向 (Future Parallelism)**:
+    *   对于 CPU 密集型任务 (如复杂 `filter` 或 `stats`)，架构应支持基于 "Chunking" 的数据并行。
+    *   利用 TSV `\n` 的唯一性，将大文件切分为多个 `Chunk`，分发给线程池处理，最后聚合结果。
+
+### 依赖选择策略 (Dependency Policy)
+
+1.  **CSV/TSV 解析**:
+    *   **标准路径**: 使用 `csv` crate 处理复杂的 CSV 兼容性场景（如需要处理引号时）。
+    *   **高性能路径**: 对于纯 TSV 处理，优先使用 `memchr` + `split` 手写逻辑，避免 `csv` crate 的状态机开销。
+    *   **谨慎引入**: 类似 `simd-csv` 的库虽然快，但可能引入复杂的构建依赖或平台限制，仅在基准测试证明有显著收益（>20%）时才考虑引入。
 
 ### Hash 算法选择规范
 
@@ -212,6 +231,20 @@ fn test_example_basic() -> Result<(), Box<dyn std::error::Error>> {
 3.  **加密/安全哈希**:
     *   **必须使用**: `SipHash` (Rust 默认) 或 `SHA-256`。
     *   **适用场景**: 即使牺牲性能也必须绝对防止 HashDoS 攻击的公共接口，或需要加密签名的场景。
+
+### 架构决策与设计约束 (Architectural Constraints)
+
+1.  **TSV 专用假设 (TSV Assumptions)**:
+    *   **无引号优化**: 利用 TSV 不支持引号和转义的特性，核心解析逻辑应完全依赖 SIMD (`memchr`) 扫描，避免复杂的 CSV 状态机。
+    *   **行级并行**: 假设 `\n` 具有唯一记录分隔符语义，架构应支持按行切分数据块进行并行处理。
+
+2.  **Join 策略 (Stream-Static Model)**:
+    *   **机制**: 采用 "Hash Semi-Join" (Filter + Append) 模式。
+    *   **约束**: 仅将 Filter 文件加载到内存 (HashMap)，流式处理 Data 文件。避免像 `xan` 那样全量加载数据以支持 SQL 全连接，保持对大数据集的 O(1) 内存友好性。
+
+3.  **内存热点优化 (Hot Path Memory)**:
+    *   **Buffer 复用**: 在处理循环中，必须复用 `Vec`/`String` 缓冲区，禁止在循环体内频繁分配/释放堆内存。
+    *   **小对象优化**: 对于短 Key (如 ID, Code)，优先使用 `SmallVec<[u8; N]>` (推荐 N=32) 以利用栈内存，避免 `malloc` 开销。
 
 
 ## 帮助文本规范 (Help Text Style Guide)
