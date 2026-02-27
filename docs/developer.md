@@ -1,48 +1,58 @@
 # 开发者指南
 
+本文档旨在为 `tva` 的开发者提供技术背景、架构设计思路以及未来演进路线。
+
+## 目录
+
+1. [架构与模块](#架构与模块)
+2. [性能基准与分析](#性能基准与分析)
+3. [深度技术分析](#深度技术分析)
+   - [参考项目: rust-csv](#参考项目-rust-csv)
+   - [参考项目: simd-csv](#参考项目-simd-csv)
+   - [参考项目: xan](#参考项目-xan)
+4. [自研 TSV 解析器设计](#自研-tsv-解析器设计)
+5. [性能优化路线图](#性能优化路线图)
+6. [计划中的功能](#计划中的功能)
+
+---
+
 ## 架构与模块
 
-### 计划中的功能 (灵感来自 Datamash, R, 和 qsv)
+`tva` 采用模块化设计，核心逻辑位于 `src/libs`，命令行接口位于 `src/cmd_tva`。
 
-*   扩展统计 (Extended Statistics):
-    *   向 `stats` 添加 `q1` (25%), `q3` (75%), `iqr`, `skewness`, `kurtosis`。
-*   缺失值填充 (Fill Missing Values):
-    *   `fill`: 实现前向/后向填充以及常数填充。
-*   索引机制 (Indexing Mechanism):
-    *   现状: `tva` 目前主要是基于流的。
-    *   参考: `qsv` 的核心优势是为 CSV 创建倒排索引 (`.idx` 文件)。这使得 GB 级文件可以瞬间完成 `slice`, `count` 和随机访问。
-    *   提案: 考虑为 `tva` 引入可选的索引机制，特别是对于需要多次传递的大文件。
-*   Apply 命令 (复杂转换):
-    *   参考: `qsv apply` 支持基于字符串、日期、数学甚至 NLP（模糊匹配、情感分析）的列转换。
-    *   提案: `tva` 的 `select` 目前倾向于选择。考虑增强其表达式能力，或添加 `apply` 命令来处理 `datefmt` (日期格式化) 和 `regex_replace`。
-*   Tidyr 对等功能 (高级重塑):
-    *   多度量透视 (Multi-measure Pivoting):
-        *   `longer`: 支持在 `--names-to` 中使用 `.value` 哨兵，同时透视到多个值列（例如 `cols = c("x_1", "x_2", "y_1", "y_2")` -> `id, num, x, y`）。
-        *   `wider`: 允许 `--values-from` 接受多个列，创建如 `val1_A`, `val1_B`, `val2_A`, `val2_B` 的输出列。
-    *   列拆分/合并:
-        *   `unpack`: 使用分隔符或正则将单个字符串列拆分为多个列（例如，将 "2023-10-27" 拆分为 "year", "month", "day"）。
-        *   `pack`: 使用模板或分隔符将多个列合并为单个字符串列（例如，将 "Lat", "Lon" 合并为 "Coordinates"）。
-    *   致密化 (Densification):
-        *   `complete`: 暴露数据因子的缺失组合（显式缺失行）。
-*   dplyr 核心模式:
-    *   安全连接 (Safe Joins):
-        *   概念: 防止 `join` 中意外的笛卡尔积爆炸。
-        *   行动: 添加 `--relationship` 标志（例如 `one-to-one`, `many-to-one`）在连接时验证键。遇到意外的多对多匹配时默认为警告或错误。
-    *   Tidy Selection DSL:
-        *   概念: 解耦、表达力强的列选择逻辑。
-        *   行动: 增强 `src/libs/fields.rs` 以支持正则 (`matches('^date_')`)、谓词 (`where(is_numeric)`) 和集合操作 (`-colA`)，可在 `select`, `wider`, `longer` 中通用。
-    *   窗口函数 (Window Functions):
-        *   概念: 上下文感知的行操作 (rank, lead, lag)。
-        *   行动: 为 `filter` 和 `stats` 实现滑动窗口逻辑（例如，组内 `filter --expr "val > mean(val)"`）。
-    *   高强度测试 (Torture Testing):
-        *   概念: 针对畸形/边缘情况数据的鲁棒性。
-        *   行动: 创建 `tests/torture/` 用于模糊测试输入（空文件、参差不齐的行、巨大的列），确保零 panic。
+- **`src/libs/tsv`**: 核心解析层，包含零拷贝 Reader、Record 抽象和字段处理逻辑。
+- **`src/libs/filter`**: 过滤引擎，支持多种比较操作符。
+- **`src/libs/select`**: 列选择与重排逻辑。
+- **`src/libs/stats`**: 统计计算逻辑。
 
-## 参考项目分析: rust-csv
+---
+
+## 性能基准与分析
+
+我们在 `benches/parse_benchmark.rs` 中对比了不同解析策略的性能。
+数据样本: `1\tJohn\tDoe\t30\tNew York\n...` (3行数据重复 1000 次)
+
+| 策略 | 平均耗时 | 吞吐量 | 说明 |
+| :--- | :--- | :--- | :--- |
+| **simd-csv** | **67 µs** | **1.05 GiB/s** | 混合 SIMD 状态机，性能天花板 |
+| **Tva TsvReader** | **72 µs** | **1.00 GiB/s** | **当前实现**: 零拷贝 Reader + SIMD (memchr) |
+| **Memchr Reused Buffer** | 82 µs | 878 MiB/s | 逐行 memchr，受限于函数调用开销 |
+| **csv crate** | 111 µs | 652 MiB/s | 经典的 DFA 状态机，正确性基准 |
+| **Naive Split** | 443 µs | 163 MiB/s | 原始实现，最慢 |
+
+**结论**:
+1.  **性能飞跃**: 我们的新实现 `Tva TsvReader` (1.00 GiB/s) 比旧版快了 **2.6 倍**，已达到 `simd-csv` 的 **95%**。
+2.  **瓶颈转移**: 瓶颈已从 "内存分配/IO" 转移到了 "字段遍历"。
+
+---
+
+## 深度技术分析
+
+### 参考项目: rust-csv
 
 `rust-csv` (BurntSushi/rust-csv) 是 Rust 生态中最权威的 CSV 解析库，也是 `tva` 的核心依赖之一。对其源码的分析有助于指导 `tva` 的底层优化和功能扩展。
 
-### 核心架构
+#### 核心架构
 
 该项目采用多 crate 架构，实现了分层抽象：
 
@@ -68,17 +78,16 @@
         *   但对于需要多次扫描或随机访问大文件的场景（如 `sample --random-access` 或大文件 `slice`），引入 `csv-index` 是实现性能飞跃的关键。
         *   **行动项**: 研究将 `csv-index` 集成到 `tva` 的 `input` 层，允许用户为大文件生成索引，从而加速后续操作。
 
-### 性能优化借鉴
+#### 性能优化借鉴
 
 *   **缓冲策略**: `rust-csv` 内部使用了精细调整的缓冲区。`tva` 在处理 I/O 时应确保始终使用 `BufReader` 和 `BufWriter` 包装器（`src/libs/io.rs` 中已实现）。
 *   **SIMD**: 虽然 `csv-core` 本身是标量实现，但现代 CSV 解析器（如 `simd-csv`）利用 SIMD 指令集可获得数倍性能提升。
-    *   **思考**: 详见下文对 `simd-csv` 的分析。
 
-## 参考项目分析: simd-csv
+### 参考项目: simd-csv
 
 `simd-csv` (medialab/simd-csv) 是一个专门利用 SIMD 指令集加速 CSV 解析的 Rust crate。它并非 C++ `simdjson` 的直接移植，而是采用了混合传统状态机与 SIMD 字符串搜索的新颖方法。
 
-### 核心特性与架构
+#### 核心特性与架构
 
 1.  **混合架构 (Hybrid Approach)**:
     *   结合了传统状态机逻辑与 `memchr` 风格的 SIMD 字符串搜索。
@@ -93,7 +102,7 @@
 3.  **流式支持**:
     *   与某些 SIMD 解析器要求全量加载不同，此 crate 明确支持流式处理 (`streaming`)，这使其成为 `tva` 的潜在高性能后端候选。
 
-### 对 `tva` 的启示与潜在集成
+#### 对 `tva` 的启示与潜在集成
 
 *   **特定场景加速**:
     *   **行计数 (`tva nl --count`)**: 使用 `Splitter` 可能获得 4-6 倍的性能提升。
@@ -104,50 +113,69 @@
 *   **性能权衡**:
     *   README 指出在 worst-case（如全数字短字段）下性能提升微乎其微。因此集成时需谨慎评估引入依赖的成本与收益。
 
-## 性能瓶颈分析: tva select vs tsv-select
+#### 深度分析: simd-csv 为何最快?
 
-用户反馈 `tva select` 在某些场景下比 `tsv-select` (D语言版本) 慢 4 倍。经过源码对比分析，主要原因在于内存分配策略和处理逻辑的差异。
+`simd-csv` 能够达到 1.12 GiB/s 的惊人速度，比 `csv` crate 快 60% 以上。通过分析其源码，我们发现了以下关键技术：
 
-### 1. 激进的内存分配 (Aggressive Allocation)
+1.  **混合架构 (Hybrid Architecture)**:
+    `simd-csv` 并不是纯 SIMD 解析器，而是一个混合体：
+    *   **CoreReader (core.rs)**: 维护状态机 (Unquoted, Quoted, Quote)。
+    *   **Searcher (searcher.rs)**: 使用 SIMD (`memchr` 或 SSE2/AVX2 intrinsic) 快速跳过普通字符。
 
-**tva (`src/cmd_tva/select.rs`)**:
-```rust
-// 每一行都会分配一个新的 Vec<&str>
-let fields: Vec<&str> = line.split(delimiter).collect();
-```
-*   **问题**: 对每一行都进行全量切分并收集到 `Vec` 中，即使文件有数百万行。这导致了巨大的内存分配和释放开销。
-*   **后果**: 随着行长和列数的增加，性能急剧下降。
+2.  **Searcher 的核心逻辑**:
+    在 `CoreReader::split_record` 中，它利用 SIMD 指令一次性扫描多个特殊字符（分隔符、换行符、引号）。这比逐字节查表（`csv` crate 的做法）更快，因为在大多数 CSV 数据中，特殊字符是稀疏的。
 
-**tsv-select (`tsv-select.d`)**:
-```d
-// 使用惰性迭代器 (Lazy Iterator)，无堆内存分配
-foreach (fieldIndex, fieldValue; line.splitter(cmdopt.delim).enumerate)
-```
-*   **优势**: D 语言版本使用了 `std.algorithm.splitter`，它是惰性的。它不会一次性为所有字段分配内存，而是按需处理。
+3.  **SSE2/AVX2 手写 Intrinsic**:
+    `searcher.rs` 中包含了手写的 SSE2 实现：
+    *   加载 16 字节到向量寄存器 (`_mm_loadu_si128`)。
+    *   并行比较分隔符、换行符、引号 (`_mm_cmpeq_epi8`)。
+    *   使用 `_mm_movemask_epi8` 将比较结果提取为位掩码。
+    *   使用 `trailing_zeros` 快速找到第一个匹配位置。
 
-### 2. 缺乏提前退出机制 (No Early Exit)
+### 参考项目: xan
 
-**tva**:
-由于使用了 `.collect()`，`tva` 必须解析整行的所有字段，即使你只想要第 1 列。
-*   例如: `tva select -f 1 big_file.tsv`
-*   **实际行为**: 解析整行 -> 分配 Vec -> 取第 1 个元素 -> 丢弃 Vec。
+`xan` (前身为 `xsv` 的 fork) 是一个功能极强的 CSV/TSV 工具集。通过分析其源码，我们可以为 `tva` 汲取以下几个关键的架构和功能灵感。
 
-**tsv-select**:
-```d
-// 一旦收集齐所需字段，立即停止解析该行
-if (fieldReordering.allFieldsFilled) break;
-```
-*   **优势**: 如果只请求前几列，`tsv-select` 会在解析完这些列后立即停止处理该行的剩余部分。对于宽表（由于列多，行很长）且只选择前几列的场景，这种差异会导致巨大的性能鸿沟。
+#### 1. 并行处理架构 (Parallel Processing)
 
-### 3. 优化建议
+*   **实现**: `cmd/parallel.rs`
+*   **机制**: 类似于 Map-Reduce。它不试图让每个命令内部并行化，而是提供一个通用的 `parallel` 子命令。
+    *   **Chunking**: 自动将文件分块，或按文件分发任务。
+*   **对 `tva` 的启示**:
+    *   `tva` 目前是单线程流式处理。
+    *   **建议**: 实现 `tva parallel` 命令，负责将大文件切分 (利用 `split` 逻辑) 并启动多个子进程/线程处理，最后聚合结果。
 
-1.  **移除 `collect()`**: 改用迭代器处理字段，避免为每行分配 `Vec`。
-2.  **实现提前退出**: 在迭代过程中，一旦获取了所有目标字段（且没有 `--rest` 或排除逻辑），立即停止解析当前行。
-3.  **复用缓冲区**: 考虑复用行缓冲区或字段缓冲区，减少内存抖动。
+#### 2. 高效的 Join 内存布局 (Memory-Efficient Join)
 
-## 自研 TSV 解析器 (Rationale for Custom TSV Parser)
+*   **实现**: `cmd/join.rs`
+*   **机制**: 使用 "Arena + Linked List" 模式。
+    *   `Vec<IndexNode>` 存储所有数据（扁平化，内存连续）。
+    *   `HashMap` 仅存储索引，指向 `Vec` 中的链表头尾。
+    *   `IndexNode` 结构体仅包含 `record` 和 `next_index`。
+*   **对 `tva` 的启示**:
+    *   目前 `tva join` 使用 `HashMap<String, Vec<String>>`，每个 Key 的每行数据都分配单独的 `Vec`，导致内存碎片。
+    *   **建议**: 采用这种紧凑结构，极大减少内存分配开销。
 
-通过分析 `rust-csv` 和 `simd-csv`，我们发现通用的 CSV 解析器为了兼容 RFC 4180 (处理引号、转义、多行记录等) 引入了复杂的不可避免的开销。
+#### 3. 表达式引擎 (Expression Engine)
+
+*   **实现**: `src/moonblade`
+*   **机制**: 内置基于 `pest` 的解释器，支持类似 Excel 的表达式。
+*   **对 `tva` 的启示**:
+    *   `tva` 目前的 `filter` 和 `select` 逻辑是硬编码的。
+    *   **建议**: 未来可引入轻量级表达式引擎（如 `rhai` 或手写递归下降解析器）以支持复杂计算（如 `if(a>0, b, c)`）。
+
+#### 4. 随机访问与索引 (Random Access & Indexing)
+
+*   **实现**: `src/config.rs` & `bgzip`
+*   **机制**: 利用 `.gzi` 索引文件（BGZF 格式），支持不解压整个文件的情况下 Seek 到 Gzip 中间。
+*   **对 `tva` 的启示**:
+    *   对于大文件（GB/TB 级）的并行处理至关重要。
+    *   **建议**: 处理超大压缩 TSV 时，支持 BGZF 索引是实现并行切片 (`slice`) 和随机采样 (`sample`) 的基础。
+
+---
+
+## 自研 TSV 解析器设计
+
 鉴于 TSV (Tab-Separated Values) 的格式极其简单，我们可以实现一个专用、高性能的 TSV 解析器。
 
 ### 1. 格式差异分析
@@ -159,12 +187,7 @@ if (fieldReordering.allFieldsFilled) break;
 | **转义** | `""` 转义引号 | 无 (或 C 风格 `\t`) | TSV 无需处理 `""` -> `"` 的内存拷贝/重写，支持真正的零拷贝切片。 |
 | **换行** | 字段内可含换行 | **不允许** | TSV 保证 `\n` 永远代表记录结束。可并行分块查找 `\n`。 |
 
-### 2. 现有实现开销
-
-*   **rust-csv**: 使用 DFA (确定性有限自动机) 逐字节扫描。虽然优化到了极致，但仍需为每个字节检查 `Transition Table`，处理引号状态和转义逻辑。对于不含引号的 TSV，这些检查是多余的。
-*   **simd-csv**: 混合了 SIMD 和状态机。虽然它使用 SIMD 快速跳过非特殊字符，但一旦遇到特殊字符，仍需进入状态机判断是否在引号内。
-
-### 3. 自研 TSV 解析器设计思路
+### 2. 自研 TSV 解析器设计思路
 
 目标：实现比 `rust-csv` 快，且比 `simd-csv` 更轻量的专用 TSV 解析。
 
@@ -192,49 +215,18 @@ if (fieldReordering.allFieldsFilled) break;
     }
     ```
 
-## 性能基准测试结果 (parse_benchmark)
+### 3. 我们可以超越它吗?
 
-我们在 `benches/parse_benchmark.rs` 中对比了不同解析策略的性能。
-数据样本: `1\tJohn\tDoe\t30\tNew York\n...` (3行数据重复 1000 次)
+*   **TSV 的优势**: TSV **没有引号**。这意味着我们不需要像 `simd-csv` 那样在 `memchr` 命中后还要检查是否是引号，也不需要维护 `Quoted` 状态。
+*   **更简单的 SIMD**: 我们只需要查找 `\t` 和 `\n`。这比 CSV 的 3-4 个特殊字符更少，寄存器压力更小。
+*   **理论极限**: 如果 `simd-csv` 要处理引号逻辑还能跑 1.12 GiB/s，那么纯粹查找 `\t` 和 `\n` 的 TSV 解析器理论上应该能达到内存带宽的极限（或至少 2-3 GiB/s）。
 
-| 策略 | 平均耗时 | 吞吐量 | 说明 |
-| :--- | :--- | :--- | :--- |
-| **simd-csv** | **67 µs** | **1.05 GiB/s** | 混合 SIMD 状态机，性能天花板 |
-| **Tva TsvReader** | **72 µs** | **1.00 GiB/s** | **当前实现**: 零拷贝 Reader + SIMD (memchr) |
-| **Memchr Reused Buffer** | 82 µs | 878 MiB/s | 逐行 memchr，受限于函数调用开销 |
-| **Chunked Reader Sim** | 83 µs | 870 MiB/s | 模拟分块读取 |
-| **Memchr2 SIMD Loop** | 85 µs | 849 MiB/s | 纯 SIMD 扫描 `\t` 和 `\n` |
-| **TsvRecord Struct** | 95 µs | 756 MiB/s | 封装好的零拷贝结构体 |
-| **csv crate** | 111 µs | 652 MiB/s | 经典的 DFA 状态机，正确性基准 |
-| **Manual Byte Loop** | 164 µs | 440 MiB/s | 标量循环 |
-| **Std Split Iterator** | 181 µs | 399 MiB/s | Rust 标准库 `split` |
-| **Memchr Inline Loop** | 197 µs | 366 MiB/s | 受限于 `reader.lines()` 分配 |
-| **Naive Split** | 443 µs | 163 MiB/s | 原始实现，最慢 |
+**行动项**:
+我们不需要复杂的混合状态机。我们只需要一个极致优化的 `memchr2(b'\t', b'\n')` 循环，配合 Buffer 管理。我们的 `Memchr Reused Buffer` (814 MiB/s) 已经验证了这一点，差距仅在于 `simd-csv` 可能使用了更底层的 SIMD 优化或更高效的 I/O 缓冲。
 
-**结论**:
-1.  **性能飞跃**: 我们的新实现 `Tva TsvReader` (1.00 GiB/s) 比旧版 (`Memchr Inline Loop`) 快了 **2.6 倍**。
-2.  **追平标杆**: 目前性能已经达到 `simd-csv` 的 **95%**。考虑到 `simd-csv` 使用了大量手写 SIMD 汇编和 `unsafe` 技巧，而我们主要依赖安全的 `memchr` 和逻辑优化，这个结果非常出色。
-3.  **瓶颈分析**: 目前的瓶颈已经从 "内存分配/IO" 转移到了 "字段遍历"（即查找 `\t` 的循环）。如果不做字段分割（仅读取行），我们的 Reader 吞吐量可达 **4.0 GiB/s**。
+---
 
-**下一步行动**:
-目前的核心 Reader 已经足够快，接下来的重点是将这个高性能 Reader 应用到更多子命令中（如 `filter`, `stats` 等），并确保在处理真实大文件时的稳定性。
-
-## 性能优化 (Performance Optimization)
-
-### 已完成的优化 (Completed Optimizations)
-
-我们已经完成了最初设定的第一阶段和第二阶段优化目标，成功将 `tva` 的性能提升至与 `simd-csv` 相当的水平。
-
-1.  **自研零拷贝 TSV 解析器 (`Tva TsvReader`)**:
-    *   **实现**: 基于 `memchr` 的纯字节扫描，无状态机开销。
-    *   **零拷贝**: 直接在内部 Buffer 上切分字段，返回 `&[u8]`，避免了 `String` 和 `Vec` 的分配。
-    *   **Early Exit**: 在 `select` 命令中，一旦收集齐所需字段，立即停止解析当前行。
-2.  **移除 I/O 瓶颈**:
-    *   实现了内部 Buffer 管理，绕过了 `BufReader::read_until` 的隐式拷贝。
-3.  **算法优化**:
-    *   `select` 命令现在使用预计算的 `SelectPlan`，避免了每行的重复查找。
-
-### 性能优化路线图 (Future Optimization Roadmap)
+## 性能优化路线图
 
 **目标**: 在单线程模式下，通过极致的指令集优化和内存管理，超越通用解析器的极限。
 
@@ -246,106 +238,45 @@ if (fieldReordering.allFieldsFilled) break;
 3.  **Profile-Guided Optimization (PGO)**:
     *   使用真实数据收集性能剖析信息，指导编译器进行分支预测优化和函数内联。
 
-## 深度分析: 技术选型背景
+---
 
-尽管 `csv` crate 基于 DFA 状态机，理论上比纯 SIMD 慢，但其 700 MiB/s 的性能仍令人印象深刻。分析其源码 (`rust-csv-master/csv-core/src/reader.rs`) 揭示了其性能秘密：
+## 计划中的功能
 
-### 1. 极其紧凑的 DFA 状态表 (Compact DFA Table)
+### 核心功能增强 (Core Enhancements)
 
-*   **问题**: 朴素的 DFA 表大小为 `(状态数) * 256`。对于 CSV 这种只有几个特殊字符的格式，这是巨大的浪费且缓存不友好。
-*   **优化**: `csv` crate 将所有字节映射为 **7 个等价类 (Equivalence Classes)**:
-    1.  Delimiter (分隔符)
-    2.  Terminator (行结束符)
-    3.  CR, LF (如果 Terminator 是 CRLF)
-    4.  Quote (引号)
-    5.  Escape (转义符)
-    6.  Comment (注释符)
-    7.  **Everything Else (其他所有字节)**
-*   **结果**: 状态表大小从 `N * 256` 缩减为 `N * 7`。这使得整个状态表可以完全放入 L1 Cache，极大减少了内存访问延迟。
+*   **索引机制 (Indexing Mechanism)**:
+    *   现状: `tva` 目前主要是基于流的。
+    *   提案: 考虑为 `tva` 引入可选的索引机制（参考 `qsv` 的 `.idx`），特别是对于需要多次传递的大文件，以支持瞬间切片和随机访问。
+*   **Apply 命令 (复杂转换)**:
+    *   参考: `qsv apply` 支持基于字符串、日期、数学甚至 NLP 的列转换。
+    *   提案: 增强 `select` 的表达式能力，或添加 `apply` 命令处理 `datefmt` 和 `regex_replace`。
 
-### 2. 批量处理与分支消除 (Branch Elimination)
+### 数据重塑 (Data Reshaping) - Tidyr 对等功能
 
-在 `read_field_dfa` 循环中：
-```rust
-while nin < input.len() && nout < output.len() {
-    let b = input[nin];
-    // 查表，几乎无分支
-    let (s, has_out) = self.dfa.get_output(state, b);
-    state = s;
-    if has_out {
-        output[nout] = b;
-        nout += 1;
-    }
-    nin += 1;
-}
-```
-*   它不进行逐个 `if b == b','` 的判断，而是查表。CPU 的分支预测器在这里几乎不会失败，因为大部分字节都属于 "Everything Else" 类，状态转换非常规律。
+*   **多度量透视 (Multi-measure Pivoting)**:
+    *   `longer`: 支持在 `--names-to` 中使用 `.value` 哨兵，同时透视到多个值列。
+    *   `wider`: 允许 `--values-from` 接受多个列。
+*   **列拆分/合并**:
+    *   `unpack`: 使用分隔符或正则将单个字符串列拆分为多个列。
+    *   `pack`: 使用模板或分隔符将多个列合并为单个字符串列。
+*   **致密化 (Densification)**:
+    *   `complete`: 暴露数据因子的缺失组合。
 
-### 3. SIMD 还是标量?
+### 数据操作 (Data Manipulation) - dplyr 核心模式
 
-`csv-core` 主要是标量实现。它之所以快，是因为它**不分配内存**且**缓存极其友好**。
-这给我们一个警示：`TsvSplitter` (memchr) 虽用了 SIMD，但如果迭代器本身的函数调用开销 (Function Call Overhead) 或状态维护 (State Management) 过于复杂，反而可能不如一个紧凑的标量循环。
+*   **安全连接 (Safe Joins)**:
+    *   行动: 添加 `--relationship` 标志（例如 `one-to-one`, `many-to-one`）在连接时验证键。
+*   **Tidy Selection DSL**:
+    *   行动: 增强 `src/libs/fields.rs` 以支持正则 (`matches('^date_')`)、谓词 (`where(is_numeric)`) 和集合操作 (`-colA`)。
+*   **窗口函数 (Window Functions)**:
+    *   行动: 为 `filter` 和 `stats` 实现滑动窗口逻辑（例如，组内 `filter --expr "val > mean(val)"`）。
+*   **高强度测试 (Torture Testing)**:
+    *   行动: 创建 `tests/torture/` 用于模糊测试输入，确保零 panic。
 
-**对 tva 的修正策略**:
-我们目前的 `TsvSplitter` 还是一个迭代器，每次 `next()` 都有开销。
-为了超越 `csv` crate，我们需要像它一样实现一个**紧凑的内部循环**，或者一次性处理多个字段，减少函数调用边界。
+### 扩展统计 (Extended Statistics)
 
-### 4. buffer?
+*   向 `stats` 添加 `skewness`, `kurtosis`。
 
-这是一个非常反直觉的现象。`csv` crate 使用了复杂的状态机，而我们的 `Memchr Reused Buffer` 只是简单地扫描字节。理论上我们应该更快。
+### 缺失值填充 (Fill Missing Values)
 
-原因在于 **I/O 锁与 buffer 拷贝**：
-1.  **std::io::BufReader::read_until**:
-    *   这个函数内部会进行内存拷贝。它将 `BufReader` 内部 buffer 的数据 `memcpy` 到用户提供的 `Vec<u8>` 中。
-    *   对于每一行数据，我们都付出了一次额外的内存拷贝代价。
-2.  **csv crate 的零拷贝黑魔法**:
-    *   `csv` crate 的 `ByteRecord` 设计非常精妙。它直接操作内部 buffer，或者在必要时才进行拷贝。
-    *   更重要的是，它的状态机是直接在 buffer 上运行的，最大限度地减少了数据移动。
-
-**解决方案**:
-要超越 `csv` crate，我们不能使用标准的 `BufReader` 接口（因为它强制拷贝）。我们需要：
-*   **直接管理 Buffer**: 手动填充 buffer，直接在 buffer 上解析，只在 buffer 耗尽时移动剩余数据并再次填充。
-*   或者使用 `memmap` 将文件映射到内存，彻底消除用户态拷贝。
-
-## 深度分析: simd-csv 为何最快? (Deep Dive into simd-csv)
-
-`simd-csv` 能够达到 1.12 GiB/s 的惊人速度，比 `csv` crate 快 60% 以上。通过分析其源码，我们发现了以下关键技术：
-
-### 1. 混合架构 (Hybrid Architecture)
-
-`simd-csv` 并不是纯 SIMD 解析器，而是一个混合体：
-*   **CoreReader (core.rs)**: 维护状态机 (Unquoted, Quoted, Quote)。
-*   **Searcher (searcher.rs)**: 使用 SIMD (`memchr` 或 SSE2/AVX2 intrinsic) 快速跳过普通字符。
-
-### 2. Searcher 的核心逻辑
-
-在 `CoreReader::split_record` 中：
-```rust
-Unquoted => {
-    // 快速路径：跳过非特殊字符
-    // memchr2(delimiter, newline, ...)
-    if let Some(offset) = memchr2(b'\n', self.quote, &input[pos..]) {
-        pos += offset;
-        // ... 处理特殊字符
-    }
-}
-```
-它利用 SIMD 指令一次性扫描多个特殊字符（分隔符、换行符、引号）。这比逐字节查表（`csv` crate 的做法）更快，因为在大多数 CSV 数据中，特殊字符是稀疏的。
-
-### 3. SSE2/AVX2 手写 Intrinsic
-
-`searcher.rs` 中包含了手写的 SSE2 实现：
-*   加载 16 字节到向量寄存器 (`_mm_loadu_si128`)。
-*   并行比较分隔符、换行符、引号 (`_mm_cmpeq_epi8`)。
-*   使用 `_mm_movemask_epi8` 将比较结果提取为位掩码。
-*   使用 `trailing_zeros` 快速找到第一个匹配位置。
-
-### 4. 我们可以超越它吗?
-
-*   **TSV 的优势**: TSV **没有引号**。这意味着我们不需要像 `simd-csv` 那样在 `memchr` 命中后还要检查是否是引号，也不需要维护 `Quoted` 状态。
-*   **更简单的 SIMD**: 我们只需要查找 `\t` 和 `\n`。这比 CSV 的 3-4 个特殊字符更少，寄存器压力更小。
-*   **理论极限**: 如果 `simd-csv` 要处理引号逻辑还能跑 1.12 GiB/s，那么纯粹查找 `\t` 和 `\n` 的 TSV 解析器理论上应该能达到内存带宽的极限（或至少 2-3 GiB/s）。
-
-**行动项**:
-我们不需要复杂的混合状态机。我们只需要一个极致优化的 `memchr2(b'\t', b'\n')` 循环，配合 Buffer 管理。我们的 `Memchr Reused Buffer` (814 MiB/s) 已经验证了这一点，差距仅在于 `simd-csv` 可能使用了更底层的 SIMD 优化或更高效的 I/O 缓冲。
-
+*   `fill`: 实现前向/后向填充以及常数填充。
