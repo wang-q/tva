@@ -1,5 +1,5 @@
 use clap::*;
-use std::io::{BufRead, Write};
+use std::io::Write;
 
 pub fn make_subcommand() -> Command {
     Command::new("reverse")
@@ -37,25 +37,36 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let header_mode = args.get_flag("header");
-    let mut all_lines: Vec<String> = Vec::new();
+    let mut all_lines: Vec<Vec<u8>> = Vec::new();
     let mut header_printed = false;
 
-    for input in crate::libs::io::input_sources(&infiles) {
-        let reader = input.reader;
-        for (i, line) in reader.lines().enumerate() {
-            let line = line?;
-            if header_mode && !header_printed && i == 0 {
-                writeln!(writer, "{}", line)?;
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+        if !input.is_stdin && !crate::libs::io::has_nonempty_line(&input.name)? {
+            continue;
+        }
+
+        let mut reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
+        let mut file_line_num = 0;
+
+        reader.for_each_record(|record| {
+            file_line_num += 1;
+            if header_mode && !header_printed && file_line_num == 1 {
+                writer.write_all(record)?;
+                writer.write_all(b"\n")?;
                 header_printed = true;
             } else {
-                all_lines.push(line);
+                all_lines.push(record.to_vec());
             }
-        }
+            Ok(())
+        })?;
     }
 
+    // Reverse in place
     all_lines.reverse();
+    
     for line in all_lines {
-        writeln!(writer, "{}", line)?;
+        writer.write_all(&line)?;
+        writer.write_all(b"\n")?;
     }
 
     Ok(())
