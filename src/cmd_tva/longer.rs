@@ -3,7 +3,7 @@ use crate::libs::tsv::fields::Header;
 use clap::*;
 use regex::Regex;
 use std::collections::HashSet;
-use std::io::{BufRead, Write};
+use std::io::Write;
 
 pub fn make_subcommand() -> Command {
     Command::new("longer")
@@ -93,30 +93,24 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut melt_indices: Option<Vec<usize>> = None;
     let mut id_indices: Option<Vec<usize>> = None;
-    let mut header_fields: Option<Vec<String>> = None;
-    let mut buffer: Vec<String> = Vec::new();
+    // Pre-computed bytes for the "name" column(s) for each melt index
+    // Each entry corresponds to a melt_index and contains the tab-joined name columns as bytes
+    let mut melt_name_bytes: Option<Vec<Vec<u8>>> = None;
 
-    for infile in &infiles {
-        let is_stdin = infile == "stdin";
-        if !is_stdin && !crate::libs::io::has_nonempty_line(infile)? {
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+        let mut reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
+
+        // Read header
+        let header_bytes_opt = reader.read_header()?;
+        if header_bytes_opt.is_none() {
             continue;
         }
-
-        let mut reader = crate::libs::io::reader(infile);
-
-        // Read header or first line
-        let mut line = String::new();
-        if reader.read_line(&mut line)? == 0 {
-            continue;
-        }
-        if line.ends_with('\n') {
-            line.pop();
-            if line.ends_with('\r') {
-                line.pop();
-            }
-        }
-        let current_header_fields: Vec<String> =
-            line.split('\t').map(|s| s.to_string()).collect();
+        let header_bytes = header_bytes_opt.unwrap();
+        let current_header_fields: Vec<String> = String::from_utf8_lossy(&header_bytes)
+            .trim_end_matches(&['\r', '\n'][..])
+            .split('\t')
+            .map(|s| s.to_string())
+            .collect();
 
         // Initialize indices from the first file
         if melt_indices.is_none() {
@@ -162,146 +156,120 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             new_header_fields.push(values_to.clone());
             writeln!(writer, "{}", new_header_fields.join("\t"))?;
 
+            // Pre-calculate name column bytes for each melt index
+            let mut name_bytes_vec = Vec::with_capacity(m_indices.len());
+            for &idx in &m_indices {
+                let mut name_part = current_header_fields[idx].as_str();
+                if let Some(prefix) = names_prefix {
+                    if let Some(stripped) = name_part.strip_prefix(prefix) {
+                        name_part = stripped;
+                    }
+                }
+
+                let mut computed_name = String::new();
+                if let Some(regex) = &names_pattern {
+                     if let Some(caps) = regex.captures(name_part) {
+                        for i in 1..=names_to.len() {
+                            if i > 1 {
+                                computed_name.push('\t');
+                            }
+                            if let Some(m) = caps.get(i) {
+                                computed_name.push_str(m.as_str());
+                            }
+                        }
+                    } else {
+                        // Fallback: write original name in first col, tabs for others
+                        computed_name.push_str(name_part);
+                        for _ in 1..names_to.len() {
+                             computed_name.push('\t');
+                        }
+                    }
+                } else if let Some(sep) = names_sep {
+                    let parts: Vec<&str> = name_part.split(sep).collect();
+                    for i in 0..names_to.len() {
+                        if i > 0 {
+                            computed_name.push('\t');
+                        }
+                        if i < parts.len() {
+                            computed_name.push_str(parts[i]);
+                        }
+                    }
+                } else {
+                    computed_name.push_str(name_part);
+                }
+                name_bytes_vec.push(computed_name.into_bytes());
+            }
+
             melt_indices = Some(m_indices);
             id_indices = Some(i_indices);
-            header_fields = Some(current_header_fields);
-        } else {
-            // For subsequent files, just skip the header line
-            // The reader logic already consumed the first line into `line`
-            // We do nothing with `line` here, effectively skipping it.
+            melt_name_bytes = Some(name_bytes_vec);
         }
 
         let m_indices = melt_indices.as_ref().unwrap();
         let i_indices = id_indices.as_ref().unwrap();
-        let h_fields = header_fields.as_ref().unwrap();
-
+        let name_bytes = melt_name_bytes.as_ref().unwrap();
+        let mut field_buf: Vec<usize> = Vec::with_capacity(current_header_fields.len());
+        
         // Process remaining rows
-        for line in reader.lines() {
-            let line = line?;
-            let config = ProcessRowConfig {
-                m_indices,
-                i_indices,
-                h_fields,
-                drop_na,
-                names_prefix,
-                names_sep,
-                names_pattern: names_pattern.as_ref(),
-                names_to_len: names_to.len(),
+        reader.for_each_record(|line| {
+            if line.is_empty() {
+                return Ok(());
+            }
+
+            // Split line into fields (store indices in buffer)
+            field_buf.clear();
+            for pos in memchr::memchr_iter(b'\t', line) {
+                field_buf.push(pos);
+            }
+            let ends = &field_buf;
+            let len = ends.len() + 1;
+
+            // Helper to get field bytes
+            let get_field = |idx: usize| -> &[u8] {
+                if idx >= len {
+                    return b"";
+                }
+                let end = if idx < ends.len() { ends[idx] } else { line.len() };
+                let start = if idx == 0 { 0 } else { ends[idx - 1] + 1 };
+                &line[start..end]
             };
-            process_row(&line, &mut writer, &config, &mut buffer)?;
-        }
+
+            // Iterate over melt columns
+            for (k, &melt_idx) in m_indices.iter().enumerate() {
+                let value = get_field(melt_idx);
+                
+                if drop_na && value.is_empty() {
+                    continue;
+                }
+
+                // Write ID columns
+                for (j, &id_idx) in i_indices.iter().enumerate() {
+                    if j > 0 {
+                        writer.write_all(b"\t")?;
+                    }
+                    writer.write_all(get_field(id_idx))?;
+                }
+
+                // If we wrote ID columns, add tab separator
+                if !i_indices.is_empty() {
+                    writer.write_all(b"\t")?;
+                }
+
+                // Write name column(s) (pre-calculated)
+                writer.write_all(&name_bytes[k])?;
+
+                // Write value
+                writer.write_all(b"\t")?;
+                writer.write_all(value)?;
+                writer.write_all(b"\n")?;
+            }
+
+            Ok(())
+        })?;
     }
 
     Ok(())
 }
 
-struct ProcessRowConfig<'a> {
-    m_indices: &'a [usize],
-    i_indices: &'a [usize],
-    h_fields: &'a [String],
-    drop_na: bool,
-    names_prefix: Option<&'a String>,
-    names_sep: Option<&'a String>,
-    names_pattern: Option<&'a Regex>,
-    names_to_len: usize,
-}
+// Struct ProcessRowConfig and fn process_row are removed as they are inlined
 
-fn process_row<W: Write>(
-    line: &str,
-    writer: &mut W,
-    config: &ProcessRowConfig,
-    buffer: &mut Vec<String>,
-) -> anyhow::Result<()> {
-    buffer.clear();
-    for field in line.split('\t') {
-        buffer.push(field.to_string());
-    }
-    let fields = buffer;
-
-    // Pre-build id part of the output line
-    let mut id_parts: Vec<&str> = Vec::with_capacity(config.i_indices.len());
-    for &i in config.i_indices {
-        if i < fields.len() {
-            id_parts.push(&fields[i]);
-        } else {
-            id_parts.push("");
-        }
-    }
-
-    for &melt_idx in config.m_indices {
-        let value = if melt_idx < fields.len() {
-            &fields[melt_idx]
-        } else {
-            ""
-        };
-
-        if config.drop_na && value.is_empty() {
-            continue;
-        }
-
-        // Write output row
-        for (j, part) in id_parts.iter().enumerate() {
-            if j > 0 {
-                write!(writer, "\t")?;
-            }
-            write!(writer, "{}", part)?;
-        }
-        // If there were no id columns, we don't need a leading tab
-        if !id_parts.is_empty() {
-            write!(writer, "\t")?;
-        }
-
-        // Write variable name(s) and value
-        let mut name_part = config.h_fields[melt_idx].as_str();
-        if let Some(prefix) = config.names_prefix {
-            if let Some(stripped) = name_part.strip_prefix(prefix) {
-                name_part = stripped;
-            }
-        }
-
-        if let Some(regex) = config.names_pattern {
-            // Regex extraction
-            if let Some(caps) = regex.captures(name_part) {
-                for i in 1..=config.names_to_len {
-                    if i > 1 {
-                        write!(writer, "\t")?;
-                    }
-                    if let Some(m) = caps.get(i) {
-                        write!(writer, "{}", m.as_str())?;
-                    } else {
-                        // Capture group missing, write empty? or error?
-                        // Writing empty is safer for data loss prevention
-                    }
-                }
-            } else {
-                // No match, write original name or empty?
-                // R's pivot_longer fills with NA if no match. We can write the name in first col and empty in others?
-                // Or just write the name in the first column
-                write!(writer, "{}", name_part)?;
-                for _ in 1..config.names_to_len {
-                    write!(writer, "\t")?;
-                }
-            }
-        } else if let Some(sep) = config.names_sep {
-            // Separator split
-            let parts: Vec<&str> = name_part.split(sep).collect();
-            for i in 0..config.names_to_len {
-                if i > 0 {
-                    write!(writer, "\t")?;
-                }
-                if i < parts.len() {
-                    write!(writer, "{}", parts[i])?;
-                } else {
-                    // Not enough parts
-                }
-            }
-        } else {
-            // Default behavior (single name column)
-            write!(writer, "{}", name_part)?;
-        }
-
-        write!(writer, "\t{}", value)?;
-        writeln!(writer)?;
-    }
-    Ok(())
-}
