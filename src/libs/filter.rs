@@ -46,13 +46,13 @@
 //! assert!(test.eval_row(&row));
 //! ```
 
-use regex::Regex;
-use unicode_segmentation::UnicodeSegmentation;
-use std::io::Write;
+use crate::libs::io::map_io_err;
+use crate::libs::tsv::record::{Row, StrSliceRow, TsvRow};
 use anyhow::Result;
 use memchr::memchr_iter;
-use crate::libs::io::map_io_err;
-use crate::libs::tsv::record::{Row, TsvRow, StrSliceRow};
+use regex::Regex;
+use std::io::Write;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Default)]
 pub struct FilterConfig {
@@ -122,7 +122,8 @@ pub fn run_filter<W: Write>(
         None
     } else {
         Some(
-            build_tests(None, config.delimiter, config.as_spec_config()).map_err(|e| anyhow::anyhow!(e))?,
+            build_tests(None, config.delimiter, config.as_spec_config())
+                .map_err(|e| anyhow::anyhow!(e))?,
         )
     };
 
@@ -141,8 +142,10 @@ pub fn run_filter<W: Write>(
             if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
                 let header_line =
                     std::str::from_utf8(&header_bytes).map_err(map_io_err)?;
-                let header =
-                    crate::libs::tsv::fields::Header::from_line(header_line, config.delimiter);
+                let header = crate::libs::tsv::fields::Header::from_line(
+                    header_line,
+                    config.delimiter,
+                );
 
                 if !header_written && !config.count_only {
                     if let Some(ref lbl) = config.label_header {
@@ -160,8 +163,12 @@ pub fn run_filter<W: Write>(
                     header_written = true;
                 }
 
-                let tests = build_tests(Some(&header), config.delimiter, config.as_spec_config())
-                    .map_err(|e| anyhow::anyhow!(e))?;
+                let tests = build_tests(
+                    Some(&header),
+                    config.delimiter,
+                    config.as_spec_config(),
+                )
+                .map_err(|e| anyhow::anyhow!(e))?;
                 max_field_for_rows =
                     tests.iter().map(|t| t.max_field_index()).max().unwrap_or(0);
                 tests_with_header = Some(tests);

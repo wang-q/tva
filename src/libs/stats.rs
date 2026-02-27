@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::libs::tsv::record::Row;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum OpKind {
@@ -226,8 +226,7 @@ impl StatsProcessor {
     }
     fn add_string_values(&mut self, idx: usize) {
         if !self.string_values_map.contains_key(&idx) {
-            self.string_values_map
-                .insert(idx, self.num_string_values);
+            self.string_values_map.insert(idx, self.num_string_values);
             self.num_string_values += 1;
         }
     }
@@ -277,7 +276,7 @@ impl StatsProcessor {
                     agg.sum_logs[slot] += val.ln();
                     // Update count if not already updated by sums
                     if !self.sum_map.contains_key(&idx) {
-                         if let Some(&count_slot) = self.count_map.get(&idx) {
+                        if let Some(&count_slot) = self.count_map.get(&idx) {
                             agg.field_counts[count_slot] += 1;
                         }
                     }
@@ -291,8 +290,10 @@ impl StatsProcessor {
                 if val != 0.0 {
                     agg.sum_invs[slot] += 1.0 / val;
                     // Update count if not updated by sum or log
-                    if !self.sum_map.contains_key(&idx) && !self.sum_log_map.contains_key(&idx) {
-                         if let Some(&count_slot) = self.count_map.get(&idx) {
+                    if !self.sum_map.contains_key(&idx)
+                        && !self.sum_log_map.contains_key(&idx)
+                    {
+                        if let Some(&count_slot) = self.count_map.get(&idx) {
                             agg.field_counts[count_slot] += 1;
                         }
                     }
@@ -422,11 +423,14 @@ impl StatsProcessor {
                                 / (count as f64 - 1.0);
                             match op.kind {
                                 OpKind::Variance => values.push(variance.to_string()),
-                                OpKind::Stdev => values.push(variance.sqrt().to_string()),
+                                OpKind::Stdev => {
+                                    values.push(variance.sqrt().to_string())
+                                }
                                 OpKind::CV => {
                                     let mean = sum / count as f64;
                                     if mean != 0.0 {
-                                        values.push((variance.sqrt() / mean).to_string());
+                                        values
+                                            .push((variance.sqrt() / mean).to_string());
                                     } else {
                                         values.push("nan".to_string());
                                     }
@@ -466,14 +470,29 @@ impl StatsProcessor {
                         if !vals.is_empty() {
                             let mut sorted_vals = vals.clone();
                             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                            
+
                             match op.kind {
-                                OpKind::Median => values.push(Aggregator::calculate_quantile(&sorted_vals, 0.5).to_string()),
-                                OpKind::Q1 => values.push(Aggregator::calculate_quantile(&sorted_vals, 0.25).to_string()),
-                                OpKind::Q3 => values.push(Aggregator::calculate_quantile(&sorted_vals, 0.75).to_string()),
+                                OpKind::Median => values.push(
+                                    Aggregator::calculate_quantile(&sorted_vals, 0.5)
+                                        .to_string(),
+                                ),
+                                OpKind::Q1 => values.push(
+                                    Aggregator::calculate_quantile(&sorted_vals, 0.25)
+                                        .to_string(),
+                                ),
+                                OpKind::Q3 => values.push(
+                                    Aggregator::calculate_quantile(&sorted_vals, 0.75)
+                                        .to_string(),
+                                ),
                                 OpKind::IQR => {
-                                    let q1 = Aggregator::calculate_quantile(&sorted_vals, 0.25);
-                                    let q3 = Aggregator::calculate_quantile(&sorted_vals, 0.75);
+                                    let q1 = Aggregator::calculate_quantile(
+                                        &sorted_vals,
+                                        0.25,
+                                    );
+                                    let q3 = Aggregator::calculate_quantile(
+                                        &sorted_vals,
+                                        0.75,
+                                    );
                                     values.push((q3 - q1).to_string());
                                 }
                                 _ => unreachable!(),
@@ -485,31 +504,32 @@ impl StatsProcessor {
                 }
                 OpKind::Mad => {
                     if let Some(idx) = op.field_idx {
-                         let vals = &agg.values[self.values_map[&idx]];
-                         if !vals.is_empty() {
-                             let mut sorted_vals = vals.clone();
-                             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                             let len = sorted_vals.len();
-                             let median = if len % 2 == 1 {
-                                 sorted_vals[len / 2]
-                             } else {
-                                 let mid = len / 2;
-                                 (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0
-                             };
-                             
-                             let mut deviations: Vec<f64> = vals.iter().map(|v| (v - median).abs()).collect();
-                             deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                             
-                             let mad = if len % 2 == 1 {
-                                 deviations[len / 2]
-                             } else {
-                                 let mid = len / 2;
-                                 (deviations[mid - 1] + deviations[mid]) / 2.0
-                             };
-                             values.push(mad.to_string());
-                         } else {
-                             values.push("nan".to_string());
-                         }
+                        let vals = &agg.values[self.values_map[&idx]];
+                        if !vals.is_empty() {
+                            let mut sorted_vals = vals.clone();
+                            sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                            let len = sorted_vals.len();
+                            let median = if len % 2 == 1 {
+                                sorted_vals[len / 2]
+                            } else {
+                                let mid = len / 2;
+                                (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0
+                            };
+
+                            let mut deviations: Vec<f64> =
+                                vals.iter().map(|v| (v - median).abs()).collect();
+                            deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+                            let mad = if len % 2 == 1 {
+                                deviations[len / 2]
+                            } else {
+                                let mid = len / 2;
+                                (deviations[mid - 1] + deviations[mid]) / 2.0
+                            };
+                            values.push(mad.to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
                     }
                 }
                 OpKind::First => {
@@ -524,7 +544,11 @@ impl StatsProcessor {
                 }
                 OpKind::NUnique => {
                     if let Some(idx) = op.field_idx {
-                        values.push(agg.value_counts[self.value_counts_map[&idx]].len().to_string());
+                        values.push(
+                            agg.value_counts[self.value_counts_map[&idx]]
+                                .len()
+                                .to_string(),
+                        );
                     }
                 }
                 OpKind::Mode => {
@@ -533,8 +557,10 @@ impl StatsProcessor {
                         if counts.is_empty() {
                             values.push("".to_string());
                         } else {
-                            let mut count_vec: Vec<(&String, &usize)> = counts.iter().collect();
-                            count_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+                            let mut count_vec: Vec<(&String, &usize)> =
+                                counts.iter().collect();
+                            count_vec
+                                .sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
                             values.push(count_vec[0].0.clone());
                         }
                     }
@@ -547,7 +573,12 @@ impl StatsProcessor {
                         } else {
                             let mut keys: Vec<&String> = counts.keys().collect();
                             keys.sort();
-                            values.push(keys.into_iter().map(|s| s.as_str()).collect::<Vec<&str>>().join(","));
+                            values.push(
+                                keys.into_iter()
+                                    .map(|s| s.as_str())
+                                    .collect::<Vec<&str>>()
+                                    .join(","),
+                            );
                         }
                     }
                 }
@@ -559,21 +590,22 @@ impl StatsProcessor {
                 }
                 OpKind::Rand => {
                     if let Some(idx) = op.field_idx {
-                         let vals = &agg.string_values[self.string_values_map[&idx]];
-                         if vals.is_empty() {
-                             values.push("".to_string());
-                         } else {
+                        let vals = &agg.string_values[self.string_values_map[&idx]];
+                        if vals.is_empty() {
+                            values.push("".to_string());
+                        } else {
                             let seed = std::time::SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap_or_default()
-                                .as_nanos() as u64;
+                                .as_nanos()
+                                as u64;
                             let mut x = seed;
                             x ^= x << 13;
                             x ^= x >> 7;
                             x ^= x << 17;
                             let index = (x as usize) % vals.len();
                             values.push(vals[index].clone());
-                         }
+                        }
                     }
                 }
             }
@@ -585,7 +617,7 @@ impl StatsProcessor {
 pub struct Aggregator {
     pub count: usize,
     pub sums: Vec<f64>,
-    pub sum_sqs: Vec<f64>, // For variance/stdev
+    pub sum_sqs: Vec<f64>,  // For variance/stdev
     pub sum_logs: Vec<f64>, // For geomean
     pub sum_invs: Vec<f64>, // For harmmean
     pub mins: Vec<f64>,

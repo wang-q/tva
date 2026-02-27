@@ -537,7 +537,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         let mut groups: HashMap<Vec<u8>, Aggregator> = HashMap::new();
 
         for (i, infile) in infiles.iter().enumerate() {
-            let mut file_reader = if i == 0 {
+            let file_reader = if i == 0 {
                 first_reader.take().unwrap()
             } else {
                 let mut r = crate::libs::io::reader(infile);
@@ -586,7 +586,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         let mut aggregator = processor.create_aggregator();
 
         for (i, infile) in infiles.iter().enumerate() {
-            let mut file_reader = if i == 0 {
+            let file_reader = if i == 0 {
                 first_reader.take().unwrap()
             } else {
                 let mut r = crate::libs::io::reader(infile);

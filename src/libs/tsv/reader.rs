@@ -3,8 +3,8 @@
 //! This module provides `TsvReader`, which manages an internal buffer to allow
 //! iterating over TSV records with minimal allocation.
 
-use std::io::{self, Read};
 use crate::libs::tsv::record::TsvRow;
+use std::io::{self, Read};
 
 /// A reader that efficiently scans for TSV records (lines) in a byte stream.
 pub struct TsvReader<R> {

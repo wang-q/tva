@@ -160,7 +160,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut header_written = false;
 
     for spec in specs {
-        let input_source = crate::libs::io::input_sources(&[spec.path.clone()]).pop().unwrap();
+        let input_source = crate::libs::io::input_sources(&[spec.path.clone()])
+            .pop()
+            .unwrap();
         let mut reader = TsvReader::new(input_source.reader);
         let mut line_number_in_file: u64 = 0;
 

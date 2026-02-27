@@ -1,10 +1,10 @@
 use clap::*;
 
 use crate::libs::filter::{
-    FilterConfig, NumericOp, NumericProp, PendingByteLen,
-    PendingCharLen, PendingFieldFieldAbsDiff, PendingFieldFieldNumeric,
-    PendingFieldFieldRelDiff, PendingFieldFieldStr, PendingNumeric, PendingNumericProp,
-    PendingRegex, PendingStrCmp, PendingStrEq, PendingSubstr,
+    FilterConfig, NumericOp, NumericProp, PendingByteLen, PendingCharLen,
+    PendingFieldFieldAbsDiff, PendingFieldFieldNumeric, PendingFieldFieldRelDiff,
+    PendingFieldFieldStr, PendingNumeric, PendingNumericProp, PendingRegex,
+    PendingStrCmp, PendingStrEq, PendingSubstr,
 };
 
 pub fn make_subcommand() -> Command {
@@ -1156,9 +1156,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let mut writer = crate::libs::io::writer("stdout");
-    crate::libs::filter::run_filter(&infiles, &mut writer, config).map_err(|e| {
-        anyhow::anyhow!("tva filter: {}", e)
-    })?;
+    crate::libs::filter::run_filter(&infiles, &mut writer, config)
+        .map_err(|e| anyhow::anyhow!("tva filter: {}", e))?;
 
     Ok(())
 }
