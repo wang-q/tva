@@ -1,12 +1,11 @@
 use clap::*;
 
 use crate::libs::filter::{
-    build_tests, FilterSpecConfig, NumericOp, NumericProp, PendingByteLen,
+    FilterConfig, NumericOp, NumericProp, PendingByteLen,
     PendingCharLen, PendingFieldFieldAbsDiff, PendingFieldFieldNumeric,
     PendingFieldFieldRelDiff, PendingFieldFieldStr, PendingNumeric, PendingNumericProp,
-    PendingRegex, PendingStrCmp, PendingStrEq, PendingSubstr, TestKind,
+    PendingRegex, PendingStrCmp, PendingStrEq, PendingSubstr,
 };
-use crate::libs::io::map_io_err;
 
 pub fn make_subcommand() -> Command {
     Command::new("filter")
@@ -1128,153 +1127,38 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         v
     };
 
+    let config = FilterConfig {
+        delimiter,
+        has_header,
+        use_or,
+        invert,
+        count_only,
+        line_buffered,
+        label_header,
+        label_pass_val,
+        label_fail_val,
+        empty_specs,
+        not_empty_specs,
+        blank_specs,
+        not_blank_specs,
+        numeric_specs,
+        str_cmp_specs,
+        char_len_specs,
+        byte_len_specs,
+        numeric_prop_specs,
+        str_eq_specs,
+        substr_specs,
+        regex_specs,
+        ff_numeric_specs,
+        ff_str_specs,
+        ff_absdiff_specs,
+        ff_reldiff_specs,
+    };
+
     let mut writer = crate::libs::io::writer("stdout");
-    let mut total_matched: u64 = 0;
-    let mut header_written = false;
-    let mut delim_buf = [0u8; 4];
-    let delim_bytes = delimiter.encode_utf8(&mut delim_buf).as_bytes();
-
-    let make_filter_config = || FilterSpecConfig {
-        empty_specs: &empty_specs,
-        not_empty_specs: &not_empty_specs,
-        blank_specs: &blank_specs,
-        not_blank_specs: &not_blank_specs,
-        numeric_specs: &numeric_specs,
-        str_cmp_specs: &str_cmp_specs,
-        char_len_specs: &char_len_specs,
-        byte_len_specs: &byte_len_specs,
-        numeric_prop_specs: &numeric_prop_specs,
-        str_eq_specs: &str_eq_specs,
-        substr_specs: &substr_specs,
-        regex_specs: &regex_specs,
-        ff_numeric_specs: &ff_numeric_specs,
-        ff_str_specs: &ff_str_specs,
-        ff_absdiff_specs: &ff_absdiff_specs,
-        ff_reldiff_specs: &ff_reldiff_specs,
-    };
-
-    let tests_without_header: Option<Vec<TestKind>> = if has_header {
-        None
-    } else {
-        Some(
-            build_tests(None, delimiter, make_filter_config()).unwrap_or_else(|e| {
-                arg_error(&e);
-            }),
-        )
-    };
-
-    for input in crate::libs::io::input_sources(&infiles) {
-        let mut tsv_reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
-        let mut header_struct: Option<crate::libs::tsv::fields::Header> = None;
-        let mut tests_with_header: Option<Vec<TestKind>> = None;
-
-        if has_header {
-            if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
-                let header_line =
-                    std::str::from_utf8(&header_bytes).map_err(map_io_err)?;
-                header_struct = Some(crate::libs::tsv::fields::Header::from_line(
-                    header_line,
-                    delimiter,
-                ));
-
-                if !header_written && !count_only {
-                    if let Some(ref lbl) = label_header {
-                        writer.write_all(&header_bytes)?;
-                        writer.write_all(delim_bytes)?;
-                        writer.write_all(lbl.as_bytes())?;
-                        writer.write_all(b"\n")?;
-                    } else {
-                        writer.write_all(&header_bytes)?;
-                        writer.write_all(b"\n")?;
-                    }
-                    if line_buffered {
-                        writer.flush()?;
-                    }
-                    header_written = true;
-                }
-
-                let tests =
-                    build_tests(header_struct.as_ref(), delimiter, make_filter_config())
-                        .unwrap_or_else(|e| arg_error(&e));
-                tests_with_header = Some(tests);
-            }
-        }
-
-        tsv_reader.for_each_record(|record| {
-            let tests: &[TestKind] = if has_header {
-                match tests_with_header.as_ref() {
-                    Some(v) => v.as_slice(),
-                    None => return Ok(()),
-                }
-            } else {
-                tests_without_header.as_ref().unwrap().as_slice()
-            };
-
-            let line_str = std::str::from_utf8(record).map_err(map_io_err)?;
-            let fields_vec: Vec<&str> = if line_str.is_empty() {
-                vec![""]
-            } else {
-                line_str.split(delimiter).collect()
-            };
-
-            let mut row_match = if tests.is_empty() {
-                true
-            } else if use_or {
-                let mut any = false;
-                for t in tests {
-                    if t.eval(&fields_vec) {
-                        any = true;
-                        break;
-                    }
-                }
-                any
-            } else {
-                let mut all = true;
-                for t in tests {
-                    if !t.eval(&fields_vec) {
-                        all = false;
-                        break;
-                    }
-                }
-                all
-            };
-
-            if invert {
-                row_match = !row_match;
-            }
-
-            if label_header.is_some() {
-                let val = if row_match {
-                    &label_pass_val
-                } else {
-                    &label_fail_val
-                };
-                writer.write_all(record)?;
-                writer.write_all(delim_bytes)?;
-                writer.write_all(val.as_bytes())?;
-                writer.write_all(b"\n")?;
-                if line_buffered {
-                    writer.flush()?;
-                }
-            } else if row_match {
-                if count_only {
-                    total_matched += 1;
-                } else {
-                    writer.write_all(record)?;
-                    writer.write_all(b"\n")?;
-                    if line_buffered {
-                        writer.flush()?;
-                    }
-                }
-            }
-
-            Ok(())
-        })?;
-    }
-
-    if count_only {
-        println!("{}", total_matched);
-    }
+    crate::libs::filter::run_filter(&infiles, &mut writer, config).map_err(|e| {
+        anyhow::anyhow!("tva filter: {}", e)
+    })?;
 
     Ok(())
 }

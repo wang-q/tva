@@ -17,23 +17,25 @@
 //!
 //! ```
 //! use tva::libs::filter::{TestKind, NumericOp};
+//! use tva::libs::tsv::record::StrSliceRow;
 //!
-//! let row = ["id", "10.5"];
+//! let row = StrSliceRow { fields: &["id", "10.5"] };
 //! let test = TestKind::NumericCmp {
 //!     fields: vec![2],
 //!     op: NumericOp::Gt,
 //!     value: 10.0,
 //! };
 //!
-//! assert!(test.eval(&row));
+//! assert!(test.eval_row(&row));
 //! ```
 //!
 //! Substring matching on a single row:
 //!
 //! ```
 //! use tva::libs::filter::TestKind;
+//! use tva::libs::tsv::record::StrSliceRow;
 //!
-//! let row = ["foo", "barbaz"];
+//! let row = StrSliceRow { fields: &["foo", "barbaz"] };
 //! let test = TestKind::StrIn {
 //!     fields: vec![2],
 //!     value: "bar".to_string(),
@@ -41,11 +43,225 @@
 //!     negated: false,
 //! };
 //!
-//! assert!(test.eval(&row));
+//! assert!(test.eval_row(&row));
 //! ```
 
 use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;
+use std::io::Write;
+use anyhow::Result;
+use memchr::memchr_iter;
+use crate::libs::io::map_io_err;
+use crate::libs::tsv::record::{Row, TsvRow, StrSliceRow};
+
+#[derive(Default)]
+pub struct FilterConfig {
+    pub delimiter: char,
+    pub has_header: bool,
+    pub use_or: bool,
+    pub invert: bool,
+    pub count_only: bool,
+    pub line_buffered: bool,
+    pub label_header: Option<String>,
+    pub label_pass_val: String,
+    pub label_fail_val: String,
+
+    pub empty_specs: Vec<String>,
+    pub not_empty_specs: Vec<String>,
+    pub blank_specs: Vec<String>,
+    pub not_blank_specs: Vec<String>,
+    pub numeric_specs: Vec<PendingNumeric>,
+    pub str_cmp_specs: Vec<PendingStrCmp>,
+    pub char_len_specs: Vec<PendingCharLen>,
+    pub byte_len_specs: Vec<PendingByteLen>,
+    pub numeric_prop_specs: Vec<PendingNumericProp>,
+    pub str_eq_specs: Vec<PendingStrEq>,
+    pub substr_specs: Vec<PendingSubstr>,
+    pub regex_specs: Vec<PendingRegex>,
+    pub ff_numeric_specs: Vec<PendingFieldFieldNumeric>,
+    pub ff_str_specs: Vec<PendingFieldFieldStr>,
+    pub ff_absdiff_specs: Vec<PendingFieldFieldAbsDiff>,
+    pub ff_reldiff_specs: Vec<PendingFieldFieldRelDiff>,
+}
+
+impl FilterConfig {
+    pub fn as_spec_config(&self) -> FilterSpecConfig<'_> {
+        FilterSpecConfig {
+            empty_specs: &self.empty_specs,
+            not_empty_specs: &self.not_empty_specs,
+            blank_specs: &self.blank_specs,
+            not_blank_specs: &self.not_blank_specs,
+            numeric_specs: &self.numeric_specs,
+            str_cmp_specs: &self.str_cmp_specs,
+            char_len_specs: &self.char_len_specs,
+            byte_len_specs: &self.byte_len_specs,
+            numeric_prop_specs: &self.numeric_prop_specs,
+            str_eq_specs: &self.str_eq_specs,
+            substr_specs: &self.substr_specs,
+            regex_specs: &self.regex_specs,
+            ff_numeric_specs: &self.ff_numeric_specs,
+            ff_str_specs: &self.ff_str_specs,
+            ff_absdiff_specs: &self.ff_absdiff_specs,
+            ff_reldiff_specs: &self.ff_reldiff_specs,
+        }
+    }
+}
+
+pub fn run_filter<W: Write>(
+    infiles: &[String],
+    writer: &mut W,
+    config: FilterConfig,
+) -> Result<()> {
+    let mut total_matched: u64 = 0;
+    let mut header_written = false;
+    let mut delim_buf = [0u8; 4];
+    let delim_bytes = config.delimiter.encode_utf8(&mut delim_buf).as_bytes();
+    let delim_byte = config.delimiter as u8;
+
+    let tests_without_header: Option<Vec<TestKind>> = if config.has_header {
+        None
+    } else {
+        Some(
+            build_tests(None, config.delimiter, config.as_spec_config()).map_err(|e| anyhow::anyhow!(e))?,
+        )
+    };
+
+    let max_field_without_header: usize = tests_without_header
+        .as_ref()
+        .map(|tests| tests.iter().map(|t| t.max_field_index()).max().unwrap_or(0))
+        .unwrap_or(0);
+
+    for input in crate::libs::io::input_sources(infiles) {
+        let mut tsv_reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
+        let mut tests_with_header: Option<Vec<TestKind>> = None;
+        let mut max_field_for_rows = max_field_without_header;
+        let mut ends: Vec<usize> = Vec::new();
+
+        if config.has_header {
+            if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
+                let header_line =
+                    std::str::from_utf8(&header_bytes).map_err(map_io_err)?;
+                let header =
+                    crate::libs::tsv::fields::Header::from_line(header_line, config.delimiter);
+
+                if !header_written && !config.count_only {
+                    if let Some(ref lbl) = config.label_header {
+                        writer.write_all(&header_bytes)?;
+                        writer.write_all(delim_bytes)?;
+                        writer.write_all(lbl.as_bytes())?;
+                        writer.write_all(b"\n")?;
+                    } else {
+                        writer.write_all(&header_bytes)?;
+                        writer.write_all(b"\n")?;
+                    }
+                    if config.line_buffered {
+                        writer.flush()?;
+                    }
+                    header_written = true;
+                }
+
+                let tests = build_tests(Some(&header), config.delimiter, config.as_spec_config())
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                max_field_for_rows =
+                    tests.iter().map(|t| t.max_field_index()).max().unwrap_or(0);
+                tests_with_header = Some(tests);
+            }
+        }
+
+        tsv_reader.for_each_record(|record| {
+            let tests: &[TestKind] = if config.has_header {
+                match tests_with_header.as_ref() {
+                    Some(v) => v.as_slice(),
+                    None => return Ok(()),
+                }
+            } else {
+                tests_without_header.as_ref().unwrap().as_slice()
+            };
+
+            let mut row_match = if tests.is_empty() {
+                true
+            } else {
+                ends.clear();
+                if max_field_for_rows > 0 {
+                    let mut count = 0usize;
+                    for pos in memchr_iter(delim_byte, record) {
+                        ends.push(pos);
+                        count += 1;
+                        if count >= max_field_for_rows {
+                            break;
+                        }
+                    }
+                }
+
+                let row = TsvRow {
+                    line: record,
+                    ends: &ends,
+                };
+
+                if config.use_or {
+                    let mut any = false;
+                    for t in tests {
+                        if t.eval_row(&row) {
+                            any = true;
+                            break;
+                        }
+                    }
+                    any
+                } else {
+                    let mut all = true;
+                    for t in tests {
+                        if !t.eval_row(&row) {
+                            all = false;
+                            break;
+                        }
+                    }
+                    all
+                }
+            };
+
+            if config.invert {
+                row_match = !row_match;
+            }
+
+            if config.label_header.is_some() {
+                let val = if row_match {
+                    &config.label_pass_val
+                } else {
+                    &config.label_fail_val
+                };
+                writer.write_all(record)?;
+                writer.write_all(delim_bytes)?;
+                writer.write_all(val.as_bytes())?;
+                writer.write_all(b"\n")?;
+                if config.line_buffered {
+                    writer.flush()?;
+                }
+            } else if row_match {
+                if config.count_only {
+                    total_matched += 1;
+                } else {
+                    writer.write_all(record)?;
+                    writer.write_all(b"\n")?;
+                    if config.line_buffered {
+                        writer.flush()?;
+                    }
+                }
+            }
+
+            Ok(())
+        })?;
+    }
+
+    if config.count_only {
+        // println! is not generic over writer, so we use writeln! or writer.write
+        // But the original code used println!.
+        // Here we should write to the writer if possible, but println! writes to stdout.
+        // Since writer can be a File or Stdout, we should use writeln!(writer, ...).
+        writeln!(writer, "{}", total_matched)?;
+    }
+
+    Ok(())
+}
 
 pub enum NumericOp {
     Gt,
@@ -148,26 +364,24 @@ pub enum TestKind {
 
 impl TestKind {
     pub fn eval(&self, fields: &[&str]) -> bool {
+        self.eval_row(&StrSliceRow { fields })
+    }
+
+    pub fn eval_row<R: Row + ?Sized>(&self, row: &R) -> bool {
         match self {
-            TestKind::Empty { fields: idxs } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                fields.get(pos).map(|s| s.is_empty()).unwrap_or(true)
-            }),
-            TestKind::NotEmpty { fields: idxs } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                fields.get(pos).map(|s| !s.is_empty()).unwrap_or(false)
-            }),
+            TestKind::Empty { fields: idxs } => idxs
+                .iter()
+                .all(|idx| row.get_bytes(*idx).map(|b| b.is_empty()).unwrap_or(true)),
+            TestKind::NotEmpty { fields: idxs } => idxs
+                .iter()
+                .all(|idx| row.get_bytes(*idx).map(|b| !b.is_empty()).unwrap_or(false)),
             TestKind::Blank { fields: idxs } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                fields
-                    .get(pos)
+                row.get_str(*idx)
                     .map(|s| s.chars().all(|c| c.is_whitespace()))
                     .unwrap_or(true)
             }),
             TestKind::NotBlank { fields: idxs } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                fields
-                    .get(pos)
+                row.get_str(*idx)
                     .map(|s| s.chars().any(|c| !c.is_whitespace()))
                     .unwrap_or(false)
             }),
@@ -176,9 +390,8 @@ impl TestKind {
                 op,
                 value,
             } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                let s = match fields.get(pos) {
-                    Some(v) => *v,
+                let s = match row.get_str(*idx) {
+                    Some(v) => v,
                     None => return false,
                 };
                 let parsed = match s.parse::<f64>() {
@@ -199,11 +412,7 @@ impl TestKind {
                 op,
                 value,
             } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                let s = match fields.get(pos) {
-                    Some(v) => *v,
-                    None => "",
-                };
+                let s = row.get_str(*idx).unwrap_or("");
                 let len = s.graphemes(true).count() as f64;
                 match op {
                     NumericOp::Gt => len > *value,
@@ -219,12 +428,7 @@ impl TestKind {
                 op,
                 value,
             } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                let s = match fields.get(pos) {
-                    Some(v) => *v,
-                    None => "",
-                };
-                let len = s.len() as f64;
+                let len = row.get_bytes(*idx).unwrap_or(&[]).len() as f64;
                 match op {
                     NumericOp::Gt => len > *value,
                     NumericOp::Ge => len >= *value,
@@ -235,9 +439,8 @@ impl TestKind {
                 }
             }),
             TestKind::NumericPropTest { fields: idxs, prop } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                let s = match fields.get(pos) {
-                    Some(v) => *v,
+                let s = match row.get_str(*idx) {
+                    Some(v) => v,
                     None => return false,
                 };
                 let parsed = match s.parse::<f64>() {
@@ -255,53 +458,44 @@ impl TestKind {
                 fields: idxs,
                 value,
                 case_insensitive,
-            } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                match fields.get(pos) {
-                    Some(s) => {
-                        if *case_insensitive {
-                            s.to_lowercase() == value.to_lowercase()
-                        } else {
-                            *s == value
-                        }
+            } => idxs.iter().all(|idx| match row.get_str(*idx) {
+                Some(s) => {
+                    if *case_insensitive {
+                        s.to_lowercase() == value.to_lowercase()
+                    } else {
+                        s == value
                     }
-                    None => false,
                 }
+                None => false,
             }),
             TestKind::StrNe {
                 fields: idxs,
                 value,
                 case_insensitive,
-            } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                match fields.get(pos) {
-                    Some(s) => {
-                        if *case_insensitive {
-                            s.to_lowercase() != value.to_lowercase()
-                        } else {
-                            *s != value
-                        }
+            } => idxs.iter().all(|idx| match row.get_str(*idx) {
+                Some(s) => {
+                    if *case_insensitive {
+                        s.to_lowercase() != value.to_lowercase()
+                    } else {
+                        s != value
                     }
-                    None => true,
                 }
+                None => true,
             }),
             TestKind::StrCmp {
                 fields: idxs,
                 op,
                 value,
-            } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                match fields.get(pos) {
-                    Some(s) => match op {
-                        NumericOp::Gt => *s > value.as_str(),
-                        NumericOp::Ge => *s >= value.as_str(),
-                        NumericOp::Lt => *s < value.as_str(),
-                        NumericOp::Le => *s <= value.as_str(),
-                        NumericOp::Eq => *s == value.as_str(),
-                        NumericOp::Ne => *s != value.as_str(),
-                    },
-                    None => false,
-                }
+            } => idxs.iter().all(|idx| match row.get_str(*idx) {
+                Some(s) => match op {
+                    NumericOp::Gt => s > value.as_str(),
+                    NumericOp::Ge => s >= value.as_str(),
+                    NumericOp::Lt => s < value.as_str(),
+                    NumericOp::Le => s <= value.as_str(),
+                    NumericOp::Eq => s == value.as_str(),
+                    NumericOp::Ne => s != value.as_str(),
+                },
+                None => false,
             }),
             TestKind::StrIn {
                 fields: idxs,
@@ -309,11 +503,7 @@ impl TestKind {
                 case_insensitive,
                 negated,
             } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                let haystack = match fields.get(pos) {
-                    Some(s) => *s,
-                    None => "",
-                };
+                let haystack = row.get_str(*idx).unwrap_or("");
                 let found = if *case_insensitive {
                     haystack.to_lowercase().contains(&value.to_lowercase())
                 } else {
@@ -330,11 +520,7 @@ impl TestKind {
                 regex,
                 negated,
             } => idxs.iter().all(|idx| {
-                let pos = idx.saturating_sub(1);
-                let s = match fields.get(pos) {
-                    Some(v) => *v,
-                    None => "",
-                };
+                let s = row.get_str(*idx).unwrap_or("");
                 let matched = regex.is_match(s);
                 if *negated {
                     !matched
@@ -351,9 +537,8 @@ impl TestKind {
                     return false;
                 }
                 left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
-                    let l_pos = l.saturating_sub(1);
-                    let l_s = match fields.get(l_pos) {
-                        Some(v) => *v,
+                    let l_s = match row.get_str(*l) {
+                        Some(v) => v,
                         None => return false,
                     };
                     let l_v = match l_s.parse::<f64>() {
@@ -363,9 +548,8 @@ impl TestKind {
                     let r_v = if l == r {
                         l_v
                     } else {
-                        let r_pos = r.saturating_sub(1);
-                        let r_s = match fields.get(r_pos) {
-                            Some(v) => *v,
+                        let r_s = match row.get_str(*r) {
+                            Some(v) => v,
                             None => return false,
                         };
                         match r_s.parse::<f64>() {
@@ -396,16 +580,8 @@ impl TestKind {
                     if l == r {
                         return !negated;
                     }
-                    let l_pos = l.saturating_sub(1);
-                    let r_pos = r.saturating_sub(1);
-                    let l_s = match fields.get(l_pos) {
-                        Some(v) => *v,
-                        None => "",
-                    };
-                    let r_s = match fields.get(r_pos) {
-                        Some(v) => *v,
-                        None => "",
-                    };
+                    let l_s = row.get_str(*l).unwrap_or("");
+                    let r_s = row.get_str(*r).unwrap_or("");
                     let eq = if *case_insensitive {
                         l_s.to_lowercase() == r_s.to_lowercase()
                     } else {
@@ -428,9 +604,8 @@ impl TestKind {
                     return false;
                 }
                 left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
-                    let l_pos = l.saturating_sub(1);
-                    let l_s = match fields.get(l_pos) {
-                        Some(v) => *v,
+                    let l_s = match row.get_str(*l) {
+                        Some(v) => v,
                         None => return false,
                     };
                     let l_v = match l_s.parse::<f64>() {
@@ -440,9 +615,8 @@ impl TestKind {
                     let r_v = if l == r {
                         l_v
                     } else {
-                        let r_pos = r.saturating_sub(1);
-                        let r_s = match fields.get(r_pos) {
-                            Some(v) => *v,
+                        let r_s = match row.get_str(*r) {
+                            Some(v) => v,
                             None => return false,
                         };
                         match r_s.parse::<f64>() {
@@ -471,9 +645,8 @@ impl TestKind {
                     return false;
                 }
                 left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
-                    let l_pos = l.saturating_sub(1);
-                    let l_s = match fields.get(l_pos) {
-                        Some(v) => *v,
+                    let l_s = match row.get_str(*l) {
+                        Some(v) => v,
                         None => return false,
                     };
                     let l_v = match l_s.parse::<f64>() {
@@ -483,9 +656,8 @@ impl TestKind {
                     let r_v = if l == r {
                         l_v
                     } else {
-                        let r_pos = r.saturating_sub(1);
-                        let r_s = match fields.get(r_pos) {
-                            Some(v) => *v,
+                        let r_s = match row.get_str(*r) {
+                            Some(v) => v,
                             None => return false,
                         };
                         match r_s.parse::<f64>() {
@@ -518,6 +690,51 @@ impl TestKind {
                     }
                 })
             }
+        }
+    }
+
+    pub fn max_field_index(&self) -> usize {
+        match self {
+            TestKind::Empty { fields }
+            | TestKind::NotEmpty { fields }
+            | TestKind::Blank { fields }
+            | TestKind::NotBlank { fields }
+            | TestKind::NumericCmp { fields, .. }
+            | TestKind::CharLenCmp { fields, .. }
+            | TestKind::ByteLenCmp { fields, .. }
+            | TestKind::NumericPropTest { fields, .. }
+            | TestKind::StrEq { fields, .. }
+            | TestKind::StrNe { fields, .. }
+            | TestKind::StrCmp { fields, .. }
+            | TestKind::StrIn { fields, .. }
+            | TestKind::Regex { fields, .. } => {
+                fields.iter().copied().max().unwrap_or(0)
+            }
+            TestKind::FieldFieldNumericCmp {
+                left_fields,
+                right_fields,
+                ..
+            }
+            | TestKind::FieldFieldStrCmp {
+                left_fields,
+                right_fields,
+                ..
+            }
+            | TestKind::FieldFieldAbsDiffCmp {
+                left_fields,
+                right_fields,
+                ..
+            }
+            | TestKind::FieldFieldRelDiffCmp {
+                left_fields,
+                right_fields,
+                ..
+            } => left_fields
+                .iter()
+                .chain(right_fields.iter())
+                .copied()
+                .max()
+                .unwrap_or(0),
         }
     }
 }

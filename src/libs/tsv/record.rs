@@ -4,6 +4,77 @@
 
 use std::fmt;
 
+/// A trait for abstracting over different row representations (e.g., owned TsvRecord, borrowed TsvRow, or split string slices).
+///
+/// This allows functions (like filter evaluation) to work on any data structure that provides field access.
+pub trait Row {
+    /// Get the bytes of the field at 1-based index `idx`.
+    /// Returns `None` if `idx` is 0 or out of bounds.
+    fn get_bytes(&self, idx: usize) -> Option<&[u8]>;
+
+    /// Get the string content of the field at 1-based index `idx`.
+    /// Returns `None` if `idx` is 0, out of bounds, or if the field is not valid UTF-8.
+    fn get_str(&self, idx: usize) -> Option<&str> {
+        let b = self.get_bytes(idx)?;
+        std::str::from_utf8(b).ok()
+    }
+}
+
+/// A lightweight, zero-copy view into a TSV row.
+///
+/// This struct holds references to the line data and an array of field end positions (delimiters).
+/// It does not own the data.
+pub struct TsvRow<'a, 'b> {
+    pub line: &'a [u8],
+    pub ends: &'b [usize],
+}
+
+impl<'a, 'b> Row for TsvRow<'a, 'b> {
+    fn get_bytes(&self, idx: usize) -> Option<&[u8]> {
+        if idx == 0 {
+            return None;
+        }
+        if self.line.is_empty() {
+            return if idx == 1 { Some(&[]) } else { None };
+        }
+
+        let i = idx - 1;
+        if i > self.ends.len() {
+            return None;
+        }
+
+        let start = if idx == 1 { 0 } else { self.ends[idx - 2] + 1 };
+        let end = if i < self.ends.len() {
+            self.ends[i]
+        } else {
+            self.line.len()
+        };
+        Some(&self.line[start..end])
+    }
+}
+
+/// A wrapper for `&[&str]` to implement `Row` trait.
+/// This is useful for tests or when working with already split strings.
+pub struct StrSliceRow<'a> {
+    pub fields: &'a [&'a str],
+}
+
+impl<'a> Row for StrSliceRow<'a> {
+    fn get_bytes(&self, idx: usize) -> Option<&[u8]> {
+        if idx == 0 {
+            return None;
+        }
+        self.fields.get(idx - 1).map(|s| s.as_bytes())
+    }
+
+    fn get_str(&self, idx: usize) -> Option<&str> {
+        if idx == 0 {
+            return None;
+        }
+        self.fields.get(idx - 1).copied()
+    }
+}
+
 /// A single TSV record stored as raw bytes.
 ///
 /// Unlike `csv::ByteRecord`, this struct assumes TSV format (no escaping, no quotes).
