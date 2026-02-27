@@ -2,7 +2,7 @@ use clap::*;
 use rapidhash::{rapidhash, RapidRng};
 use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufWriter, Write};
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 pub fn make_subcommand() -> Command {
@@ -130,7 +130,7 @@ fn format_index(idx0: usize, digit_width: usize) -> String {
 fn open_output_file(
     config: &SplitConfig,
     idx0: usize,
-    header_line: Option<&str>,
+    header_line: Option<&[u8]>,
 ) -> anyhow::Result<(Box<dyn Write>, bool)> {
     let index_str = format_index(idx0, config.digit_width);
     let filename = format!("{}{}{}", config.prefix, index_str, config.suffix);
@@ -158,7 +158,7 @@ fn open_output_file(
     if config.header_in_out {
         if let Some(header) = header_line {
             if !(config.append && existed) {
-                writer.write_all(header.as_bytes())?;
+                writer.write_all(header)?;
                 writer.write_all(b"\n")?;
                 header_written = true;
             } else {
@@ -174,7 +174,7 @@ fn get_or_create_output<'a>(
     outputs: &'a mut BTreeMap<usize, SplitOutput>,
     idx0: usize,
     config: &SplitConfig,
-    header_line: Option<&'a str>,
+    header_line: Option<&'a [u8]>,
 ) -> anyhow::Result<&'a mut SplitOutput> {
     if outputs.contains_key(&idx0) {
         return Ok(outputs.get_mut(&idx0).unwrap());
@@ -198,16 +198,42 @@ fn parse_key_fields(spec: &str) -> Vec<usize> {
         .unwrap_or_else(|e| arg_error(&e))
 }
 
-fn key_bucket(line: &str, indices: &[usize], num_files: usize) -> usize {
-    let fields: Vec<&str> = line.split('\t').collect();
-    let mut key_parts: Vec<&str> = Vec::new();
-    for idx in indices {
-        let pos = idx.saturating_sub(1);
-        let value = fields.get(pos).copied().unwrap_or("");
-        key_parts.push(value);
+fn key_bucket(record: &[u8], indices: &[usize], num_files: usize) -> usize {
+    // Avoid allocating strings. Use zero-copy parsing.
+    let mut key_buffer = Vec::new();
+    let mut iter = memchr::memchr_iter(b'\t', record);
+    let mut last_pos = 0;
+    let mut field_idx = 1;
+    let mut next_tab = iter.next();
+
+    let mut first = true;
+
+    for &target_idx in indices {
+        // Advance to target_idx
+        while field_idx < target_idx {
+             if let Some(pos) = next_tab {
+                 last_pos = pos + 1;
+                 next_tab = iter.next();
+                 field_idx += 1;
+             } else {
+                 // End of record
+                 break;
+             }
+        }
+
+        if !first {
+            key_buffer.push(b'\t');
+        }
+        first = false;
+
+        if field_idx == target_idx {
+            let end = next_tab.unwrap_or(record.len());
+            key_buffer.extend_from_slice(&record[last_pos..end]);
+        }
+        // If field_idx > target_idx (not found), push empty string (do nothing)
     }
-    let key = key_parts.join("\t");
-    let h = rapidhash(key.as_bytes());
+
+    let h = rapidhash(&key_buffer);
     (h % (num_files as u64)) as usize
 }
 
@@ -318,52 +344,60 @@ fn split_by_line_count(
     config: &SplitConfig,
     lines_per_file: u64,
 ) -> anyhow::Result<()> {
-    let mut header_line: Option<String> = None;
+    let mut header_line: Option<Vec<u8>> = None;
     let mut header_seen = false;
 
     let mut current_idx0: usize = 0;
     let mut current_writer: Option<Box<dyn Write>> = None;
     let mut current_lines: u64 = 0;
 
-    for input in crate::libs::io::input_sources(infiles) {
-        let reader = input.reader;
+    for input in crate::libs::io::raw_input_sources(infiles) {
+        let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_nonempty = true;
 
-        for line in reader.lines().map_while(Result::ok) {
-            let mut line = line;
-            if let Some('\r') = line.chars().last() {
-                line.pop();
+        reader.for_each_record(|record| {
+            if record.is_empty() {
+                // If it's empty, we might just skip it or treat as empty line
+                // But logic says: "first non-empty line as header"
+                // So if empty, just continue unless we need to write empty lines?
+                // Assuming empty lines are preserved in data but not as header candidates.
+                if let Some(writer) = current_writer.as_mut() {
+                    writer.write_all(b"\n")?;
+                    current_lines += 1;
+                }
+                return Ok(());
             }
 
             if config.header_in_out
                 && !header_seen
                 && is_first_nonempty
-                && !line.is_empty()
             {
                 if header_line.is_none() {
-                    header_line = Some(line.clone());
+                    header_line = Some(record.to_vec());
                 }
                 header_seen = true;
                 is_first_nonempty = false;
-                continue;
+                return Ok(());
             }
 
             is_first_nonempty = false;
 
             if current_writer.is_none() || current_lines >= lines_per_file {
                 let (writer, _) =
-                    open_output_file(config, current_idx0, header_line.as_deref())?;
+                    open_output_file(config, current_idx0, header_line.as_deref())
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
                 current_writer = Some(writer);
                 current_lines = 0;
                 current_idx0 += 1;
             }
 
             if let Some(writer) = current_writer.as_mut() {
-                writer.write_all(line.as_bytes())?;
+                writer.write_all(record)?;
                 writer.write_all(b"\n")?;
                 current_lines += 1;
             }
-        }
+            Ok(())
+        })?;
     }
 
     Ok(())
@@ -382,38 +416,41 @@ fn split_randomly(
         ));
     }
 
-    let mut header_line: Option<String> = None;
+    let mut header_line: Option<Vec<u8>> = None;
     let mut header_seen = false;
 
     let mut outputs: BTreeMap<usize, SplitOutput> = BTreeMap::new();
 
-    for input in crate::libs::io::input_sources(infiles) {
-        let reader = input.reader;
+    for input in crate::libs::io::raw_input_sources(infiles) {
+        let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_nonempty = true;
 
-        for line in reader.lines().map_while(Result::ok) {
-            let mut line = line;
-            if let Some('\r') = line.chars().last() {
-                line.pop();
-            }
-
-            if config.header_in_out
+        reader.for_each_record(|record| {
+            if record.is_empty() {
+                // Empty lines: assign to file 0 or just skip?
+                // Existing logic: map_while(Result::ok) would include empty lines from `lines()`.
+                // Let's assign to random bucket 0 if random, or key bucket hash("")?
+                // To match behavior, let's process them.
+                // But empty lines can't be header.
+                
+                // For simplicity, let's treat empty lines as data lines.
+                // If random, pick random. If key, key is empty string.
+            } else if config.header_in_out
                 && !header_seen
                 && is_first_nonempty
-                && !line.is_empty()
             {
                 if header_line.is_none() {
-                    header_line = Some(line.clone());
+                    header_line = Some(record.to_vec());
                 }
                 header_seen = true;
                 is_first_nonempty = false;
-                continue;
+                return Ok(());
             }
 
             is_first_nonempty = false;
 
             let idx0 = if let Some(indices) = key_indices {
-                key_bucket(&line, indices, num_files)
+                key_bucket(record, indices, num_files)
             } else {
                 let r = rng
                     .as_mut()
@@ -427,19 +464,21 @@ fn split_randomly(
                 idx0,
                 config,
                 header_line.as_deref(),
-            )?;
+            )
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
             if config.header_in_out && !output.header_written {
                 if let Some(header) = header_line.as_deref() {
-                    output.writer.write_all(header.as_bytes())?;
+                    output.writer.write_all(header)?;
                     output.writer.write_all(b"\n")?;
                     output.header_written = true;
                 }
             }
 
-            output.writer.write_all(line.as_bytes())?;
+            output.writer.write_all(record)?;
             output.writer.write_all(b"\n")?;
-        }
+            Ok(())
+        })?;
     }
 
     Ok(())
