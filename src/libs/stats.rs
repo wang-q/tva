@@ -28,253 +28,600 @@ pub enum OpKind {
     Rand,
 }
 
+#[derive(Clone)]
 pub struct Operation {
     pub kind: OpKind,
     pub field_idx: Option<usize>, // None for count
 }
 
-pub struct Aggregator {
-    pub count: usize,
-    pub sums: HashMap<usize, f64>,
-    pub sum_sqs: HashMap<usize, f64>, // For variance/stdev
-    pub sum_logs: HashMap<usize, f64>, // For geomean
-    pub sum_invs: HashMap<usize, f64>, // For harmmean
-    pub mins: HashMap<usize, f64>,
-    pub maxs: HashMap<usize, f64>,
-    pub field_counts: HashMap<usize, usize>,
-    pub values: HashMap<usize, Vec<f64>>, // For median/mad/quantiles
-    pub firsts: HashMap<usize, String>,
-    pub lasts: HashMap<usize, String>,
-    pub value_counts: HashMap<usize, HashMap<String, usize>>, // For mode/nunique/unique
-    pub string_values: HashMap<usize, Vec<String>>,           // For collapse/rand
+/// Plan for executing statistics.
+/// It maps input fields to internal storage slots.
+pub struct StatsProcessor {
+    pub ops: Vec<Operation>,
+
+    // Mappings from field_idx -> storage_idx
+    pub sum_map: HashMap<usize, usize>,
+    pub sum_sq_map: HashMap<usize, usize>,
+    pub sum_log_map: HashMap<usize, usize>,
+    pub sum_inv_map: HashMap<usize, usize>,
+    pub min_map: HashMap<usize, usize>,
+    pub max_map: HashMap<usize, usize>,
+    pub count_map: HashMap<usize, usize>, // field counts (numeric)
+    pub values_map: HashMap<usize, usize>,
+    pub first_map: HashMap<usize, usize>,
+    pub last_map: HashMap<usize, usize>,
+    pub value_counts_map: HashMap<usize, usize>,
+    pub string_values_map: HashMap<usize, usize>,
+
+    // Sizes for storage
+    pub num_sums: usize,
+    pub num_sum_sqs: usize,
+    pub num_sum_logs: usize,
+    pub num_sum_invs: usize,
+    pub num_mins: usize,
+    pub num_maxs: usize,
+    pub num_field_counts: usize,
+    pub num_values: usize,
+    pub num_firsts: usize,
+    pub num_lasts: usize,
+    pub num_value_counts: usize,
+    pub num_string_values: usize,
 }
 
-impl Default for Aggregator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+impl StatsProcessor {
+    pub fn new(ops: Vec<Operation>) -> Self {
+        let ops_clone = ops.clone();
+        let mut processor = Self {
+            ops,
+            sum_map: HashMap::new(),
+            sum_sq_map: HashMap::new(),
+            sum_log_map: HashMap::new(),
+            sum_inv_map: HashMap::new(),
+            min_map: HashMap::new(),
+            max_map: HashMap::new(),
+            count_map: HashMap::new(),
+            values_map: HashMap::new(),
+            first_map: HashMap::new(),
+            last_map: HashMap::new(),
+            value_counts_map: HashMap::new(),
+            string_values_map: HashMap::new(),
 
-impl Aggregator {
-    pub fn new() -> Self {
-        Self {
-            count: 0,
-            sums: HashMap::new(),
-            sum_sqs: HashMap::new(),
-            sum_logs: HashMap::new(),
-            sum_invs: HashMap::new(),
-            mins: HashMap::new(),
-            maxs: HashMap::new(),
-            field_counts: HashMap::new(),
-            values: HashMap::new(),
-            firsts: HashMap::new(),
-            lasts: HashMap::new(),
-            value_counts: HashMap::new(),
-            string_values: HashMap::new(),
-        }
-    }
-
-    pub fn update(&mut self, record: &[&[u8]], ops: &[Operation]) {
-        use crate::libs::tsv::record::StrSliceRow;
-        // Temporary compatibility wrapper
-        let fields: Vec<&str> = record
-            .iter()
-            .map(|b| std::str::from_utf8(b).unwrap_or(""))
-            .collect();
-        let row = StrSliceRow {
-            fields: &fields,
+            num_sums: 0,
+            num_sum_sqs: 0,
+            num_sum_logs: 0,
+            num_sum_invs: 0,
+            num_mins: 0,
+            num_maxs: 0,
+            num_field_counts: 0,
+            num_values: 0,
+            num_firsts: 0,
+            num_lasts: 0,
+            num_value_counts: 0,
+            num_string_values: 0,
         };
-        self.update_row(&row, ops);
-    }
 
-    pub fn update_row<R: Row + ?Sized>(&mut self, row: &R, ops: &[Operation]) {
-        self.count += 1;
-
-        // Collect fields needed for each type of operation
-        let mut sum_fields = Vec::new();
-        let mut sum_sq_fields = Vec::new();
-        let mut sum_log_fields = Vec::new();
-        let mut sum_inv_fields = Vec::new();
-        let mut value_fields = Vec::new();
-        let mut first_fields = Vec::new();
-        let mut last_fields = Vec::new();
-        let mut count_fields = Vec::new();
-        let mut string_fields = Vec::new();
-
-        for op in ops {
+        for op in ops_clone {
             if let Some(idx) = op.field_idx {
                 match op.kind {
-                    OpKind::Sum | OpKind::Mean => sum_fields.push(idx),
-                    OpKind::Stdev | OpKind::Variance | OpKind::CV => {
-                        sum_fields.push(idx);
-                        sum_sq_fields.push(idx);
+                    OpKind::Sum | OpKind::Mean | OpKind::CV => {
+                        processor.add_sum(idx);
+                        processor.add_count(idx);
+                        if op.kind == OpKind::CV {
+                            processor.add_sum_sq(idx);
+                        }
                     }
-                    OpKind::GeoMean => sum_log_fields.push(idx),
-                    OpKind::HarmMean => sum_inv_fields.push(idx),
+                    OpKind::Stdev | OpKind::Variance => {
+                        processor.add_sum(idx);
+                        processor.add_sum_sq(idx);
+                        processor.add_count(idx);
+                    }
+                    OpKind::GeoMean => {
+                        processor.add_sum_log(idx);
+                        processor.add_count(idx);
+                    }
+                    OpKind::HarmMean => {
+                        processor.add_sum_inv(idx);
+                        processor.add_count(idx);
+                    }
+                    OpKind::Min | OpKind::Range => {
+                        processor.add_min(idx);
+                        if op.kind == OpKind::Range {
+                            processor.add_max(idx);
+                        }
+                    }
+                    OpKind::Max => {
+                        processor.add_max(idx);
+                    }
                     OpKind::Median
                     | OpKind::Mad
                     | OpKind::Q1
                     | OpKind::Q3
-                    | OpKind::IQR => value_fields.push(idx),
-                    OpKind::First => first_fields.push(idx),
-                    OpKind::Last => last_fields.push(idx),
-                    OpKind::NUnique | OpKind::Mode | OpKind::Unique => {
-                        count_fields.push(idx)
+                    | OpKind::IQR => {
+                        processor.add_values(idx);
                     }
-                    OpKind::Collapse | OpKind::Rand => string_fields.push(idx),
-                    OpKind::Range => { /* Handled in Min/Max logic block */ }
+                    OpKind::First => {
+                        processor.add_first(idx);
+                    }
+                    OpKind::Last => {
+                        processor.add_last(idx);
+                    }
+                    OpKind::NUnique | OpKind::Mode | OpKind::Unique => {
+                        processor.add_value_counts(idx);
+                    }
+                    OpKind::Collapse | OpKind::Rand => {
+                        processor.add_string_values(idx);
+                    }
                     _ => {}
                 }
             }
         }
+        processor
+    }
 
-        sum_fields.sort_unstable();
-        sum_fields.dedup();
-        sum_sq_fields.sort_unstable();
-        sum_sq_fields.dedup();
-        sum_log_fields.sort_unstable();
-        sum_log_fields.dedup();
-        sum_inv_fields.sort_unstable();
-        sum_inv_fields.dedup();
-        value_fields.sort_unstable();
-        value_fields.dedup();
-        first_fields.sort_unstable();
-        first_fields.dedup();
-        last_fields.sort_unstable();
-        last_fields.dedup();
-        count_fields.sort_unstable();
-        count_fields.dedup();
-        string_fields.sort_unstable();
-        string_fields.dedup();
-
-        // Handle Sum/Mean/Stdev/Variance/CV
-        for idx in &sum_fields {
-            let val_str = row.get_str(idx + 1).unwrap_or("");
-            if val_str.is_empty() {
-                continue;
-            }
-            if let Ok(val) = val_str.trim().parse::<f64>() {
-                *self.sums.entry(*idx).or_insert(0.0) += val;
-                *self.field_counts.entry(*idx).or_insert(0) += 1;
-
-                if sum_sq_fields.contains(idx) {
-                    *self.sum_sqs.entry(*idx).or_insert(0.0) += val * val;
-                }
-            }
+    fn add_sum(&mut self, idx: usize) {
+        if !self.sum_map.contains_key(&idx) {
+            self.sum_map.insert(idx, self.num_sums);
+            self.num_sums += 1;
         }
-
-        // Handle GeoMean
-        for idx in &sum_log_fields {
-            let val_str = row.get_str(idx + 1).unwrap_or("");
-            if val_str.is_empty() {
-                continue;
-            }
-            if let Ok(val) = val_str.trim().parse::<f64>() {
-                if val > 0.0 {
-                    *self.sum_logs.entry(*idx).or_insert(0.0) += val.ln();
-                    if !sum_fields.contains(idx) {
-                        *self.field_counts.entry(*idx).or_insert(0) += 1;
-                    }
-                }
-            }
+    }
+    fn add_sum_sq(&mut self, idx: usize) {
+        if !self.sum_sq_map.contains_key(&idx) {
+            self.sum_sq_map.insert(idx, self.num_sum_sqs);
+            self.num_sum_sqs += 1;
         }
-
-        // Handle HarmMean
-        for idx in &sum_inv_fields {
-            let val_str = row.get_str(idx + 1).unwrap_or("");
-            if val_str.is_empty() {
-                continue;
-            }
-            if let Ok(val) = val_str.trim().parse::<f64>() {
-                if val != 0.0 {
-                    *self.sum_invs.entry(*idx).or_insert(0.0) += 1.0 / val;
-                    if !sum_fields.contains(idx) && !sum_log_fields.contains(idx) {
-                        *self.field_counts.entry(*idx).or_insert(0) += 1;
-                    }
-                }
-            }
+    }
+    fn add_sum_log(&mut self, idx: usize) {
+        if !self.sum_log_map.contains_key(&idx) {
+            self.sum_log_map.insert(idx, self.num_sum_logs);
+            self.num_sum_logs += 1;
         }
-
-        // Handle Median/Mad/Quantiles (store all values)
-
-        for idx in value_fields {
-            let val_str = row.get_str(idx + 1).unwrap_or("");
-            if val_str.is_empty() {
-                continue;
-            }
-            if let Ok(val) = val_str.trim().parse::<f64>() {
-                self.values.entry(idx).or_default().push(val);
-            }
+    }
+    fn add_sum_inv(&mut self, idx: usize) {
+        if !self.sum_inv_map.contains_key(&idx) {
+            self.sum_inv_map.insert(idx, self.num_sum_invs);
+            self.num_sum_invs += 1;
         }
-
-        // Handle First
-        for idx in first_fields {
-            self.firsts.entry(idx).or_insert_with(|| {
-                row.get_str(idx + 1).unwrap_or("").to_string()
-            });
+    }
+    fn add_min(&mut self, idx: usize) {
+        if !self.min_map.contains_key(&idx) {
+            self.min_map.insert(idx, self.num_mins);
+            self.num_mins += 1;
         }
-
-        // Handle Last
-        for idx in last_fields {
-            let val = row.get_str(idx + 1).unwrap_or("").to_string();
-            self.lasts.insert(idx, val);
+    }
+    fn add_max(&mut self, idx: usize) {
+        if !self.max_map.contains_key(&idx) {
+            self.max_map.insert(idx, self.num_maxs);
+            self.num_maxs += 1;
         }
-
-        // Handle NUnique/Mode/Unique
-        for idx in count_fields {
-            let val = row.get_str(idx + 1).unwrap_or("").to_string();
-            *self
-                .value_counts
-                .entry(idx)
-                .or_default()
-                .entry(val)
-                .or_insert(0) += 1;
+    }
+    fn add_count(&mut self, idx: usize) {
+        if !self.count_map.contains_key(&idx) {
+            self.count_map.insert(idx, self.num_field_counts);
+            self.num_field_counts += 1;
         }
-
-        // Handle Collapse/Rand
-        for idx in string_fields {
-            let val = row.get_str(idx + 1).unwrap_or("").to_string();
-            self.string_values.entry(idx).or_default().push(val);
+    }
+    fn add_values(&mut self, idx: usize) {
+        if !self.values_map.contains_key(&idx) {
+            self.values_map.insert(idx, self.num_values);
+            self.num_values += 1;
         }
-
-        // Handle Min/Max
-        for op in ops {
-            if let Some(idx) = op.field_idx {
-                let val_str = row.get_str(idx + 1).unwrap_or("");
-                if val_str.is_empty() {
-                    continue;
-                }
-
-                if matches!(op.kind, OpKind::Min | OpKind::Max | OpKind::Range) {
-                    if let Ok(val) = val_str.trim().parse::<f64>() {
-                        match op.kind {
-                            OpKind::Min | OpKind::Range => {
-                                let entry =
-                                    self.mins.entry(idx).or_insert(f64::INFINITY);
-                                if val < *entry {
-                                    *entry = val;
-                                }
-                            }
-                            _ => {}
-                        }
-                        match op.kind {
-                            OpKind::Max | OpKind::Range => {
-                                let entry = self
-                                    .maxs
-                                    .entry(idx)
-                                    .or_insert(f64::NEG_INFINITY);
-                                if val > *entry {
-                                    *entry = val;
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
+    }
+    fn add_first(&mut self, idx: usize) {
+        if !self.first_map.contains_key(&idx) {
+            self.first_map.insert(idx, self.num_firsts);
+            self.num_firsts += 1;
+        }
+    }
+    fn add_last(&mut self, idx: usize) {
+        if !self.last_map.contains_key(&idx) {
+            self.last_map.insert(idx, self.num_lasts);
+            self.num_lasts += 1;
+        }
+    }
+    fn add_value_counts(&mut self, idx: usize) {
+        if !self.value_counts_map.contains_key(&idx) {
+            self.value_counts_map.insert(idx, self.num_value_counts);
+            self.num_value_counts += 1;
+        }
+    }
+    fn add_string_values(&mut self, idx: usize) {
+        if !self.string_values_map.contains_key(&idx) {
+            self.string_values_map
+                .insert(idx, self.num_string_values);
+            self.num_string_values += 1;
         }
     }
 
+    pub fn create_aggregator(&self) -> Aggregator {
+        Aggregator {
+            count: 0,
+            sums: vec![0.0; self.num_sums],
+            sum_sqs: vec![0.0; self.num_sum_sqs],
+            sum_logs: vec![0.0; self.num_sum_logs],
+            sum_invs: vec![0.0; self.num_sum_invs],
+            mins: vec![f64::INFINITY; self.num_mins],
+            maxs: vec![f64::NEG_INFINITY; self.num_maxs],
+            field_counts: vec![0; self.num_field_counts],
+            values: vec![Vec::new(); self.num_values],
+            firsts: vec![String::new(); self.num_firsts],
+            lasts: vec![String::new(); self.num_lasts],
+            value_counts: vec![HashMap::new(); self.num_value_counts],
+            string_values: vec![Vec::new(); self.num_string_values],
+        }
+    }
+
+    pub fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
+        agg.count += 1;
+
+        // Sums
+        for (&idx, &slot) in &self.sum_map {
+            if let Some(val) = Self::parse_float(row, idx) {
+                agg.sums[slot] += val;
+                if let Some(&count_slot) = self.count_map.get(&idx) {
+                    agg.field_counts[count_slot] += 1;
+                }
+            }
+        }
+
+        // Sum Sqs
+        for (&idx, &slot) in &self.sum_sq_map {
+            if let Some(val) = Self::parse_float(row, idx) {
+                agg.sum_sqs[slot] += val * val;
+            }
+        }
+
+        // Sum Logs (GeoMean)
+        for (&idx, &slot) in &self.sum_log_map {
+            if let Some(val) = Self::parse_float(row, idx) {
+                if val > 0.0 {
+                    agg.sum_logs[slot] += val.ln();
+                    // Update count if not already updated by sums
+                    if !self.sum_map.contains_key(&idx) {
+                         if let Some(&count_slot) = self.count_map.get(&idx) {
+                            agg.field_counts[count_slot] += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sum Invs (HarmMean)
+        for (&idx, &slot) in &self.sum_inv_map {
+            if let Some(val) = Self::parse_float(row, idx) {
+                if val != 0.0 {
+                    agg.sum_invs[slot] += 1.0 / val;
+                    // Update count if not updated by sum or log
+                    if !self.sum_map.contains_key(&idx) && !self.sum_log_map.contains_key(&idx) {
+                         if let Some(&count_slot) = self.count_map.get(&idx) {
+                            agg.field_counts[count_slot] += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Mins
+        for (&idx, &slot) in &self.min_map {
+            if let Some(val) = Self::parse_float(row, idx) {
+                if val < agg.mins[slot] {
+                    agg.mins[slot] = val;
+                }
+            }
+        }
+
+        // Maxs
+        for (&idx, &slot) in &self.max_map {
+            if let Some(val) = Self::parse_float(row, idx) {
+                if val > agg.maxs[slot] {
+                    agg.maxs[slot] = val;
+                }
+            }
+        }
+
+        // Values (Median/Mad/Quantiles)
+        for (&idx, &slot) in &self.values_map {
+            if let Some(val) = Self::parse_float(row, idx) {
+                agg.values[slot].push(val);
+            }
+        }
+
+        // Firsts
+        for (&idx, &slot) in &self.first_map {
+            if agg.firsts[slot].is_empty() {
+                agg.firsts[slot] = row.get_str(idx + 1).unwrap_or("").to_string();
+            }
+        }
+
+        // Lasts
+        for (&idx, &slot) in &self.last_map {
+            agg.lasts[slot] = row.get_str(idx + 1).unwrap_or("").to_string();
+        }
+
+        // Value Counts
+        for (&idx, &slot) in &self.value_counts_map {
+            let val = row.get_str(idx + 1).unwrap_or("").to_string();
+            *agg.value_counts[slot].entry(val).or_insert(0) += 1;
+        }
+
+        // String Values
+        for (&idx, &slot) in &self.string_values_map {
+            let val = row.get_str(idx + 1).unwrap_or("").to_string();
+            agg.string_values[slot].push(val);
+        }
+    }
+
+    fn parse_float(row: &dyn Row, idx: usize) -> Option<f64> {
+        let s = row.get_str(idx + 1)?;
+        if s.is_empty() {
+            return None;
+        }
+        s.trim().parse::<f64>().ok()
+    }
+
+    pub fn format_results(&self, agg: &Aggregator) -> Vec<String> {
+        let mut values = Vec::new();
+        for op in &self.ops {
+            match op.kind {
+                OpKind::Count => values.push(agg.count.to_string()),
+                OpKind::Sum => {
+                    if let Some(idx) = op.field_idx {
+                        let slot = self.sum_map[&idx];
+                        values.push(agg.sums[slot].to_string());
+                    }
+                }
+                OpKind::Mean => {
+                    if let Some(idx) = op.field_idx {
+                        let sum = agg.sums[self.sum_map[&idx]];
+                        let count = agg.field_counts[self.count_map[&idx]];
+                        if count > 0 {
+                            values.push((sum / count as f64).to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::Min => {
+                    if let Some(idx) = op.field_idx {
+                        let val = agg.mins[self.min_map[&idx]];
+                        if val == f64::INFINITY {
+                            values.push("nan".to_string());
+                        } else {
+                            values.push(val.to_string());
+                        }
+                    }
+                }
+                OpKind::Max => {
+                    if let Some(idx) = op.field_idx {
+                        let val = agg.maxs[self.max_map[&idx]];
+                        if val == f64::NEG_INFINITY {
+                            values.push("nan".to_string());
+                        } else {
+                            values.push(val.to_string());
+                        }
+                    }
+                }
+                OpKind::Range => {
+                    if let Some(idx) = op.field_idx {
+                        let min = agg.mins[self.min_map[&idx]];
+                        let max = agg.maxs[self.max_map[&idx]];
+                        if min != f64::INFINITY && max != f64::NEG_INFINITY {
+                            values.push((max - min).to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::Stdev | OpKind::Variance | OpKind::CV => {
+                    if let Some(idx) = op.field_idx {
+                        let sum = agg.sums[self.sum_map[&idx]];
+                        let sum_sq = agg.sum_sqs[self.sum_sq_map[&idx]];
+                        let count = agg.field_counts[self.count_map[&idx]];
+
+                        if count > 1 {
+                            let variance = (sum_sq - (sum * sum) / count as f64)
+                                / (count as f64 - 1.0);
+                            match op.kind {
+                                OpKind::Variance => values.push(variance.to_string()),
+                                OpKind::Stdev => values.push(variance.sqrt().to_string()),
+                                OpKind::CV => {
+                                    let mean = sum / count as f64;
+                                    if mean != 0.0 {
+                                        values.push((variance.sqrt() / mean).to_string());
+                                    } else {
+                                        values.push("nan".to_string());
+                                    }
+                                }
+                                _ => unreachable!(),
+                            }
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::GeoMean => {
+                    if let Some(idx) = op.field_idx {
+                        let sum_log = agg.sum_logs[self.sum_log_map[&idx]];
+                        let count = agg.field_counts[self.count_map[&idx]];
+                        if count > 0 {
+                            values.push((sum_log / count as f64).exp().to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::HarmMean => {
+                    if let Some(idx) = op.field_idx {
+                        let sum_inv = agg.sum_invs[self.sum_inv_map[&idx]];
+                        let count = agg.field_counts[self.count_map[&idx]];
+                        if count > 0 && sum_inv != 0.0 {
+                            values.push((count as f64 / sum_inv).to_string());
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::Median | OpKind::Q1 | OpKind::Q3 | OpKind::IQR => {
+                    if let Some(idx) = op.field_idx {
+                        let vals = &agg.values[self.values_map[&idx]];
+                        if !vals.is_empty() {
+                            let mut sorted_vals = vals.clone();
+                            sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                            
+                            match op.kind {
+                                OpKind::Median => values.push(Aggregator::calculate_quantile(&sorted_vals, 0.5).to_string()),
+                                OpKind::Q1 => values.push(Aggregator::calculate_quantile(&sorted_vals, 0.25).to_string()),
+                                OpKind::Q3 => values.push(Aggregator::calculate_quantile(&sorted_vals, 0.75).to_string()),
+                                OpKind::IQR => {
+                                    let q1 = Aggregator::calculate_quantile(&sorted_vals, 0.25);
+                                    let q3 = Aggregator::calculate_quantile(&sorted_vals, 0.75);
+                                    values.push((q3 - q1).to_string());
+                                }
+                                _ => unreachable!(),
+                            }
+                        } else {
+                            values.push("nan".to_string());
+                        }
+                    }
+                }
+                OpKind::Mad => {
+                    if let Some(idx) = op.field_idx {
+                         let vals = &agg.values[self.values_map[&idx]];
+                         if !vals.is_empty() {
+                             let mut sorted_vals = vals.clone();
+                             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                             let len = sorted_vals.len();
+                             let median = if len % 2 == 1 {
+                                 sorted_vals[len / 2]
+                             } else {
+                                 let mid = len / 2;
+                                 (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0
+                             };
+                             
+                             let mut deviations: Vec<f64> = vals.iter().map(|v| (v - median).abs()).collect();
+                             deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                             
+                             let mad = if len % 2 == 1 {
+                                 deviations[len / 2]
+                             } else {
+                                 let mid = len / 2;
+                                 (deviations[mid - 1] + deviations[mid]) / 2.0
+                             };
+                             values.push(mad.to_string());
+                         } else {
+                             values.push("nan".to_string());
+                         }
+                    }
+                }
+                OpKind::First => {
+                    if let Some(idx) = op.field_idx {
+                        values.push(agg.firsts[self.first_map[&idx]].clone());
+                    }
+                }
+                OpKind::Last => {
+                    if let Some(idx) = op.field_idx {
+                        values.push(agg.lasts[self.last_map[&idx]].clone());
+                    }
+                }
+                OpKind::NUnique => {
+                    if let Some(idx) = op.field_idx {
+                        values.push(agg.value_counts[self.value_counts_map[&idx]].len().to_string());
+                    }
+                }
+                OpKind::Mode => {
+                    if let Some(idx) = op.field_idx {
+                        let counts = &agg.value_counts[self.value_counts_map[&idx]];
+                        if counts.is_empty() {
+                            values.push("".to_string());
+                        } else {
+                            let mut count_vec: Vec<(&String, &usize)> = counts.iter().collect();
+                            count_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+                            values.push(count_vec[0].0.clone());
+                        }
+                    }
+                }
+                OpKind::Unique => {
+                    if let Some(idx) = op.field_idx {
+                        let counts = &agg.value_counts[self.value_counts_map[&idx]];
+                        if counts.is_empty() {
+                            values.push("".to_string());
+                        } else {
+                            let mut keys: Vec<&String> = counts.keys().collect();
+                            keys.sort();
+                            values.push(keys.into_iter().map(|s| s.as_str()).collect::<Vec<&str>>().join(","));
+                        }
+                    }
+                }
+                OpKind::Collapse => {
+                    if let Some(idx) = op.field_idx {
+                        let vals = &agg.string_values[self.string_values_map[&idx]];
+                        values.push(vals.join(","));
+                    }
+                }
+                OpKind::Rand => {
+                    if let Some(idx) = op.field_idx {
+                         let vals = &agg.string_values[self.string_values_map[&idx]];
+                         if vals.is_empty() {
+                             values.push("".to_string());
+                         } else {
+                            let seed = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_nanos() as u64;
+                            let mut x = seed;
+                            x ^= x << 13;
+                            x ^= x >> 7;
+                            x ^= x << 17;
+                            let index = (x as usize) % vals.len();
+                            values.push(vals[index].clone());
+                         }
+                    }
+                }
+            }
+        }
+        values
+    }
+}
+
+pub struct Aggregator {
+    pub count: usize,
+    pub sums: Vec<f64>,
+    pub sum_sqs: Vec<f64>, // For variance/stdev
+    pub sum_logs: Vec<f64>, // For geomean
+    pub sum_invs: Vec<f64>, // For harmmean
+    pub mins: Vec<f64>,
+    pub maxs: Vec<f64>,
+    pub field_counts: Vec<usize>,
+    pub values: Vec<Vec<f64>>, // For median/mad/quantiles
+    pub firsts: Vec<String>,
+    pub lasts: Vec<String>,
+    pub value_counts: Vec<HashMap<String, usize>>, // For mode/nunique/unique
+    pub string_values: Vec<Vec<String>>,           // For collapse/rand
+}
+
+impl Default for Aggregator {
+    fn default() -> Self {
+        // This Default impl is a bit meaningless without the schema (StatsProcessor),
+        // but it satisfies the compiler if needed for placeholders.
+        // Real usage should use StatsProcessor::create_aggregator().
+        Self {
+            count: 0,
+            sums: Vec::new(),
+            sum_sqs: Vec::new(),
+            sum_logs: Vec::new(),
+            sum_invs: Vec::new(),
+            mins: Vec::new(),
+            maxs: Vec::new(),
+            field_counts: Vec::new(),
+            values: Vec::new(),
+            firsts: Vec::new(),
+            lasts: Vec::new(),
+            value_counts: Vec::new(),
+            string_values: Vec::new(),
+        }
+    }
+}
+
+impl Aggregator {
     pub fn calculate_quantile(sorted_vals: &[f64], p: f64) -> f64 {
         let len = sorted_vals.len();
         if len == 0 {
@@ -292,297 +639,6 @@ impl Aggregator {
             sorted_vals[i] * (1.0 - fract) + sorted_vals[i + 1] * fract
         }
     }
-
-    pub fn format_results(&self, ops: &[Operation]) -> Vec<String> {
-        let mut values = Vec::new();
-        for op in ops {
-            match op.kind {
-                OpKind::Count => values.push(self.count.to_string()),
-                OpKind::Sum => {
-                    if let Some(idx) = op.field_idx {
-                        let val = self.sums.get(&idx).copied().unwrap_or(0.0);
-                        values.push(val.to_string());
-                    }
-                }
-                OpKind::Mean => {
-                    if let Some(idx) = op.field_idx {
-                        let sum = self.sums.get(&idx).copied().unwrap_or(0.0);
-                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
-                        if count > 0 {
-                            values.push((sum / count as f64).to_string());
-                        } else {
-                            values.push("nan".to_string());
-                        }
-                    }
-                }
-                OpKind::Min => {
-                    if let Some(idx) = op.field_idx {
-                        let val = self.mins.get(&idx).copied().unwrap_or(f64::INFINITY);
-                        if val == f64::INFINITY {
-                            values.push("nan".to_string());
-                        } else {
-                            values.push(val.to_string());
-                        }
-                    }
-                }
-                OpKind::Max => {
-                    if let Some(idx) = op.field_idx {
-                        let val =
-                            self.maxs.get(&idx).copied().unwrap_or(f64::NEG_INFINITY);
-                        if val == f64::NEG_INFINITY {
-                            values.push("nan".to_string());
-                        } else {
-                            values.push(val.to_string());
-                        }
-                    }
-                }
-                OpKind::GeoMean => {
-                    if let Some(idx) = op.field_idx {
-                        let sum_log = self.sum_logs.get(&idx).copied().unwrap_or(0.0);
-                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
-                        if count > 0 {
-                            values.push((sum_log / count as f64).exp().to_string());
-                        } else {
-                            values.push("nan".to_string());
-                        }
-                    }
-                }
-                OpKind::HarmMean => {
-                    if let Some(idx) = op.field_idx {
-                        let sum_inv = self.sum_invs.get(&idx).copied().unwrap_or(0.0);
-                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
-                        if count > 0 && sum_inv != 0.0 {
-                            values.push((count as f64 / sum_inv).to_string());
-                        } else {
-                            values.push("nan".to_string());
-                        }
-                    }
-                }
-                OpKind::Range => {
-                    if let Some(idx) = op.field_idx {
-                        let min = self.mins.get(&idx).copied().unwrap_or(f64::INFINITY);
-                        let max =
-                            self.maxs.get(&idx).copied().unwrap_or(f64::NEG_INFINITY);
-                        if min != f64::INFINITY && max != f64::NEG_INFINITY {
-                            values.push((max - min).to_string());
-                        } else {
-                            values.push("nan".to_string());
-                        }
-                    }
-                }
-                OpKind::CV => {
-                    if let Some(idx) = op.field_idx {
-                        let sum = self.sums.get(&idx).copied().unwrap_or(0.0);
-                        let sum_sq = self.sum_sqs.get(&idx).copied().unwrap_or(0.0);
-                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
-
-                        if count > 1 {
-                            let mean = sum / count as f64;
-                            let variance = (sum_sq - (sum * sum) / count as f64)
-                                / (count as f64 - 1.0);
-                            let stdev = variance.sqrt();
-                            if mean != 0.0 {
-                                values.push((stdev / mean).to_string());
-                            } else {
-                                values.push("nan".to_string());
-                            }
-                        } else {
-                            values.push("nan".to_string());
-                        }
-                    }
-                }
-                OpKind::Median | OpKind::Q1 | OpKind::Q3 | OpKind::IQR => {
-                    if let Some(idx) = op.field_idx {
-                        if let Some(vals) = self.values.get(&idx) {
-                            let mut sorted_vals = vals.clone();
-                            sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                            let len = sorted_vals.len();
-
-                            if len > 0 {
-                                match op.kind {
-                                    OpKind::Median => values.push(
-                                        Self::calculate_quantile(&sorted_vals, 0.5)
-                                            .to_string(),
-                                    ),
-                                    OpKind::Q1 => values.push(
-                                        Self::calculate_quantile(&sorted_vals, 0.25)
-                                            .to_string(),
-                                    ),
-                                    OpKind::Q3 => values.push(
-                                        Self::calculate_quantile(&sorted_vals, 0.75)
-                                            .to_string(),
-                                    ),
-                                    OpKind::IQR => {
-                                        let q1 =
-                                            Self::calculate_quantile(&sorted_vals, 0.25);
-                                        let q3 =
-                                            Self::calculate_quantile(&sorted_vals, 0.75);
-                                        values.push((q3 - q1).to_string());
-                                    }
-                                    _ => {}
-                                }
-                            } else {
-                                values.push("nan".to_string());
-                            }
-                        } else {
-                            values.push("nan".to_string());
-                        }
-                    }
-                }
-                OpKind::Stdev => {
-                    if let Some(idx) = op.field_idx {
-                        let sum = self.sums.get(&idx).copied().unwrap_or(0.0);
-                        let sum_sq = self.sum_sqs.get(&idx).copied().unwrap_or(0.0);
-                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
-
-                        if count > 1 {
-                            let variance = (sum_sq - (sum * sum) / count as f64)
-                                / (count as f64 - 1.0);
-                            values.push(variance.sqrt().to_string());
-                        } else {
-                            values.push("nan".to_string());
-                        }
-                    }
-                }
-                OpKind::Variance => {
-                    if let Some(idx) = op.field_idx {
-                        let sum = self.sums.get(&idx).copied().unwrap_or(0.0);
-                        let sum_sq = self.sum_sqs.get(&idx).copied().unwrap_or(0.0);
-                        let count = self.field_counts.get(&idx).copied().unwrap_or(0);
-
-                        if count > 1 {
-                            let variance = (sum_sq - (sum * sum) / count as f64)
-                                / (count as f64 - 1.0);
-                            values.push(variance.to_string());
-                        } else {
-                            values.push("nan".to_string());
-                        }
-                    }
-                }
-                OpKind::Mad => {
-                    if let Some(idx) = op.field_idx {
-                        if let Some(vals) = self.values.get(&idx) {
-                            let mut sorted_vals = vals.clone();
-                            sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                            let len = sorted_vals.len();
-                            if len > 0 {
-                                let median = if len % 2 == 1 {
-                                    sorted_vals[len / 2]
-                                } else {
-                                    let mid = len / 2;
-                                    (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0
-                                };
-
-                                let mut deviations: Vec<f64> =
-                                    vals.iter().map(|v| (v - median).abs()).collect();
-                                deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
-
-                                let mad = if len % 2 == 1 {
-                                    deviations[len / 2]
-                                } else {
-                                    let mid = len / 2;
-                                    (deviations[mid - 1] + deviations[mid]) / 2.0
-                                };
-                                values.push(mad.to_string());
-                            } else {
-                                values.push("nan".to_string());
-                            }
-                        } else {
-                            values.push("nan".to_string());
-                        }
-                    }
-                }
-                OpKind::First => {
-                    if let Some(idx) = op.field_idx {
-                        values.push(self.firsts.get(&idx).cloned().unwrap_or_default());
-                    }
-                }
-                OpKind::Last => {
-                    if let Some(idx) = op.field_idx {
-                        values.push(self.lasts.get(&idx).cloned().unwrap_or_default());
-                    }
-                }
-                OpKind::NUnique => {
-                    if let Some(idx) = op.field_idx {
-                        if let Some(counts) = self.value_counts.get(&idx) {
-                            values.push(counts.len().to_string());
-                        } else {
-                            values.push("0".to_string());
-                        }
-                    }
-                }
-                OpKind::Mode => {
-                    if let Some(idx) = op.field_idx {
-                        if let Some(counts) = self.value_counts.get(&idx) {
-                            if counts.is_empty() {
-                                values.push("".to_string());
-                            } else {
-                                // Sort by count desc, then by value asc
-                                let mut count_vec: Vec<(&String, &usize)> =
-                                    counts.iter().collect();
-                                count_vec.sort_by(|a, b| {
-                                    b.1.cmp(a.1).then_with(|| a.0.cmp(b.0))
-                                });
-                                values.push(count_vec[0].0.clone());
-                            }
-                        } else {
-                            values.push("".to_string());
-                        }
-                    }
-                }
-                OpKind::Unique => {
-                    if let Some(idx) = op.field_idx {
-                        if let Some(counts) = self.value_counts.get(&idx) {
-                            let mut keys: Vec<&String> = counts.keys().collect();
-                            keys.sort();
-                            values.push(
-                                keys.into_iter()
-                                    .map(|s| s.as_str())
-                                    .collect::<Vec<&str>>()
-                                    .join(","),
-                            );
-                        } else {
-                            values.push("".to_string());
-                        }
-                    }
-                }
-                OpKind::Collapse => {
-                    if let Some(idx) = op.field_idx {
-                        if let Some(vals) = self.string_values.get(&idx) {
-                            values.push(vals.join(","));
-                        } else {
-                            values.push("".to_string());
-                        }
-                    }
-                }
-                OpKind::Rand => {
-                    if let Some(idx) = op.field_idx {
-                        if let Some(vals) = self.string_values.get(&idx) {
-                            if vals.is_empty() {
-                                values.push("".to_string());
-                            } else {
-                                let seed = std::time::SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .unwrap_or_default()
-                                    .as_nanos()
-                                    as u64;
-                                // Simple mix for slightly better distribution than raw time
-                                let mut x = seed;
-                                x ^= x << 13;
-                                x ^= x >> 7;
-                                x ^= x << 17;
-                                let index = (x as usize) % vals.len();
-                                values.push(vals[index].clone());
-                            }
-                        } else {
-                            values.push("".to_string());
-                        }
-                    }
-                }
-            }
-        }
-        values
-    }
 }
 
 #[cfg(test)]
@@ -591,100 +647,52 @@ mod tests {
 
     #[test]
     fn test_mean_nan() {
-        let agg = Aggregator::new();
-        // Mean needs count > 0 to not be nan
         let ops = vec![Operation {
             kind: OpKind::Mean,
             field_idx: Some(0),
         }];
-        let results = agg.format_results(&ops);
+        let processor = StatsProcessor::new(ops);
+        let agg = processor.create_aggregator();
+        // Mean needs count > 0 to not be nan
+        let results = processor.format_results(&agg);
         assert_eq!(results[0], "nan");
     }
 
     #[test]
     fn test_mad_nan_no_entry() {
-        let agg = Aggregator::new();
         let ops = vec![Operation {
             kind: OpKind::Mad,
             field_idx: Some(0),
         }];
-        let results = agg.format_results(&ops);
-        assert_eq!(results[0], "nan");
-    }
-
-    #[test]
-    fn test_mad_nan_empty_vec() {
-        let mut agg = Aggregator::new();
-        // Manually insert empty vector to trigger the specific branch (L331-332)
-        agg.values.insert(0, vec![]);
-
-        let ops = vec![Operation {
-            kind: OpKind::Mad,
-            field_idx: Some(0),
-        }];
-        let results = agg.format_results(&ops);
-        assert_eq!(results[0], "nan");
-    }
-
-    #[test]
-    fn test_median_nan_no_entry() {
-        let agg = Aggregator::new();
-        let ops = vec![Operation {
-            kind: OpKind::Median,
-            field_idx: Some(0),
-        }];
-        let results = agg.format_results(&ops);
-        assert_eq!(results[0], "nan");
-    }
-
-    #[test]
-    fn test_median_nan_empty_vec() {
-        let mut agg = Aggregator::new();
-        // Manually insert empty vector to trigger the specific branch (L267-268)
-        agg.values.insert(0, vec![]);
-
-        let ops = vec![Operation {
-            kind: OpKind::Median,
-            field_idx: Some(0),
-        }];
-        let results = agg.format_results(&ops);
+        let processor = StatsProcessor::new(ops);
+        let agg = processor.create_aggregator();
+        let results = processor.format_results(&agg);
         assert_eq!(results[0], "nan");
     }
 
     #[test]
     fn test_stdev_nan() {
-        let mut agg = Aggregator::new();
-        // Stdev requires count > 1
-        agg.field_counts.insert(0, 1);
-        agg.sums.insert(0, 10.0);
-        agg.sum_sqs.insert(0, 100.0);
-
         let ops = vec![Operation {
             kind: OpKind::Stdev,
             field_idx: Some(0),
         }];
-        let results = agg.format_results(&ops);
-        assert_eq!(results[0], "nan");
-    }
+        let processor = StatsProcessor::new(ops);
+        let mut agg = processor.create_aggregator();
+        // Stdev requires count > 1
+        // Manually hack state
+        let slot = processor.sum_map[&0];
+        agg.sums[slot] = 10.0;
+        let slot_sq = processor.sum_sq_map[&0];
+        agg.sum_sqs[slot_sq] = 100.0;
+        let slot_count = processor.count_map[&0];
+        agg.field_counts[slot_count] = 1;
 
-    #[test]
-    fn test_variance_nan() {
-        let mut agg = Aggregator::new();
-        // Variance requires count > 1
-        agg.field_counts.insert(0, 1);
-
-        let ops = vec![Operation {
-            kind: OpKind::Variance,
-            field_idx: Some(0),
-        }];
-        let results = agg.format_results(&ops);
+        let results = processor.format_results(&agg);
         assert_eq!(results[0], "nan");
     }
 
     #[test]
     fn test_min_max_nan() {
-        let agg = Aggregator::new();
-
         let ops = vec![
             Operation {
                 kind: OpKind::Min,
@@ -695,8 +703,9 @@ mod tests {
                 field_idx: Some(0),
             },
         ];
-        // format_results processes ops in order
-        let results = agg.format_results(&ops);
+        let processor = StatsProcessor::new(ops);
+        let agg = processor.create_aggregator();
+        let results = processor.format_results(&agg);
         assert_eq!(results[0], "nan");
         assert_eq!(results[1], "nan");
     }

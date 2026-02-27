@@ -1,5 +1,5 @@
 use crate::libs::io::reader;
-use crate::libs::stats::{Aggregator, OpKind, Operation};
+use crate::libs::stats::{Aggregator, OpKind, Operation, StatsProcessor};
 use crate::libs::tsv::fields;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::Row;
@@ -531,6 +531,8 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     let use_grouping = !group_indices.is_empty();
     let mut first_reader = Some(reader);
 
+    let processor = StatsProcessor::new(ops);
+
     if use_grouping {
         let mut groups: HashMap<Vec<u8>, Aggregator> = HashMap::new();
 
@@ -558,8 +560,10 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     }
                 }
 
-                let aggregator = groups.entry(key).or_default();
-                aggregator.update_row(row, &ops);
+                let aggregator = groups
+                    .entry(key)
+                    .or_insert_with(|| processor.create_aggregator());
+                processor.update(aggregator, row);
 
                 Ok(())
             })?;
@@ -572,14 +576,14 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             let agg = &groups[key];
             print!("{}", String::from_utf8_lossy(key));
 
-            let values = agg.format_results(&ops);
+            let values = processor.format_results(agg);
             if !values.is_empty() {
                 print!("\t{}", values.join("\t"));
             }
             println!();
         }
     } else {
-        let mut aggregator = Aggregator::new();
+        let mut aggregator = processor.create_aggregator();
 
         for (i, infile) in infiles.iter().enumerate() {
             let mut file_reader = if i == 0 {
@@ -595,13 +599,13 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
             let mut tsv_reader = TsvReader::new(file_reader);
             tsv_reader.for_each_row(|row| {
-                aggregator.update_row(row, &ops);
+                processor.update(&mut aggregator, row);
                 Ok(())
             })?;
         }
 
-        if !ops.is_empty() {
-            let values = aggregator.format_results(&ops);
+        if !processor.ops.is_empty() {
+            let values = processor.format_results(&aggregator);
             println!("{}", values.join("\t"));
         }
     }
