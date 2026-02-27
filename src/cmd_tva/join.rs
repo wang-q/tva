@@ -313,7 +313,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     // 1. Process Filter File
     let mut filter_reader = crate::libs::tsv::reader::TsvReader::new(
-        crate::libs::io::reader(&filter_file)
+        crate::libs::io::raw_reader(&filter_file)
     );
 
     let mut filter_header: Option<crate::libs::tsv::fields::Header> = None;
