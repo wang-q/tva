@@ -1156,9 +1156,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let tests_without_header: Option<Vec<TestKind>> = if has_header {
         None
     } else {
-        Some(build_tests(None, delimiter, make_filter_config()).unwrap_or_else(|e| {
-            arg_error(&e);
-        }))
+        Some(
+            build_tests(None, delimiter, make_filter_config()).unwrap_or_else(|e| {
+                arg_error(&e);
+            }),
+        )
     };
 
     for input in crate::libs::io::input_sources(&infiles) {
@@ -1166,13 +1168,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut header_struct: Option<crate::libs::tsv::fields::Header> = None;
         let mut tests_with_header: Option<Vec<TestKind>> = None;
 
-        tsv_reader.for_each_record(|record| {
-            if has_header && header_struct.is_none() {
-                if record.is_empty() {
-                    return Ok(());
-                }
-
-                let header_line = std::str::from_utf8(record).map_err(map_io_err)?;
+        if has_header {
+            if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
+                let header_line =
+                    std::str::from_utf8(&header_bytes).map_err(map_io_err)?;
                 header_struct = Some(crate::libs::tsv::fields::Header::from_line(
                     header_line,
                     delimiter,
@@ -1180,12 +1179,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 if !header_written && !count_only {
                     if let Some(ref lbl) = label_header {
-                        writer.write_all(record)?;
+                        writer.write_all(&header_bytes)?;
                         writer.write_all(delim_bytes)?;
                         writer.write_all(lbl.as_bytes())?;
                         writer.write_all(b"\n")?;
                     } else {
-                        writer.write_all(record)?;
+                        writer.write_all(&header_bytes)?;
                         writer.write_all(b"\n")?;
                     }
                     if line_buffered {
@@ -1194,16 +1193,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     header_written = true;
                 }
 
-                let tests = build_tests(
-                    header_struct.as_ref(),
-                    delimiter,
-                    make_filter_config(),
-                )
-                .unwrap_or_else(|e| arg_error(&e));
+                let tests =
+                    build_tests(header_struct.as_ref(), delimiter, make_filter_config())
+                        .unwrap_or_else(|e| arg_error(&e));
                 tests_with_header = Some(tests);
-                return Ok(());
             }
+        }
 
+        tsv_reader.for_each_record(|record| {
             let tests: &[TestKind] = if has_header {
                 match tests_with_header.as_ref() {
                     Some(v) => v.as_slice(),
