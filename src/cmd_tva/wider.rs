@@ -1,10 +1,13 @@
+use crate::libs::io::map_io_err;
 use crate::libs::stats::Aggregator;
 use crate::libs::tsv::fields;
 use crate::libs::tsv::fields::Header;
+use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::record::Row;
 use clap::*;
 use indexmap::{IndexMap, IndexSet};
 use std::collections::HashMap;
-use std::io::{BufRead, Write};
+use std::io::Write;
 
 pub fn make_subcommand() -> Command {
     Command::new("wider")
@@ -95,10 +98,10 @@ struct Cell {
     sum_inv: f64,
     min: f64,
     max: f64,
-    first: Option<String>,
-    last: Option<String>,
+    first: Option<Vec<u8>>,
+    last: Option<Vec<u8>>,
     values: Vec<f64>,
-    value_counts: HashMap<String, usize>, // For Mode
+    value_counts: HashMap<Vec<u8>, usize>, // For Mode
 }
 
 impl Cell {
@@ -118,20 +121,34 @@ impl Cell {
         }
     }
 
-    fn update(&mut self, val_str: &str, op: Op) {
+    fn update(&mut self, val_bytes: &[u8], op: Op) {
         self.count += 1;
 
         if self.first.is_none() {
-            self.first = Some(val_str.to_string());
+            self.first = Some(val_bytes.to_vec());
         }
-        self.last = Some(val_str.to_string());
+        self.last = Some(val_bytes.to_vec());
 
-        // Mode needs raw strings
+        // Mode needs raw bytes
         if op == Op::Mode {
-            *self.value_counts.entry(val_str.to_string()).or_insert(0) += 1;
+            *self.value_counts.entry(val_bytes.to_vec()).or_insert(0) += 1;
         }
 
-        if let Ok(val) = val_str.parse::<f64>() {
+        // Parse float if needed
+        let val_opt = if matches!(op, Op::Count | Op::First | Op::Last | Op::Mode) {
+             None
+        } else {
+             // Only parse if we need numerical value
+             // Try to parse from bytes
+             // We can use simd-json or fast-float if available, but std is fine for now
+             if let Ok(s) = std::str::from_utf8(val_bytes) {
+                 s.trim().parse::<f64>().ok()
+             } else {
+                 None
+             }
+        };
+
+        if let Some(val) = val_opt {
             match op {
                 Op::Sum | Op::Mean | Op::CV | Op::Stdev | Op::Variance => {
                     self.sum += val;
@@ -203,8 +220,8 @@ impl Cell {
                     self.max.to_string()
                 }
             }
-            Op::First => self.first.clone().unwrap_or_default(),
-            Op::Last => self.last.clone().unwrap_or_default(),
+            Op::First => self.first.as_ref().map(|v| String::from_utf8_lossy(v).to_string()).unwrap_or_default(),
+            Op::Last => self.last.as_ref().map(|v| String::from_utf8_lossy(v).to_string()).unwrap_or_default(),
             Op::GeoMean => {
                 if self.count > 0 {
                     (self.sum_log / self.count as f64).exp().to_string()
@@ -287,10 +304,10 @@ impl Cell {
                 if self.value_counts.is_empty() {
                     "".to_string()
                 } else {
-                    let mut count_vec: Vec<(&String, &usize)> =
+                    let mut count_vec: Vec<(&Vec<u8>, &usize)> =
                         self.value_counts.iter().collect();
                     count_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
-                    count_vec[0].0.clone()
+                    String::from_utf8_lossy(count_vec[0].0).to_string()
                 }
             }
         }
@@ -309,8 +326,8 @@ struct WiderConfig {
 struct ProcessState {
     // Key: ID columns values
     // Value: Map of Name -> Cell
-    data: IndexMap<Vec<String>, IndexMap<String, Cell>>,
-    all_names: IndexSet<String>,
+    data: IndexMap<Vec<u8>, IndexMap<Vec<u8>, Cell>>,
+    all_names: IndexSet<Vec<u8>>,
 
     // Indices (0-based)
     names_idx: usize,
@@ -385,8 +402,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut state = ProcessState::new();
 
-    for infile in &infiles {
-        process_file(infile, &config, &mut state)?;
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+         process_file(input, &config, &mut state)?;
     }
 
     write_output(&mut writer, &state, &config)?;
@@ -395,21 +412,22 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 }
 
 fn process_file(
-    infile: &str,
+    input: crate::libs::io::InputSourceRaw,
     config: &WiderConfig,
     state: &mut ProcessState,
 ) -> anyhow::Result<()> {
-    let mut reader = crate::libs::io::reader(infile);
+    let mut tsv_reader = TsvReader::with_capacity(input.reader, 512 * 1024);
 
     // Read header
-    let mut line = String::new();
-    if reader.read_line(&mut line)? == 0 {
+    let header_bytes = if let Some(h) = tsv_reader.read_header().map_err(map_io_err)? {
+        h
+    } else {
         return Ok(());
-    }
-    trim_newline(&mut line);
+    };
 
-    let header_fields: Vec<String> = line.split('\t').map(|s| s.to_string()).collect();
-    let header = Header::from_fields(header_fields.clone());
+    let line_str = String::from_utf8_lossy(&header_bytes);
+    let header = Header::from_line(&line_str, '\t');
+    let header_fields = &header.fields;
 
     if !state.header_processed {
         // Determine indices
@@ -471,47 +489,32 @@ fn process_file(
         if header_fields.len() != state.first_file_header_len {
             return Err(anyhow::anyhow!(
                  "File '{}' has {} columns, but first file had {}. All files must have the same column structure.",
-                 infile, header_fields.len(), state.first_file_header_len
+                 input.name, header_fields.len(), state.first_file_header_len
              ));
         }
     }
 
     // Process rows
-    for line in reader.lines() {
-        let mut line = line?;
-        trim_newline(&mut line);
-        if line.is_empty() {
-            continue;
-        }
-
-        let fields: Vec<&str> = line.split('\t').collect();
-
+    tsv_reader.for_each_row(|row| {
         // Extract ID key
-        let mut key: Vec<String> = Vec::with_capacity(state.id_indices.len());
-        for &i in &state.id_indices {
-            if i < fields.len() {
-                key.push(fields[i].to_string());
-            } else {
-                key.push("".to_string());
+        let mut key = Vec::new();
+        for (k_i, &idx) in state.id_indices.iter().enumerate() {
+            if k_i > 0 {
+                key.push(b'\t');
+            }
+            if let Some(field) = row.get_bytes(idx + 1) {
+                key.extend_from_slice(field);
             }
         }
 
         // Extract Name
-        let name = if state.names_idx < fields.len() {
-            fields[state.names_idx].to_string()
-        } else {
-            "".to_string()
-        };
+        let name = row.get_bytes(state.names_idx + 1).unwrap_or(&[]).to_vec();
 
         // Extract Value
         let value = if let Some(idx) = state.values_idx {
-            if idx < fields.len() {
-                fields[idx].to_string()
-            } else {
-                "".to_string()
-            }
+            row.get_bytes(idx + 1).unwrap_or(&[])
         } else {
-            "".to_string()
+            &[]
         };
 
         state.all_names.insert(name.clone());
@@ -522,8 +525,10 @@ fn process_file(
             .or_default()
             .entry(name)
             .or_insert_with(Cell::new)
-            .update(&value, config.op);
-    }
+            .update(value, config.op);
+            
+        Ok(())
+    }).map_err(map_io_err)?;
 
     Ok(())
 }
@@ -534,8 +539,8 @@ fn write_output<W: Write>(
     config: &WiderConfig,
 ) -> anyhow::Result<()> {
     // Sort names if requested
-    let final_names: Vec<String> = if config.sort_names {
-        let mut sorted: Vec<String> = state.all_names.iter().cloned().collect();
+    let final_names: Vec<Vec<u8>> = if config.sort_names {
+        let mut sorted: Vec<Vec<u8>> = state.all_names.iter().cloned().collect();
         sorted.sort();
         sorted
     } else {
@@ -545,50 +550,36 @@ fn write_output<W: Write>(
     // Write Header
     for (i, col) in state.output_header_prefix.iter().enumerate() {
         if i > 0 {
-            write!(writer, "\t")?;
+            writer.write_all(b"\t")?;
         }
-        write!(writer, "{}", col)?;
+        writer.write_all(col.as_bytes())?;
     }
     for name in &final_names {
         if !state.output_header_prefix.is_empty() {
-            write!(writer, "\t")?;
+            writer.write_all(b"\t")?;
         }
-        write!(writer, "{}", name)?;
+        writer.write_all(name)?;
     }
-    writeln!(writer)?;
+    writer.write_all(b"\n")?;
 
     // Write Rows
     for (key, row_map) in &state.data {
-        // Write ID cols
-        for (i, val) in key.iter().enumerate() {
-            if i > 0 {
-                write!(writer, "\t")?;
-            }
-            write!(writer, "{}", val)?;
-        }
+        // Write ID cols (key already contains tabs if multiple ids)
+        writer.write_all(key)?;
 
         // Write Value cols
         for name in &final_names {
             if !key.is_empty() {
-                write!(writer, "\t")?;
+                writer.write_all(b"\t")?;
             }
             if let Some(cell) = row_map.get(name) {
-                write!(writer, "{}", cell.result(config.op))?;
+                writer.write_all(cell.result(config.op).as_bytes())?;
             } else {
-                write!(writer, "{}", config.fill_value)?;
+                writer.write_all(config.fill_value.as_bytes())?;
             }
         }
-        writeln!(writer)?;
+        writer.write_all(b"\n")?;
     }
 
     Ok(())
-}
-
-fn trim_newline(s: &mut String) {
-    if s.ends_with('\n') {
-        s.pop();
-        if s.ends_with('\r') {
-            s.pop();
-        }
-    }
 }
