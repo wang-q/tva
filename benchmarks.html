@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-79e42c2c.js";
+            window.path_to_searchindex_js = "searchindex-b5c54a5d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-bd30c85a.js"></script>
@@ -223,7 +223,7 @@
 </li>
 </ul>
 <h2 id="3-详细测试场景"><a class="header" href="#3-详细测试场景">3. 详细测试场景</a></h2>
-<p>为了确保公平和全面的对比，我们将执行以下具体场景（参考 tsv-utils 2017）：</p>
+<p>为了确保公平和全面的对比，我们将执行以下具体场景（参考 tsv-utils 2017/2018）：</p>
 <ul>
 <li><strong>数值行过滤 (Numeric Filter)</strong>:
 <ul>
@@ -266,6 +266,13 @@
 <li>逻辑: 处理包含转义字符和嵌入换行符的复杂 CSV。</li>
 <li>基准: <code>tva from csv</code> vs <code>qsv fmt</code> vs <code>csvtk csv2tab</code> vs <code>csv2tsv</code> (tsv-utils)。</li>
 <li>目的: 这是一个高计算密集型任务，测试 CSV 解析器的性能。</li>
+</ul>
+</li>
+<li><strong>加权随机采样 (Weighted Sampling)</strong>:
+<ul>
+<li>逻辑: 基于权重列进行加权随机采样 (Weighted Reservoir Sampling)。</li>
+<li>基准: <code>tva sample --weight</code> vs <code>tsv-sample</code> vs <code>qsv sample</code> (如果支持)。</li>
+<li>目的: 测试复杂算法与 I/O 的结合效率。</li>
 </ul>
 </li>
 </ul>
@@ -325,6 +332,35 @@ hyperfine \
     "tva select -f 1,8,19 hepmass.tsv &gt; /dev/null" \
     "tsv-select -f 1,8,19 hepmass.tsv &gt; /dev/null" \
     "cut -f 1,8,19 hepmass.tsv &gt; /dev/null"
+
+# Scenario 3: Join
+hyperfine \
+    --warmup 3 \
+    --min-runs 5 \
+    --export-csv benchmark_join.csv \
+    "tva join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv &gt; /dev/null" \
+    "tsv-join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv &gt; /dev/null" \
+    "xan join -d '\t' --semi row_id hepmass_left.tsv row_id hepmass_right.tsv &gt; /dev/null"
+
+    # qsv join is too slow
+    # "qsv join row_id hepmass_left.tsv row_id hepmass_right.tsv &gt; /dev/null"
+
+# Scenario 4: Summary Statistics
+hyperfine \
+    --warmup 3 \
+    --min-runs 5 \
+    --export-csv benchmark_stats.csv \
+    "tva stats -H --count --sum 3,5,20 --min 3,5,20 --max 3,5,20 --mean 3,5,20 --stdev 3,5,20 hepmass.tsv &gt; /dev/null" \
+    "tsv-summarize -H --count --sum 3,5,20 --min 3,5,20 --max 3,5,20 --mean 3,5,20 --stdev 3,5,20 hepmass.tsv &gt; /dev/null"
+
+# Scenario 5: Weighted Sampling (k=1000)
+# Assumes column 5 is a suitable weight (positive float)
+hyperfine \
+    --warmup 3 \
+    --min-runs 10 \
+    --export-csv benchmark_sample.csv \
+    "tva sample -H --weight-field 5 -n 1000 hepmass.tsv &gt; /dev/null" \
+    "tsv-sample -H --weight-field 5 -n 1000 hepmass.tsv &gt; /dev/null"
 
 # 3. 结果处理与可视化 (Process &amp; Visualize)
 # ------------------------------
