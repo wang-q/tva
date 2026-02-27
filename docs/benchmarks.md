@@ -3,11 +3,11 @@
 我们旨在重现 [tsv-utils](https://github.com/eBay/tsv-utils/blob/master/docs/comparative-benchmarks-2017.md) 使用的严格基准测试策略。
 
 ## 1. 基准工具
-*   tsv-utils (D): 主要性能对标目标。
-*   qsv (Rust): xsv 的活跃分支，功能超级强大。
-*   GNU datamash (C): 统计操作的标准。
-*   GNU awk / mawk (C): 行过滤和基本处理的基准。
-*   csvtk (Go): 另一个现代跨平台工具包。
+*   [tsv-utils](https://github.com/eBay/tsv-utils) (D): 主要性能对标目标。
+*   [qsv](https://github.com/jqnatividad/qsv) (Rust): xsv 的活跃分支，功能超级强大。
+*   [GNU datamash](https://www.gnu.org/software/datamash/) (C): 统计操作的标准。
+*   [GNU awk](https://www.gnu.org/software/gawk/) / [mawk](https://invisible-island.net/mawk/) (C): 行过滤和基本处理的基准。
+*   [csvtk](https://github.com/shenwei356/csvtk) (Go): 另一个现代跨平台工具包。
 
 ## 2. 测试数据集与策略
 
@@ -105,7 +105,8 @@ hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv benchmark_filter.csv \
-    "tva filter --gt 1:0.5 hepmass.tsv > /dev/null" \
+    "tva filter -H --gt 1:0.5 hepmass.tsv > /dev/null" \
+    "tsv-filter -H --gt 1:0.5 hepmass.tsv > /dev/null" \
     "awk -F '\t' '\$1 > 0.5' hepmass.tsv > /dev/null"
 
 # Scenario 2: Column Selection
@@ -113,7 +114,8 @@ hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv benchmark_select.csv \
-    "tva select -f 1,8,19 hepmass.tsv > /dev/null" \
+    "tva select -H -f 1,8,19 hepmass.tsv > /dev/null" \
+    "tsv-select -H -f 1,8,19 hepmass.tsv > /dev/null" \
     "cut -f 1,8,19 hepmass.tsv > /dev/null"
 
 # 3. 结果处理与可视化 (Process & Visualize)
@@ -122,6 +124,7 @@ hyperfine \
 tva from csv benchmark_filter.csv > benchmark_filter.tsv
 
 # 使用 Python 绘图 (内联脚本)
+# uv pip install --system pandas seaborn matplotlib
 python3 -c "
 import pandas as pd
 import seaborn as sns
