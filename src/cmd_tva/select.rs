@@ -102,8 +102,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let delim_byte = delimiter as u8;
 
-    for input in crate::libs::io::input_sources(&infiles) {
-        let mut tsv_reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+        let mut tsv_reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
 
         if has_header {
             if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
