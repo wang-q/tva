@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a3361ade.js";
+            window.path_to_searchindex_js = "searchindex-6246625b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-bd30c85a.js"></script>
@@ -477,11 +477,11 @@ Copyright by Qiang Wang.</p>
 <p>我们旨在重现 <a href="https://github.com/eBay/tsv-utils/blob/master/docs/comparative-benchmarks-2017.md">tsv-utils</a> 使用的严格基准测试策略。</p>
 <h2 id="1-基准工具"><a class="header" href="#1-基准工具">1. 基准工具</a></h2>
 <ul>
-<li>tsv-utils (D): 主要性能对标目标。</li>
-<li>qsv (Rust): xsv 的活跃分支，功能超级强大。</li>
-<li>GNU datamash (C): 统计操作的标准。</li>
-<li>GNU awk / mawk (C): 行过滤和基本处理的基准。</li>
-<li>csvtk (Go): 另一个现代跨平台工具包。</li>
+<li><a href="https://github.com/eBay/tsv-utils">tsv-utils</a> (D): 主要性能对标目标。</li>
+<li><a href="https://github.com/jqnatividad/qsv">qsv</a> (Rust): xsv 的活跃分支，功能超级强大。</li>
+<li><a href="https://www.gnu.org/software/datamash/">GNU datamash</a> (C): 统计操作的标准。</li>
+<li><a href="https://www.gnu.org/software/gawk/">GNU awk</a> / <a href="https://invisible-island.net/mawk/">mawk</a> (C): 行过滤和基本处理的基准。</li>
+<li><a href="https://github.com/shenwei356/csvtk">csvtk</a> (Go): 另一个现代跨平台工具包。</li>
 </ul>
 <h2 id="2-测试数据集与策略"><a class="header" href="#2-测试数据集与策略">2. 测试数据集与策略</a></h2>
 <p>我们将使用不同规模的数据集来全面评估性能。</p>
@@ -606,7 +606,8 @@ hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv benchmark_filter.csv \
-    "tva filter --gt 1:0.5 hepmass.tsv &gt; /dev/null" \
+    "tva filter -H --gt 1:0.5 hepmass.tsv &gt; /dev/null" \
+    "tsv-filter -H --gt 1:0.5 hepmass.tsv &gt; /dev/null" \
     "awk -F '\t' '\$1 &gt; 0.5' hepmass.tsv &gt; /dev/null"
 
 # Scenario 2: Column Selection
@@ -614,22 +615,22 @@ hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv benchmark_select.csv \
-    "tva select -f 1,8,19 hepmass.tsv &gt; /dev/null" \
+    "tva select -H -f 1,8,19 hepmass.tsv &gt; /dev/null" \
+    "tsv-select -H -f 1,8,19 hepmass.tsv &gt; /dev/null" \
     "cut -f 1,8,19 hepmass.tsv &gt; /dev/null"
 
 # 3. 结果处理与可视化 (Process &amp; Visualize)
 # ------------------------------
-# 使用 tva 将 hyperfine 的 CSV 结果转换为 TSV (以 Filter 为例)
-tva from csv benchmark_filter.csv &gt; benchmark_filter.tsv
 
 # 使用 Python 绘图 (内联脚本)
+# uv pip install --system pandas seaborn matplotlib
 python3 -c "
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# 读取由 tva 转换的 TSV 数据
-df = pd.read_csv('benchmark_filter.tsv', sep='\t')
+# 读取 hyperfine 的 CSV 数据
+df = pd.read_csv('benchmark_filter.csv')
 
 # 简单的条形图
 plt.figure(figsize=(10, 6))
