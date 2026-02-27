@@ -1,6 +1,6 @@
 use clap::*;
 use std::collections::HashSet;
-use std::io::BufRead;
+use std::ops::Range;
 
 pub fn make_subcommand() -> Command {
     Command::new("select")
@@ -56,6 +56,8 @@ fn arg_error(msg: &str) -> ! {
     std::process::exit(1);
 }
 
+use crate::libs::io::map_io_err;
+
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
@@ -95,20 +97,20 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut exclude_indices: Option<Vec<usize>> = None;
     let mut exclude_set: Option<HashSet<usize>> = None;
 
+    let mut select_plan: Option<crate::libs::tsv::select::SelectPlan> = None;
+    let mut output_ranges: Vec<Range<usize>> = Vec::new();
+
+    let delim_byte = delimiter as u8;
+
     for input in crate::libs::io::input_sources(&infiles) {
-        let reader = input.reader;
-        let mut is_first_line = true;
+        let mut tsv_reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
 
-        for line in reader.lines().map_while(Result::ok) {
-            let mut line = line;
-            if let Some('\r') = line.chars().last() {
-                line.pop();
-            }
-
-            if has_header && is_first_line {
+        if has_header {
+            if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
                 if !header_written {
+                    let line_str = String::from_utf8_lossy(&header_bytes);
                     let header =
-                        crate::libs::fields::Header::from_line(&line, delimiter);
+                        crate::libs::fields::Header::from_line(&line_str, delimiter);
 
                     if let Some(ref spec) = fields_spec {
                         field_indices = Some(
@@ -117,7 +119,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                                 Some(&header),
                                 delimiter,
                             )
-                            .map_err(|e| anyhow::anyhow!(e))?,
+                            .map_err(map_io_err)?,
                         );
                     } else if let Some(ref spec) = exclude_spec {
                         let indices =
@@ -126,7 +128,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                                 Some(&header),
                                 delimiter,
                             )
-                            .map_err(|e| anyhow::anyhow!(e))?;
+                            .map_err(map_io_err)?;
                         exclude_indices = Some(indices.clone());
                         exclude_set = Some(indices.into_iter().collect());
                     }
@@ -137,7 +139,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             &header.fields,
                             idxs,
                             delimiter,
-                        )?;
+                        )
+                        .map_err(map_io_err)?;
                     } else if let Some(ref ex_set) = exclude_set {
                         let total = header.fields.len();
                         let mut idxs: Vec<usize> = Vec::new();
@@ -151,103 +154,86 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             &header.fields,
                             &idxs,
                             delimiter,
-                        )?;
-                        field_indices = Some(idxs);
-                        exclude_set = None;
+                        )
+                        .map_err(map_io_err)?;
+                        exclude_set = Some(ex_set.clone());
                     }
 
                     header_written = true;
                 }
-
-                is_first_line = false;
-                continue;
-            }
-
-            is_first_line = false;
-
-            if fields_spec.is_some() && field_indices.is_none() {
-                if let Some(ref spec) = fields_spec {
-                    field_indices = Some(
-                        crate::libs::fields::parse_field_list_with_header_preserve_order(
-                            spec,
-                            None,
-                            delimiter,
-                        )
-                        .map_err(|e| anyhow::anyhow!(e))?,
-                    );
-                }
-            }
-
-            if exclude_spec.is_some() && exclude_set.is_none() {
-                if let Some(ref indices) = exclude_indices {
-                    exclude_set = Some(indices.iter().copied().collect());
-                } else if let Some(ref spec) = exclude_spec {
-                    let indices = crate::libs::fields::parse_field_list_with_header_preserve_order(
-                        spec,
-                        None,
-                        delimiter,
-                    )
-                    .map_err(|e| anyhow::anyhow!(e))?;
-                    exclude_indices = Some(indices.clone());
-                    exclude_set = Some(indices.into_iter().collect());
-                }
-            }
-
-            if line.is_empty() {
-                continue;
-            }
-
-            let fields: Vec<&str> = line.split(delimiter).collect();
-            let field_count = fields.len();
-
-            let selected_indices: Vec<usize> = if let Some(ref idxs) = field_indices {
-                idxs.clone()
-            } else if let Some(ref ex_set) = exclude_set {
-                let mut v = Vec::new();
-                for i in 1..=field_count {
-                    if !ex_set.contains(&i) {
-                        v.push(i);
-                    }
-                }
-                v
             } else {
-                (1..=field_count).collect()
-            };
-
-            if selected_indices.is_empty() {
-                writer.write_all(b"\n")?;
                 continue;
             }
-
-            write_selected_fields_from_strs(
-                &mut writer,
-                &fields,
-                &selected_indices,
-                delimiter,
-            )?;
         }
-    }
 
-    Ok(())
-}
-
-fn write_selected_fields_from_strs(
-    writer: &mut dyn std::io::Write,
-    fields: &[&str],
-    indices: &[usize],
-    delimiter: char,
-) -> anyhow::Result<()> {
-    let mut first = true;
-    for idx in indices {
-        if let Some(field) = fields.get(idx - 1) {
-            if !first {
-                writer.write_all(delimiter.to_string().as_bytes())?;
+        if fields_spec.is_some() && field_indices.is_none() {
+            if let Some(ref spec) = fields_spec {
+                field_indices = Some(
+                    crate::libs::fields::parse_field_list_with_header_preserve_order(
+                        spec, None, delimiter,
+                    )
+                    .map_err(map_io_err)?,
+                );
             }
-            writer.write_all(field.as_bytes())?;
-            first = false;
         }
+
+        if exclude_spec.is_some() && exclude_set.is_none() {
+            if let Some(ref indices) = exclude_indices {
+                exclude_set = Some(indices.iter().copied().collect());
+            } else if let Some(ref spec) = exclude_spec {
+                let indices =
+                    crate::libs::fields::parse_field_list_with_header_preserve_order(
+                        spec, None, delimiter,
+                    )
+                    .map_err(map_io_err)?;
+                exclude_indices = Some(indices.clone());
+                exclude_set = Some(indices.into_iter().collect());
+            }
+        }
+
+        tsv_reader.for_each_record(|line_bytes| {
+            if line_bytes.is_empty() {
+                return Ok(());
+            }
+
+            if let Some(ref idxs) = field_indices {
+                if select_plan.is_none() {
+                    select_plan = Some(crate::libs::tsv::select::SelectPlan::new(idxs));
+                }
+                crate::libs::tsv::select::write_selected_from_bytes(
+                    &mut writer,
+                    line_bytes,
+                    delim_byte,
+                    select_plan.as_ref().unwrap(),
+                    &mut output_ranges,
+                )?;
+            } else if let Some(ref ex_set) = exclude_set {
+                crate::libs::tsv::select::write_excluding_from_bytes(
+                    &mut writer,
+                    line_bytes,
+                    delim_byte,
+                    ex_set,
+                )?;
+            } else {
+                let mut first = true;
+                let splitter = crate::libs::tsv::split::TsvSplitter::new(
+                    line_bytes,
+                    delimiter as u8,
+                );
+
+                for field in splitter {
+                    if !first {
+                        writer.write_all(delimiter.to_string().as_bytes())?;
+                    }
+                    writer.write_all(field)?;
+                    first = false;
+                }
+                writer.write_all(b"\n")?;
+            }
+            Ok(())
+        })?;
     }
-    writer.write_all(b"\n")?;
+
     Ok(())
 }
 
