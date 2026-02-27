@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6246625b.js";
+            window.path_to_searchindex_js = "searchindex-79e42c2c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-bd30c85a.js"></script>
@@ -373,6 +373,54 @@ Copyright by Qiang Wang.</p>
 <li><strong>String Reuse</strong>: Where possible, <code>tva</code> reuses allocated string buffers (e.g., via <code>read_line</code> into a cleared String) to avoid the overhead of repeated memory allocation and deallocation.</li>
 <li><strong>Iterator-Based Processing</strong>: Leverages Rust’s iterator lazy evaluation to process data line-by-line without loading entire files into memory, enabling processing of datasets larger than RAM.</li>
 </ul>
+<h2 id="performance-architecture--benchmarks"><a class="header" href="#performance-architecture--benchmarks">Performance Architecture &amp; Benchmarks</a></h2>
+<p><code>tva</code> is built on a philosophy of “Zero-Copy” and “SIMD-First”. We continuously benchmark different parsing strategies to ensure <code>tva</code> remains the fastest tool for TSV processing.</p>
+<h3 id="parsing-strategy-evolution"><a class="header" href="#parsing-strategy-evolution">Parsing Strategy Evolution</a></h3>
+<p>We compared 11 different parsing strategies to find the optimal balance between speed and correctness.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Strategy</th><th style="text-align: left">Throughput</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Chunked Reader Sim</strong></td><td style="text-align: left"><strong>875 MiB/s</strong></td><td style="text-align: left"><strong>The Future</strong>. Reads fixed-size chunks (e.g. 8KB) and processes with SIMD. Realistic high-performance model.</td></tr>
+<tr><td style="text-align: left"><strong>Memchr2 SIMD Loop</strong></td><td style="text-align: left">865 MiB/s</td><td style="text-align: left"><strong>The Core</strong>. Uses SIMD to find both <code>\t</code> and <code>\n</code> simultaneously. Faster than <code>csv</code> crate because it ignores quotes.</td></tr>
+<tr><td style="text-align: left"><strong>Memchr Reused Buffer</strong></td><td style="text-align: left">806 MiB/s</td><td style="text-align: left">Uses SIMD but processes line-by-line. Slightly slower due to function call overhead.</td></tr>
+<tr><td style="text-align: left"><strong>csv crate</strong></td><td style="text-align: left">687 MiB/s</td><td style="text-align: left">The standard Rust CSV parser. Highly optimized state machine, but pays a cost for handling quotes and escapes.</td></tr>
+<tr><td style="text-align: left"><strong>Manual Byte Loop</strong></td><td style="text-align: left">519 MiB/s</td><td style="text-align: left">Scalar loop (no SIMD). Proves that SIMD provides a ~60% speedup.</td></tr>
+<tr><td style="text-align: left"><strong>Std Split Iterator</strong></td><td style="text-align: left">420 MiB/s</td><td style="text-align: left">Standard <code>line.split('\t')</code>. Good, but not great.</td></tr>
+<tr><td style="text-align: left"><strong>Naive Split</strong></td><td style="text-align: left">160 MiB/s</td><td style="text-align: left"><code>line.split().collect()</code>. Allocating a <code>Vec</code> for every line is a performance killer. Avoid this!</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="key-insights"><a class="header" href="#key-insights">Key Insights</a></h3>
+<ol>
+<li><strong>I/O is the Bottleneck</strong>: The standard <code>BufReader::lines()</code> allocates a new <code>String</code> for every line, capping throughput at ~400 MiB/s regardless of parsing speed. To break this barrier, <code>tva</code> must use chunked reading and zero-copy slicing.</li>
+<li><strong>TSV &gt; CSV</strong>: By strictly enforcing the TSV standard (no quotes, no escapes), we can use simpler, faster SIMD instructions (<code>memchr2</code>) that outperform even the most optimized CSV parsers (<code>simd-csv</code> or <code>csv</code> crate).</li>
+<li><strong>Zero Allocation</strong>: The fastest parser is the one that allocates nothing. <code>tva</code> strives to reuse buffers and yield slices (<code>&amp;[u8]</code>) instead of allocating new strings.</li>
+</ol>
+<h3 id="why-is-simd-csv-still-faster"><a class="header" href="#why-is-simd-csv-still-faster">Why is <code>simd-csv</code> still faster?</a></h3>
+<p>Despite our optimizations, <code>simd-csv</code> (1.15 GiB/s) still outperforms our <code>Chunked Reader</code> (875 MiB/s) by ~30%. Why?</p>
+<ol>
+<li><strong>Instruction-Level Parallelism (ILP)</strong>:
+<ul>
+<li><code>memchr2</code> processes data in sequence: load -&gt; find -&gt; branch -&gt; process -&gt; repeat.</li>
+<li><code>simd-csv</code> uses hand-written AVX2 intrinsics that can process larger blocks (32+ bytes) and speculatively execute multiple checks in parallel, minimizing branch mispredictions.</li>
+</ul>
+</li>
+<li><strong>L1 Cache Efficiency</strong>:
+<ul>
+<li><code>simd-csv</code>’s hybrid state machine is extremely compact.</li>
+<li>Our chunked reader introduces some overhead for buffer management (<code>copy_within</code>) and boundary checks.</li>
+</ul>
+</li>
+<li><strong>The “Good Enough” Threshold</strong>:
+<ul>
+<li>Reaching 875 MiB/s means we can parse a 1GB file in ~1.2 seconds. This is already faster than most I/O subsystems (NVMe SSDs typically sustain 2-3 GB/s, but file system overhead matters).</li>
+<li>Further optimization requires dropping down to <code>unsafe</code> hand-written assembly, which trades safety and maintainability for diminishing returns.</li>
+</ul>
+</li>
+</ol>
 <h2 id="common-behavior--syntax"><a class="header" href="#common-behavior--syntax">Common Behavior &amp; Syntax</a></h2>
 <p><code>tva</code> tools share a consistent set of behaviors and syntax conventions, making them easy to learn and combine.</p>
 <h3 id="field-syntax"><a class="header" href="#field-syntax">Field Syntax</a></h3>
@@ -615,8 +663,8 @@ hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv benchmark_select.csv \
-    "tva select -H -f 1,8,19 hepmass.tsv &gt; /dev/null" \
-    "tsv-select -H -f 1,8,19 hepmass.tsv &gt; /dev/null" \
+    "tva select -f 1,8,19 hepmass.tsv &gt; /dev/null" \
+    "tsv-select -f 1,8,19 hepmass.tsv &gt; /dev/null" \
     "cut -f 1,8,19 hepmass.tsv &gt; /dev/null"
 
 # 3. 结果处理与可视化 (Process &amp; Visualize)

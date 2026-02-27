@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6246625b.js";
+            window.path_to_searchindex_js = "searchindex-79e42c2c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-bd30c85a.js"></script>
@@ -322,8 +322,8 @@ hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv benchmark_select.csv \
-    "tva select -H -f 1,8,19 hepmass.tsv &gt; /dev/null" \
-    "tsv-select -H -f 1,8,19 hepmass.tsv &gt; /dev/null" \
+    "tva select -f 1,8,19 hepmass.tsv &gt; /dev/null" \
+    "tsv-select -f 1,8,19 hepmass.tsv &gt; /dev/null" \
     "cut -f 1,8,19 hepmass.tsv &gt; /dev/null"
 
 # 3. 结果处理与可视化 (Process &amp; Visualize)
