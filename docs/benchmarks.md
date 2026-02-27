@@ -128,10 +128,11 @@ hyperfine \
     --min-runs 5 \
     --export-csv benchmark_join.csv \
     "tva join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv > /dev/null" \
-    "tsv-join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv > /dev/null"
+    "tsv-join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv > /dev/null" \
+    "xan join -d '\t' --semi row_id hepmass_left.tsv row_id hepmass_right.tsv > /dev/null"
 
-    # qsv is too slow
-    # "qsv join 1 hepmass_left.tsv 1 hepmass_right.tsv > /dev/null"
+    # qsv join is too slow
+    # "qsv join row_id hepmass_left.tsv row_id hepmass_right.tsv > /dev/null"
 
 # Scenario 4: Summary Statistics
 hyperfine \

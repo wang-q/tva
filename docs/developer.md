@@ -145,16 +145,40 @@
     *   `tva` 目前是单线程流式处理。
     *   **建议**: 实现 `tva parallel` 命令，负责将大文件切分 (利用 `split` 逻辑) 并启动多个子进程/线程处理，最后聚合结果。
 
-#### 2. 高效的 Join 内存布局 (Memory-Efficient Join)
+#### 2. Join 架构对比: xan vs tva
 
-*   **实现**: `cmd/join.rs`
-*   **机制**: 使用 "Arena + Linked List" 模式。
-    *   `Vec<IndexNode>` 存储所有数据（扁平化，内存连续）。
-    *   `HashMap` 仅存储索引，指向 `Vec` 中的链表头尾。
-    *   `IndexNode` 结构体仅包含 `record` 和 `next_index`。
-*   **对 `tva` 的启示**:
-    *   目前 `tva join` 使用 `HashMap<String, Vec<String>>`，每个 Key 的每行数据都分配单独的 `Vec`，导致内存碎片。
-    *   **建议**: 采用这种紧凑结构，极大减少内存分配开销。
+通过分析 `xan/src/cmd/join.rs`，我们发现其设计哲学与 `tva` 截然不同。
+
+| 特性 | xan join (SQL Style) | tva join (Stream Static) |
+| :--- | :--- | :--- |
+| **内存模型** | **全量加载 (Indexed Side)** | **部分加载 (Key + Append)** |
+| **数据结构** | `Vec<IndexNode>` (Arena) + `HashMap` (Index) | `HashMap<Key, AppendValues>` |
+| **Join 类型** | Inner, Left, Right, Full, Cross (N-to-N) | Hash Semi-Join (N-to-1) |
+| **多重匹配** | 支持 (通过链表 `next` 指针) | **不支持** (Last-Win 或 Error) |
+| **Key 构建** | `ByteRecord` (Vector of Fields) | `Cow<'a, [u8]>` (Slice) |
+
+*   **xan 的核心结构 (Arena + Linked List)**:
+    ```rust
+    struct IndexNode {
+        record: ByteRecord, // 存储完整记录！内存占用大
+        written: bool,      // 用于 Outer Join 标记
+        next: Option<NonZeroUsize>, // 链表指针，解决 Hash 冲突和多重匹配
+    }
+    struct Index {
+        map: HashMap<ByteRecord, (usize, usize)>, // Key -> (Head, Tail) in Arena
+        nodes: Vec<IndexNode>, // Arena
+    }
+    ```
+    *   **优势**: 支持完备的 SQL Join 语义 (包括 N-to-N 笛卡尔积)。
+    *   **劣势**: 内存消耗巨大。Left Join 时需将整个 Right File 加载进内存；Full Join 时需将 Left File 加载进内存。Key 提取涉及 `ByteRecord` 的创建，有较多小内存分配。
+
+*   **tva 的核心结构 (HashMap)**:
+    ```rust
+    // 仅存储 Key 和需要 Append 的字段
+    let mut filter_map: HashMap<Vec<u8>, Vec<u8>> = HashMap::new();
+    ```
+    *   **优势**: 极致的内存效率和速度。只存储必要数据。
+    *   **劣势**: 仅支持 "查找并追加" 模式，无法处理 N-to-N 关系（Filter 文件中的 Key 必须唯一，否则需去重）。
 
 #### 3. 表达式引擎 (Expression Engine)
 
@@ -334,66 +358,55 @@
 
 ## 对标分析: tsv-join (D语言)
 
-为了解决 `tva join` 比 `tsv-join` 慢 1.5 倍的问题，我们对其源码 (`tsv-join.d`) 进行了深度逆向分析。
+为了解决 `tva join` 比 `tsv-join` 慢 1.5 倍的问题（通过优化 Key 构建逻辑，目前差距已缩小至 1.1 倍），我们对其源码 (`tsv-join.d`) 进行了深度逆向分析。
 
 ### 1. 核心组件与流程对比
 
 | 组件 | tsv-join (D) | tva (Rust) | 差异与优势 |
 | :--- | :--- | :--- | :--- |
-| **字段解析 (Fields Parsing)** | `InputFieldReordering` | `key_from_indices` / `split().collect()` | **D 胜出 (零分配)**。<br>D 使用 `InputFieldReordering` 类，内部维护一个预分配的缓冲区。每次处理新行时，只填充指针，**零内存分配**。<br>Rust 目前在 `key_from_indices` 中使用 `line.split(delimiter).collect()`，为每一行**分配一个新的 Vec<&str>**，这是巨大的性能热点。 |
-| **哈希表 (Hash Map)** | `string[string]` (D内置) | `HashMap<String, Vec<String>>` | **Rust 稍弱**。<br>D 的关联数组经过高度优化。Rust 的 `HashMap` 很快，但 Key 和 Value 都是 `String`，意味着每行都要进行堆分配。 |
-| **I/O 缓冲** | `bufferedByLine` (1MB Buffer) | `BufReader` (默认 8KB) | **D 胜出**。<br>D 使用自定义的 `bufferedByLine`，缓冲区更大且专门针对行读取优化。 |
-| **输出缓冲** | `BufferedOutputRange` | `BufWriter` | **D 胜出**。<br>D 使用自定义的 `BufferedOutputRange`，专门针对小片段写入优化。 |
+| **I/O 缓冲** | `bufferedByLine` (1MB Buffer) | `TsvReader` (128KB Buffer) | **D 微弱优势**。更大的缓冲区能减少 syscall，但 128KB 已接近边际效益递减点。 |
+| **字段解析** | `splitter` (Range Based) | `SelectPlan` + `memchr` | **Rust 胜出**。`tva` 使用预计算的 Plan 和 SIMD 查找，避免了 D 语言 Range 抽象的开销。 |
+| **Key 构建** | `string.join` (Allocation!) | `Cow<'a, [u8]>` (Zero-Copy*) | **Rust 胜出**。D 在构建 Key 时（即使是单列）通常涉及字符串分配或切片复制；`tva` 对单列 Key 实现了完全零拷贝 (`Cow::Borrowed`)，仅多列 Key 需要分配。 |
+| **Hash Map** | `string[string]` (Built-in AA) | `HashMap` (SipHash) | **D 胜出**。这是剩余差距的主要来源。D 的关联数组 (AA) 经过高度优化，且极可能使用了非加密 Hash (如 Murmur)。Rust 默认 `SipHash` 虽然抗 DoS 攻击但速度较慢。 |
+| **内存管理** | GC (Garbage Collection) | RAII (Drop) | **D 胜出 (在小对象分配上)**。在多列 Join 需要分配 Key 时，D 的 GC 指针碰撞分配比 Rust 的 `malloc/free` 更快。 |
 
-### 2. D 语言 `InputFieldReordering` 机制详解
+### 2. 深度流程分析
 
-D 语言版本的性能核心在于 `InputFieldReordering` 类 (位于 `common/utils.d`)。
+#### tsv-join.d (D)
+1.  **Read**: `bufferedByLine` 读取一行。
+2.  **Parse**: `splitter` 切分字段，生成 Range。
+3.  **Key Construction**:
+    *   使用 `InputFieldReordering` 提取字段。
+    *   **Crucial**: 代码中 `key = ... .join(cmdopt.delim).to!string` 表明，对于每一行数据，D 都会分配一个新的 `string` 作为 Key。
+4.  **Lookup**: `values = (key in filterHash)`。
+    *   使用 D 语言内置的 `Associative Array`。
+5.  **Write**: 写入匹配行。
 
-*   **预计算映射**: 在启动时，它计算好输入字段索引到输出字段索引的映射 (`fromToMap`)，并按输入顺序排序。
-*   **流式填充**: 在处理每一行时：
-    1.  调用 `initNewLine` 重置状态（不释放内存）。
-    2.  遍历输入行的字段 (`line.splitter`)。
-    3.  调用 `processNextField`。由于 `fromToMap` 是排序的，它只需要顺序检查当前字段是否是需要的字段。
-    4.  如果是，直接将字段的切片 (`char[]`) 保存到内部缓冲区。
-    5.  一旦所有需要的字段都找到了 (`allFieldsFilled`)，立即停止解析剩余字段。
-*   **零分配**: 整个过程只涉及切片操作，没有任何堆内存分配 (Heap Allocation)。
+#### tva join.rs (Rust)
+1.  **Read**: `TsvReader` 读取一行 (`&[u8]`)。
+2.  **Parse**: `SelectPlan` 使用 `memchr` 填充 `Vec<Range>` (Zero Allocation, Reused Buffer)。
+3.  **Key Construction**:
+    *   **单列 (常见情况)**: 直接返回 `Cow::Borrowed(&line[range])`。**完全无内存分配**。
+    *   **多列**: `Vec::with_capacity` -> `extend_from_slice` -> `Cow::Owned`。
+4.  **Lookup**: `map.get(key)`。
+    *   Rust 的 `HashMap` 默认使用 `SipHash 1-3`，这是一种加密安全但相对较慢的哈希算法。
+5.  **Write**: 写入匹配行。
 
-### 3. Rust 版本 (`tva join`) 的瓶颈
+### 3. 为什么还有 1.1x 差距?
 
-反观 Rust 版本的 `key_from_indices`:
+既然 `tva` 在 I/O 和 Parsing 上实现了零拷贝，甚至在 Key 构建上也优于 D（单列场景），为什么总时间依然慢 10%？
 
-```rust
-fn key_from_indices(line: &str, indices: &[usize], delimiter: char) -> String {
-    let fields: Vec<&str> = line.split(delimiter).collect(); // 瓶颈 1: 分配 Vec
-    let mut parts: Vec<&str> = Vec::new(); // 瓶颈 2: 分配 Vec
-    for idx in indices {
-        // ...
-        parts.push(fields[pos]);
-    }
-    parts.join(&delimiter.to_string()) // 瓶颈 3: 分配 String (无法避免，但前两步可优化)
-}
-```
+**结论**: **哈希函数的开销掩盖了零拷贝的优势**。
+在 `join` 操作中，哈希表的查找是绝对的热点路径。对于数百万行的 Join，就需要计算数百万次 Hash。
+*   **Rust**: `SipHash` (安全，慢)。
+*   **D**: `MurmurHash` 或类似 (非加密，快)。
 
-每一行数据都会触发至少两次 `Vec` 分配。对于 1000 万行数据，就是 2000 万次微小的堆分配，这会给分配器带来巨大压力。
+### 4. 进一步优化建议
 
-### 4. 优化行动项与结果 (已完成)
-
-经分析，`src/libs/select.rs` 中已存在与 D 语言 `InputFieldReordering` 类似的高性能实现 (`SelectPlan` 和 `write_selected_from_bytes`)，但目前尚未在 `join` 命令中复用。
-
-**优化实施：**
-
-1.  **通用化改造**:
-    *   复用 `src/libs/select.rs` 中的核心解析逻辑。
-    *   扩展 `SelectPlan` 增加了 `extract_ranges` 方法，支持将字段范围提取到复用的 `Vec<Range<usize>>` 缓冲区中。
-
-2.  **重构 `join.rs`**:
-    *   **移除 `key_from_indices`**: 废弃低效的 `split().collect()` 实现。
-    *   **引入 `SelectPlan`**: 使用预计算的字段映射。
-    *   **零拷贝 Key 提取**:
-        *   使用 `Cow<[u8]>` 优化 Key 的生命周期。
-        *   对于单列 Key（最常见情况），直接返回原始 Slice (`Cow::Borrowed`)，完全避免内存分配。
-        *   对于多列 Key，仅在必要时分配一次 `Vec<u8>`。
-    *   **I/O 优化**: 切换到 `src/libs/tsv/reader.rs` 提供的 `TsvReader`，并显式设置 128KB 缓冲区。
-
-**结果**:
-在 100万行数据的 Join 测试中，耗时从优化前的显著瓶颈降低至 **~166ms** (约 600万行/秒)，彻底解决了性能问题。
+1.  **更换 Hasher (High Priority)**:
+    *   **行动**: 将 `HashMap` 的 Hasher 替换为 `rapidhash` (已在项目中引入) 或 `ahash`。
+    *   **预期**: 这预计能消除 Hash 计算上的性能劣势，使 `tva` 的性能反超 `tsv-join`。
+2.  **Inline Key (Small String Optimization)**:
+    *   对于多列 Join 产生的短 Key (如 < 32 字节)，使用 `SmallVec<[u8; 32]>` 或类似栈上缓冲区，彻底消除堆分配。
+3.  **Prefetching**:
+    *   在计算 Hash 的同时预取内存，但这在纯内存操作中收益可能有限。
