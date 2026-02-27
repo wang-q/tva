@@ -1,7 +1,8 @@
 use clap::*;
+use crate::libs::tsv::record::TsvRecord;
 use intspan::IntSpan;
 use std::cmp::Ordering;
-use std::io::BufRead;
+use std::io::Write;
 
 pub fn make_subcommand() -> Command {
     Command::new("sort")
@@ -72,7 +73,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             delimiter_str
         ));
     }
-    let delimiter = delimiter_bytes[0] as char;
+    let delimiter = delimiter_bytes[0];
 
     let key_indices: Vec<usize> = if let Some(spec) = args.get_one::<String>("key") {
         match parse_key_indices(spec) {
@@ -89,20 +90,21 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         Vec::new()
     };
 
-    let mut rows: Vec<Vec<String>> = Vec::new();
+    let mut rows: Vec<TsvRecord> = Vec::new();
 
-    for input in crate::libs::io::input_sources(&infiles) {
-        let reader = input.reader;
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+        let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
 
-        for line in reader.lines().map_while(Result::ok) {
-            if line.is_empty() {
-                rows.push(Vec::new());
+        reader.for_each_record(|record| {
+            if record.is_empty() {
+                rows.push(TsvRecord::new());
             } else {
-                let fields: Vec<String> =
-                    line.split(delimiter).map(|s| s.to_string()).collect();
-                rows.push(fields);
+                let mut tsv_rec = TsvRecord::new();
+                tsv_rec.parse_line(record, delimiter);
+                rows.push(tsv_rec);
             }
-        }
+            Ok(())
+        })?;
     }
 
     if rows.is_empty() {
@@ -122,14 +124,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     rows.sort_by(|a, b| compare_rows(a, b, &indices, numeric, reverse));
 
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
-    let delim_out = delimiter.to_string();
 
-    for fields in rows {
-        if fields.is_empty() {
+    for record in rows {
+        if record.is_empty() {
             writer.write_all(b"\n")?;
         } else {
-            let line = fields.join(&delim_out);
-            writer.write_all(line.as_bytes())?;
+            writer.write_all(record.as_line())?;
             writer.write_all(b"\n")?;
         }
     }
@@ -138,8 +138,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 }
 
 fn compare_rows(
-    a: &[String],
-    b: &[String],
+    a: &TsvRecord,
+    b: &TsvRecord,
     indices: &[usize],
     numeric: bool,
     reverse: bool,
@@ -147,12 +147,16 @@ fn compare_rows(
     let mut ord = Ordering::Equal;
 
     for &idx in indices {
-        let av = a.get(idx).map(|s| s.as_str()).unwrap_or("");
-        let bv = b.get(idx).map(|s| s.as_str()).unwrap_or("");
+        let av = a.get(idx).unwrap_or(b"");
+        let bv = b.get(idx).unwrap_or(b"");
 
         let key_ord = if numeric {
-            let an: f64 = av.parse().unwrap_or(0.0);
-            let bn: f64 = bv.parse().unwrap_or(0.0);
+            // Parse f64 from bytes
+            let av_str = std::str::from_utf8(av).unwrap_or("");
+            let bv_str = std::str::from_utf8(bv).unwrap_or("");
+            
+            let an: f64 = av_str.trim().parse().unwrap_or(0.0);
+            let bn: f64 = bv_str.trim().parse().unwrap_or(0.0);
             an.partial_cmp(&bn).unwrap_or(Ordering::Equal)
         } else {
             av.cmp(bv)
