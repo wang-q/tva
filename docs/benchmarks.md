@@ -120,8 +120,6 @@ hyperfine \
 
 # 3. 结果处理与可视化 (Process & Visualize)
 # ------------------------------
-# 使用 tva 将 hyperfine 的 CSV 结果转换为 TSV (以 Filter 为例)
-tva from csv benchmark_filter.csv > benchmark_filter.tsv
 
 # 使用 Python 绘图 (内联脚本)
 # uv pip install --system pandas seaborn matplotlib
@@ -130,8 +128,8 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# 读取由 tva 转换的 TSV 数据
-df = pd.read_csv('benchmark_filter.tsv', sep='\t')
+# 读取 hyperfine 的 CSV 数据
+df = pd.read_csv('benchmark_filter.csv')
 
 # 简单的条形图
 plt.figure(figsize=(10, 6))
