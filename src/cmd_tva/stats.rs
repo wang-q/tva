@@ -1,11 +1,10 @@
-use crate::libs::io::reader;
+use crate::libs::io::map_io_err;
 use crate::libs::stats::{Aggregator, OpKind, Operation, StatsProcessor};
 use crate::libs::tsv::fields;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::Row;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::collections::HashMap;
-use std::io::BufRead;
 
 pub fn make_subcommand() -> Command {
     Command::new("stats")
@@ -422,191 +421,190 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     let header_mode = matches.get_flag("header");
     let group_by_spec = matches.get_one::<String>("group-by").cloned();
 
-    let mut reader = reader(&infiles[0]);
-    let mut header: Option<fields::Header> = None;
+    let mut processor: Option<StatsProcessor> = None;
+    let mut aggregator: Option<Aggregator> = None;
+    let mut groups: HashMap<Vec<u8>, Aggregator> = HashMap::new();
+    let mut group_indices: Vec<usize> = Vec::new();
+    let mut use_grouping = false;
 
-    if header_mode {
-        let mut line = String::new();
-        if reader.read_line(&mut line)? > 0 {
-            header = Some(fields::Header::from_line(line.trim_end(), '\t'));
-        }
-    }
+    // Helper to setup processor
+    let setup_processor = |header: Option<&fields::Header>| -> anyhow::Result<(StatsProcessor, Vec<usize>, Vec<String>)> {
+        let mut ops = Vec::new();
+        let mut output_headers = Vec::new();
 
-    // Resolve operations
-    let mut ops = Vec::new();
-    let mut output_headers = Vec::new();
+        for config in &op_configs {
+            match config.kind {
+                OpKind::Count => {
+                    ops.push(Operation {
+                        kind: OpKind::Count,
+                        field_idx: None,
+                    });
+                    output_headers.push("count".to_string());
+                }
+                _ => {
+                    if let Some(spec) = &config.spec {
+                        let indices = fields::parse_field_list_with_header(
+                            spec,
+                            header,
+                            '\t',
+                        )
+                        .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
 
-    for config in &op_configs {
-        match config.kind {
-            OpKind::Count => {
-                ops.push(Operation {
-                    kind: OpKind::Count,
-                    field_idx: None,
-                });
-                output_headers.push("count".to_string());
-            }
-            _ => {
-                if let Some(spec) = &config.spec {
-                    let indices = fields::parse_field_list_with_header(
-                        spec,
-                        header.as_ref(),
-                        '\t',
-                    )
-                    .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
+                        for idx in indices {
+                            let field_idx = idx - 1;
+                            ops.push(Operation {
+                                kind: config.kind.clone(),
+                                field_idx: Some(field_idx),
+                            });
 
-                    for idx in indices {
-                        let field_idx = idx - 1;
-                        ops.push(Operation {
-                            kind: config.kind.clone(),
-                            field_idx: Some(field_idx),
-                        });
+                            let suffix = match config.kind {
+                                OpKind::Sum => "_sum",
+                                OpKind::Mean => "_mean",
+                                OpKind::Min => "_min",
+                                OpKind::Max => "_max",
+                                OpKind::Median => "_median",
+                                OpKind::Stdev => "_stdev",
+                                OpKind::Variance => "_variance",
+                                OpKind::Mad => "_mad",
+                                OpKind::First => "_first",
+                                OpKind::Last => "_last",
+                                OpKind::NUnique => "_nunique",
+                                OpKind::Mode => "_mode",
+                                OpKind::GeoMean => "_geomean",
+                                OpKind::HarmMean => "_harmmean",
+                                OpKind::Q1 => "_q1",
+                                OpKind::Q3 => "_q3",
+                                OpKind::IQR => "_iqr",
+                                OpKind::CV => "_cv",
+                                OpKind::Range => "_range",
+                                OpKind::Unique => "_unique",
+                                OpKind::Collapse => "_collapse",
+                                OpKind::Rand => "_rand",
+                                _ => "",
+                            };
 
-                        let suffix = match config.kind {
-                            OpKind::Sum => "_sum",
-                            OpKind::Mean => "_mean",
-                            OpKind::Min => "_min",
-                            OpKind::Max => "_max",
-                            OpKind::Median => "_median",
-                            OpKind::Stdev => "_stdev",
-                            OpKind::Variance => "_variance",
-                            OpKind::Mad => "_mad",
-                            OpKind::First => "_first",
-                            OpKind::Last => "_last",
-                            OpKind::NUnique => "_nunique",
-                            OpKind::Mode => "_mode",
-                            OpKind::GeoMean => "_geomean",
-                            OpKind::HarmMean => "_harmmean",
-                            OpKind::Q1 => "_q1",
-                            OpKind::Q3 => "_q3",
-                            OpKind::IQR => "_iqr",
-                            OpKind::CV => "_cv",
-                            OpKind::Range => "_range",
-                            OpKind::Unique => "_unique",
-                            OpKind::Collapse => "_collapse",
-                            OpKind::Rand => "_rand",
-                            _ => "",
-                        };
-
-                        let name = if let Some(h) = &header {
-                            if field_idx < h.fields.len() {
-                                format!("{}{}", h.fields[field_idx], suffix)
+                            let name = if let Some(h) = header {
+                                if field_idx < h.fields.len() {
+                                    format!("{}{}", h.fields[field_idx], suffix)
+                                } else {
+                                    format!("field{}{}", idx, suffix)
+                                }
                             } else {
                                 format!("field{}{}", idx, suffix)
-                            }
-                        } else {
-                            format!("field{}{}", idx, suffix)
-                        };
-                        output_headers.push(name);
+                            };
+                            output_headers.push(name);
+                        }
                     }
                 }
             }
         }
-    }
 
-    let group_indices = if let Some(spec) = &group_by_spec {
-        fields::parse_field_list_with_header(spec, header.as_ref(), '\t')
-            .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?
-            .into_iter()
-            .map(|i| i - 1)
-            .collect::<Vec<_>>()
-    } else {
-        Vec::new()
+        let g_indices = if let Some(spec) = &group_by_spec {
+            fields::parse_field_list_with_header(spec, header, '\t')
+                .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?
+                .into_iter()
+                .map(|i| i - 1)
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        };
+
+        let mut final_headers = Vec::new();
+        if header_mode {
+            if let Some(h) = header {
+                for &idx in &g_indices {
+                    if idx < h.fields.len() {
+                        final_headers.push(h.fields[idx].clone());
+                    } else {
+                        final_headers.push(format!("field{}", idx + 1));
+                    }
+                }
+            }
+            final_headers.extend(output_headers);
+        }
+
+        Ok((StatsProcessor::new(ops), g_indices, final_headers))
     };
 
-    if header_mode {
-        let mut final_headers = Vec::new();
-        if let Some(h) = &header {
-            for &idx in &group_indices {
-                if idx < h.fields.len() {
-                    final_headers.push(h.fields[idx].clone());
-                } else {
-                    final_headers.push(format!("field{}", idx + 1));
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+        let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
+
+        if header_mode {
+            let header_bytes_opt = reader.read_header().map_err(map_io_err)?;
+            if processor.is_none() {
+                if let Some(header_bytes) = header_bytes_opt {
+                    let line = String::from_utf8_lossy(&header_bytes);
+                    let header = fields::Header::from_line(&line, '\t');
+                    
+                    let (proc, g_indices, headers) = setup_processor(Some(&header))?;
+                    processor = Some(proc);
+                    group_indices = g_indices;
+                    use_grouping = !group_indices.is_empty();
+                    
+                    if !use_grouping {
+                        aggregator = Some(processor.as_ref().unwrap().create_aggregator());
+                    }
+                    
+                    println!("{}", headers.join("\t"));
+                }
+            }
+        } else {
+            if processor.is_none() {
+                let (proc, g_indices, _) = setup_processor(None)?;
+                processor = Some(proc);
+                group_indices = g_indices;
+                use_grouping = !group_indices.is_empty();
+                
+                if !use_grouping {
+                    aggregator = Some(processor.as_ref().unwrap().create_aggregator());
                 }
             }
         }
-        final_headers.extend(output_headers);
-        println!("{}", final_headers.join("\t"));
+        
+        if let Some(proc) = &processor {
+            reader.for_each_row(|row| {
+                if use_grouping {
+                    let mut key = Vec::new();
+                    for (k_i, &idx) in group_indices.iter().enumerate() {
+                        if k_i > 0 {
+                            key.push(b'\t');
+                        }
+                        if let Some(field) = row.get_bytes(idx + 1) {
+                            key.extend_from_slice(field);
+                        }
+                    }
+                    let agg = groups.entry(key).or_insert_with(|| proc.create_aggregator());
+                    proc.update(agg, row);
+                } else {
+                    if let Some(agg) = &mut aggregator {
+                        proc.update(agg, row);
+                    }
+                }
+                Ok(())
+            }).map_err(map_io_err)?;
+        }
     }
 
-    let use_grouping = !group_indices.is_empty();
-    let mut first_reader = Some(reader);
+    if let Some(proc) = &processor {
+        if use_grouping {
+            let mut keys: Vec<_> = groups.keys().collect();
+            keys.sort();
 
-    let processor = StatsProcessor::new(ops);
+            for key in keys {
+                let agg = &groups[key];
+                print!("{}", String::from_utf8_lossy(key));
 
-    if use_grouping {
-        let mut groups: HashMap<Vec<u8>, Aggregator> = HashMap::new();
-
-        for (i, infile) in infiles.iter().enumerate() {
-            let file_reader = if i == 0 {
-                first_reader.take().unwrap()
-            } else {
-                let mut r = crate::libs::io::reader(infile);
-                if header_mode {
-                    let mut dummy = String::new();
-                    r.read_line(&mut dummy)?;
+                let values = proc.format_results(agg);
+                if !values.is_empty() {
+                    print!("\t{}", values.join("\t"));
                 }
-                r
-            };
-
-            let mut tsv_reader = TsvReader::new(file_reader);
-            tsv_reader.for_each_row(|row| {
-                let mut key = Vec::new();
-                for (k_i, &idx) in group_indices.iter().enumerate() {
-                    if k_i > 0 {
-                        key.push(b'\t');
-                    }
-                    if let Some(field) = row.get_bytes(idx + 1) {
-                        key.extend_from_slice(field);
-                    }
-                }
-
-                let aggregator = groups
-                    .entry(key)
-                    .or_insert_with(|| processor.create_aggregator());
-                processor.update(aggregator, row);
-
-                Ok(())
-            })?;
-        }
-
-        let mut keys: Vec<_> = groups.keys().collect();
-        keys.sort();
-
-        for key in keys {
-            let agg = &groups[key];
-            print!("{}", String::from_utf8_lossy(key));
-
-            let values = processor.format_results(agg);
-            if !values.is_empty() {
-                print!("\t{}", values.join("\t"));
+                println!();
             }
-            println!();
-        }
-    } else {
-        let mut aggregator = processor.create_aggregator();
-
-        for (i, infile) in infiles.iter().enumerate() {
-            let file_reader = if i == 0 {
-                first_reader.take().unwrap()
-            } else {
-                let mut r = crate::libs::io::reader(infile);
-                if header_mode {
-                    let mut dummy = String::new();
-                    r.read_line(&mut dummy)?;
-                }
-                r
-            };
-
-            let mut tsv_reader = TsvReader::new(file_reader);
-            tsv_reader.for_each_row(|row| {
-                processor.update(&mut aggregator, row);
-                Ok(())
-            })?;
-        }
-
-        if !processor.ops.is_empty() {
-            let values = processor.format_results(&aggregator);
-            println!("{}", values.join("\t"));
+        } else {
+            if let Some(agg) = &aggregator {
+                let values = proc.format_results(agg);
+                println!("{}", values.join("\t"));
+            }
         }
     }
 
