@@ -1,5 +1,5 @@
 use clap::*;
-use std::io::{BufRead, Write};
+use std::io::Write;
 
 pub fn make_subcommand() -> Command {
     Command::new("nl")
@@ -81,37 +81,45 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .get_one::<String>("delimiter")
         .map(|s| s.as_str())
         .unwrap_or("\t");
+    let delimiter_bytes = delimiter.as_bytes();
+    let header_bytes = header_string.as_bytes();
 
     for infile in &infiles {
-        let is_stdin = infile == "stdin";
+        let is_stdin = infile == "stdin" || infile == "-";
 
         if !is_stdin && !crate::libs::io::has_nonempty_line(infile)? {
             continue;
         }
 
-        let reader = crate::libs::io::reader(infile);
+        let mut reader = crate::libs::tsv::reader::TsvReader::new(
+            crate::libs::io::raw_reader(infile)
+        );
         let mut file_line_num: u64 = 0;
 
-        for line in reader.lines().map_while(Result::ok) {
+        reader.for_each_record(|line| {
             file_line_num += 1;
 
             if has_header && file_line_num == 1 {
                 if !header_written {
-                    writer.write_all(header_string.as_bytes())?;
-                    writer.write_all(delimiter.as_bytes())?;
-                    writer.write_all(line.as_bytes())?;
+                    writer.write_all(header_bytes)?;
+                    writer.write_all(delimiter_bytes)?;
+                    writer.write_all(line)?;
                     writer.write_all(b"\n")?;
                     writer.flush()?;
                     header_written = true;
                 }
             } else {
+                // To avoid allocation, we can use itoa or similar, but for now format! is okay or number buffer
+                // But let's stick to simple write!/to_string for the number part as it's small.
+                // Or use ryu/itoa crate if we really want to avoid allocation, but line_num.to_string() is small.
                 writer.write_all(line_num.to_string().as_bytes())?;
-                writer.write_all(delimiter.as_bytes())?;
-                writer.write_all(line.as_bytes())?;
+                writer.write_all(delimiter_bytes)?;
+                writer.write_all(line)?;
                 writer.write_all(b"\n")?;
                 line_num += 1;
             }
-        }
+            Ok(())
+        })?;
     }
 
     Ok(())
