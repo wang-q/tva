@@ -1,9 +1,11 @@
+use crate::libs::io::map_io_err;
+use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::record::Row;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use rust_xlsxwriter::{
     Color, ConditionalFormatCell, ConditionalFormatText, Format, FormatAlign,
     FormatBorder, Workbook,
 };
-use std::io::BufRead;
 use std::path::Path;
 
 pub fn make_subcommand() -> Command {
@@ -167,42 +169,54 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     // Read TSV and write to XLSX
     let reader = crate::libs::io::reader(infile);
+    let mut tsv_reader = TsvReader::with_capacity(reader, 512 * 1024);
     let mut row_cursor: u32 = 0;
     let has_header = args.get_flag("header");
 
-    for line in reader.lines() {
-        let line = line?;
-        if line.is_empty() {
-            continue;
-        }
-        let fields: Vec<&str> = line.split('\t').collect();
-
+    tsv_reader.for_each_row(|row| {
         let format = if row_cursor == 0 && has_header {
             &header_format
         } else {
             &normal_format
         };
 
-        for (col_idx, field) in fields.iter().enumerate() {
+        // Iterate fields using Row trait
+        let mut i = 1;
+        while let Some(field_bytes) = row.get_bytes(i) {
+            let col_idx = (i - 1) as u16;
+            
             // Try to parse as number if possible, otherwise write as string
-            if let Ok(val) = field.parse::<f64>() {
-                worksheet.write_number_with_format(
-                    row_cursor,
-                    col_idx as u16,
-                    val,
-                    format,
-                )?;
+            // Avoid string allocation if possible for checking
+            if let Ok(s) = std::str::from_utf8(field_bytes) {
+                if let Ok(val) = s.parse::<f64>() {
+                    worksheet.write_number_with_format(
+                        row_cursor,
+                        col_idx,
+                        val,
+                        format,
+                    ).map_err(map_io_err)?;
+                } else {
+                    worksheet.write_string_with_format(
+                        row_cursor,
+                        col_idx,
+                        s,
+                        format,
+                    ).map_err(map_io_err)?;
+                }
             } else {
+                // Fallback for non-utf8 (shouldn't happen in valid TSV usually)
                 worksheet.write_string_with_format(
                     row_cursor,
-                    col_idx as u16,
-                    *field,
+                    col_idx,
+                    String::from_utf8_lossy(field_bytes).as_ref(),
                     format,
-                )?;
+                ).map_err(map_io_err)?;
             }
+            i += 1;
         }
         row_cursor += 1;
-    }
+        Ok(())
+    }).map_err(map_io_err)?;
 
     // Freeze header if present
     if has_header {

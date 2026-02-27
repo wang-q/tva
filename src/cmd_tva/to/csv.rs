@@ -1,3 +1,6 @@
+use crate::libs::io::map_io_err;
+use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::record::Row;
 use clap::*;
 
 pub fn make_subcommand() -> Command {
@@ -44,19 +47,28 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         anyhow::bail!("delimiter must be a single byte");
     };
 
-    let mut tsv_reader = csv::ReaderBuilder::new()
-        .delimiter(b'\t')
-        .has_headers(false)
-        .from_reader(reader);
+    let mut tsv_reader = TsvReader::with_capacity(reader, 512 * 1024);
 
     let mut csv_writer = csv::WriterBuilder::new()
         .delimiter(delimiter)
         .from_writer(writer);
 
-    for result in tsv_reader.records() {
-        let record = result?;
-        csv_writer.write_record(&record)?;
-    }
+    tsv_reader.for_each_row(|row| {
+        // Iterate through fields (1-based index in Row trait)
+        // Row trait has no iterator, but we can access `row.ends` in TsvRow.
+        // Or simply implement an iterator for TsvRow or access underlying slice via get_bytes
+        // TsvRow has ends, so we can iterate indices.
+        // Wait, TsvRow::ends length is the number of fields.
+        
+        let mut fields = Vec::with_capacity(row.ends.len());
+        let mut i = 1;
+        while let Some(field) = row.get_bytes(i) {
+            fields.push(field);
+            i += 1;
+        }
+        csv_writer.write_record(fields)?;
+        Ok(())
+    }).map_err(map_io_err)?;
 
     csv_writer.flush()?;
 

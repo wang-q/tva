@@ -30,19 +30,29 @@ pub fn make_subcommand() -> Command {
         )
 }
 
-fn sanitize_field(field: &str) -> String {
-    field
-        .chars()
-        .map(|c| match c {
-            '\t' | '\n' | '\r' => ' ',
-            _ => c,
-        })
-        .collect()
+fn sanitize_field(field: &[u8], writer: &mut impl Write) -> std::io::Result<()> {
+    let mut last_pos = 0;
+    for (i, &byte) in field.iter().enumerate() {
+        match byte {
+            b'\t' | b'\n' | b'\r' => {
+                if i > last_pos {
+                    writer.write_all(&field[last_pos..i])?;
+                }
+                writer.write_all(b" ")?;
+                last_pos = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if last_pos < field.len() {
+        writer.write_all(&field[last_pos..])?;
+    }
+    Ok(())
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let infile = args.get_one::<String>("infile").unwrap();
-    let reader = crate::libs::io::reader(infile);
+    let reader = crate::libs::io::raw_reader(infile);
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
     let delimiter_str = args
@@ -63,15 +73,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .has_headers(false)
         .from_reader(reader);
 
-    let mut record = csv::StringRecord::new();
+    let mut record = csv::ByteRecord::new();
 
     loop {
-        match csv_reader.read_record(&mut record) {
-            Ok(has_record) => {
-                if !has_record {
-                    break;
-                }
-
+        match csv_reader.read_byte_record(&mut record) {
+            Ok(true) => {
                 if record.is_empty() {
                     writer.write_all(b"\n")?;
                     continue;
@@ -82,30 +88,27 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     if !first {
                         writer.write_all(b"\t")?;
                     }
-                    let sanitized = sanitize_field(field);
-                    writer.write_all(sanitized.as_bytes())?;
+                    sanitize_field(field, &mut writer)?;
                     first = false;
                 }
                 writer.write_all(b"\n")?;
             }
+            Ok(false) => break,
             Err(err) => {
                 let pos = err.position();
-                if infile == "stdin" {
-                    if let Some(pos) = pos {
-                        let line = pos.line();
-                        eprintln!("tva from csv: invalid CSV at line {}: {}", line, err);
-                    } else {
-                        eprintln!("tva from csv: invalid CSV: {}", err);
-                    }
-                } else if let Some(pos) = pos {
-                    let line = pos.line();
-                    eprintln!(
-                        "tva from csv: invalid CSV in '{}' at line {}: {}",
-                        infile, line, err
-                    );
+                let line_info = if let Some(pos) = pos {
+                    format!(" at line {}", pos.line())
                 } else {
-                    eprintln!("tva from csv: invalid CSV in '{}': {}", infile, err);
-                }
+                    String::new()
+                };
+
+                let file_info = if infile == "stdin" {
+                    String::new()
+                } else {
+                    format!(" in '{}'", infile)
+                };
+
+                eprintln!("tva from csv: invalid CSV{}{}: {}", file_info, line_info, err);
                 std::process::exit(1);
             }
         }
