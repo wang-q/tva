@@ -114,8 +114,8 @@ hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv benchmark_select.csv \
-    "tva select -H -f 1,8,19 hepmass.tsv > /dev/null" \
-    "tsv-select -H -f 1,8,19 hepmass.tsv > /dev/null" \
+    "tva select -f 1,8,19 hepmass.tsv > /dev/null" \
+    "tsv-select -f 1,8,19 hepmass.tsv > /dev/null" \
     "cut -f 1,8,19 hepmass.tsv > /dev/null"
 
 # 3. 结果处理与可视化 (Process & Visualize)
