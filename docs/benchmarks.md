@@ -211,14 +211,6 @@ hyperfine \
     "tva append hepmass.tsv hepmass.tsv > /dev/null" \
     "cat hepmass.tsv hepmass.tsv > /dev/null"
 
-# Scenario 11: Export to CSV
-hyperfine \
-    --warmup 2 \
-    --min-runs 5 \
-    --export-csv benchmark_to_csv.csv \
-    "tva to csv hepmass.tsv > /dev/null" \
-    "qsv fmt --sep ',' hepmass.tsv > /dev/null"
-
 # 3. 结果处理与可视化 (Process & Visualize)
 # ------------------------------
 
