@@ -71,9 +71,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             let val = match cell {
                 Data::Empty => String::new(),
-                Data::String(s) => {
-                    s.replace('\t', " ").replace('\n', " ").replace('\r', " ")
-                }
+                Data::String(s) => s.replace(['\t', '\n', '\r'], " "),
                 Data::Float(f) => f.to_string(),
                 Data::Int(i) => i.to_string(),
                 Data::Bool(b) => b.to_string(),

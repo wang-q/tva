@@ -170,7 +170,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut row_cursor: u32 = 0;
     let has_header = args.get_flag("header");
 
-    for (_, line) in reader.lines().enumerate() {
+    for line in reader.lines() {
         let line = line?;
         if line.is_empty() {
             continue;
