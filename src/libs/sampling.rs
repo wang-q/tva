@@ -16,6 +16,8 @@ pub trait Sampler {
     ) -> anyhow::Result<()>;
 }
 
+pub const INV_U64_MAX_PLUS_1: f64 = 1.0 / (u64::MAX as f64 + 1.0);
+
 fn write_with_optional_random<W: std::io::Write>(
     writer: &mut W,
     row: &[u8],
@@ -26,11 +28,9 @@ fn write_with_optional_random<W: std::io::Write>(
     if print_random {
         let v = match random_value {
             Some(x) => x,
-            None => rng.next() as f64 / (u64::MAX as f64 + 1.0),
+            None => rng.next() as f64 * INV_U64_MAX_PLUS_1,
         };
-        let value_str = format!("{:.10}", v);
-        writer.write_all(value_str.as_bytes())?;
-        writer.write_all(b"\t")?;
+        write!(writer, "{:.10}\t", v)?;
     }
     writer.write_all(row)?;
     writer.write_all(b"\n")?;
@@ -49,7 +49,7 @@ impl Sampler for BernoulliSampler {
         writer: &mut W,
         rng: &mut RapidRng,
     ) -> anyhow::Result<()> {
-        let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
+        let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
         if r < self.prob {
             write_with_optional_random(writer, record, rng, self.print_random, Some(r))?;
         }
@@ -154,7 +154,7 @@ impl Sampler for WeightedReservoirSampler {
             if let Ok(w_str) = std::str::from_utf8(w_bytes) {
                 if let Ok(w) = w_str.trim().parse::<f64>() {
                     if w > 0.0 {
-                        let u = rng.next() as f64 / (u64::MAX as f64 + 1.0);
+                        let u = rng.next() as f64 * INV_U64_MAX_PLUS_1;
                         let key = -u.ln() / w;
                         self.weighted.push((key, record.to_vec()));
                     }
@@ -255,7 +255,7 @@ impl Sampler for DistinctBernoulliSampler {
         };
 
         let (keep, r) = self.decisions.entry(key).or_insert_with(|| {
-            let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
+            let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
             (r < self.prob, r)
         });
 
@@ -429,7 +429,7 @@ impl Sampler for CompatRandomSampler {
 
         let mut keyed_indices: Vec<(f64, usize)> = Vec::with_capacity(n);
         for idx in 0..n {
-            let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
+            let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
             keyed_indices.push((r, idx));
         }
         keyed_indices.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
