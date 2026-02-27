@@ -145,8 +145,8 @@ hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv benchmark_sample.csv \
-    "tva sample -H --weight-field 5 -k 1000 hepmass.tsv > /dev/null" \
-    "tsv-sample -H --weight-field 5 -k 1000 hepmass.tsv > /dev/null"
+    "tva sample -H --weight-field 5 -n 1000 hepmass.tsv > /dev/null" \
+    "tsv-sample -H --weight-field 5 -n 1000 hepmass.tsv > /dev/null"
 
 # 3. 结果处理与可视化 (Process & Visualize)
 # ------------------------------

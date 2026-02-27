@@ -1,24 +1,15 @@
 use rapidhash::RapidRng;
+use crate::libs::tsv::record::{Row, TsvRow, StrSliceRow};
+use std::io::Write;
 
-pub struct WeightedSampleConfig<'a> {
-    pub k: usize,
-    pub has_header: bool,
-    pub header_line: Option<&'a str>,
-    pub weight_spec: &'a str,
-    pub print_random: bool,
-}
-
-pub struct DistinctSampleConfig<'a> {
-    pub prob: f64,
-    pub has_header: bool,
-    pub header_line: Option<&'a str>,
-    pub key_spec: &'a str,
-    pub print_random: bool,
+pub trait Sampler {
+    fn process<W: Write>(&mut self, record: &[u8], writer: &mut W, rng: &mut RapidRng) -> anyhow::Result<()>;
+    fn finalize<W: Write>(&mut self, writer: &mut W, rng: &mut RapidRng, print_random: bool) -> anyhow::Result<()>;
 }
 
 fn write_with_optional_random<W: std::io::Write>(
     writer: &mut W,
-    row: &str,
+    row: &[u8],
     rng: &mut RapidRng,
     print_random: bool,
     random_value: Option<f64>,
@@ -32,316 +23,337 @@ fn write_with_optional_random<W: std::io::Write>(
         writer.write_all(value_str.as_bytes())?;
         writer.write_all(b"\t")?;
     }
-    writer.write_all(row.as_bytes())?;
+    writer.write_all(row)?;
     writer.write_all(b"\n")?;
     Ok(())
 }
 
-pub fn bernoulli_sample<W: std::io::Write>(
-    writer: &mut W,
-    rows: &[String],
-    prob: f64,
-    rng: &mut RapidRng,
-    print_random: bool,
-) -> anyhow::Result<()> {
-    for row in rows {
-        if row.is_empty() {
-            writer.write_all(b"\n")?;
-            continue;
-        }
+pub struct BernoulliSampler {
+    pub prob: f64,
+    pub print_random: bool,
+}
 
+impl Sampler for BernoulliSampler {
+    fn process<W: Write>(&mut self, record: &[u8], writer: &mut W, rng: &mut RapidRng) -> anyhow::Result<()> {
         let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
-        if r < prob {
-            write_with_optional_random(writer, row, rng, print_random, Some(r))?;
+        if r < self.prob {
+            write_with_optional_random(writer, record, rng, self.print_random, Some(r))?;
         }
+        Ok(())
     }
-
-    Ok(())
+    fn finalize<W: Write>(&mut self, _writer: &mut W, _rng: &mut RapidRng, _print_random: bool) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
 
-pub fn shuffle_rows<W: std::io::Write>(
-    writer: &mut W,
-    mut rows: Vec<String>,
-    rng: &mut RapidRng,
-    print_random: bool,
-) -> anyhow::Result<()> {
-    let len = rows.len();
-    for i in (1..len).rev() {
-        let j = (rng.next() as usize) % (i + 1);
-        rows.swap(i, j);
-    }
-
-    for row in rows {
-        write_with_optional_random(writer, &row, rng, print_random, None)?;
-    }
-
-    Ok(())
+pub struct ReservoirSampler {
+    pub k: usize,
+    pub reservoir: Vec<Vec<u8>>,
+    pub count: usize,
 }
 
-pub fn compat_random_sample<W: std::io::Write>(
-    writer: &mut W,
-    rows: &[String],
-    k: usize,
-    rng: &mut RapidRng,
-    print_random: bool,
-) -> anyhow::Result<()> {
-    let n = rows.len();
-    if n == 0 {
-        return Ok(());
-    }
-
-    let sample_size = if k == 0 || k >= n { n } else { k };
-
-    let mut keyed_indices: Vec<(f64, usize)> = Vec::with_capacity(n);
-    for (idx, _) in rows.iter().enumerate() {
-        let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
-        keyed_indices.push((r, idx));
-    }
-
-    keyed_indices.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-
-    for (r, idx) in keyed_indices.into_iter().take(sample_size) {
-        let row = &rows[idx];
-        write_with_optional_random(writer, row, rng, print_random, Some(r))?;
-    }
-
-    Ok(())
-}
-
-pub fn fixed_size_sample<W: std::io::Write>(
-    writer: &mut W,
-    rows: Vec<String>,
-    k: usize,
-    rng: &mut RapidRng,
-    print_random: bool,
-) -> anyhow::Result<()> {
-    let n = rows.len();
-
-    if k == 0 || n == 0 {
-        return Ok(());
-    }
-
-    if k >= n {
-        return shuffle_rows(writer, rows, rng, print_random);
-    }
-    let mut sample: Vec<String> = Vec::with_capacity(k);
-
-    for (i, row) in rows.into_iter().enumerate() {
-        if i < k {
-            sample.push(row);
+impl Sampler for ReservoirSampler {
+    fn process<W: Write>(&mut self, record: &[u8], _writer: &mut W, rng: &mut RapidRng) -> anyhow::Result<()> {
+        if self.count < self.k {
+            self.reservoir.push(record.to_vec());
         } else {
-            let j = rng.next() as usize % (i + 1);
-            if j < k {
-                sample[j] = row;
+            let j = rng.next() as usize % (self.count + 1);
+            if j < self.k {
+                self.reservoir[j] = record.to_vec();
             }
         }
+        self.count += 1;
+        Ok(())
     }
-
-    shuffle_rows(writer, sample, rng, print_random)
-}
-
-pub fn sample_with_replacement<W: std::io::Write>(
-    writer: &mut W,
-    rows: &[String],
-    k: usize,
-    rng: &mut RapidRng,
-) -> anyhow::Result<()> {
-    if k == 0 || rows.is_empty() {
-        return Ok(());
-    }
-
-    let n = rows.len();
-    for _ in 0..k {
-        let idx = (rng.next() as usize) % n;
-        let row = &rows[idx];
-        writer.write_all(row.as_bytes())?;
-        writer.write_all(b"\n")?;
-    }
-
-    Ok(())
-}
-
-pub fn fixed_size_sample_inorder<W: std::io::Write>(
-    writer: &mut W,
-    rows: &[String],
-    k: usize,
-    rng: &mut RapidRng,
-    print_random: bool,
-) -> anyhow::Result<()> {
-    let n = rows.len();
-
-    if k == 0 || n == 0 {
-        return Ok(());
-    }
-
-    if k >= n {
-        for row in rows {
+    fn finalize<W: Write>(&mut self, writer: &mut W, rng: &mut RapidRng, print_random: bool) -> anyhow::Result<()> {
+        let len = self.reservoir.len();
+        // Shuffle reservoir (optional but matches previous behavior)
+        for i in (1..len).rev() {
+            let j = (rng.next() as usize) % (i + 1);
+            self.reservoir.swap(i, j);
+        }
+        for row in &self.reservoir {
             write_with_optional_random(writer, row, rng, print_random, None)?;
         }
-        return Ok(());
+        Ok(())
     }
-
-    let mut indices: Vec<usize> = (0..n).collect();
-    for i in (1..n).rev() {
-        let j = (rng.next() as usize) % (i + 1);
-        indices.swap(i, j);
-    }
-
-    indices.truncate(k);
-    indices.sort_unstable();
-
-    for idx in indices {
-        let row = &rows[idx];
-        write_with_optional_random(writer, row, rng, print_random, None)?;
-    }
-
-    Ok(())
 }
 
-pub fn weighted_fixed_size_sample<W: std::io::Write>(
-    writer: &mut W,
-    rows: &[String],
-    rng: &mut RapidRng,
-    config: WeightedSampleConfig,
-) -> anyhow::Result<()> {
-    use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
-
-    let n = rows.len();
-    let k = config.k;
-
-    if k == 0 || n == 0 {
-        return Ok(());
-    }
-
-    let delimiter = '\t';
-    let header = if config.has_header {
-        config
-            .header_line
-            .map(|line| Header::from_line(line, delimiter))
-    } else {
-        None
-    };
-
-    let field_indices =
-        parse_field_list_with_header(config.weight_spec, header.as_ref(), delimiter)
-            .map_err(|e| anyhow::anyhow!("tva sample: {}", e))?;
-
-    if field_indices.len() != 1 {
-        return Err(anyhow::anyhow!(
-            "tva sample: --weight-field/-w must select exactly one field"
-        ));
-    }
-
-    let field_idx = field_indices[0];
-
-    let mut weighted: Vec<(f64, &String)> = Vec::with_capacity(n);
-
-    for row in rows {
-        if row.is_empty() {
-            writer.write_all(b"\n")?;
-            continue;
-        }
-        let cols: Vec<&str> = row.split(delimiter).collect();
-        if field_idx == 0 || field_idx > cols.len() {
-            return Err(anyhow::anyhow!(
-                "tva sample: weight field index {} out of range",
-                field_idx
-            ));
-        }
-        let w_str = cols[field_idx - 1].trim();
-        if w_str.is_empty() {
-            continue;
-        }
-        let w: f64 = w_str.parse().map_err(|_| {
-            anyhow::anyhow!("tva sample: weight value `{}` is not a valid number", w_str)
-        })?;
-        if w <= 0.0 {
-            continue;
-        }
-        let u = rng.next() as f64 / (u64::MAX as f64 + 1.0);
-        let key = -u.ln() / w;
-        weighted.push((key, row));
-    }
-
-    if weighted.is_empty() {
-        return Ok(());
-    }
-
-    weighted.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-
-    let limit = k.min(weighted.len());
-    for (_, row) in weighted.into_iter().take(limit) {
-        write_with_optional_random(writer, row, rng, config.print_random, None)?;
-    }
-
-    Ok(())
+pub struct WeightedReservoirSampler {
+    pub k: usize,
+    pub weight_field_idx: usize,
+    pub weighted: Vec<(f64, Vec<u8>)>,
 }
 
-pub fn distinct_bernoulli_sample<W: std::io::Write>(
-    writer: &mut W,
-    rows: &[String],
-    rng: &mut RapidRng,
-    config: DistinctSampleConfig,
-) -> anyhow::Result<()> {
-    use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
-    use std::collections::HashMap;
-
-    if config.prob <= 0.0 {
-        return Ok(());
-    }
-
-    let delimiter = '\t';
-
-    let header = if config.has_header {
-        config
-            .header_line
-            .map(|line| Header::from_line(line, delimiter))
-    } else {
-        None
-    };
-
-    let spec_trimmed = config.key_spec.trim();
-    let indices = if spec_trimmed == "0" {
-        Vec::new()
-    } else {
-        parse_field_list_with_header(spec_trimmed, header.as_ref(), delimiter)
-            .map_err(|e| anyhow::anyhow!("tva sample: {}", e))?
-    };
-
-    let mut decisions: HashMap<String, (bool, f64)> = HashMap::new();
-
-    for row in rows {
-        if row.is_empty() {
-            writer.write_all(b"\n")?;
-            continue;
-        }
-
-        let key = if indices.is_empty() {
-            row.clone()
+impl Sampler for WeightedReservoirSampler {
+    fn process<W: Write>(&mut self, record: &[u8], _writer: &mut W, rng: &mut RapidRng) -> anyhow::Result<()> {
+        // We need to parse weight field.
+        // To do this efficiently without TsvRow structure, we might need TsvRow logic or simple split.
+        // Since we are decoupling, let's just use memchr iterator logic inline or reuse TsvRow logic if possible.
+        // But Sampler trait takes &[u8]. We can construct TsvRow on fly or just scan.
+        
+        // field_start
+        // field_idx
+        let mut weight_bytes = None;
+        
+        // Scan for nth field
+        // field_idx is 1-based index from config
+        
+        if self.weight_field_idx == 1 {
+             let end = memchr::memchr(b'\t', record).unwrap_or(record.len());
+             weight_bytes = Some(&record[0..end]);
         } else {
-            let cols: Vec<&str> = row.split(delimiter).collect();
-            let mut parts: Vec<&str> = Vec::with_capacity(indices.len());
-            for idx in &indices {
-                if *idx == 0 || *idx > cols.len() {
-                    return Err(anyhow::anyhow!(
-                        "tva sample: key field index {} out of range",
-                        idx
-                    ));
+            let mut iter = memchr::memchr_iter(b'\t', record);
+            for _ in 0..self.weight_field_idx - 2 {
+                if iter.next().is_none() {
+                    break;
                 }
-                parts.push(cols[*idx - 1]);
             }
-            parts.join("\x1f")
+            if let Some(start_pos) = iter.next() {
+                let start = start_pos + 1;
+                let end = iter.next().unwrap_or(record.len());
+                weight_bytes = Some(&record[start..end]);
+            }
+        }
+
+        if let Some(w_bytes) = weight_bytes {
+             if let Ok(w_str) = std::str::from_utf8(w_bytes) {
+                 if let Ok(w) = w_str.trim().parse::<f64>() {
+                     if w > 0.0 {
+                        let u = rng.next() as f64 / (u64::MAX as f64 + 1.0);
+                        let key = -u.ln() / w;
+                        self.weighted.push((key, record.to_vec()));
+                     }
+                 } else {
+                     return Err(std::io::Error::new(
+                         std::io::ErrorKind::InvalidData,
+                         format!("weight value `{}` is not a valid number", w_str)
+                     ).into());
+                 }
+             }
+        } else {
+             return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("weight field index {} out of range", self.weight_field_idx)
+            ).into());
+        }
+        Ok(())
+    }
+
+    fn finalize<W: Write>(&mut self, writer: &mut W, rng: &mut RapidRng, print_random: bool) -> anyhow::Result<()> {
+        if self.weighted.is_empty() {
+            return Ok(());
+        }
+        self.weighted.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        let limit = self.k.min(self.weighted.len());
+        for (_, row) in self.weighted.iter().take(limit) {
+            write_with_optional_random(writer, row, rng, print_random, None)?;
+        }
+        Ok(())
+    }
+}
+
+pub struct DistinctBernoulliSampler {
+    pub prob: f64,
+    pub key_field_indices: Vec<usize>,
+    pub print_random: bool,
+    pub decisions: std::collections::HashMap<Vec<u8>, (bool, f64)>,
+}
+
+impl Sampler for DistinctBernoulliSampler {
+    fn process<W: Write>(&mut self, record: &[u8], writer: &mut W, rng: &mut RapidRng) -> anyhow::Result<()> {
+        let key = if self.key_field_indices.is_empty() {
+            record.to_vec()
+        } else {
+            let mut parts = Vec::new();
+            // let mut current_field_idx = 0; 
+            // let mut record_pos = 0;
+            
+            // We need to extract specific fields.
+            // Let's iterate tabs.
+            let mut tab_iter = memchr::memchr_iter(b'\t', record);
+            let mut last_pos = 0;
+            
+            // Collect fields
+            // This is O(N) scan.
+            
+            let mut field_idx = 1; // 1-based
+            let mut next_tab = tab_iter.next();
+            
+            for (i, &target_idx) in self.key_field_indices.iter().enumerate() {
+                if i > 0 {
+                    parts.push(0x1f);
+                }
+                
+                // Advance to target_idx
+                while field_idx < target_idx {
+                    if let Some(pos) = next_tab {
+                        last_pos = pos + 1;
+                        next_tab = tab_iter.next();
+                        field_idx += 1;
+                    } else {
+                        // End of record reached before target field
+                         return Err(std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            format!("key field index {} out of range", target_idx)
+                        ).into());
+                    }
+                }
+                
+                // Now at target_idx
+                let end = next_tab.unwrap_or(record.len());
+                parts.extend_from_slice(&record[last_pos..end]);
+            }
+            parts
         };
 
-        let (keep, r) = decisions.entry(key).or_insert_with(|| {
+        let (keep, r) = self.decisions.entry(key).or_insert_with(|| {
             let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
-            (r < config.prob, r)
+            (r < self.prob, r)
         });
 
         if *keep {
-            write_with_optional_random(writer, row, rng, config.print_random, Some(*r))?;
+            write_with_optional_random(writer, record, rng, self.print_random, Some(*r))?;
         }
+        Ok(())
     }
 
-    Ok(())
+    fn finalize<W: Write>(&mut self, _writer: &mut W, _rng: &mut RapidRng, _print_random: bool) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
+pub struct FullDatasetSampler {
+    pub rows: Vec<Vec<u8>>,
+}
+
+impl Sampler for FullDatasetSampler {
+    fn process<W: Write>(&mut self, record: &[u8], _writer: &mut W, _rng: &mut RapidRng) -> anyhow::Result<()> {
+        self.rows.push(record.to_vec());
+        Ok(())
+    }
+    
+    fn finalize<W: Write>(&mut self, writer: &mut W, rng: &mut RapidRng, print_random: bool) -> anyhow::Result<()> {
+        for row in &self.rows {
+            write_with_optional_random(writer, row, rng, print_random, None)?;
+        }
+        Ok(())
+    }
+}
+
+pub struct ShuffleSampler {
+    pub rows: Vec<Vec<u8>>,
+}
+
+impl Sampler for ShuffleSampler {
+    fn process<W: Write>(&mut self, record: &[u8], _writer: &mut W, _rng: &mut RapidRng) -> anyhow::Result<()> {
+        self.rows.push(record.to_vec());
+        Ok(())
+    }
+    fn finalize<W: Write>(&mut self, writer: &mut W, rng: &mut RapidRng, print_random: bool) -> anyhow::Result<()> {
+        let len = self.rows.len();
+        for i in (1..len).rev() {
+            let j = (rng.next() as usize) % (i + 1);
+            self.rows.swap(i, j);
+        }
+        for row in &self.rows {
+            write_with_optional_random(writer, row, rng, print_random, None)?;
+        }
+        Ok(())
+    }
+}
+
+pub struct InorderSampler {
+    pub k: usize,
+    pub rows: Vec<Vec<u8>>,
+}
+
+impl Sampler for InorderSampler {
+    fn process<W: Write>(&mut self, record: &[u8], _writer: &mut W, _rng: &mut RapidRng) -> anyhow::Result<()> {
+        self.rows.push(record.to_vec());
+        Ok(())
+    }
+    fn finalize<W: Write>(&mut self, writer: &mut W, rng: &mut RapidRng, print_random: bool) -> anyhow::Result<()> {
+        let n = self.rows.len();
+        if self.k == 0 || n == 0 {
+            return Ok(());
+        }
+        if self.k >= n {
+            for row in &self.rows {
+                write_with_optional_random(writer, row, rng, print_random, None)?;
+            }
+            return Ok(());
+        }
+
+        let mut indices: Vec<usize> = (0..n).collect();
+        for i in (1..n).rev() {
+            let j = (rng.next() as usize) % (i + 1);
+            indices.swap(i, j);
+        }
+        indices.truncate(self.k);
+        indices.sort_unstable();
+
+        for idx in indices {
+            let row = &self.rows[idx];
+            write_with_optional_random(writer, row, rng, print_random, None)?;
+        }
+        Ok(())
+    }
+}
+
+pub struct ReplacementSampler {
+    pub k: usize,
+    pub rows: Vec<Vec<u8>>,
+}
+
+impl Sampler for ReplacementSampler {
+    fn process<W: Write>(&mut self, record: &[u8], _writer: &mut W, _rng: &mut RapidRng) -> anyhow::Result<()> {
+        self.rows.push(record.to_vec());
+        Ok(())
+    }
+    fn finalize<W: Write>(&mut self, writer: &mut W, rng: &mut RapidRng, _print_random: bool) -> anyhow::Result<()> {
+        if self.k == 0 || self.rows.is_empty() {
+            return Ok(());
+        }
+        let n = self.rows.len();
+        for _ in 0..self.k {
+            let idx = (rng.next() as usize) % n;
+            let row = &self.rows[idx];
+            writer.write_all(row)?;
+            writer.write_all(b"\n")?;
+        }
+        Ok(())
+    }
+}
+
+pub struct CompatRandomSampler {
+    pub k: usize,
+    pub rows: Vec<Vec<u8>>,
+}
+
+impl Sampler for CompatRandomSampler {
+    fn process<W: Write>(&mut self, record: &[u8], _writer: &mut W, _rng: &mut RapidRng) -> anyhow::Result<()> {
+        self.rows.push(record.to_vec());
+        Ok(())
+    }
+    fn finalize<W: Write>(&mut self, writer: &mut W, rng: &mut RapidRng, print_random: bool) -> anyhow::Result<()> {
+        let n = self.rows.len();
+        if n == 0 {
+            return Ok(());
+        }
+        let sample_size = if self.k == 0 || self.k >= n { n } else { self.k };
+
+        let mut keyed_indices: Vec<(f64, usize)> = Vec::with_capacity(n);
+        for idx in 0..n {
+            let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
+            keyed_indices.push((r, idx));
+        }
+        keyed_indices.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        for (r, idx) in keyed_indices.into_iter().take(sample_size) {
+            let row = &self.rows[idx];
+            write_with_optional_random(writer, row, rng, print_random, Some(r))?;
+        }
+        Ok(())
+    }
 }

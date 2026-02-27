@@ -1,7 +1,9 @@
 use crate::libs::sampling::*;
+use crate::libs::tsv::reader::TsvReader;
 use clap::*;
 use rapidhash::RapidRng;
-use std::io::BufRead;
+use std::collections::VecDeque;
+use std::io::{Read, Write};
 
 pub fn make_subcommand() -> Command {
     Command::new("sample")
@@ -119,7 +121,46 @@ fn arg_error(msg: &str) -> ! {
     std::process::exit(1);
 }
 
+struct MultiReader {
+    readers: VecDeque<Box<dyn Read>>,
+    current: Option<Box<dyn Read>>,
+}
+
+impl MultiReader {
+    fn new(readers: Vec<Box<dyn Read>>) -> Self {
+        let mut queue: VecDeque<_> = readers.into();
+        let current = queue.pop_front();
+        Self {
+            readers: queue,
+            current,
+        }
+    }
+}
+
+impl Read for MultiReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        loop {
+            if let Some(ref mut r) = self.current {
+                let n = r.read(buf)?;
+                if n > 0 {
+                    return Ok(n);
+                }
+            }
+            // Current reader exhausted
+            if let Some(next) = self.readers.pop_front() {
+                self.current = Some(next);
+            } else {
+                return Ok(0); // EOF
+            }
+        }
+    }
+}
+
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
+    execute_inner(args).map_err(|e| anyhow::anyhow!("tva sample: {}", e))
+}
+
+fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
@@ -218,128 +259,229 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         RapidRng::new(2438424139)
     };
 
-    let mut data_rows: Vec<String> = Vec::new();
-    let mut header_line: Option<String> = None;
-    let mut header_written = false;
+    // Prepare Sampler
+    enum SamplerEnum {
+        Bernoulli(BernoulliSampler),
+        Distinct(DistinctBernoulliSampler),
+        Reservoir(ReservoirSampler),
+        Weighted(WeightedReservoirSampler),
+        Full(FullDatasetSampler),
+        Shuffle(ShuffleSampler),
+        Inorder(InorderSampler),
+        Replacement(ReplacementSampler),
+        Compat(CompatRandomSampler),
+    }
 
-    for input in crate::libs::io::input_sources(&infiles) {
-        let reader = input.reader;
-        let mut is_first_nonempty = true;
-
-        for line in reader.lines().map_while(Result::ok) {
-            let mut line = line;
-            if let Some('\r') = line.chars().last() {
-                line.pop();
+    impl Sampler for SamplerEnum {
+        fn process<W: Write>(&mut self, record: &[u8], writer: &mut W, rng: &mut RapidRng) -> anyhow::Result<()> {
+            match self {
+                SamplerEnum::Bernoulli(s) => s.process(record, writer, rng),
+                SamplerEnum::Distinct(s) => s.process(record, writer, rng),
+                SamplerEnum::Reservoir(s) => s.process(record, writer, rng),
+                SamplerEnum::Weighted(s) => s.process(record, writer, rng),
+                SamplerEnum::Full(s) => s.process(record, writer, rng),
+                SamplerEnum::Shuffle(s) => s.process(record, writer, rng),
+                SamplerEnum::Inorder(s) => s.process(record, writer, rng),
+                SamplerEnum::Replacement(s) => s.process(record, writer, rng),
+                SamplerEnum::Compat(s) => s.process(record, writer, rng),
             }
-
-            if has_header && is_first_nonempty && !line.is_empty() {
-                if header_line.is_none() {
-                    header_line = Some(line.clone());
-                }
-                is_first_nonempty = false;
-                continue;
-            }
-
-            is_first_nonempty = false;
-
-            data_rows.push(line);
         }
+        fn finalize<W2: Write>(&mut self, writer: &mut W2, rng: &mut RapidRng, print_random: bool) -> anyhow::Result<()> {
+            match self {
+                SamplerEnum::Bernoulli(s) => s.finalize(writer, rng, print_random),
+                SamplerEnum::Distinct(s) => s.finalize(writer, rng, print_random),
+                SamplerEnum::Reservoir(s) => s.finalize(writer, rng, print_random),
+                SamplerEnum::Weighted(s) => s.finalize(writer, rng, print_random),
+                SamplerEnum::Full(s) => s.finalize(writer, rng, print_random),
+                SamplerEnum::Shuffle(s) => s.finalize(writer, rng, print_random),
+                SamplerEnum::Inorder(s) => s.finalize(writer, rng, print_random),
+                SamplerEnum::Replacement(s) => s.finalize(writer, rng, print_random),
+                SamplerEnum::Compat(s) => s.finalize(writer, rng, print_random),
+            }
+        }
+    }
+
+    let mut sampler: SamplerEnum = if let Some(p) = prob_opt {
+        if let Some(ref _key_spec) = key_fields {
+            SamplerEnum::Distinct(DistinctBernoulliSampler {
+                prob: p,
+                key_field_indices: Vec::new(), // To be filled
+                print_random,
+                decisions: std::collections::HashMap::new(),
+            })
+        } else {
+            SamplerEnum::Bernoulli(BernoulliSampler { prob: p, print_random })
+        }
+    } else if replace && num_opt > 0 {
+        SamplerEnum::Replacement(ReplacementSampler { k: num_opt as usize, rows: Vec::new() })
+    } else if let Some(ref _weight_spec) = weight_field {
+        SamplerEnum::Weighted(WeightedReservoirSampler {
+            k: num_opt as usize,
+            weight_field_idx: 0, // To be filled
+            weighted: Vec::new(),
+        })
+    } else if num_opt == 0 {
+        if compatibility_mode {
+            SamplerEnum::Compat(CompatRandomSampler { k: 0, rows: Vec::new() })
+        } else {
+            SamplerEnum::Shuffle(ShuffleSampler { rows: Vec::new() })
+        }
+    } else if inorder {
+        SamplerEnum::Inorder(InorderSampler { k: num_opt as usize, rows: Vec::new() })
+    } else if compatibility_mode {
+        SamplerEnum::Compat(CompatRandomSampler { k: num_opt as usize, rows: Vec::new() })
+    } else {
+        SamplerEnum::Reservoir(ReservoirSampler { k: num_opt as usize, reservoir: Vec::new(), count: 0 })
+    };
+
+    let mut header_line: Option<Vec<u8>> = None;
+    let mut header_written = false;
+    let mut sampler_initialized = false;
+    
+    let distinct_key_spec = key_fields.as_deref();
+    let weighted_weight_spec = weight_field.as_deref();
+
+    // Iterate over files manually to handle headers correctly
+    for input in crate::libs::io::input_sources(&infiles) {
+        let mut reader = TsvReader::new(input.reader);
+        let mut is_first_record = true;
+        
+        if gen_random_inorder && !header_written && header_line.is_some() {
+             let header = header_line.as_ref().unwrap();
+             writer.write_all(random_value_header.as_bytes())?;
+             writer.write_all(b"\t")?;
+             writer.write_all(header)?;
+             writer.write_all(b"\n")?;
+             header_written = true;
+        }
+
+        reader.for_each_record(|record| {
+            if record.is_empty() {
+                writer.write_all(b"\n")?;
+                return Ok(());
+            }
+            if has_header && is_first_record {
+                is_first_record = false;
+                if header_line.is_none() {
+                    header_line = Some(record.to_vec());
+                    
+                    // Init sampler config if needed
+                    if !sampler_initialized {
+                        match &mut sampler {
+                            SamplerEnum::Distinct(s) => {
+                                use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
+                                let record_str = std::str::from_utf8(record).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{}", e)))?;
+                                let header = Header::from_line(record_str, '\t');
+                                let spec = distinct_key_spec.unwrap();
+                                let indices = if spec == "0" {
+                                    Vec::new()
+                                } else {
+                                    parse_field_list_with_header(spec, Some(&header), '\t')
+                                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e)))?
+                                };
+                                s.key_field_indices = indices;
+                            }
+                            SamplerEnum::Weighted(s) => {
+                                use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
+                                let record_str = std::str::from_utf8(record).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{}", e)))?;
+                                let header = Header::from_line(record_str, '\t');
+                                let spec = weighted_weight_spec.unwrap();
+                                let indices = parse_field_list_with_header(spec, Some(&header), '\t')
+                                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e)))?;
+                                if indices.len() != 1 {
+                                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "--weight-field must select exactly one field").into());
+                                }
+                                s.weight_field_idx = indices[0];
+                            }
+                            _ => {}
+                        }
+                        sampler_initialized = true;
+                    }
+                    
+                    // Write header if streaming immediately (Bernoulli/Distinct) or gen_random_inorder
+                    if gen_random_inorder {
+                        writer.write_all(random_value_header.as_bytes())?;
+                        writer.write_all(b"\t")?;
+                        writer.write_all(record)?;
+                        writer.write_all(b"\n")?;
+                        header_written = true;
+                    } else if let SamplerEnum::Bernoulli(_) | SamplerEnum::Distinct(_) = sampler {
+                        if print_random {
+                            writer.write_all(random_value_header.as_bytes())?;
+                            writer.write_all(b"\t")?;
+                        }
+                        writer.write_all(record)?;
+                        writer.write_all(b"\n")?;
+                        header_written = true;
+                    }
+                }
+                // Skip header for subsequent files
+                return Ok(());
+            }
+            
+            // Not header or no header mode
+            // Init sampler if no header and first record
+            if !sampler_initialized {
+                 match &mut sampler {
+                    SamplerEnum::Distinct(s) => {
+                        use crate::libs::tsv::fields::parse_field_list_with_header;
+                        let spec = distinct_key_spec.unwrap();
+                        let indices = if spec == "0" {
+                            Vec::new()
+                        } else {
+                            parse_field_list_with_header(spec, None, '\t')
+                                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e)))?
+                        };
+                        s.key_field_indices = indices;
+                    }
+                    SamplerEnum::Weighted(s) => {
+                        use crate::libs::tsv::fields::parse_field_list_with_header;
+                        let spec = weighted_weight_spec.unwrap();
+                        let indices = parse_field_list_with_header(spec, None, '\t')
+                            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e)))?;
+                        if indices.len() != 1 {
+                            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "--weight-field must select exactly one field").into());
+                        }
+                        s.weight_field_idx = indices[0];
+                    }
+                    _ => {}
+                }
+                sampler_initialized = true;
+            }
+            
+            if gen_random_inorder {
+                // Special case: gen_random_inorder writes immediately
+                let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
+                let value_str = format!("{:.10}", r);
+                writer.write_all(value_str.as_bytes())?;
+                writer.write_all(b"\t")?;
+                writer.write_all(record)?;
+                writer.write_all(b"\n")?;
+            } else {
+                sampler.process(record, &mut writer, &mut rng).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            }
+            
+            Ok(())
+        })?;
     }
 
     if gen_random_inorder {
+        return Ok(());
+    }
+
+    // Write header for non-streaming samplers
+    if !header_written {
         if let Some(header) = &header_line {
-            writer.write_all(random_value_header.as_bytes())?;
-            writer.write_all(b"\t")?;
-            writer.write_all(header.as_bytes())?;
-            writer.write_all(b"\n")?;
-        }
-        for row in &data_rows {
-            if row.is_empty() {
-                writer.write_all(b"\n")?;
-                continue;
+             if print_random {
+                writer.write_all(random_value_header.as_bytes())?;
+                writer.write_all(b"\t")?;
             }
-            let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
-            let value_str = format!("{:.10}", r);
-            writer.write_all(value_str.as_bytes())?;
-            writer.write_all(b"\t")?;
-            writer.write_all(row.as_bytes())?;
+            writer.write_all(header)?;
             writer.write_all(b"\n")?;
         }
-        return Ok(());
     }
 
-    if let Some(header) = &header_line {
-        if print_random {
-            writer.write_all(random_value_header.as_bytes())?;
-            writer.write_all(b"\t")?;
-        }
-        writer.write_all(header.as_bytes())?;
-        writer.write_all(b"\n")?;
-        header_written = true;
-    }
-
-    if let Some(p) = prob_opt {
-        if let Some(ref key_spec) = key_fields {
-            let config = DistinctSampleConfig {
-                prob: p,
-                has_header,
-                header_line: header_line.as_deref(),
-                key_spec,
-                print_random,
-            };
-            distinct_bernoulli_sample(&mut writer, &data_rows, &mut rng, config)?;
-        } else {
-            bernoulli_sample(&mut writer, &data_rows, p, &mut rng, print_random)?;
-        }
-        return Ok(());
-    }
-
-    if replace && num_opt > 0 {
-        sample_with_replacement(&mut writer, &data_rows, num_opt as usize, &mut rng)?;
-    } else if let Some(weight_spec) = weight_field {
-        let config = WeightedSampleConfig {
-            k: num_opt as usize,
-            has_header,
-            header_line: header_line.as_deref(),
-            weight_spec: &weight_spec,
-            print_random,
-        };
-        weighted_fixed_size_sample(&mut writer, &data_rows, &mut rng, config)?;
-    } else if num_opt == 0 {
-        if compatibility_mode {
-            compat_random_sample(&mut writer, &data_rows, 0, &mut rng, print_random)?;
-        } else {
-            shuffle_rows(&mut writer, data_rows, &mut rng, print_random)?;
-        }
-    } else if inorder {
-        fixed_size_sample_inorder(
-            &mut writer,
-            &data_rows,
-            num_opt as usize,
-            &mut rng,
-            print_random,
-        )?;
-    } else if compatibility_mode {
-        compat_random_sample(
-            &mut writer,
-            &data_rows,
-            num_opt as usize,
-            &mut rng,
-            print_random,
-        )?;
-    } else {
-        fixed_size_sample(
-            &mut writer,
-            data_rows,
-            num_opt as usize,
-            &mut rng,
-            print_random,
-        )?;
-    }
-
-    if !header_written && header_line.is_none() {
-        // nothing special to do
-    }
+    sampler.finalize(&mut writer, &mut rng, print_random)?;
 
     Ok(())
 }
