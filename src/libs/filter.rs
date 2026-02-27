@@ -132,7 +132,7 @@ pub fn run_filter<W: Write>(
         .map(|tests| tests.iter().map(|t| t.max_field_index()).max().unwrap_or(0))
         .unwrap_or(0);
 
-    for input in crate::libs::io::input_sources(infiles) {
+    for input in crate::libs::io::raw_input_sources(infiles) {
         let mut tsv_reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
         let mut tests_with_header: Option<Vec<TestKind>> = None;
         let mut max_field_for_rows = max_field_without_header;
