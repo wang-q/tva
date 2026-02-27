@@ -38,6 +38,14 @@ use std::path::Path;
 
 use flate2::read::MultiGzDecoder;
 
+/// Maps any error that implements `ToString` to `std::io::Error`.
+///
+/// This is useful for converting library-specific errors (like `anyhow::Error` or `csv::Error`)
+/// into standard I/O errors, typically with `ErrorKind::InvalidData`.
+pub fn map_io_err<E: ToString>(e: E) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string())
+}
+
 fn is_stdin_name(name: &str) -> bool {
     name == "stdin" || name == "-"
 }
