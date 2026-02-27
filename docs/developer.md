@@ -280,3 +280,52 @@
 ### 缺失值填充 (Fill Missing Values)
 
 *   `fill`: 实现前向/后向填充以及常数填充。
+
+
+## 性能优化路线图
+
+1.  **算法升级**: 将 `sample` 等命令的 O(N) 算法重构为 O(K) 或流式算法。
+2.  **指令集优化**: 在关键路径 (如 `split`, `newline` 查找) 引入 AVX2/NEON 优化。
+3.  **I/O 吞吐**: 增大默认缓冲区 (64KB -> 128KB+)，探索 `io_uring` (Linux)。
+
+---
+
+## 对标分析: tsv-sample (D语言)
+
+为了彻底超越 `tsv-utils`，我们对其源码 (`tsv-sample.d`) 进行了深度逆向分析。
+
+### 1. 核心架构对比
+
+| 特性 | tsv-sample (D) | tva (Rust) | 差异分析 |
+| :--- | :--- | :--- | :--- |
+| **I/O 缓冲** | `bufferedByLine` (1MB Buffer) | `TsvReader` (64KB Buffer) | D 的缓冲区更大，减少了 syscall 次数。 |
+| **RNG** | `std.random.Mt19937` | `rapidhash` (Wyhash) | **Rust 胜出**。Wyhash 更快且质量足够。 |
+| **加权采样** | **A-Res (Heap)** - O(K) 内存 | **Naive Sort** - O(N) 内存 | **D 胜出**。D 使用最小堆维护 Top-K，Rust 目前全量排序导致大量内存分配。 |
+| **Bernoulli 采样** | **Skip Sampling** | Naive Check | **D 胜出**。D 计算跳过行数，Rust 逐行检查。 |
+
+### 2. 关键瓶颈定位 (v0.1.0)
+
+用户反馈 `tva sample -w` 比 `tsv-sample` 慢 3-4 倍，核心原因是 **算法复杂度差异**：
+
+*   **tsv-sample (D)**: 使用 **Efraimidis-Spirakis A-Res 算法**。
+    *   维护一个大小为 $K$ 的最小堆。
+    *   仅当新元素的 Key ($u^{1/w}$) 大于堆顶时才替换并调整堆。
+    *   内存: $O(K)$, CPU: $O(N \log K)$。
+
+*   **tva (Rust)**: 使用 **全量排序算法**。
+    *   `Vec::push` 保存所有记录。
+    *   最后 `sort_by` 全量排序。
+    *   内存: $O(N)$, CPU: $O(N \log N)$。
+    *   **后果**: 对于大文件 (如 1000万行)，Rust 版本会分配巨大的内存并进行昂贵的数据移动，导致性能雪崩。
+
+### 3. 优化行动项
+
+1.  **重构加权采样 (Weighted Sampling)**:
+    *   实现 `BinaryHeap` (Min-Heap) 版本的 A-Res 算法。
+    *   消除所有不必要的内存分配 (`Vec::push`)。
+
+2.  **实现 Skip Sampling**:
+    *   对于 `sample -p` (伯努利采样)，引入几何分布跳过算法，避免对每一行都调用 RNG。
+
+3.  **调整 I/O 参数**:
+    *   将输入缓冲区从 64KB 提升至 128KB 或 1MB。
