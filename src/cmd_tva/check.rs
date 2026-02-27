@@ -1,5 +1,5 @@
 use clap::*;
-use std::io::BufRead;
+use crate::libs::tsv::reader::TsvReader;
 
 pub fn make_subcommand() -> Command {
     Command::new("check")
@@ -22,29 +22,23 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut total_lines: u64 = 0;
     let mut expected_fields: Option<usize> = None;
 
-    for input in crate::libs::io::input_sources(&infiles) {
-        let reader = input.reader;
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+        let mut reader = TsvReader::new(input.reader);
 
-        for line in reader.lines() {
-            let line = match line {
-                Ok(l) => l,
-                Err(err) => {
-                    eprintln!("tva check: error reading input: {}", err);
-                    std::process::exit(1);
-                }
-            };
-
+        reader.for_each_record(|record| {
             total_lines += 1;
-            let fields = if line.is_empty() {
+            
+            let fields = if record.is_empty() {
                 0
             } else {
-                line.split('\t').count()
+                memchr::memchr_iter(b'\t', record).count() + 1
             };
 
             if let Some(exp) = expected_fields {
                 if fields != exp {
                     eprintln!("line {} ({} fields):", total_lines, fields);
-                    eprintln!("  {}", line);
+                    // Lossy conversion for error display is fine
+                    eprintln!("  {}", String::from_utf8_lossy(record));
                     eprintln!(
                         "tva check: structure check failed: line {} has {} fields (expected {})",
                         total_lines, fields, exp
@@ -54,7 +48,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             } else {
                 expected_fields = Some(fields);
             }
-        }
+            Ok(())
+        })?;
     }
 
     match expected_fields {
