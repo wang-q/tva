@@ -1,8 +1,34 @@
 use clap::*;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Write;
 use std::ops::Range;
+use smallvec::SmallVec;
+use ahash::RandomState;
+
+type KeyBuffer = SmallVec<[u8; 32]>;
+
+enum JoinKey<'a> {
+    Ref(&'a [u8]),
+    Owned(KeyBuffer),
+}
+
+impl<'a> AsRef<[u8]> for JoinKey<'a> {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            JoinKey::Ref(s) => s,
+            JoinKey::Owned(s) => s.as_ref(),
+        }
+    }
+}
+
+impl<'a> JoinKey<'a> {
+    fn into_owned(self) -> KeyBuffer {
+        match self {
+            JoinKey::Ref(s) => KeyBuffer::from_slice(s),
+            JoinKey::Owned(s) => s,
+        }
+    }
+}
 
 pub fn make_subcommand() -> Command {
     Command::new("join")
@@ -155,9 +181,9 @@ fn extract_key<'a>(
     whole_line: bool,
     plan: Option<&crate::libs::select::SelectPlan>,
     ranges_buf: &mut Vec<Range<usize>>,
-) -> Cow<'a, [u8]> {
+) -> JoinKey<'a> {
     if whole_line {
-        return Cow::Borrowed(line);
+        return JoinKey::Ref(line);
     }
     let plan = plan.unwrap();
     if let Err(idx) = plan.extract_ranges(line, delimiter, ranges_buf) {
@@ -175,11 +201,11 @@ fn extract_key<'a>(
     
     // Optimization: if single key field, return slice directly
     if ranges_buf.len() == 1 {
-        return Cow::Borrowed(&line[ranges_buf[0].clone()]);
+        return JoinKey::Ref(&line[ranges_buf[0].clone()]);
     }
 
     // Construct key from ranges
-    let mut key = Vec::with_capacity(line.len()); // Heuristic capacity
+    let mut key = KeyBuffer::new();
     let mut first = true;
     
     for range in ranges_buf.iter() {
@@ -196,7 +222,7 @@ fn extract_key<'a>(
         }
         first = false;
     }
-    Cow::Owned(key)
+    JoinKey::Owned(key)
 }
 
 // Extracts values to append.
@@ -314,7 +340,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let append_plan = append_indices.as_ref().map(|idxs| crate::libs::select::SelectPlan::new(idxs));
 
     // Map: Key -> Appended Values (as bytes)
-    let mut filter_map: HashMap<Vec<u8>, Vec<u8>> = HashMap::new();
+    let mut filter_map: HashMap<KeyBuffer, Vec<u8>, RandomState> = HashMap::with_hasher(RandomState::new());
     let mut ranges_buf: Vec<Range<usize>> = Vec::new(); // Reusable buffer for ranges
 
     filter_reader.for_each_record(|line| {

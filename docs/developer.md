@@ -403,10 +403,15 @@
 
 ### 4. 进一步优化建议
 
-1.  **更换 Hasher (High Priority)**:
-    *   **行动**: 将 `HashMap` 的 Hasher 替换为 `rapidhash` (已在项目中引入) 或 `ahash`。
-    *   **预期**: 这预计能消除 Hash 计算上的性能劣势，使 `tva` 的性能反超 `tsv-join`。
-2.  **Inline Key (Small String Optimization)**:
-    *   对于多列 Join 产生的短 Key (如 < 32 字节)，使用 `SmallVec<[u8; 32]>` 或类似栈上缓冲区，彻底消除堆分配。
-3.  **Prefetching**:
+1.  **Prefetching**:
     *   在计算 Hash 的同时预取内存，但这在纯内存操作中收益可能有限。
+
+### 5. 已实施的优化 (v0.1.0+)
+
+1.  **更换 Hasher**:
+    *   已将 `HashMap` 的 Hasher 替换为 `ahash` (RandomState)。
+    *   预期: 消除 Hash 计算上的性能劣势。
+2.  **Inline Key (Small String Optimization)**:
+    *   使用 `SmallVec<[u8; 32]>` 作为 Key 类型。
+    *   对于短 Key (< 32 字节)，完全消除了堆分配（无论是单列还是多列）。
+
