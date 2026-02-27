@@ -53,9 +53,6 @@ fn test_select_invalid_delimiter() {
 
 #[test]
 fn test_select_empty_selection() {
-    // If we select a field that doesn't exist, it might return empty string or error depending on implementation.
-    // But here we want to trigger L254: if selected_indices.is_empty()
-    // This happens if we exclude all fields.
     let input = "a\tb\n1\t2\n";
     let mut cmd = cargo_bin_cmd!("tva");
     cmd.arg("select")
@@ -568,16 +565,8 @@ fn test_keep_header_command_fail() {
 
 #[test]
 fn test_keep_header_lines_zero() {
-    // Should default to 1
     let input = "h\nd\n";
     let mut cmd = cargo_bin_cmd!("tva");
-    // Use 'cat' (on unix) or 'type' (on windows)?
-    // Wait, on windows 'cat' might not exist.
-    // We can use 'tva' itself as a cat replacement: 'tva md' or similar?
-    // Or just rely on standard tools available in environment.
-    // The environment says "windows".
-    // 'findstr' is common on windows. Or use `env!("CARGO_BIN_EXE_tva")` with `select -f 1-`.
-
     let tva_bin = env!("CARGO_BIN_EXE_tva");
 
     cmd.arg("keep-header")
@@ -698,7 +687,6 @@ fn test_append_custom_delimiter() {
 
 #[test]
 fn test_append_subdir_filename_label() {
-    // Tests that path/to/file.tsv becomes label "file"
     let mut cmd = cargo_bin_cmd!("tva");
     cmd.arg("append")
         .arg("--track-source")
@@ -727,8 +715,6 @@ fn test_from_csv_invalid_delimiter_length() {
 
 #[test]
 fn test_from_csv_empty_records() {
-    // Tests L102-104: empty records (newlines) are skipped by the default CSV parser configuration.
-    // The test confirms that empty lines do not appear in the output.
     let input = "a,b\n\n1,2\n";
     let mut cmd = cargo_bin_cmd!("tva");
     cmd.arg("from")
@@ -741,8 +727,6 @@ fn test_from_csv_empty_records() {
 
 #[test]
 fn test_from_csv_stdin_error() {
-    // Tests L120-126: invalid CSV from stdin
-    // Case: inconsistent record length (Row 1: 2 fields, Row 2: 3 fields)
     let input = "a,b\n1,2,3\n";
     let mut cmd = cargo_bin_cmd!("tva");
     cmd.arg("from")
@@ -757,9 +741,6 @@ fn test_from_csv_stdin_error() {
 
 #[test]
 fn test_from_csv_file_error_no_line_info() {
-    // This is hard to trigger with standard CSV parser as most errors have positions
-    // But we can verify the file path is included in the error message for file inputs
-    // Using a file that definitely has bad CSV structure
     let mut cmd = cargo_bin_cmd!("tva");
     cmd.arg("from")
         .arg("csv")

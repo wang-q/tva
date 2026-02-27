@@ -260,10 +260,6 @@ pub fn run_filter<W: Write>(
     }
 
     if config.count_only {
-        // println! is not generic over writer, so we use writeln! or writer.write
-        // But the original code used println!.
-        // Here we should write to the writer if possible, but println! writes to stdout.
-        // Since writer can be a File or Stdout, we should use writeln!(writer, ...).
         writeln!(writer, "{}", total_matched)?;
     }
 
@@ -1296,11 +1292,6 @@ mod tests {
         assert!(!test.eval(&[]));
 
         // Case 2: Field not a number
-        // IsNumeric returns true if it parses, but the implementation is:
-        // match s.parse::<f64>() { Ok(_) => true, Err(_) => return false }
-        // Wait, line 245: Err(_) => return false,
-        // line 248: NumericProp::IsNumeric => true,
-        // So if it fails to parse, it returns false.
         assert!(!test.eval(&["abc"]));
     }
 

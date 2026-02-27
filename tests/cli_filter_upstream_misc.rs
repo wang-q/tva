@@ -13,26 +13,11 @@ fn upstream_no_header_str_in_fld_2_2() -> anyhow::Result<()> {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     let expected = concat!(
-        "F1\tF2\tF3\tF4\n", // Note: input1.tsv has header, but we are treating it as data line if --header not specified?
-        // Upstream test: [tsv-filter --str-in-fld 2:2 input1.tsv]
-        // input1.tsv:
-        // F1	F2	F3	F4
-        // 1	1.0	a	A
-        // 2	2.	b	B
-        // ...
-        // Row 1: "F2" contains "2"? Yes.
-        // Row 2: "1.0" contains "2"? No.
-        // Row 3: "2." contains "2"? Yes.
+        "F1\tF2\tF3\tF4\n",
         "2\t2.\tb\tB\n",
         "-2\t-2.0\tß\tss\n",
         "100\t102\tabc\tAbC\n",
     );
-    // Wait, upstream output for this test:
-    // F1	F2	F3	F4
-    // 2	2.	b	B
-    // -2	-2.0	ß	ss
-    // 100	102	abc	AbC
-    // So the header line IS included in the output because "F2" contains "2".
     assert_eq!(stdout, expected);
     Ok(())
 }
@@ -548,13 +533,6 @@ fn upstream_stdin_mixed_ge_2_23() -> anyhow::Result<()> {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    // Upstream: [cat input_3x2.tsv | tsv-filter --header --ge 2:23 -- input_3x3.tsv - input_3x1.tsv]
-    // Order: input_3x2 (stdin? No, upstream example uses `cat input_3x2 | ... -- input_3x3 - input_3x1`)
-    // So arguments are `input_3x3`, `-` (stdin which is 3x2), `input_3x1`.
-    // Wait, in my test above I am piping `input_3x3` to stdin.
-    // And args are `input_3x2`, `-`, `input_3x1`.
-    // So order should be: input_3x2, stdin (3x3), input_3x1.
-    // Let's verify expected output order.
     let expected = concat!(
         "f1\tf2\tf3\n",
         "3x2-r1\t2001\t3001\n",

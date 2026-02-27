@@ -88,16 +88,13 @@ impl Sampler for BernoulliSampler {
 
         // Process current record (selected)
         let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
-        // Note: r is only used for output if print_random is true.
-        // The selection decision was implicitly made by skip_counter reaching 0.
-        // However, we need to pass a random value if print_random is set.
-        // And strictly speaking, for Bernoulli sampling, we select with prob p.
-        // If we use skip sampling, we jump to the next selected item.
-        // So this item IS selected.
+        
+        // If print_random is true, we need a random value for the output.
+        // Even though selection was decided by skip_counter, we generate 'r' here
+        // to maintain consistency if the user requested the random column.
         write_with_optional_random(writer, record, rng, self.print_random, Some(r))?;
 
-        // Generate next skip interval
-        // Geometric distribution: P(X=k) = (1-p)^k * p
+        // Generate next skip interval using Geometric distribution
         // Variate generation: floor(ln(u) / ln(1-p))
         if self.prob >= 1.0 {
             self.skip_counter = 0;
@@ -179,13 +176,9 @@ impl Sampler for WeightedReservoirSampler {
         _writer: &mut W,
         rng: &mut RapidRng,
     ) -> anyhow::Result<()> {
-        // field_start
-        // field_idx
         let mut weight_bytes = None;
 
-        // Scan for nth field
-        // field_idx is 1-based index from config
-
+        // Scan for nth field (1-based index)
         if self.weight_field_idx == 1 {
             let end = memchr::memchr(b'\t', record).unwrap_or(record.len());
             weight_bytes = Some(&record[0..end]);
@@ -204,15 +197,12 @@ impl Sampler for WeightedReservoirSampler {
         }
 
         if let Some(w_bytes) = weight_bytes {
-            // Fast parse float?
-            // std::str::from_utf8 is cheap (validation only).
-            // parse::<f64> is reasonably fast.
             if let Ok(w_str) = std::str::from_utf8(w_bytes) {
                 if let Ok(w) = w_str.trim().parse::<f64>() {
                     if w > 0.0 {
                         let u = rng.next() as f64 * INV_U64_MAX_PLUS_1;
-                        // A-Res Key: k = u^(1/w).
-                        // Maximize k <=> Maximize ln(k) = ln(u)/w.
+                        // A-Res Key: k = u^(1/w) <=> ln(k) = ln(u)/w
+                        // We use ln(u)/w as the key.
                         let key = u.ln() / w;
 
                         if self.heap.len() < self.k {
@@ -221,9 +211,7 @@ impl Sampler for WeightedReservoirSampler {
                                 record: record.to_vec(),
                             }));
                         } else {
-                            // Check if new item is better than the worst in heap
-                            // Heap root is the smallest key (worst of top-K)
-                            // peek() gives &Reverse<WeightedItem>
+                            // Replace the smallest key in heap if new key is larger
                             if let Some(Reverse(min_item)) = self.heap.peek() {
                                 if key > min_item.key {
                                     self.heap.pop();
@@ -262,26 +250,8 @@ impl Sampler for WeightedReservoirSampler {
         if self.heap.is_empty() {
             return Ok(());
         }
-        // Extract items from heap
-        // Note: BinaryHeap does not guarantee order when iterating.
-        // We need to sort them anyway if we want output order to be meaningful?
-        // Usually weighted sampling doesn't imply sort order, but often output is sorted by key or input order.
-        // tva v0.1.0 sorted by key (ascending/descending?).
-        // Let's sort by key descending (highest probability first) or just dump?
-        // Previous implementation: self.weighted.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-        // That was sorting by key ascending (smallest key first).
-        // Since key = -ln(u)/w, smallest key meant largest ln(u)/w (most probable).
-        // Wait, previous code used `key = -u.ln() / w`.
-        // `-ln(u)` is positive. `w` is positive.
-        // Maximize `ln(u)/w` <=> Minimize `-ln(u)/w`.
-        // So previous code kept smallest keys.
-        // And sorted by smallest keys.
-        // So it outputted most probable items first.
-        //
-        // New implementation uses `key = ln(u)/w`.
-        // Largest `key` is most probable.
-        // So we should sort by key descending to match "best first".
         
+        // Extract items and sort by key descending (highest probability first)
         let mut items: Vec<WeightedItem> = self.heap.drain().map(|Reverse(item)| item).collect();
         items.sort_by(|a, b| b.key.partial_cmp(&a.key).unwrap_or(Ordering::Equal));
 
@@ -310,16 +280,10 @@ impl Sampler for DistinctBernoulliSampler {
             record.to_vec()
         } else {
             let mut parts = Vec::new();
-            // let mut current_field_idx = 0;
-            // let mut record_pos = 0;
-
-            // We need to extract specific fields.
-            // Let's iterate tabs.
+            
+            // Extract specific fields for key
             let mut tab_iter = memchr::memchr_iter(b'\t', record);
             let mut last_pos = 0;
-
-            // Collect fields
-            // This is O(N) scan.
 
             let mut field_idx = 1; // 1-based
             let mut next_tab = tab_iter.next();

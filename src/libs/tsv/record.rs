@@ -185,21 +185,8 @@ impl TsvRecord {
         let start = if i == 0 {
             0
         } else {
-            // The previous field ended at ends[i-1].
-            // That position was the delimiter (or end of line if we handle it carefully).
-            // Wait, my `ends` logic stores the position of the delimiter.
-            // "a\tb" -> ends: [1, 3]
-            // Field 0: 0..1 ("a")
-            // Field 1: 2..3 ("b")
-            // Delimiter is at 1. Start of field 1 is 1 + 1 = 2.
             self.ends[i - 1] + 1
         };
-
-        // Safety check: start <= end
-        // end is either delimiter pos or len.
-        // start is prev_delim + 1.
-        // if "a\t\tb", ends: [1, 2, 4].
-        // i=1: prev=1. start=2. end=2. -> "" (empty field). Correct.
         Some(&self.line[start..end])
     }
 
