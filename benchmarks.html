@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b5c54a5d.js";
+            window.path_to_searchindex_js = "searchindex-207fd3ee.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-bd30c85a.js"></script>
@@ -275,6 +275,45 @@
 <li>目的: 测试复杂算法与 I/O 的结合效率。</li>
 </ul>
 </li>
+<li><strong>去重 (Deduplication)</strong>:
+<ul>
+<li>逻辑: 基于特定列进行哈希去重。</li>
+<li>基准: <code>tva uniq</code> vs <code>tsv-uniq</code> vs <code>awk</code> vs <code>sort | uniq</code>。</li>
+<li>目的: 测试哈希表性能和内存管理。</li>
+</ul>
+</li>
+<li><strong>排序 (Sorting)</strong>:
+<ul>
+<li>逻辑: 基于数值列进行排序。</li>
+<li>基准: <code>tva sort</code> vs <code>sort</code> (GNU) vs <code>tsv-sort</code>。</li>
+<li>目的: 测试外部排序算法和内存使用。</li>
+</ul>
+</li>
+<li><strong>切片 (Slicing)</strong>:
+<ul>
+<li>逻辑: 提取文件中间的大段行 (如第 100万 到 200万 行)。</li>
+<li>基准: <code>tva slice</code> vs <code>sed</code> vs <code>tail | head</code>。</li>
+<li>目的: 测试快速跳过行的能力。</li>
+</ul>
+</li>
+<li><strong>反转 (Reverse)</strong>:
+<ul>
+<li>逻辑: 反转整个文件的行序。</li>
+<li>基准: <code>tva reverse</code> vs <code>tac</code>。</li>
+</ul>
+</li>
+<li><strong>追加 (Append)</strong>:
+<ul>
+<li>逻辑: 连接多个大文件。</li>
+<li>基准: <code>tva append</code> vs <code>cat</code>。</li>
+</ul>
+</li>
+<li><strong>导出 CSV (Export to CSV)</strong>:
+<ul>
+<li>逻辑: 将 TSV 转换为标准 CSV (处理转义)。</li>
+<li>基准: <code>tva to csv</code> vs <code>qsv fmt</code>。</li>
+</ul>
+</li>
 </ul>
 <h2 id="4-执行环境与记录"><a class="header" href="#4-执行环境与记录">4. 执行环境与记录</a></h2>
 <ul>
@@ -361,6 +400,45 @@ hyperfine \
     --export-csv benchmark_sample.csv \
     "tva sample -H --weight-field 5 -n 1000 hepmass.tsv &gt; /dev/null" \
     "tsv-sample -H --weight-field 5 -n 1000 hepmass.tsv &gt; /dev/null"
+
+# Scenario 6: Uniq (Hash-based Deduplication)
+hyperfine \
+    --warmup 3 \
+    --min-runs 5 \
+    --export-csv benchmark_uniq.csv \
+    "tva uniq -H -f 1 hepmass.tsv &gt; /dev/null" \
+    "tsv-uniq -H -f 1 hepmass.tsv &gt; /dev/null" 
+
+# Scenario 7: Sort (Numeric)
+hyperfine \
+    --warmup 2 \
+    --min-runs 3 \
+    --export-csv benchmark_sort.csv \
+    "tva sort -H -k 1 -n hepmass.tsv &gt; /dev/null"
+
+# Scenario 8: Slice (Middle of file)
+hyperfine \
+    --warmup 3 \
+    --min-runs 10 \
+    --export-csv benchmark_slice.csv \
+    "tva slice -r 1000000-2000000 hepmass.tsv &gt; /dev/null" \
+    "sed -n '1000000,2000000p' hepmass.tsv &gt; /dev/null"
+
+# Scenario 9: Reverse
+hyperfine \
+    --warmup 2 \
+    --min-runs 5 \
+    --export-csv benchmark_reverse.csv \
+    "tva reverse hepmass.tsv &gt; /dev/null" \
+    "tac hepmass.tsv &gt; /dev/null"
+
+# Scenario 10: Append
+hyperfine \
+    --warmup 2 \
+    --min-runs 5 \
+    --export-csv benchmark_append.csv \
+    "tva append hepmass.tsv hepmass.tsv &gt; /dev/null" \
+    "cat hepmass.tsv hepmass.tsv &gt; /dev/null"
 
 # 3. 结果处理与可视化 (Process &amp; Visualize)
 # ------------------------------
