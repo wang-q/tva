@@ -1,5 +1,7 @@
 use clap::*;
-use std::io::{BufRead, Write};
+use std::io::Write;
+use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::fields::Header;
 
 pub fn make_subcommand() -> Command {
     Command::new("bin")
@@ -93,98 +95,135 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         field_idx = Some(idx - 1);
     }
 
-    for input in crate::libs::io::input_sources(&infiles) {
-        let mut reader = input.reader;
-        let mut line = String::new();
-        let mut first_line = true;
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+        let mut reader = TsvReader::new(input.reader);
+        let mut is_first_line = true;
 
-        while reader.read_line(&mut line)? > 0 {
-            if line.ends_with('\n') {
-                line.pop();
-                if line.ends_with('\r') {
-                    line.pop();
-                }
-            }
-
-            if first_line {
-                first_line = false;
+        reader.for_each_record(|record| {
+            if is_first_line {
+                is_first_line = false;
                 if header {
                     if !header_written {
                         // Resolve field name if needed
                         if field_idx.is_none() {
-                            let headers: Vec<&str> = line.split('\t').collect();
-                            if let Some(pos) =
-                                headers.iter().position(|&h| h == field_str)
-                            {
+                            let line_str = std::str::from_utf8(record)
+                                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                            let h = Header::from_line(line_str, '\t');
+                            if let Some(pos) = h.get_index(field_str) {
                                 field_idx = Some(pos);
                             } else {
-                                return Err(anyhow::anyhow!(
-                                    "Field '{}' not found in header",
-                                    field_str
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    format!("Field '{}' not found in header", field_str)
                                 ));
                             }
                         }
+                        
+                        writer.write_all(record)?;
                         if let Some(name) = new_name {
-                            writeln!(writer, "{}\t{}", line, name)?;
-                        } else {
-                            writeln!(writer, "{}", line)?;
+                            writer.write_all(b"\t")?;
+                            writer.write_all(name.as_bytes())?;
                         }
+                        writer.write_all(b"\n")?;
                         header_written = true;
                     }
                     // If header already written, skip this line (it's a header from subsequent file)
-                    line.clear();
-                    continue;
+                    return Ok(());
                 }
                 // No header flag, fall through to process as data
             }
 
             // Process data line
-            let idx =
-                field_idx.ok_or_else(|| anyhow::anyhow!("Field index logic error"))?;
+            let idx = field_idx.ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "Field index logic error"))?;
 
-            let fields: Vec<&str> = line.split('\t').collect();
+            if new_name.is_some() {
+                writer.write_all(record)?;
+                writer.write_all(b"\t")?;
 
-            if idx < fields.len() {
-                let val_str = fields[idx];
-                let binned_val = if let Ok(val) = val_str.parse::<f64>() {
-                    let binned = (val - min) / width;
-                    let binned_floor = binned.floor();
-                    binned_floor * width + min
+                // Find the field at idx to calculate value
+                // We optimize by just scanning tabs
+                let mut iter = memchr::memchr_iter(b'\t', record);
+                let mut field_bytes = None;
+
+                if idx == 0 {
+                    let end = iter.next().unwrap_or(record.len());
+                    field_bytes = Some(&record[0..end]);
                 } else {
-                    f64::NAN
-                };
-
-                if new_name.is_some() {
-                    if binned_val.is_nan() {
-                        writeln!(writer, "{}\t", line)?;
-                    } else {
-                        writeln!(writer, "{}\t{}", line, binned_val)?;
+                    // Skip idx-1 tabs
+                    let mut skipped = 0;
+                    for _ in 0..idx-1 {
+                         if iter.next().is_some() {
+                             skipped += 1;
+                         } else {
+                             break;
+                         }
                     }
-                } else {
-                    // Output construction (Replace mode)
-                    for (i, field) in fields.iter().enumerate() {
-                        if i > 0 {
-                            write!(writer, "\t")?;
-                        }
-                        if i == idx && !binned_val.is_nan() {
-                            write!(writer, "{}", binned_val)?;
-                        } else {
-                            write!(writer, "{}", field)?;
+                    if skipped == idx - 1 {
+                        if let Some(start_pos) = iter.next() {
+                            let start = start_pos + 1;
+                            let end = iter.next().unwrap_or(record.len());
+                            field_bytes = Some(&record[start..end]);
                         }
                     }
-                    writeln!(writer)?;
                 }
+
+                if let Some(bytes) = field_bytes {
+                    if let Ok(s) = std::str::from_utf8(bytes) {
+                        if let Ok(val) = s.parse::<f64>() {
+                            let binned = (val - min) / width;
+                            let binned_floor = binned.floor();
+                            let result = binned_floor * width + min;
+                            write!(writer, "{}", result)?;
+                        }
+                    }
+                }
+                writer.write_all(b"\n")?;
             } else {
-                // Field index out of bounds
-                if new_name.is_some() {
-                    writeln!(writer, "{}\t", line)?;
-                } else {
-                    writeln!(writer, "{}", line)?;
+                // Replace mode
+                let mut last_pos = 0;
+                let mut current_col = 0;
+                let mut iter = memchr::memchr_iter(b'\t', record);
+
+                loop {
+                    let (end_pos, is_last) = match iter.next() {
+                        Some(pos) => (pos, false),
+                        None => (record.len(), true),
+                    };
+
+                    if current_col > 0 {
+                        writer.write_all(b"\t")?;
+                    }
+
+                    if current_col == idx {
+                        let bytes = &record[last_pos..end_pos];
+                        let mut written = false;
+                        if let Ok(s) = std::str::from_utf8(bytes) {
+                            if let Ok(val) = s.parse::<f64>() {
+                                let binned = (val - min) / width;
+                                let binned_floor = binned.floor();
+                                let result = binned_floor * width + min;
+                                write!(writer, "{}", result)?;
+                                written = true;
+                            }
+                        }
+                        if !written {
+                            writer.write_all(bytes)?;
+                        }
+                    } else {
+                        writer.write_all(&record[last_pos..end_pos])?;
+                    }
+
+                    if is_last {
+                        break;
+                    }
+                    last_pos = end_pos + 1;
+                    current_col += 1;
                 }
+                writer.write_all(b"\n")?;
             }
 
-            line.clear();
-        }
+            Ok(())
+        })?;
     }
 
     Ok(())
