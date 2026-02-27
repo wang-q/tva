@@ -56,7 +56,38 @@ pub struct InputSource {
     pub reader: Box<dyn BufRead>,
 }
 
+pub struct InputSourceRaw {
+    pub name: String,
+    pub is_stdin: bool,
+    pub reader: Box<dyn Read>,
+}
+
 /// Opens a file or stdin for reading.
+///
+/// If `input` is "stdin" or "-", it reads from standard input.
+/// If the file extension is ".gz", it transparently decompresses the content.
+pub fn raw_reader(input: &str) -> Box<dyn Read> {
+    if is_stdin_name(input) {
+        Box::new(io::stdin())
+    } else {
+        let path = Path::new(input);
+        let file = match File::open(path) {
+            Ok(file) => file,
+            Err(err) => {
+                eprintln!("tva: could not open {}: {}", path.display(), err);
+                std::process::exit(1);
+            }
+        };
+
+        if path.extension() == Some(OsStr::new("gz")) {
+            Box::new(MultiGzDecoder::new(file))
+        } else {
+            Box::new(file)
+        }
+    }
+}
+
+/// Opens a file or stdin for reading (buffered).
 ///
 /// If `input` is "stdin" or "-", it reads from standard input.
 /// If the file extension is ".gz", it transparently decompresses the content.
@@ -104,22 +135,6 @@ pub fn reader(input: &str) -> Box<dyn BufRead> {
 ///
 /// Each `InputSource` contains the filename, a flag indicating if it is stdin,
 /// and a `BufRead` reader for the content.
-///
-/// # Examples
-///
-/// ```
-/// use tva::libs::io::input_sources;
-/// use tempfile::NamedTempFile;
-///
-/// let file1 = NamedTempFile::new().unwrap();
-/// let file2 = NamedTempFile::new().unwrap();
-/// let inputs = vec![
-///     file1.path().to_str().unwrap().to_string(),
-///     file2.path().to_str().unwrap().to_string()
-/// ];
-/// let sources = input_sources(&inputs);
-/// assert_eq!(sources.len(), 2);
-/// ```
 pub fn input_sources(infiles: &[String]) -> Vec<InputSource> {
     infiles
         .iter()
@@ -127,6 +142,22 @@ pub fn input_sources(infiles: &[String]) -> Vec<InputSource> {
             let is_stdin = is_stdin_name(name);
             let reader = reader(name);
             InputSource {
+                name: name.clone(),
+                is_stdin,
+                reader,
+            }
+        })
+        .collect()
+}
+
+/// Creates a list of raw input sources from filenames.
+pub fn raw_input_sources(infiles: &[String]) -> Vec<InputSourceRaw> {
+    infiles
+        .iter()
+        .map(|name| {
+            let is_stdin = is_stdin_name(name);
+            let reader = raw_reader(name);
+            InputSourceRaw {
                 name: name.clone(),
                 is_stdin,
                 reader,

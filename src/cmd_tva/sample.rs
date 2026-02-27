@@ -120,13 +120,28 @@ fn arg_error(msg: &str) -> ! {
     std::process::exit(1);
 }
 
+struct SampleConfig {
+    infiles: Vec<String>,
+    has_header: bool,
+    num_opt: u64,
+    prob_opt: Option<f64>,
+    weight_field: Option<String>,
+    print_random: bool,
+    gen_random_inorder: bool,
+    random_value_header: String,
+    compatibility_mode: bool,
+    key_fields: Option<String>,
+    inorder: bool,
+    static_seed: bool,
+    seed_value: u64,
+    replace: bool,
+}
+
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     execute_inner(args).map_err(|e| anyhow::anyhow!("tva sample: {}", e))
 }
 
 fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
-
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
         None => vec!["stdin".to_string()],
@@ -214,6 +229,54 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
             ));
         }
     }
+
+    let config = SampleConfig {
+        infiles,
+        has_header,
+        num_opt,
+        prob_opt,
+        weight_field,
+        print_random,
+        gen_random_inorder,
+        random_value_header,
+        compatibility_mode,
+        key_fields,
+        inorder,
+        static_seed,
+        seed_value,
+        replace,
+    };
+
+    let outfile = args.get_one::<String>("outfile").unwrap();
+    if outfile == "stdout" {
+        let stdout = std::io::stdout();
+        let handle = stdout.lock();
+        let mut writer = std::io::BufWriter::with_capacity(128 * 1024, handle);
+        run_sampling(config, &mut writer)
+    } else {
+        let file = std::fs::File::create(outfile)?;
+        let mut writer = std::io::BufWriter::with_capacity(128 * 1024, file);
+        run_sampling(config, &mut writer)
+    }
+}
+
+fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Result<()> {
+    let SampleConfig {
+        infiles,
+        has_header,
+        num_opt,
+        prob_opt,
+        weight_field,
+        print_random,
+        gen_random_inorder,
+        random_value_header,
+        compatibility_mode,
+        key_fields,
+        inorder,
+        static_seed,
+        seed_value,
+        replace,
+    } = config;
 
     let mut rng = if !static_seed && seed_value == 0 {
         RapidRng::default()
@@ -332,7 +395,7 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
     let weighted_weight_spec = weight_field.as_deref();
 
     // Iterate over files manually to handle headers correctly
-    for input in crate::libs::io::input_sources(&infiles) {
+    for input in crate::libs::io::raw_input_sources(&infiles) {
         let mut reader = TsvReader::new(input.reader);
         let mut is_first_record = true;
 
@@ -497,15 +560,16 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
 
             if gen_random_inorder {
                 // Special case: gen_random_inorder writes immediately
-                let r = rng.next() as f64 / (u64::MAX as f64 + 1.0);
-                let value_str = format!("{:.10}", r);
-                writer.write_all(value_str.as_bytes())?;
+                let r = rng.next() as f64 * crate::libs::sampling::INV_U64_MAX_PLUS_1;
+                let mut buffer = ryu::Buffer::new();
+                let printed = buffer.format(r);
+                writer.write_all(printed.as_bytes())?;
                 writer.write_all(b"\t")?;
                 writer.write_all(record)?;
                 writer.write_all(b"\n")?;
             } else {
                 sampler
-                    .process(record, &mut writer, &mut rng)
+                    .process(record, writer, &mut rng)
                     .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
             }
 
@@ -529,7 +593,7 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
         }
     }
 
-    sampler.finalize(&mut writer, &mut rng, print_random)?;
+    sampler.finalize(writer, &mut rng, print_random)?;
 
     Ok(())
 }

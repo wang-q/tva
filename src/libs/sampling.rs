@@ -30,7 +30,10 @@ fn write_with_optional_random<W: std::io::Write>(
             Some(x) => x,
             None => rng.next() as f64 * INV_U64_MAX_PLUS_1,
         };
-        write!(writer, "{:.10}\t", v)?;
+        let mut buffer = ryu::Buffer::new();
+        let printed = buffer.format(v);
+        writer.write_all(printed.as_bytes())?;
+        writer.write_all(b"\t")?;
     }
     writer.write_all(row)?;
     writer.write_all(b"\n")?;
