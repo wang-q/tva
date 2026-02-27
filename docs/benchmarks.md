@@ -33,7 +33,7 @@
 
 ## 3. 详细测试场景
 
-为了确保公平和全面的对比，我们将执行以下具体场景（参考 tsv-utils 2017）：
+为了确保公平和全面的对比，我们将执行以下具体场景（参考 tsv-utils 2017/2018）：
 
 *   **数值行过滤 (Numeric Filter)**:
     *   逻辑: 多列数值比较 (例如 `col4 > 0.000025 && col16 > 0.3`)。
@@ -60,6 +60,10 @@
     *   逻辑: 处理包含转义字符和嵌入换行符的复杂 CSV。
     *   基准: `tva from csv` vs `qsv fmt` vs `csvtk csv2tab` vs `csv2tsv` (tsv-utils)。
     *   目的: 这是一个高计算密集型任务，测试 CSV 解析器的性能。
+*   **加权随机采样 (Weighted Sampling)**:
+    *   逻辑: 基于权重列进行加权随机采样 (Weighted Reservoir Sampling)。
+    *   基准: `tva sample --weight` vs `tsv-sample` vs `qsv sample` (如果支持)。
+    *   目的: 测试复杂算法与 I/O 的结合效率。
 
 ## 4. 执行环境与记录
 
@@ -117,6 +121,32 @@ hyperfine \
     "tva select -f 1,8,19 hepmass.tsv > /dev/null" \
     "tsv-select -f 1,8,19 hepmass.tsv > /dev/null" \
     "cut -f 1,8,19 hepmass.tsv > /dev/null"
+
+# Scenario 3: Join
+hyperfine \
+    --warmup 3 \
+    --min-runs 5 \
+    --export-csv benchmark_join.csv \
+    "tva join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv > /dev/null" \
+    "tsv-join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv > /dev/null" \
+    "qsv join 1 hepmass_left.tsv 1 hepmass_right.tsv > /dev/null"
+
+# Scenario 4: Summary Statistics
+hyperfine \
+    --warmup 3 \
+    --min-runs 5 \
+    --export-csv benchmark_stats.csv \
+    "tva stats -H --count --sum 3,5,20 --min 3,5,20 --max 3,5,20 --mean 3,5,20 --stdev 3,5,20 hepmass.tsv > /dev/null" \
+    "tsv-summarize -H --count --sum 3,5,20 --min 3,5,20 --max 3,5,20 --mean 3,5,20 --stdev 3,5,20 hepmass.tsv > /dev/null"
+
+# Scenario 5: Weighted Sampling (k=1000)
+# Assumes column 5 is a suitable weight (positive float)
+hyperfine \
+    --warmup 3 \
+    --min-runs 10 \
+    --export-csv benchmark_sample.csv \
+    "tva sample -H --weight-field 5 -k 1000 hepmass.tsv > /dev/null" \
+    "tsv-sample -H --weight-field 5 -k 1000 hepmass.tsv > /dev/null"
 
 # 3. 结果处理与可视化 (Process & Visualize)
 # ------------------------------
