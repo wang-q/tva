@@ -329,3 +329,67 @@
 
 3.  **调整 I/O 参数**:
     *   将输入缓冲区从 64KB 提升至 128KB 或 1MB。
+
+---
+
+## 对标分析: tsv-join (D语言)
+
+为了解决 `tva join` 比 `tsv-join` 慢 1.5 倍的问题，我们对其源码 (`tsv-join.d`) 进行了深度逆向分析。
+
+### 1. 核心组件与流程对比
+
+| 组件 | tsv-join (D) | tva (Rust) | 差异与优势 |
+| :--- | :--- | :--- | :--- |
+| **字段解析 (Fields Parsing)** | `InputFieldReordering` | `key_from_indices` / `split().collect()` | **D 胜出 (零分配)**。<br>D 使用 `InputFieldReordering` 类，内部维护一个预分配的缓冲区。每次处理新行时，只填充指针，**零内存分配**。<br>Rust 目前在 `key_from_indices` 中使用 `line.split(delimiter).collect()`，为每一行**分配一个新的 Vec<&str>**，这是巨大的性能热点。 |
+| **哈希表 (Hash Map)** | `string[string]` (D内置) | `HashMap<String, Vec<String>>` | **Rust 稍弱**。<br>D 的关联数组经过高度优化。Rust 的 `HashMap` 很快，但 Key 和 Value 都是 `String`，意味着每行都要进行堆分配。 |
+| **I/O 缓冲** | `bufferedByLine` (1MB Buffer) | `BufReader` (默认 8KB) | **D 胜出**。<br>D 使用自定义的 `bufferedByLine`，缓冲区更大且专门针对行读取优化。 |
+| **输出缓冲** | `BufferedOutputRange` | `BufWriter` | **D 胜出**。<br>D 使用自定义的 `BufferedOutputRange`，专门针对小片段写入优化。 |
+
+### 2. D 语言 `InputFieldReordering` 机制详解
+
+D 语言版本的性能核心在于 `InputFieldReordering` 类 (位于 `common/utils.d`)。
+
+*   **预计算映射**: 在启动时，它计算好输入字段索引到输出字段索引的映射 (`fromToMap`)，并按输入顺序排序。
+*   **流式填充**: 在处理每一行时：
+    1.  调用 `initNewLine` 重置状态（不释放内存）。
+    2.  遍历输入行的字段 (`line.splitter`)。
+    3.  调用 `processNextField`。由于 `fromToMap` 是排序的，它只需要顺序检查当前字段是否是需要的字段。
+    4.  如果是，直接将字段的切片 (`char[]`) 保存到内部缓冲区。
+    5.  一旦所有需要的字段都找到了 (`allFieldsFilled`)，立即停止解析剩余字段。
+*   **零分配**: 整个过程只涉及切片操作，没有任何堆内存分配 (Heap Allocation)。
+
+### 3. Rust 版本 (`tva join`) 的瓶颈
+
+反观 Rust 版本的 `key_from_indices`:
+
+```rust
+fn key_from_indices(line: &str, indices: &[usize], delimiter: char) -> String {
+    let fields: Vec<&str> = line.split(delimiter).collect(); // 瓶颈 1: 分配 Vec
+    let mut parts: Vec<&str> = Vec::new(); // 瓶颈 2: 分配 Vec
+    for idx in indices {
+        // ...
+        parts.push(fields[pos]);
+    }
+    parts.join(&delimiter.to_string()) // 瓶颈 3: 分配 String (无法避免，但前两步可优化)
+}
+```
+
+每一行数据都会触发至少两次 `Vec` 分配。对于 1000 万行数据，就是 2000 万次微小的堆分配，这会给分配器带来巨大压力。
+
+### 4. 优化行动项
+
+经分析，`src/libs/select.rs` 中已存在与 D 语言 `InputFieldReordering` 类似的高性能实现 (`SelectPlan` 和 `write_selected_from_bytes`)，但目前尚未在 `join` 命令中复用。
+
+**行动计划：**
+
+1.  **通用化改造**:
+    *   复用 `src/libs/select.rs` 中的核心解析逻辑。
+    *   将 `SelectPlan` 提取为通用的字段选择器，使其支持输出到 `Vec<u8>` 而不仅是 Writer。
+
+2.  **重构 `join.rs`**:
+    *   **移除 `key_from_indices`**: 废弃低效的 `split().collect()` 实现。
+    *   **引入 `SelectPlan`**: 使用预计算的字段映射。
+    *   **零拷贝 Key 提取**: 使用复用的 `Vec<u8>` 缓冲区来构建 Key。
+    *   **I/O 优化**: 切换到 `src/libs/tsv/reader.rs` 提供的 `TsvReader`，并显式设置 128KB+ 缓冲区。
+
+通过这些优化，我们预计可以消除 99% 的堆分配，使 `tva join` 的性能追平甚至超越 `tsv-join`。
