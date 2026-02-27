@@ -1,5 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 use std::io::{BufRead, Read};
+use std::time::Duration;
 
 // A small sample of TSV data to repeat
 const DATA: &str = "1\tJohn\tDoe\t30\tNew York\n2\tJane\tSmith\t25\tLos Angeles\n3\tBob\tJohnson\t40\tChicago\n";
@@ -18,6 +19,8 @@ fn benchmark_parsing(c: &mut Criterion) {
     let data = create_tsv_data();
     let mut group = c.benchmark_group("tsv_parsing");
     group.throughput(Throughput::Bytes(data.len() as u64));
+    group.warm_up_time(Duration::from_secs(3));
+    group.measurement_time(Duration::from_secs(8));
 
     // 1. csv crate (The Gold Standard for Correctness)
     // Uses a highly optimized DFA state machine.
@@ -306,6 +309,39 @@ fn benchmark_parsing(c: &mut Criterion) {
                     buf.copy_within(valid_end..end, 0);
                 }
             }
+        })
+    });
+
+    // 12. TVA TsvReader (Zero-copy, SIMD)
+    // Uses internal buffer + memchr for zero-copy iteration.
+    // Avoids String/Vec allocation per record.
+    group.bench_function("tva_tsv_reader", |b| {
+        b.iter(|| {
+            let cursor = std::io::Cursor::new(data.as_bytes());
+            let mut reader = tva::libs::tsv::reader::TsvReader::new(cursor);
+            reader
+                .for_each_record(|record| {
+                    // Simulate field processing to be fair with other benchmarks
+                    let mut iter = memchr::memchr_iter(b'\t', record);
+                    let mut last_pos = 0;
+                    loop {
+                        match iter.next() {
+                            Some(pos) => {
+                                let field =
+                                    unsafe { record.get_unchecked(last_pos..pos) };
+                                black_box(field);
+                                last_pos = pos + 1;
+                            }
+                            None => {
+                                let field = unsafe { record.get_unchecked(last_pos..) };
+                                black_box(field);
+                                break;
+                            }
+                        }
+                    }
+                    Ok(())
+                })
+                .unwrap();
         })
     });
 
