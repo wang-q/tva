@@ -160,11 +160,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut header_written = false;
 
     for spec in specs {
-        let input_source = crate::libs::io::input_sources(&[spec.path.clone()])
-            .pop()
-            .unwrap();
-        let mut reader = TsvReader::new(input_source.reader);
-        let mut line_number_in_file: u64 = 0;
+        let input_reader = crate::libs::io::raw_reader(&spec.path);
+        let mut reader = TsvReader::new(input_reader);
 
         let label = match spec.label {
             Some(ref s) => s.clone(),
@@ -172,25 +169,24 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         };
         let label_bytes = label.as_bytes();
 
-        reader.for_each_record(|record| {
-            line_number_in_file += 1;
-
-            if has_header && line_number_in_file == 1 {
+        if has_header {
+            if let Some(header) = reader.read_header()? {
                 if !header_written {
                     header_written = true;
                     if track_source {
                         writer.write_all(source_header_name.as_bytes())?;
                         writer.write_all(&[delimiter as u8])?;
-                        writer.write_all(record)?;
+                        writer.write_all(&header)?;
                         writer.write_all(b"\n")?;
                     } else {
-                        writer.write_all(record)?;
+                        writer.write_all(&header)?;
                         writer.write_all(b"\n")?;
                     }
                 }
-                return Ok(());
             }
+        }
 
+        reader.for_each_record(|record| {
             if !track_source {
                 writer.write_all(record)?;
                 writer.write_all(b"\n")?;
