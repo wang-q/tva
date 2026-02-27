@@ -1,5 +1,5 @@
 use clap::*;
-use std::io::{BufRead, Write};
+use std::io::Write;
 
 pub fn make_subcommand() -> Command {
     Command::new("slice")
@@ -110,30 +110,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     // Actually, sorting ranges by start might help performance if we have many ranges.
     ranges.sort_by_key(|r| r.start);
 
-    for input in crate::libs::io::input_sources(&infiles) {
-        let mut reader = input.reader;
-        let mut line = String::new();
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+        let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut line_num = 0;
 
-        loop {
-            line.clear();
-            let n = reader.read_line(&mut line)?;
-            if n == 0 {
-                break;
-            }
+        reader.for_each_record(|record| {
             line_num += 1;
-
-            if line.ends_with('\n') {
-                line.pop();
-                if line.ends_with('\r') {
-                    line.pop();
-                }
-            }
 
             // Always keep header if requested
             if line_num == 1 && keep_header {
-                writeln!(writer, "{}", line)?;
-                continue;
+                writer.write_all(record)?;
+                writer.write_all(b"\n")?;
+                return Ok(());
             }
 
             // Check if current line is in any range
@@ -145,10 +133,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if ranges.is_empty() {
                 if invert {
                     // Drop nothing = Keep all
-                    writeln!(writer, "{}", line)?;
+                    writer.write_all(record)?;
+                    writer.write_all(b"\n")?;
                 }
                 // Else Keep nothing
-                continue;
+                return Ok(());
             }
 
             // Since ranges are sorted by start, we can optimize slightly.
@@ -171,9 +160,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             };
 
             if should_write {
-                writeln!(writer, "{}", line)?;
+                writer.write_all(record)?;
+                writer.write_all(b"\n")?;
             }
-        }
+            Ok(())
+        })?;
     }
 
     Ok(())
