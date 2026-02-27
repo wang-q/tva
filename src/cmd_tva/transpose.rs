@@ -1,5 +1,8 @@
+use crate::libs::io::map_io_err;
+use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::record::TsvRecord;
 use clap::*;
-use std::io::{BufRead, Write};
+use std::io::Write;
 
 pub fn make_subcommand() -> Command {
     Command::new("transpose")
@@ -24,42 +27,25 @@ pub fn make_subcommand() -> Command {
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let infile = args.get_one::<String>("infile").unwrap();
-    let mut reader = crate::libs::io::reader(infile);
+    let reader = crate::libs::io::reader(infile);
+    let mut tsv_reader = TsvReader::with_capacity(reader, 512 * 1024);
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
-    let mut data: Vec<Vec<String>> = Vec::new();
+    let mut data: Vec<TsvRecord> = Vec::new();
     let mut expected_fields: Option<usize> = None;
     let mut line_number: u64 = 0;
 
-    let mut line = String::new();
-    loop {
-        line.clear();
-        let bytes_read = reader.read_line(&mut line)?;
-        if bytes_read == 0 {
-            break;
-        }
-
-        if line.ends_with('\n') {
-            line.pop();
-            if line.ends_with('\r') {
-                line.pop();
-            }
-        }
-
+    tsv_reader.for_each_record(|line| {
         line_number += 1;
 
-        let fields: Vec<String> = if line.is_empty() {
-            Vec::new()
-        } else {
-            line.split('\t').map(|s| s.to_string()).collect()
-        };
-
-        let field_count = fields.len();
+        let mut record = TsvRecord::new();
+        record.parse_line(line, b'\t');
+        let field_count = record.len();
 
         if let Some(exp) = expected_fields {
             if field_count != exp {
                 eprintln!("line {} ({} fields):", line_number, field_count);
-                eprintln!("  {}", line);
+                eprintln!("  {}", String::from_utf8_lossy(line));
                 eprintln!(
                     "tva transpose: structure check failed: line {} has {} fields (expected {})",
                     line_number, field_count, exp
@@ -70,8 +56,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             expected_fields = Some(field_count);
         }
 
-        data.push(fields);
-    }
+        data.push(record);
+        Ok(())
+    }).map_err(map_io_err)?;
 
     if data.is_empty() {
         return Ok(());
@@ -84,7 +71,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if r > 0 {
                 writer.write_all(b"\t")?;
             }
-            writer.write_all(row[c].as_bytes())?;
+            if let Some(field) = row.get(c) {
+                writer.write_all(field)?;
+            }
         }
         writer.write_all(b"\n")?;
     }
