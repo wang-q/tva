@@ -2,33 +2,8 @@ use clap::*;
 use std::collections::HashMap;
 use std::io::Write;
 use std::ops::Range;
-use smallvec::SmallVec;
 use ahash::RandomState;
-
-type KeyBuffer = SmallVec<[u8; 32]>;
-
-enum JoinKey<'a> {
-    Ref(&'a [u8]),
-    Owned(KeyBuffer),
-}
-
-impl<'a> AsRef<[u8]> for JoinKey<'a> {
-    fn as_ref(&self) -> &[u8] {
-        match self {
-            JoinKey::Ref(s) => s,
-            JoinKey::Owned(s) => s.as_ref(),
-        }
-    }
-}
-
-impl<'a> JoinKey<'a> {
-    fn into_owned(self) -> KeyBuffer {
-        match self {
-            JoinKey::Ref(s) => KeyBuffer::from_slice(s),
-            JoinKey::Owned(s) => s,
-        }
-    }
-}
+use crate::libs::key::{KeyExtractor, KeyBuffer};
 
 pub fn make_subcommand() -> Command {
     Command::new("join")
@@ -172,59 +147,6 @@ fn parse_append_field_spec(
     }
 }
 
-// Extracts key from line using ranges. Zero-allocation for key extraction if we had a proper buffer.
-// Here we still need to return a Vec<u8> as the key to store in HashMap.
-// But we can construct it efficiently.
-fn extract_key<'a>(
-    line: &'a [u8],
-    delimiter: u8,
-    whole_line: bool,
-    plan: Option<&crate::libs::select::SelectPlan>,
-    ranges_buf: &mut Vec<Range<usize>>,
-) -> JoinKey<'a> {
-    if whole_line {
-        return JoinKey::Ref(line);
-    }
-    let plan = plan.unwrap();
-    if let Err(idx) = plan.extract_ranges(line, delimiter, ranges_buf) {
-        let n = if line.is_empty() {
-            0
-        } else {
-            line.iter().filter(|&&b| b == delimiter).count() + 1
-        };
-        eprintln!(
-            "tva join: line has {} fields, but key index {} is out of range",
-            n, idx
-        );
-        std::process::exit(1);
-    }
-    
-    // Optimization: if single key field, return slice directly
-    if ranges_buf.len() == 1 {
-        return JoinKey::Ref(&line[ranges_buf[0].clone()]);
-    }
-
-    // Construct key from ranges
-    let mut key = KeyBuffer::new();
-    let mut first = true;
-    
-    for range in ranges_buf.iter() {
-        if range.start >= range.end {
-            // Empty field
-            if !first {
-                key.push(delimiter);
-            }
-        } else {
-            if !first {
-                key.push(delimiter);
-            }
-            key.extend_from_slice(&line[range.clone()]);
-        }
-        first = false;
-    }
-    JoinKey::Owned(key)
-}
-
 // Extracts values to append.
 // We store them as a single byte string with delimiters, to avoid Vec<String> overhead.
 fn extract_values(
@@ -336,18 +258,34 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         parse_append_field_spec(append_fields_spec, filter_header.as_ref(), delimiter_char);
     let append_count = append_indices.as_ref().map(|v| v.len()).unwrap_or(0);
 
-    let filter_key_plan = filter_key_indices.as_ref().map(|idxs| crate::libs::select::SelectPlan::new(idxs));
+    let mut filter_key_extractor = KeyExtractor::new(filter_key_indices.clone(), false, true);
     let append_plan = append_indices.as_ref().map(|idxs| crate::libs::select::SelectPlan::new(idxs));
 
     // Map: Key -> Appended Values (as bytes)
     let mut filter_map: HashMap<KeyBuffer, Vec<u8>, RandomState> = HashMap::with_hasher(RandomState::new());
-    let mut ranges_buf: Vec<Range<usize>> = Vec::new(); // Reusable buffer for ranges
+    let mut ranges_buf: Vec<Range<usize>> = Vec::new(); // Reusable buffer for ranges for append values
 
     filter_reader.for_each_record(|line| {
         if line.is_empty() {
             return Ok(());
         }
-        let key = extract_key(line, delimiter, filter_key_whole_line, filter_key_plan.as_ref(), &mut ranges_buf);
+        
+        let key_result = filter_key_extractor.extract(line, delimiter);
+        let key = match key_result {
+            Ok(k) => k,
+            Err(idx) => {
+                let n = if line.is_empty() {
+                    0
+                } else {
+                    line.iter().filter(|&&b| b == delimiter).count() + 1
+                };
+                eprintln!(
+                    "tva join: line has {} fields, but key index {} is out of range",
+                    n, idx
+                );
+                std::process::exit(1);
+            }
+        };
         
         let values = if let Some(ref plan) = append_plan {
             extract_values(line, delimiter, plan, &mut ranges_buf)
@@ -383,8 +321,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
 
     let mut data_key_whole_line = false;
-    let mut data_key_plan: Option<crate::libs::select::SelectPlan> = None;
     let mut data_key_indices_len = 0; // For validation
+    let mut data_key_extractor: Option<KeyExtractor> = None;
 
     // Pre-calculate append header part
     let append_header_suffix = if let Some(idxs) = append_indices.as_ref() {
@@ -451,12 +389,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     );
                     
                     data_key_whole_line = whole_line;
-                    if let Some(idxs) = indices {
+                    if let Some(ref idxs) = indices {
                         data_key_indices_len = idxs.len();
-                        data_key_plan = Some(crate::libs::select::SelectPlan::new(&idxs));
                     } else {
-                        data_key_plan = None;
+                        data_key_indices_len = 0; // not really 0, but implicit
                     }
+                    data_key_extractor = Some(KeyExtractor::new(indices, false, true));
 
                     // Validate key lengths match
                     if !filter_key_whole_line && !data_key_whole_line {
@@ -487,18 +425,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             is_first_line = false;
 
-            // Initialize plan for headerless files or subsequent files if not set
-            if data_key_plan.is_none() && !data_key_whole_line {
+            // Initialize extractor for headerless files or subsequent files if not set
+            if data_key_extractor.is_none() {
                  let effective_data_spec =
                     data_fields_spec.clone().or_else(|| key_fields_spec.clone());
                 let (whole_line, indices) =
                     parse_join_field_spec(effective_data_spec.clone(), None, delimiter_char);
                 
                 data_key_whole_line = whole_line;
-                if let Some(idxs) = indices {
+                if let Some(ref idxs) = indices {
                     data_key_indices_len = idxs.len();
-                    data_key_plan = Some(crate::libs::select::SelectPlan::new(&idxs));
                 }
+                data_key_extractor = Some(KeyExtractor::new(indices, false, true));
 
                 if !filter_key_whole_line && !data_key_whole_line {
                     let fk_len = filter_key_indices.as_ref().unwrap().len();
@@ -510,7 +448,23 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
             }
 
-            let key = extract_key(line, delimiter, data_key_whole_line, data_key_plan.as_ref(), &mut ranges_buf);
+            let key_result = data_key_extractor.as_mut().unwrap().extract(line, delimiter);
+            let key = match key_result {
+                Ok(k) => k,
+                Err(idx) => {
+                    let n = if line.is_empty() {
+                        0
+                    } else {
+                        line.iter().filter(|&&b| b == delimiter).count() + 1
+                    };
+                    eprintln!(
+                        "tva join: line has {} fields, but key index {} is out of range",
+                        n, idx
+                    );
+                    std::process::exit(1);
+                }
+            };
+
             let matched = filter_map.get(key.as_ref());
 
             if exclude {

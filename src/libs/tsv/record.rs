@@ -206,6 +206,15 @@ impl TsvRecord {
     }
 }
 
+impl Row for TsvRecord {
+    fn get_bytes(&self, idx: usize) -> Option<&[u8]> {
+        if idx == 0 {
+            return None;
+        }
+        self.get(idx - 1)
+    }
+}
+
 pub struct TsvRecordIter<'a> {
     record: &'a TsvRecord,
     pos: usize,

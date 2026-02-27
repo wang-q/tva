@@ -1,5 +1,6 @@
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::reader::TsvReader;
+use crate::libs::key::KeyExtractor;
 use clap::*;
 use rapidhash::rapidhash;
 use std::collections::HashMap;
@@ -197,7 +198,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut header_written = false;
     let mut header: Option<crate::libs::tsv::fields::Header> = None;
-    let mut key_fields: Option<Vec<usize>> = None;
+    
+    // Extractor handles key extraction logic
+    let mut extractor: Option<KeyExtractor> = None;
 
     struct EquivEntry {
         equiv_id: u64,
@@ -205,11 +208,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
 
     let mut equiv_map: HashMap<u64, EquivEntry> = HashMap::new();
-
-    // Reusable buffer for constructing keys
-    let mut key_buffer = Vec::new();
-    let mut ends = Vec::new();
-    let delim_byte = delimiter as u8;
 
     for input in crate::libs::io::raw_input_sources(&infiles) {
         let mut tsv_reader = TsvReader::with_capacity(input.reader, 512 * 1024);
@@ -223,7 +221,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     ));
                     if let Some(ref spec) = fields_spec {
                         if spec.trim() == "0" {
-                            key_fields = Some(Vec::new());
+                             extractor = Some(KeyExtractor::new(None, ignore_case, false));
                         } else {
                             let parsed =
                                 crate::libs::tsv::fields::parse_field_list_with_header(
@@ -232,7 +230,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                                     delimiter,
                                 );
                             match parsed {
-                                Ok(v) => key_fields = Some(v),
+                                Ok(v) => extractor = Some(KeyExtractor::new(Some(v), ignore_case, false)),
                                 Err(e) => {
                                     arg_error(&e);
                                 }
@@ -264,74 +262,39 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        if key_fields.is_none() {
+        if extractor.is_none() {
             if let Some(ref spec) = fields_spec {
                 if spec.trim() == "0" {
-                    key_fields = Some(Vec::new());
+                    extractor = Some(KeyExtractor::new(None, ignore_case, false));
                 } else {
                     let parsed =
                         crate::libs::tsv::fields::parse_field_list_with_header(
                             spec, None, delimiter,
                         );
                     match parsed {
-                        Ok(v) => key_fields = Some(v),
+                        Ok(v) => extractor = Some(KeyExtractor::new(Some(v), ignore_case, false)),
                         Err(e) => {
                             arg_error(&e);
                         }
                     }
                 }
+            } else {
+                // Default: whole line
+                extractor = Some(KeyExtractor::new(None, ignore_case, false));
             }
         }
 
         tsv_reader.for_each_record(|line| {
-            let subject = if key_fields.as_ref().is_none_or(|v| v.is_empty()) {
-                if ignore_case {
-                    key_buffer.clear();
-                    // Basic ASCII lowercase, consistent with standard behavior for performance
-                    // For full unicode support, we might need more complex handling, but typically ASCII is assumed for TSV
-                    key_buffer.extend(line.iter().map(|b| b.to_ascii_lowercase()));
-                    rapidhash(&key_buffer)
+            let subject = {
+                let key_res = extractor.as_mut().unwrap().extract(line, delimiter as u8);
+                // With strict=false, extract should return Ok unless something internal fails heavily.
+                // Missing fields are treated as empty, so we get a key.
+                if let Ok(parsed_key) = key_res {
+                    rapidhash(parsed_key.as_ref())
                 } else {
-                    rapidhash(line)
+                    // Should theoretically not happen with strict=false, but as fallback
+                    rapidhash(&[])
                 }
-            } else {
-                let k_fields = key_fields.as_ref().unwrap();
-                key_buffer.clear();
-                
-                ends.clear();
-                for pos in memchr::memchr_iter(delim_byte, line) {
-                    ends.push(pos);
-                }
-                ends.push(line.len());
-
-                let mut first = true;
-                for &idx in k_fields {
-                    if !first {
-                        key_buffer.push(delim_byte);
-                    }
-                    
-                    let field = if idx > 0 && idx <= ends.len() {
-                        let end = ends[idx - 1];
-                        let start = if idx == 1 { 0 } else { ends[idx - 2] + 1 };
-                        if start <= end {
-                            Some(&line[start..end])
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    };
-
-                    if let Some(f) = field {
-                        if ignore_case {
-                            key_buffer.extend(f.iter().map(|b| b.to_ascii_lowercase()));
-                        } else {
-                            key_buffer.extend_from_slice(f);
-                        }
-                    }
-                    first = false;
-                }
-                rapidhash(&key_buffer)
             };
 
             let entry = equiv_map.entry(subject).or_insert_with(|| {
