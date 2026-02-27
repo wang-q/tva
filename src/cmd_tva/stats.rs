@@ -546,6 +546,19 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     }
                     
                     println!("{}", headers.join("\t"));
+                } else {
+                    // Empty file with --header.
+                    // Attempt to setup processor without header info (will fail if named fields are used).
+                    let (proc, g_indices, headers) = setup_processor(None)?;
+                    processor = Some(proc);
+                    group_indices = g_indices;
+                    use_grouping = !group_indices.is_empty();
+                    
+                    if !use_grouping {
+                        aggregator = Some(processor.as_ref().unwrap().create_aggregator());
+                    }
+                    
+                    println!("{}", headers.join("\t"));
                 }
             }
         } else {
