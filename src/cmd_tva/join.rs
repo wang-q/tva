@@ -1,6 +1,8 @@
 use clap::*;
+use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::BufRead;
+use std::io::Write;
+use std::ops::Range;
 
 pub fn make_subcommand() -> Command {
     Command::new("join")
@@ -144,38 +146,90 @@ fn parse_append_field_spec(
     }
 }
 
-fn key_from_indices(line: &str, indices: &[usize], delimiter: char) -> String {
-    let fields: Vec<&str> = line.split(delimiter).collect();
-    let mut parts: Vec<&str> = Vec::new();
-    for idx in indices {
-        let pos = *idx - 1;
-        if pos >= fields.len() {
-            eprintln!(
-                "tva join: line has {} fields, but key index {} is out of range",
-                fields.len(),
-                idx
-            );
-            std::process::exit(1);
-        }
-        parts.push(fields[pos]);
+// Extracts key from line using ranges. Zero-allocation for key extraction if we had a proper buffer.
+// Here we still need to return a Vec<u8> as the key to store in HashMap.
+// But we can construct it efficiently.
+fn extract_key<'a>(
+    line: &'a [u8],
+    delimiter: u8,
+    whole_line: bool,
+    plan: Option<&crate::libs::select::SelectPlan>,
+    ranges_buf: &mut Vec<Range<usize>>,
+) -> Cow<'a, [u8]> {
+    if whole_line {
+        return Cow::Borrowed(line);
     }
-    parts.join(&delimiter.to_string())
+    let plan = plan.unwrap();
+    if let Err(idx) = plan.extract_ranges(line, delimiter, ranges_buf) {
+        let n = if line.is_empty() {
+            0
+        } else {
+            line.iter().filter(|&&b| b == delimiter).count() + 1
+        };
+        eprintln!(
+            "tva join: line has {} fields, but key index {} is out of range",
+            n, idx
+        );
+        std::process::exit(1);
+    }
+    
+    // Optimization: if single key field, return slice directly
+    if ranges_buf.len() == 1 {
+        return Cow::Borrowed(&line[ranges_buf[0].clone()]);
+    }
+
+    // Construct key from ranges
+    let mut key = Vec::with_capacity(line.len()); // Heuristic capacity
+    let mut first = true;
+    
+    for range in ranges_buf.iter() {
+        if range.start >= range.end {
+            // Empty field
+            if !first {
+                key.push(delimiter);
+            }
+        } else {
+            if !first {
+                key.push(delimiter);
+            }
+            key.extend_from_slice(&line[range.clone()]);
+        }
+        first = false;
+    }
+    Cow::Owned(key)
 }
 
-fn values_from_indices(line: &str, indices: &[usize], delimiter: char) -> Vec<String> {
-    let fields: Vec<&str> = line.split(delimiter).collect();
-    let mut values: Vec<String> = Vec::new();
-    for idx in indices {
-        let pos = *idx - 1;
-        if pos >= fields.len() {
-            eprintln!(
-                "tva join: line has {} fields, but append index {} is out of range",
-                fields.len(),
-                idx
-            );
-            std::process::exit(1);
+// Extracts values to append.
+// We store them as a single byte string with delimiters, to avoid Vec<String> overhead.
+fn extract_values(
+    line: &[u8],
+    delimiter: u8,
+    plan: &crate::libs::select::SelectPlan,
+    ranges_buf: &mut Vec<Range<usize>>,
+) -> Vec<u8> {
+    if let Err(idx) = plan.extract_ranges(line, delimiter, ranges_buf) {
+        let n = if line.is_empty() {
+            0
+        } else {
+            line.iter().filter(|&&b| b == delimiter).count() + 1
+        };
+        eprintln!(
+            "tva join: line has {} fields, but append index {} is out of range",
+            n, idx
+        );
+        std::process::exit(1);
+    }
+    
+    let mut values = Vec::with_capacity(line.len());
+    let mut first = true;
+    for range in ranges_buf.iter() {
+        if !first {
+            values.push(delimiter);
         }
-        values.push(fields[pos].to_string());
+        if range.start < range.end {
+            values.extend_from_slice(&line[range.clone()]);
+        }
+        first = false;
     }
     values
 }
@@ -206,8 +260,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .cloned()
         .unwrap_or_else(|| "\t".to_string());
     let mut chars = delimiter_str.chars();
-    let delimiter = chars.next().unwrap_or('\t');
-    if chars.next().is_some() {
+    let delimiter_char = chars.next().unwrap_or('\t');
+    let delimiter = delimiter_char as u8; // Assume single byte delimiter for now
+    if chars.next().is_some() || delimiter_str.len() > 1 {
         arg_error(&format!(
             "delimiter must be a single character, got `{}`",
             delimiter_str
@@ -230,18 +285,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         arg_error("data file is required when filter-file is '-'");
     }
 
-    let filter_reader = crate::libs::io::reader(&filter_file);
-    let mut filter_lines_iter = filter_reader.lines().map_while(Result::ok);
+    // 1. Process Filter File
+    let mut filter_reader = crate::libs::tsv::reader::TsvReader::new(
+        crate::libs::io::reader(&filter_file)
+    );
 
     let mut filter_header: Option<crate::libs::tsv::fields::Header> = None;
     if has_header {
-        if let Some(mut header_line) = filter_lines_iter.next() {
-            if let Some('\r') = header_line.chars().last() {
-                header_line.pop();
-            }
+        if let Some(header_bytes) = filter_reader.read_header()? {
+            let header_line = String::from_utf8_lossy(&header_bytes);
             filter_header = Some(crate::libs::tsv::fields::Header::from_line(
                 &header_line,
-                delimiter,
+                delimiter_char,
             ));
         }
     }
@@ -249,33 +304,32 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let (filter_key_whole_line, filter_key_indices) = parse_join_field_spec(
         key_fields_spec.clone(),
         filter_header.as_ref(),
-        delimiter,
+        delimiter_char,
     );
     let append_indices =
-        parse_append_field_spec(append_fields_spec, filter_header.as_ref(), delimiter);
+        parse_append_field_spec(append_fields_spec, filter_header.as_ref(), delimiter_char);
     let append_count = append_indices.as_ref().map(|v| v.len()).unwrap_or(0);
 
-    let mut filter_map: HashMap<String, Vec<String>> = HashMap::new();
+    let filter_key_plan = filter_key_indices.as_ref().map(|idxs| crate::libs::select::SelectPlan::new(idxs));
+    let append_plan = append_indices.as_ref().map(|idxs| crate::libs::select::SelectPlan::new(idxs));
 
-    for mut line in filter_lines_iter {
-        if let Some('\r') = line.chars().last() {
-            line.pop();
-        }
+    // Map: Key -> Appended Values (as bytes)
+    let mut filter_map: HashMap<Vec<u8>, Vec<u8>> = HashMap::new();
+    let mut ranges_buf: Vec<Range<usize>> = Vec::new(); // Reusable buffer for ranges
+
+    filter_reader.for_each_record(|line| {
         if line.is_empty() {
-            continue;
+            return Ok(());
         }
-        let key = if filter_key_whole_line {
-            line.clone()
+        let key = extract_key(line, delimiter, filter_key_whole_line, filter_key_plan.as_ref(), &mut ranges_buf);
+        
+        let values = if let Some(ref plan) = append_plan {
+            extract_values(line, delimiter, plan, &mut ranges_buf)
         } else {
-            key_from_indices(&line, filter_key_indices.as_ref().unwrap(), delimiter)
+            Vec::new()
         };
 
-        let values = match append_indices.as_ref() {
-            Some(idxs) => values_from_indices(&line, idxs, delimiter),
-            None => Vec::new(),
-        };
-
-        if let Some(existing) = filter_map.get_mut(&key) {
+        if let Some(existing) = filter_map.get_mut(key.as_ref()) {
             if !allow_duplicate_keys && *existing != values {
                 eprintln!(
                     "tva join: duplicate key with different append values found in filter file"
@@ -286,10 +340,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 *existing = values;
             }
         } else {
-            filter_map.insert(key, values);
+            filter_map.insert(key.into_owned(), values);
         }
-    }
+        Ok(())
+    })?;
 
+    // 2. Process Data Files
     let mut header_written = false;
     let prefix = args
         .get_one::<String>("prefix")
@@ -300,143 +356,166 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         arg_error("--prefix requires --header");
     }
 
-    for input in crate::libs::io::input_sources(&infiles) {
-        let reader = input.reader;
-        let mut is_first_line = true;
-        let mut data_key_whole_line = false;
-        let mut data_key_indices: Option<Vec<usize>> = None;
+    let mut data_key_whole_line = false;
+    let mut data_key_plan: Option<crate::libs::select::SelectPlan> = None;
+    let mut data_key_indices_len = 0; // For validation
 
-        for mut line in reader.lines().map_while(Result::ok) {
-            if let Some('\r') = line.chars().last() {
-                line.pop();
+    // Pre-calculate append header part
+    let append_header_suffix = if let Some(idxs) = append_indices.as_ref() {
+        if let Some(ref fh) = filter_header {
+            let mut s = String::new();
+            for idx in idxs {
+                let pos = *idx - 1;
+                if pos >= fh.fields.len() {
+                    eprintln!(
+                        "tva join: append index {} is out of range for filter header",
+                        idx
+                    );
+                    std::process::exit(1);
+                }
+                s.push(delimiter_char);
+                if prefix.is_empty() {
+                    s.push_str(&fh.fields[pos]);
+                } else {
+                    s.push_str(&prefix);
+                    s.push_str(&fh.fields[pos]);
+                }
             }
+            Some(s)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let write_all_fill = write_all_value.as_ref().map(|fill| {
+        let mut s = Vec::new();
+        if append_count > 0 {
+            for _ in 0..append_count {
+                s.push(delimiter);
+                s.extend_from_slice(fill.as_bytes());
+            }
+        }
+        s
+    });
+
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+        // Use 128KB buffer for data reader
+        let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 128 * 1024);
+        let mut is_first_line = true;
+
+        reader.for_each_record(|line| {
             if line.is_empty() {
-                continue;
+                return Ok(());
             }
 
             if has_header && is_first_line {
                 if !header_written {
                     let effective_data_spec =
                         data_fields_spec.clone().or_else(|| key_fields_spec.clone());
+                    
+                    let header_str = String::from_utf8_lossy(line);
                     let (whole_line, indices) = parse_join_field_spec(
                         effective_data_spec,
                         Some(&crate::libs::tsv::fields::Header::from_line(
-                            &line, delimiter,
+                            &header_str, delimiter_char,
                         )),
-                        delimiter,
+                        delimiter_char,
                     );
+                    
                     data_key_whole_line = whole_line;
-                    data_key_indices = indices;
+                    if let Some(idxs) = indices {
+                        data_key_indices_len = idxs.len();
+                        data_key_plan = Some(crate::libs::select::SelectPlan::new(&idxs));
+                    } else {
+                        data_key_plan = None;
+                    }
 
+                    // Validate key lengths match
                     if !filter_key_whole_line && !data_key_whole_line {
-                        if let (Some(fk), Some(dk)) =
-                            (filter_key_indices.as_ref(), data_key_indices.as_ref())
-                        {
-                            if fk.len() != dk.len() {
-                                eprintln!(
-                                    "tva join: different number of key-fields and data-fields"
-                                );
-                                std::process::exit(1);
-                            }
+                        let fk_len = filter_key_indices.as_ref().unwrap().len();
+                        let dk_len = data_key_indices_len;
+                        if fk_len != dk_len {
+                            eprintln!(
+                                "tva join: different number of key-fields and data-fields"
+                            );
+                            std::process::exit(1);
                         }
                     }
 
-                    let mut header_line = line.clone();
-                    if let Some(idxs) = append_indices.as_ref() {
-                        if let Some(ref fh) = filter_header {
-                            for idx in idxs {
-                                let pos = *idx - 1;
-                                if pos >= fh.fields.len() {
-                                    eprintln!(
-                                        "tva join: append index {} is out of range for filter header",
-                                        idx
-                                    );
-                                    std::process::exit(1);
-                                }
-                                header_line.push(delimiter);
-                                if prefix.is_empty() {
-                                    header_line.push_str(&fh.fields[pos]);
-                                } else {
-                                    header_line.push_str(&prefix);
-                                    header_line.push_str(&fh.fields[pos]);
-                                }
-                            }
-                        }
+                    writer.write_all(line)?;
+                    if let Some(ref suffix) = append_header_suffix {
+                        writer.write_all(suffix.as_bytes())?;
                     }
-                    writer.write_fmt(format_args!("{}\n", header_line))?;
+                    writer.write_all(b"\n")?;
+                    
                     if line_buffered {
                         writer.flush()?;
                     }
                     header_written = true;
                 }
-
                 is_first_line = false;
-                continue;
+                return Ok(());
             }
 
             is_first_line = false;
 
-            if data_key_indices.is_none() {
-                let effective_data_spec =
+            // Initialize plan for headerless files or subsequent files if not set
+            if data_key_plan.is_none() && !data_key_whole_line {
+                 let effective_data_spec =
                     data_fields_spec.clone().or_else(|| key_fields_spec.clone());
                 let (whole_line, indices) =
-                    parse_join_field_spec(effective_data_spec.clone(), None, delimiter);
+                    parse_join_field_spec(effective_data_spec.clone(), None, delimiter_char);
+                
                 data_key_whole_line = whole_line;
-                data_key_indices = indices;
+                if let Some(idxs) = indices {
+                    data_key_indices_len = idxs.len();
+                    data_key_plan = Some(crate::libs::select::SelectPlan::new(&idxs));
+                }
 
                 if !filter_key_whole_line && !data_key_whole_line {
-                    if let (Some(fk), Some(dk)) =
-                        (filter_key_indices.as_ref(), data_key_indices.as_ref())
-                    {
-                        if fk.len() != dk.len() {
-                            eprintln!("tva join: different number of key-fields and data-fields");
-                            std::process::exit(1);
-                        }
+                    let fk_len = filter_key_indices.as_ref().unwrap().len();
+                    let dk_len = data_key_indices_len;
+                    if fk_len != dk_len {
+                        eprintln!("tva join: different number of key-fields and data-fields");
+                        std::process::exit(1);
                     }
                 }
             }
 
-            let key = if data_key_whole_line {
-                line.clone()
-            } else {
-                key_from_indices(&line, data_key_indices.as_ref().unwrap(), delimiter)
-            };
-
-            let matched = filter_map.get(&key);
+            let key = extract_key(line, delimiter, data_key_whole_line, data_key_plan.as_ref(), &mut ranges_buf);
+            let matched = filter_map.get(key.as_ref());
 
             if exclude {
                 if matched.is_none() {
-                    writer.write_fmt(format_args!("{}\n", line))?;
+                    writer.write_all(line)?;
+                    writer.write_all(b"\n")?;
                     if line_buffered {
                         writer.flush()?;
                     }
                 }
             } else if let Some(values) = matched {
-                let mut out_line = line.clone();
+                writer.write_all(line)?;
                 if !values.is_empty() {
-                    for v in values {
-                        out_line.push(delimiter);
-                        out_line.push_str(v);
-                    }
+                    writer.write_all(&[delimiter])?;
+                    writer.write_all(values)?;
                 }
-                writer.write_fmt(format_args!("{}\n", out_line))?;
+                writer.write_all(b"\n")?;
                 if line_buffered {
                     writer.flush()?;
                 }
-            } else if let Some(ref fill) = write_all_value {
-                let mut out_line = line.clone();
-                if append_count > 0 {
-                    for _ in 0..append_count {
-                        out_line.push(delimiter);
-                        out_line.push_str(fill);
-                    }
-                }
-                writer.write_fmt(format_args!("{}\n", out_line))?;
+            } else if let Some(ref fill) = write_all_fill {
+                writer.write_all(line)?;
+                writer.write_all(fill)?;
+                writer.write_all(b"\n")?;
                 if line_buffered {
                     writer.flush()?;
                 }
             }
-        }
+
+            Ok(())
+        })?;
     }
 
     Ok(())
