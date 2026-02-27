@@ -4,6 +4,7 @@
 //! iterating over TSV records with minimal allocation.
 
 use std::io::{self, Read};
+use crate::libs::tsv::record::TsvRow;
 
 /// A reader that efficiently scans for TSV records (lines) in a byte stream.
 pub struct TsvReader<R> {
@@ -146,6 +147,29 @@ impl<R: Read> TsvReader<R> {
                 }
             }
         }
+    }
+
+    /// Iterate over rows (parsed records) using a closure.
+    ///
+    /// This is a convenience wrapper around `for_each_record` that constructs a `TsvRow`
+    /// for each record.
+    pub fn for_each_row<F>(&mut self, mut func: F) -> io::Result<()>
+    where
+        F: FnMut(&TsvRow) -> io::Result<()>,
+    {
+        let mut ends = Vec::new();
+        self.for_each_record(|record| {
+            ends.clear();
+            // Pre-calculate field delimiters for the row
+            for pos in memchr::memchr_iter(b'\t', record) {
+                ends.push(pos);
+            }
+            let row = TsvRow {
+                line: record,
+                ends: &ends,
+            };
+            func(&row)
+        })
     }
 }
 

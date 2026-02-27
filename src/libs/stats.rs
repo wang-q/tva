@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use crate::libs::tsv::record::Row;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum OpKind {
@@ -74,6 +75,19 @@ impl Aggregator {
     }
 
     pub fn update(&mut self, record: &[&[u8]], ops: &[Operation]) {
+        use crate::libs::tsv::record::StrSliceRow;
+        // Temporary compatibility wrapper
+        let fields: Vec<&str> = record
+            .iter()
+            .map(|b| std::str::from_utf8(b).unwrap_or(""))
+            .collect();
+        let row = StrSliceRow {
+            fields: &fields,
+        };
+        self.update_row(&row, ops);
+    }
+
+    pub fn update_row<R: Row + ?Sized>(&mut self, row: &R, ops: &[Operation]) {
         self.count += 1;
 
         // Collect fields needed for each type of operation
@@ -135,43 +149,31 @@ impl Aggregator {
 
         // Handle Sum/Mean/Stdev/Variance/CV
         for idx in &sum_fields {
-            if *idx >= record.len() {
+            let val_str = row.get_str(idx + 1).unwrap_or("");
+            if val_str.is_empty() {
                 continue;
             }
-            let val_bytes = record[*idx];
-            if val_bytes.is_empty() {
-                continue;
-            }
-            if let Ok(val_str) = std::str::from_utf8(val_bytes) {
-                if let Ok(val) = val_str.trim().parse::<f64>() {
-                    *self.sums.entry(*idx).or_insert(0.0) += val;
-                    *self.field_counts.entry(*idx).or_insert(0) += 1;
+            if let Ok(val) = val_str.trim().parse::<f64>() {
+                *self.sums.entry(*idx).or_insert(0.0) += val;
+                *self.field_counts.entry(*idx).or_insert(0) += 1;
 
-                    if sum_sq_fields.contains(idx) {
-                        *self.sum_sqs.entry(*idx).or_insert(0.0) += val * val;
-                    }
+                if sum_sq_fields.contains(idx) {
+                    *self.sum_sqs.entry(*idx).or_insert(0.0) += val * val;
                 }
             }
         }
 
         // Handle GeoMean
         for idx in &sum_log_fields {
-            if *idx >= record.len() {
+            let val_str = row.get_str(idx + 1).unwrap_or("");
+            if val_str.is_empty() {
                 continue;
             }
-            let val_bytes = record[*idx];
-            if val_bytes.is_empty() {
-                continue;
-            }
-            if let Ok(val_str) = std::str::from_utf8(val_bytes) {
-                if let Ok(val) = val_str.trim().parse::<f64>() {
-                    if val > 0.0 {
-                        *self.sum_logs.entry(*idx).or_insert(0.0) += val.ln();
-                        // If field_counts not updated by sum_fields, update here?
-                        // Assuming user might ask for geomean only.
-                        if !sum_fields.contains(idx) {
-                            *self.field_counts.entry(*idx).or_insert(0) += 1;
-                        }
+            if let Ok(val) = val_str.trim().parse::<f64>() {
+                if val > 0.0 {
+                    *self.sum_logs.entry(*idx).or_insert(0.0) += val.ln();
+                    if !sum_fields.contains(idx) {
+                        *self.field_counts.entry(*idx).or_insert(0) += 1;
                     }
                 }
             }
@@ -179,20 +181,15 @@ impl Aggregator {
 
         // Handle HarmMean
         for idx in &sum_inv_fields {
-            if *idx >= record.len() {
+            let val_str = row.get_str(idx + 1).unwrap_or("");
+            if val_str.is_empty() {
                 continue;
             }
-            let val_bytes = record[*idx];
-            if val_bytes.is_empty() {
-                continue;
-            }
-            if let Ok(val_str) = std::str::from_utf8(val_bytes) {
-                if let Ok(val) = val_str.trim().parse::<f64>() {
-                    if val != 0.0 {
-                        *self.sum_invs.entry(*idx).or_insert(0.0) += 1.0 / val;
-                        if !sum_fields.contains(idx) && !sum_log_fields.contains(idx) {
-                            *self.field_counts.entry(*idx).or_insert(0) += 1;
-                        }
+            if let Ok(val) = val_str.trim().parse::<f64>() {
+                if val != 0.0 {
+                    *self.sum_invs.entry(*idx).or_insert(0.0) += 1.0 / val;
+                    if !sum_fields.contains(idx) && !sum_log_fields.contains(idx) {
+                        *self.field_counts.entry(*idx).or_insert(0) += 1;
                     }
                 }
             }
@@ -201,99 +198,76 @@ impl Aggregator {
         // Handle Median/Mad/Quantiles (store all values)
 
         for idx in value_fields {
-            if idx >= record.len() {
+            let val_str = row.get_str(idx + 1).unwrap_or("");
+            if val_str.is_empty() {
                 continue;
             }
-            let val_bytes = record[idx];
-            if val_bytes.is_empty() {
-                continue;
-            }
-            if let Ok(val_str) = std::str::from_utf8(val_bytes) {
-                if let Ok(val) = val_str.trim().parse::<f64>() {
-                    self.values.entry(idx).or_default().push(val);
-                }
+            if let Ok(val) = val_str.trim().parse::<f64>() {
+                self.values.entry(idx).or_default().push(val);
             }
         }
 
         // Handle First
         for idx in first_fields {
             self.firsts.entry(idx).or_insert_with(|| {
-                if idx < record.len() {
-                    let val = String::from_utf8_lossy(record[idx]).to_string();
-                    val
-                } else {
-                    String::new()
-                }
+                row.get_str(idx + 1).unwrap_or("").to_string()
             });
         }
 
         // Handle Last
         for idx in last_fields {
-            if idx < record.len() {
-                let val = String::from_utf8_lossy(record[idx]).to_string();
-                self.lasts.insert(idx, val);
-            } else {
-                self.lasts.insert(idx, String::new());
-            }
+            let val = row.get_str(idx + 1).unwrap_or("").to_string();
+            self.lasts.insert(idx, val);
         }
 
         // Handle NUnique/Mode/Unique
         for idx in count_fields {
-            if idx < record.len() {
-                let val = String::from_utf8_lossy(record[idx]).to_string();
-                *self
-                    .value_counts
-                    .entry(idx)
-                    .or_default()
-                    .entry(val)
-                    .or_insert(0) += 1;
-            }
+            let val = row.get_str(idx + 1).unwrap_or("").to_string();
+            *self
+                .value_counts
+                .entry(idx)
+                .or_default()
+                .entry(val)
+                .or_insert(0) += 1;
         }
 
         // Handle Collapse/Rand
         for idx in string_fields {
-            if idx < record.len() {
-                let val = String::from_utf8_lossy(record[idx]).to_string();
-                self.string_values.entry(idx).or_default().push(val);
-            }
+            let val = row.get_str(idx + 1).unwrap_or("").to_string();
+            self.string_values.entry(idx).or_default().push(val);
         }
 
         // Handle Min/Max
         for op in ops {
             if let Some(idx) = op.field_idx {
-                if idx >= record.len() {
-                    continue;
-                }
-                let val_bytes = record[idx];
-                if val_bytes.is_empty() {
+                let val_str = row.get_str(idx + 1).unwrap_or("");
+                if val_str.is_empty() {
                     continue;
                 }
 
                 if matches!(op.kind, OpKind::Min | OpKind::Max | OpKind::Range) {
-                    if let Ok(val_str) = std::str::from_utf8(val_bytes) {
-                        if let Ok(val) = val_str.trim().parse::<f64>() {
-                            match op.kind {
-                                OpKind::Min | OpKind::Range => {
-                                    let entry =
-                                        self.mins.entry(idx).or_insert(f64::INFINITY);
-                                    if val < *entry {
-                                        *entry = val;
-                                    }
+                    if let Ok(val) = val_str.trim().parse::<f64>() {
+                        match op.kind {
+                            OpKind::Min | OpKind::Range => {
+                                let entry =
+                                    self.mins.entry(idx).or_insert(f64::INFINITY);
+                                if val < *entry {
+                                    *entry = val;
                                 }
-                                _ => {}
                             }
-                            match op.kind {
-                                OpKind::Max | OpKind::Range => {
-                                    let entry = self
-                                        .maxs
-                                        .entry(idx)
-                                        .or_insert(f64::NEG_INFINITY);
-                                    if val > *entry {
-                                        *entry = val;
-                                    }
+                            _ => {}
+                        }
+                        match op.kind {
+                            OpKind::Max | OpKind::Range => {
+                                let entry = self
+                                    .maxs
+                                    .entry(idx)
+                                    .or_insert(f64::NEG_INFINITY);
+                                if val > *entry {
+                                    *entry = val;
                                 }
-                                _ => {}
                             }
+                            _ => {}
                         }
                     }
                 }

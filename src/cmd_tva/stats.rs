@@ -1,6 +1,8 @@
 use crate::libs::io::reader;
 use crate::libs::stats::{Aggregator, OpKind, Operation};
 use crate::libs::tsv::fields;
+use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::record::Row;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::collections::HashMap;
 use std::io::BufRead;
@@ -544,32 +546,23 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 r
             };
 
-            let mut line_buf = Vec::new();
-            while file_reader.read_until(b'\n', &mut line_buf)? > 0 {
-                if line_buf.ends_with(b"\n") {
-                    line_buf.pop();
-                    if line_buf.ends_with(b"\r") {
-                        line_buf.pop();
-                    }
-                }
-
-                let fields: Vec<&[u8]> = line_buf.split(|&c| c == b'\t').collect();
-
+            let mut tsv_reader = TsvReader::new(file_reader);
+            tsv_reader.for_each_row(|row| {
                 let mut key = Vec::new();
                 for (k_i, &idx) in group_indices.iter().enumerate() {
                     if k_i > 0 {
                         key.push(b'\t');
                     }
-                    if idx < fields.len() {
-                        key.extend_from_slice(fields[idx]);
+                    if let Some(field) = row.get_bytes(idx + 1) {
+                        key.extend_from_slice(field);
                     }
                 }
 
                 let aggregator = groups.entry(key).or_default();
-                aggregator.update(&fields, &ops);
+                aggregator.update_row(row, &ops);
 
-                line_buf.clear();
-            }
+                Ok(())
+            })?;
         }
 
         let mut keys: Vec<_> = groups.keys().collect();
@@ -600,20 +593,11 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 r
             };
 
-            let mut line_buf = Vec::new();
-            while file_reader.read_until(b'\n', &mut line_buf)? > 0 {
-                if line_buf.ends_with(b"\n") {
-                    line_buf.pop();
-                    if line_buf.ends_with(b"\r") {
-                        line_buf.pop();
-                    }
-                }
-
-                let fields: Vec<&[u8]> = line_buf.split(|&c| c == b'\t').collect();
-                aggregator.update(&fields, &ops);
-
-                line_buf.clear();
-            }
+            let mut tsv_reader = TsvReader::new(file_reader);
+            tsv_reader.for_each_row(|row| {
+                aggregator.update_row(row, &ops);
+                Ok(())
+            })?;
         }
 
         if !ops.is_empty() {

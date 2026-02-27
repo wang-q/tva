@@ -1,6 +1,8 @@
 use clap::*;
-use std::io::{BufRead, Write};
+use std::io::Write;
 use std::path::Path;
+
+use crate::libs::tsv::reader::TsvReader;
 
 pub fn make_subcommand() -> Command {
     Command::new("append")
@@ -158,24 +160,17 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut header_written = false;
 
     for spec in specs {
-        let mut reader = crate::libs::io::reader(&spec.path);
+        let input_source = crate::libs::io::input_sources(&[spec.path.clone()]).pop().unwrap();
+        let mut reader = TsvReader::new(input_source.reader);
         let mut line_number_in_file: u64 = 0;
 
-        let mut line = String::new();
-        loop {
-            line.clear();
-            let bytes_read = reader.read_line(&mut line)?;
-            if bytes_read == 0 {
-                break;
-            }
+        let label = match spec.label {
+            Some(ref s) => s.clone(),
+            None => default_source_label(&spec.path),
+        };
+        let label_bytes = label.as_bytes();
 
-            if line.ends_with('\n') {
-                line.pop();
-                if line.ends_with('\r') {
-                    line.pop();
-                }
-            }
-
+        reader.for_each_record(|record| {
             line_number_in_file += 1;
 
             if has_header && line_number_in_file == 1 {
@@ -183,33 +178,30 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     header_written = true;
                     if track_source {
                         writer.write_all(source_header_name.as_bytes())?;
-                        writer.write_all(delimiter.to_string().as_bytes())?;
-                        writer.write_all(line.as_bytes())?;
+                        writer.write_all(&[delimiter as u8])?;
+                        writer.write_all(record)?;
                         writer.write_all(b"\n")?;
                     } else {
-                        writer.write_all(line.as_bytes())?;
+                        writer.write_all(record)?;
                         writer.write_all(b"\n")?;
                     }
                 }
-                continue;
+                return Ok(());
             }
 
             if !track_source {
-                writer.write_all(line.as_bytes())?;
+                writer.write_all(record)?;
                 writer.write_all(b"\n")?;
-                continue;
+                return Ok(());
             }
 
-            let label = match spec.label {
-                Some(ref s) => s.clone(),
-                None => default_source_label(&spec.path),
-            };
-
-            writer.write_all(label.as_bytes())?;
-            writer.write_all(delimiter.to_string().as_bytes())?;
-            writer.write_all(line.as_bytes())?;
+            writer.write_all(label_bytes)?;
+            writer.write_all(&[delimiter as u8])?;
+            writer.write_all(record)?;
             writer.write_all(b"\n")?;
-        }
+
+            Ok(())
+        })?;
     }
 
     Ok(())
