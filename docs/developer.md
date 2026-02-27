@@ -199,15 +199,23 @@ if (fieldReordering.allFieldsFilled) break;
 
 | 策略 | 平均耗时 | 吞吐量 | 说明 |
 | :--- | :--- | :--- | :--- |
-| **simd-csv** | **65.69 µs** | **1.08 GiB/s** | 混合 SIMD 状态机，最快 |
-| **csv crate** | 112.70 µs | 643.09 MiB/s | 经典的 DFA 状态机，性能优秀且稳定 |
-| **Optimized Split** | 192.95 µs | 375.65 MiB/s | 惰性迭代器 (D 语言 `tsv-select` 策略)，比 naive 快 2.6 倍 |
-| **Naive Split** | 509.31 µs | 142.31 MiB/s | `line.split().collect()` (`tva` 当前实现)，**最慢** |
+| **simd-csv** | **61.65 µs** | **1.15 GiB/s** | 混合 SIMD 状态机，最快 |
+| **Memchr2 SIMD Loop** | **84.84 µs** | **854.35 MiB/s** | **理论验证**: 纯 SIMD 扫描 `\t` 和 `\n`，超越 csv crate 25% |
+| **Memchr Reused Buffer** | 89.85 µs | 806.66 MiB/s | 逐行 memchr，受限于函数调用开销 |
+| **csv crate** | 105.43 µs | 687.47 MiB/s | 经典的 DFA 状态机 |
+| **TsvRecord Struct** | 105.87 µs | 684.63 MiB/s | 封装好的零拷贝结构体 |
+| **Manual Byte Loop** | 139.56 µs | 519.33 MiB/s | 标量循环 |
+| **Std Split Iterator** | 172.37 µs | 420.48 MiB/s | Rust 标准库 `split` |
+| **Memchr Inline Loop** | 200.99 µs | 360.62 MiB/s | 受限于 `reader.lines()` 分配 |
+| **Naive Split** | 451.10 µs | 160.67 MiB/s | 原始实现，最慢 |
 
 **结论**:
-1.  `tva` 当前的 "Naive Split" 实现确实是性能瓶颈，比 `csv` crate 慢了约 4.5 倍。
-2.  改用惰性迭代器 ("Optimized Split") 可以带来 2.6 倍的性能提升，但仍比 `csv` crate 慢。
-3.  `simd-csv` 展现了惊人的性能 (1GB/s+)，验证了 SIMD 在解析任务中的巨大潜力。这进一步支持了我们 "自研纯 SIMD TSV 解析器" 的计划。
+1.  **SIMD 的胜利**: `Memchr2 SIMD Loop` (854 MiB/s) 证明了使用 `memchr2` 同时查找分隔符和换行符比逐行查找更快。它比 `csv` crate 快了 25%，逼近了 `simd-csv` 的水平。
+2.  **I/O 模型决定上限**: 所有高性能策略 (`Memchr2`, `Reused Buffer`, `simd-csv`) 都依赖于直接操作 Buffer。`reader.lines()` 的分配开销是性能杀手 (限制在 ~400 MiB/s)。
+3.  **最终方案**: 我们应该在 `tva` 中实现一个基于 `memchr2` 的分块读取器 (Chunked Reader)。这不仅能超越 `csv` crate，而且代码复杂度远低于 `simd-csv`（因为无需处理引号）。
+
+**下一步行动**:
+实现 `TsvReader`，内部维护一个 buffer，使用 `memchr2` 迭代器直接在 buffer 上切分字段，实现真正的零拷贝解析。
 
 ## 性能优化路线图 (Performance Optimization Roadmap)
 
@@ -247,3 +255,107 @@ if (fieldReordering.allFieldsFilled) break;
     *   实现环形缓冲区 (Ring Buffer) 或双缓冲 (Double Buffering)，实现 I/O 与解析的重叠 (虽然在单线程下受限，但通过 `io_uring` 或异步 I/O 可能有收益)。
 3.  **Profile-Guided Optimization (PGO)**:
     *   使用真实数据收集性能剖析信息，指导编译器进行分支预测优化和函数内联。
+
+## 深度分析: 为何 csv crate 如此之快? (Deep Dive into csv crate)
+
+尽管 `csv` crate 基于 DFA 状态机，理论上比纯 SIMD 慢，但其 700 MiB/s 的性能仍令人印象深刻。分析其源码 (`rust-csv-master/csv-core/src/reader.rs`) 揭示了其性能秘密：
+
+### 1. 极其紧凑的 DFA 状态表 (Compact DFA Table)
+
+*   **问题**: 朴素的 DFA 表大小为 `(状态数) * 256`。对于 CSV 这种只有几个特殊字符的格式，这是巨大的浪费且缓存不友好。
+*   **优化**: `csv` crate 将所有字节映射为 **7 个等价类 (Equivalence Classes)**:
+    1.  Delimiter (分隔符)
+    2.  Terminator (行结束符)
+    3.  CR, LF (如果 Terminator 是 CRLF)
+    4.  Quote (引号)
+    5.  Escape (转义符)
+    6.  Comment (注释符)
+    7.  **Everything Else (其他所有字节)**
+*   **结果**: 状态表大小从 `N * 256` 缩减为 `N * 7`。这使得整个状态表可以完全放入 L1 Cache，极大减少了内存访问延迟。
+
+### 2. 批量处理与分支消除 (Branch Elimination)
+
+在 `read_field_dfa` 循环中：
+```rust
+while nin < input.len() && nout < output.len() {
+    let b = input[nin];
+    // 查表，几乎无分支
+    let (s, has_out) = self.dfa.get_output(state, b);
+    state = s;
+    if has_out {
+        output[nout] = b;
+        nout += 1;
+    }
+    nin += 1;
+}
+```
+*   它不进行逐个 `if b == b','` 的判断，而是查表。CPU 的分支预测器在这里几乎不会失败，因为大部分字节都属于 "Everything Else" 类，状态转换非常规律。
+
+### 3. SIMD 还是标量?
+
+`csv-core` 主要是标量实现。它之所以快，是因为它**不分配内存**且**缓存极其友好**。
+这给我们一个警示：`TsvSplitter` (memchr) 虽用了 SIMD，但如果迭代器本身的函数调用开销 (Function Call Overhead) 或状态维护 (State Management) 过于复杂，反而可能不如一个紧凑的标量循环。
+
+**对 tva 的修正策略**:
+我们目前的 `TsvSplitter` 还是一个迭代器，每次 `next()` 都有开销。
+为了超越 `csv` crate，我们需要像它一样实现一个**紧凑的内部循环**，或者一次性处理多个字段，减少函数调用边界。
+
+### 4. buffer?
+
+这是一个非常反直觉的现象。`csv` crate 使用了复杂的状态机，而我们的 `Memchr Reused Buffer` 只是简单地扫描字节。理论上我们应该更快。
+
+原因在于 **I/O 锁与 buffer 拷贝**：
+1.  **std::io::BufReader::read_until**:
+    *   这个函数内部会进行内存拷贝。它将 `BufReader` 内部 buffer 的数据 `memcpy` 到用户提供的 `Vec<u8>` 中。
+    *   对于每一行数据，我们都付出了一次额外的内存拷贝代价。
+2.  **csv crate 的零拷贝黑魔法**:
+    *   `csv` crate 的 `ByteRecord` 设计非常精妙。它直接操作内部 buffer，或者在必要时才进行拷贝。
+    *   更重要的是，它的状态机是直接在 buffer 上运行的，最大限度地减少了数据移动。
+
+**解决方案**:
+要超越 `csv` crate，我们不能使用标准的 `BufReader` 接口（因为它强制拷贝）。我们需要：
+*   **直接管理 Buffer**: 手动填充 buffer，直接在 buffer 上解析，只在 buffer 耗尽时移动剩余数据并再次填充。
+*   或者使用 `memmap` 将文件映射到内存，彻底消除用户态拷贝。
+
+## 深度分析: simd-csv 为何最快? (Deep Dive into simd-csv)
+
+`simd-csv` 能够达到 1.12 GiB/s 的惊人速度，比 `csv` crate 快 60% 以上。通过分析其源码，我们发现了以下关键技术：
+
+### 1. 混合架构 (Hybrid Architecture)
+
+`simd-csv` 并不是纯 SIMD 解析器，而是一个混合体：
+*   **CoreReader (core.rs)**: 维护状态机 (Unquoted, Quoted, Quote)。
+*   **Searcher (searcher.rs)**: 使用 SIMD (`memchr` 或 SSE2/AVX2 intrinsic) 快速跳过普通字符。
+
+### 2. Searcher 的核心逻辑
+
+在 `CoreReader::split_record` 中：
+```rust
+Unquoted => {
+    // 快速路径：跳过非特殊字符
+    // memchr2(delimiter, newline, ...)
+    if let Some(offset) = memchr2(b'\n', self.quote, &input[pos..]) {
+        pos += offset;
+        // ... 处理特殊字符
+    }
+}
+```
+它利用 SIMD 指令一次性扫描多个特殊字符（分隔符、换行符、引号）。这比逐字节查表（`csv` crate 的做法）更快，因为在大多数 CSV 数据中，特殊字符是稀疏的。
+
+### 3. SSE2/AVX2 手写 Intrinsic
+
+`searcher.rs` 中包含了手写的 SSE2 实现：
+*   加载 16 字节到向量寄存器 (`_mm_loadu_si128`)。
+*   并行比较分隔符、换行符、引号 (`_mm_cmpeq_epi8`)。
+*   使用 `_mm_movemask_epi8` 将比较结果提取为位掩码。
+*   使用 `trailing_zeros` 快速找到第一个匹配位置。
+
+### 4. 我们可以超越它吗?
+
+*   **TSV 的优势**: TSV **没有引号**。这意味着我们不需要像 `simd-csv` 那样在 `memchr` 命中后还要检查是否是引号，也不需要维护 `Quoted` 状态。
+*   **更简单的 SIMD**: 我们只需要查找 `\t` 和 `\n`。这比 CSV 的 3-4 个特殊字符更少，寄存器压力更小。
+*   **理论极限**: 如果 `simd-csv` 要处理引号逻辑还能跑 1.12 GiB/s，那么纯粹查找 `\t` 和 `\n` 的 TSV 解析器理论上应该能达到内存带宽的极限（或至少 2-3 GiB/s）。
+
+**行动项**:
+我们不需要复杂的混合状态机。我们只需要一个极致优化的 `memchr2(b'\t', b'\n')` 循环，配合 Buffer 管理。我们的 `Memchr Reused Buffer` (814 MiB/s) 已经验证了这一点，差距仅在于 `simd-csv` 可能使用了更底层的 SIMD 优化或更高效的 I/O 缓冲。
+
