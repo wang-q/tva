@@ -1,5 +1,5 @@
 use clap::*;
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 use std::process::{Command as ProcessCommand, Stdio};
 
 pub fn make_subcommand() -> Command {
@@ -76,28 +76,26 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         file_args.to_vec()
     };
 
-    for name in filenames {
+    for input in crate::libs::io::raw_input_sources(&filenames) {
         let mut file_had_content = false;
         let mut remaining = header_lines;
 
-        let mut reader = crate::libs::io::reader(&name);
-        let mut line = String::new();
-        loop {
-            line.clear();
-            let n = BufRead::read_line(&mut *reader, &mut line)?;
-            if n == 0 {
-                break;
-            }
+        let mut reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
+        
+        reader.for_each_record(|line| {
             file_had_content = true;
             if remaining > 0 {
                 if !header_source_used {
-                    stdout.write_all(line.as_bytes())?;
+                    stdout.write_all(line)?;
+                    stdout.write_all(b"\n")?;
                 }
                 remaining -= 1;
             } else {
-                child_stdin.write_all(line.as_bytes())?;
+                child_stdin.write_all(line)?;
+                child_stdin.write_all(b"\n")?;
             }
-        }
+            Ok(())
+        })?;
 
         if file_had_content && !header_source_used {
             stdout.flush()?;
