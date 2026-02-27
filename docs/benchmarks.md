@@ -64,6 +64,27 @@
     *   逻辑: 基于权重列进行加权随机采样 (Weighted Reservoir Sampling)。
     *   基准: `tva sample --weight` vs `tsv-sample` vs `qsv sample` (如果支持)。
     *   目的: 测试复杂算法与 I/O 的结合效率。
+*   **去重 (Deduplication)**:
+    *   逻辑: 基于特定列进行哈希去重。
+    *   基准: `tva uniq` vs `tsv-uniq` vs `awk` vs `sort | uniq`。
+    *   目的: 测试哈希表性能和内存管理。
+*   **排序 (Sorting)**:
+    *   逻辑: 基于数值列进行排序。
+    *   基准: `tva sort` vs `sort` (GNU) vs `tsv-sort`。
+    *   目的: 测试外部排序算法和内存使用。
+*   **切片 (Slicing)**:
+    *   逻辑: 提取文件中间的大段行 (如第 100万 到 200万 行)。
+    *   基准: `tva slice` vs `sed` vs `tail | head`。
+    *   目的: 测试快速跳过行的能力。
+*   **反转 (Reverse)**:
+    *   逻辑: 反转整个文件的行序。
+    *   基准: `tva reverse` vs `tac`。
+*   **追加 (Append)**:
+    *   逻辑: 连接多个大文件。
+    *   基准: `tva append` vs `cat`。
+*   **导出 CSV (Export to CSV)**:
+    *   逻辑: 将 TSV 转换为标准 CSV (处理转义)。
+    *   基准: `tva to csv` vs `qsv fmt`。
 
 ## 4. 执行环境与记录
 
@@ -150,6 +171,54 @@ hyperfine \
     --export-csv benchmark_sample.csv \
     "tva sample -H --weight-field 5 -n 1000 hepmass.tsv > /dev/null" \
     "tsv-sample -H --weight-field 5 -n 1000 hepmass.tsv > /dev/null"
+
+# Scenario 6: Uniq (Hash-based Deduplication)
+hyperfine \
+    --warmup 3 \
+    --min-runs 5 \
+    --export-csv benchmark_uniq.csv \
+    "tva uniq -H -f 1 hepmass.tsv > /dev/null" \
+    "tsv-uniq -H -f 1 hepmass.tsv > /dev/null" 
+
+# Scenario 7: Sort (Numeric)
+hyperfine \
+    --warmup 2 \
+    --min-runs 3 \
+    --export-csv benchmark_sort.csv \
+    "tva sort -H -k 1 -n hepmass.tsv > /dev/null" \
+    "sort -t $'\t' -k 1,1n hepmass.tsv > /dev/null"
+
+# Scenario 8: Slice (Middle of file)
+hyperfine \
+    --warmup 3 \
+    --min-runs 10 \
+    --export-csv benchmark_slice.csv \
+    "tva slice -s 1000000 -e 2000000 hepmass.tsv > /dev/null" \
+    "sed -n '1000000,2000000p' hepmass.tsv > /dev/null"
+
+# Scenario 9: Reverse
+hyperfine \
+    --warmup 2 \
+    --min-runs 5 \
+    --export-csv benchmark_reverse.csv \
+    "tva reverse hepmass.tsv > /dev/null" \
+    "tac hepmass.tsv > /dev/null"
+
+# Scenario 10: Append
+hyperfine \
+    --warmup 2 \
+    --min-runs 5 \
+    --export-csv benchmark_append.csv \
+    "tva append hepmass.tsv hepmass.tsv > /dev/null" \
+    "cat hepmass.tsv hepmass.tsv > /dev/null"
+
+# Scenario 11: Export to CSV
+hyperfine \
+    --warmup 2 \
+    --min-runs 5 \
+    --export-csv benchmark_to_csv.csv \
+    "tva to csv hepmass.tsv > /dev/null" \
+    "qsv fmt --sep ',' hepmass.tsv > /dev/null"
 
 # 3. 结果处理与可视化 (Process & Visualize)
 # ------------------------------

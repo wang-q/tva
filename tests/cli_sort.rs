@@ -151,3 +151,23 @@ fn sort_lexicographic_file_names() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn sort_with_header() -> anyhow::Result<()> {
+    let input = "name\tval\nc\t1\na\t2\nb\t3\n";
+
+    let mut cmd = cargo_bin_cmd!("tva");
+    let output = cmd
+        .arg("sort")
+        .arg("--header")
+        .arg("-k")
+        .arg("1")
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert_eq!(stdout, "name\tval\na\t2\nb\t3\nc\t1\n");
+
+    Ok(())
+}

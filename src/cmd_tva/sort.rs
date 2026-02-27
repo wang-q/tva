@@ -37,6 +37,13 @@ pub fn make_subcommand() -> Command {
                 .help("Reverse the sort order"),
         )
         .arg(
+            Arg::new("header")
+                .long("header")
+                .short('H')
+                .action(ArgAction::SetTrue)
+                .help("Treat the first line of each file as a header; only the first header is output"),
+        )
+        .arg(
             Arg::new("delimiter")
                 .long("delimiter")
                 .short('t')
@@ -62,6 +69,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let numeric = args.get_flag("numeric");
     let reverse = args.get_flag("reverse");
+    let has_header = args.get_flag("header");
 
     let delimiter_str = args
         .get_one::<String>("delimiter")
@@ -92,11 +100,24 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let mut rows: Vec<TsvRecord> = Vec::new();
+    let mut header_record: Option<TsvRecord> = None;
+    let mut header_written = false;
 
     for input in crate::libs::io::raw_input_sources(&infiles) {
         let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
+        let mut is_first_line = true;
 
         reader.for_each_record(|record| {
+            if has_header && is_first_line {
+                if header_record.is_none() {
+                    let mut tsv_rec = TsvRecord::new();
+                    tsv_rec.parse_line(record, delimiter);
+                    header_record = Some(tsv_rec);
+                }
+                is_first_line = false;
+                return Ok(());
+            }
+
             if record.is_empty() {
                 rows.push(TsvRecord::new());
             } else {
@@ -104,14 +125,24 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 tsv_rec.parse_line(record, delimiter);
                 rows.push(tsv_rec);
             }
+            
+            is_first_line = false;
             Ok(())
         })?;
     }
 
+    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+
+    if let Some(header) = header_record {
+        writer.write_all(header.as_line())?;
+        writer.write_all(b"\n")?;
+        header_written = true;
+    }
+
     if rows.is_empty() {
-        let mut writer =
-            crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
-        writer.flush()?;
+        if !header_written {
+             writer.flush()?;
+        }
         return Ok(());
     }
 
@@ -154,7 +185,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         });
 
-        let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
         for (_, record) in keyed_rows {
             if record.is_empty() {
                 writer.write_all(b"\n")?;
@@ -192,7 +222,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             keyed_rows.sort_by(|(ka, _), (kb, _)| ka.cmp(kb));
         }
 
-        let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
         for (_, record) in keyed_rows {
             if record.is_empty() {
                 writer.write_all(b"\n")?;
