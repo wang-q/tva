@@ -270,6 +270,3 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     Ok(())
 }
-
-// Struct ProcessRowConfig and fn process_row are removed as they are inlined
-
