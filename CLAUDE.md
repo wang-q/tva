@@ -181,6 +181,39 @@ fn test_example_basic() -> Result<(), Box<dyn std::error::Error>> {
 - 优先使用标准库和项目中已引入的 crate (`csv`, `clap`, `anyhow`, `regex` 等)。
 - 保持代码简洁，注重性能。
 
+### 关键算法与性能规范
+
+1.  **采样算法 (Sampling)**:
+    *   **加权采样 (Weighted)**: 必须使用 **A-Res 算法** (Efraimidis-Spirakis) 配合 Min-Heap。
+        *   *禁止*: 全量排序 (Naive Sort)，因为其内存复杂度为 O(N)。
+    *   **伯努利采样 (Bernoulli)**: 必须使用 **几何分布跳过 (Geometric Skip)** 算法。
+        *   *禁止*: 对每一行调用 RNG，这在低概率采样时效率极低。
+
+2.  **I/O 与 解析 (I/O & Parsing)**:
+    *   **零拷贝 (Zero-Copy)**: 优先使用 `&[u8]` 切片或 `Cow<'a, [u8]>`。
+        *   *禁止*: 在热点路径中无谓地将 `&[u8]` 转换为 `String`。
+    *   **SIMD**: 使用 `memchr` crate 查找分隔符 (`\t`, `\n`)。
+    *   **缓冲**: 所有文件 I/O 必须包裹在 `BufReader` / `BufWriter` 中（建议缓冲区大小 >= 64KB）。
+
+### Hash 算法选择规范
+
+为保证极致性能与安全性的平衡，`tva` 对 Hash 算法的选择有严格规定：
+
+1.  **Hash Map (如 `join` 命令)**:
+    *   **必须使用**: `ahash::RandomState`。
+    *   **原因**: `ahash` 专为 Rust `HashMap` 设计，支持高效的增量哈希 (Incremental Hashing)，且无需缓冲数据，比一次性哈希更适合 Map 查找场景。同时提供基本的 HashDoS 防护。
+    *   **禁止**: 使用默认的 `SipHash` (太慢) 或 `rapidhash` (无原生增量接口，需缓冲，导致 Map 性能下降)。
+
+2.  **一次性哈希 (One-shot Hashing, 如 `uniq` 命令)**:
+    *   **推荐使用**: `rapidhash::rapidhash()`。
+    *   **原因**: 在可以一次性获取完整 Key 的场景下（如读取整行），`rapidhash` 是目前最快的非加密哈希算法之一。
+    *   **适用场景**: 去重、布隆过滤器、数据指纹计算。
+
+3.  **加密/安全哈希**:
+    *   **必须使用**: `SipHash` (Rust 默认) 或 `SHA-256`。
+    *   **适用场景**: 即使牺牲性能也必须绝对防止 HashDoS 攻击的公共接口，或需要加密签名的场景。
+
+
 ## 帮助文本规范 (Help Text Style Guide)
 
 * **`about`**: Third-person singular, describing the TSV operation
