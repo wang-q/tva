@@ -185,15 +185,14 @@ hyperfine \
     --warmup 2 \
     --min-runs 3 \
     --export-csv benchmark_sort.csv \
-    "tva sort -H -k 1 -n hepmass.tsv > /dev/null" \
-    "sort -t $'\t' -k 1,1n hepmass.tsv > /dev/null"
+    "tva sort -H -k 1 -n hepmass.tsv > /dev/null"
 
 # Scenario 8: Slice (Middle of file)
 hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv benchmark_slice.csv \
-    "tva slice -s 1000000 -e 2000000 hepmass.tsv > /dev/null" \
+    "tva slice -r 1000000-2000000 hepmass.tsv > /dev/null" \
     "sed -n '1000000,2000000p' hepmass.tsv > /dev/null"
 
 # Scenario 9: Reverse
