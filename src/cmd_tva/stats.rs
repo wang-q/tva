@@ -2,7 +2,7 @@ use crate::libs::io::map_io_err;
 use crate::libs::stats::{Aggregator, OpKind, Operation, StatsProcessor};
 use crate::libs::tsv::fields;
 use crate::libs::tsv::reader::TsvReader;
-use crate::libs::tsv::record::Row;
+use crate::libs::key::{KeyExtractor, KeyBuffer};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::collections::HashMap;
 
@@ -423,12 +423,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
     let mut processor: Option<StatsProcessor> = None;
     let mut aggregator: Option<Aggregator> = None;
-    let mut groups: HashMap<Vec<u8>, Aggregator> = HashMap::new();
-    let mut group_indices: Vec<usize> = Vec::new();
+    let mut groups: HashMap<KeyBuffer, Aggregator> = HashMap::new();
+    let mut group_extractor: Option<KeyExtractor> = None;
     let mut use_grouping = false;
 
     // Helper to setup processor
-    let setup_processor = |header: Option<&fields::Header>| -> anyhow::Result<(StatsProcessor, Vec<usize>, Vec<String>)> {
+    let setup_processor = |header: Option<&fields::Header>| -> anyhow::Result<(StatsProcessor, Option<KeyExtractor>, Vec<String>)> {
         let mut ops = Vec::new();
         let mut output_headers = Vec::new();
 
@@ -499,31 +499,40 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        let g_indices = if let Some(spec) = &group_by_spec {
-            fields::parse_field_list_with_header(spec, header, '\t')
+        let extractor = if let Some(spec) = &group_by_spec {
+            let idxs = fields::parse_field_list_with_header(spec, header, '\t')
                 .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?
                 .into_iter()
                 .map(|i| i - 1)
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>();
+            if idxs.is_empty() {
+                None
+            } else {
+                Some(KeyExtractor::new(Some(idxs), false, false)) // strict=false for stats
+            }
         } else {
-            Vec::new()
+            None
         };
 
         let mut final_headers = Vec::new();
         if header_mode {
             if let Some(h) = header {
-                for &idx in &g_indices {
-                    if idx < h.fields.len() {
-                        final_headers.push(h.fields[idx].clone());
-                    } else {
-                        final_headers.push(format!("field{}", idx + 1));
+                if let Some(extractor) = &extractor {
+                    if let Some(indices) = &extractor.indices {
+                        for idx in indices {
+                            if *idx < h.fields.len() {
+                                final_headers.push(h.fields[*idx].clone());
+                            } else {
+                                final_headers.push(format!("field{}", idx + 1));
+                            }
+                        }
                     }
                 }
             }
             final_headers.extend(output_headers);
         }
 
-        Ok((StatsProcessor::new(ops), g_indices, final_headers))
+        Ok((StatsProcessor::new(ops), extractor, final_headers))
     };
 
     for input in crate::libs::io::raw_input_sources(&infiles) {
@@ -536,10 +545,10 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     let line = String::from_utf8_lossy(&header_bytes);
                     let header = fields::Header::from_line(&line, '\t');
                     
-                    let (proc, g_indices, headers) = setup_processor(Some(&header))?;
+                    let (proc, extractor, headers) = setup_processor(Some(&header))?;
                     processor = Some(proc);
-                    group_indices = g_indices;
-                    use_grouping = !group_indices.is_empty();
+                    group_extractor = extractor;
+                    use_grouping = group_extractor.is_some();
                     
                     if !use_grouping {
                         aggregator = Some(processor.as_ref().unwrap().create_aggregator());
@@ -549,10 +558,10 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 } else {
                     // Empty file with --header.
                     // Attempt to setup processor without header info (will fail if named fields are used).
-                    let (proc, g_indices, headers) = setup_processor(None)?;
+                    let (proc, extractor, headers) = setup_processor(None)?;
                     processor = Some(proc);
-                    group_indices = g_indices;
-                    use_grouping = !group_indices.is_empty();
+                    group_extractor = extractor;
+                    use_grouping = group_extractor.is_some();
                     
                     if !use_grouping {
                         aggregator = Some(processor.as_ref().unwrap().create_aggregator());
@@ -563,10 +572,10 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             }
         } else {
             if processor.is_none() {
-                let (proc, g_indices, _) = setup_processor(None)?;
+                let (proc, extractor, _) = setup_processor(None)?;
                 processor = Some(proc);
-                group_indices = g_indices;
-                use_grouping = !group_indices.is_empty();
+                group_extractor = extractor;
+                use_grouping = group_extractor.is_some();
                 
                 if !use_grouping {
                     aggregator = Some(processor.as_ref().unwrap().create_aggregator());
@@ -577,15 +586,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         if let Some(proc) = &processor {
             reader.for_each_row(|row| {
                 if use_grouping {
-                    let mut key = Vec::new();
-                    for (k_i, &idx) in group_indices.iter().enumerate() {
-                        if k_i > 0 {
-                            key.push(b'\t');
-                        }
-                        if let Some(field) = row.get_bytes(idx + 1) {
-                            key.extend_from_slice(field);
-                        }
-                    }
+                    let key_res = group_extractor.as_mut().unwrap().extract_from_row(row, b'\t');
+                    let key = match key_res {
+                        Ok(k) => k.into_owned(),
+                        Err(_) => KeyBuffer::new(),
+                    };
+                    
                     let agg = groups.entry(key).or_insert_with(|| proc.create_aggregator());
                     proc.update(agg, row);
                 } else {

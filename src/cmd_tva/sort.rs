@@ -1,5 +1,6 @@
 use clap::*;
 use crate::libs::tsv::record::TsvRecord;
+use crate::libs::key::{KeyExtractor, KeyBuffer};
 use intspan::IntSpan;
 use std::cmp::Ordering;
 use std::io::Write;
@@ -121,58 +122,88 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         key_indices
     };
 
-    rows.sort_by(|a, b| compare_rows(a, b, &indices, numeric, reverse));
+    if numeric {
+        // Pre-compute numeric keys
+        let mut keyed_rows: Vec<(Vec<f64>, TsvRecord)> = Vec::with_capacity(rows.len());
+        for record in rows {
+            let mut key = Vec::with_capacity(indices.len());
+            for &idx in &indices {
+                let field = record.get(idx).unwrap_or(b"");
+                // Optimization: parse directly from bytes without full utf8 check if possible,
+                // but standard parse requires &str.
+                // from_utf8_lossy might allocate, from_utf8 is better.
+                let s = std::str::from_utf8(field).unwrap_or("");
+                let n: f64 = s.trim().parse().unwrap_or(0.0);
+                key.push(n);
+            }
+            keyed_rows.push((key, record));
+        }
 
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+        keyed_rows.sort_by(|(ka, _), (kb, _)| {
+            let mut ord = Ordering::Equal;
+            for (na, nb) in ka.iter().zip(kb.iter()) {
+                ord = na.partial_cmp(nb).unwrap_or(Ordering::Equal);
+                if ord != Ordering::Equal {
+                    break;
+                }
+            }
+            if reverse {
+                ord.reverse()
+            } else {
+                ord
+            }
+        });
 
-    for record in rows {
-        if record.is_empty() {
-            writer.write_all(b"\n")?;
+        let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+        for (_, record) in keyed_rows {
+            if record.is_empty() {
+                writer.write_all(b"\n")?;
+            } else {
+                writer.write_all(record.as_line())?;
+                writer.write_all(b"\n")?;
+            }
+        }
+    } else {
+        // Pre-compute byte keys using KeyExtractor
+        // Note: Sort behavior for multiple keys:
+        // KeyExtractor concatenates keys with delimiter.
+        // "A\tB" vs "A\tC".
+        // If delimiter < any content char, this is equivalent to tuple comparison.
+        // Tab is \t (9). Visible chars >= 32.
+        // So this optimization is valid for standard text.
+        
+        let mut extractor = KeyExtractor::new(Some(indices), false, false); // strict=false to handle missing fields gracefully
+        
+        // We use KeyBuffer (SmallVec) to store keys.
+        let mut keyed_rows: Vec<(KeyBuffer, TsvRecord)> = Vec::with_capacity(rows.len());
+        
+        for record in rows {
+            let key_res = extractor.extract_from_record(&record, delimiter);
+            let key = match key_res {
+                Ok(k) => k.into_owned(),
+                Err(_) => KeyBuffer::new(), // Should not happen with strict=false
+            };
+            keyed_rows.push((key, record));
+        }
+
+        if reverse {
+            keyed_rows.sort_by(|(ka, _), (kb, _)| kb.cmp(ka));
         } else {
-            writer.write_all(record.as_line())?;
-            writer.write_all(b"\n")?;
+            keyed_rows.sort_by(|(ka, _), (kb, _)| ka.cmp(kb));
+        }
+
+        let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+        for (_, record) in keyed_rows {
+            if record.is_empty() {
+                writer.write_all(b"\n")?;
+            } else {
+                writer.write_all(record.as_line())?;
+                writer.write_all(b"\n")?;
+            }
         }
     }
 
     Ok(())
-}
-
-fn compare_rows(
-    a: &TsvRecord,
-    b: &TsvRecord,
-    indices: &[usize],
-    numeric: bool,
-    reverse: bool,
-) -> Ordering {
-    let mut ord = Ordering::Equal;
-
-    for &idx in indices {
-        let av = a.get(idx).unwrap_or(b"");
-        let bv = b.get(idx).unwrap_or(b"");
-
-        let key_ord = if numeric {
-            // Parse f64 from bytes
-            let av_str = std::str::from_utf8(av).unwrap_or("");
-            let bv_str = std::str::from_utf8(bv).unwrap_or("");
-            
-            let an: f64 = av_str.trim().parse().unwrap_or(0.0);
-            let bn: f64 = bv_str.trim().parse().unwrap_or(0.0);
-            an.partial_cmp(&bn).unwrap_or(Ordering::Equal)
-        } else {
-            av.cmp(bv)
-        };
-
-        if key_ord != Ordering::Equal {
-            ord = key_ord;
-            break;
-        }
-    }
-
-    if reverse {
-        ord.reverse()
-    } else {
-        ord
-    }
 }
 
 fn parse_key_indices(spec: &str) -> Result<Vec<usize>, String> {
