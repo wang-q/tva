@@ -2,6 +2,7 @@ use rapidhash::RapidRng;
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 use std::io::Write;
+use ahash::AHashMap;
 
 pub trait Sampler {
     fn process<W: Write>(
@@ -266,7 +267,8 @@ pub struct DistinctBernoulliSampler {
     pub prob: f64,
     pub key_field_indices: Vec<usize>,
     pub print_random: bool,
-    pub decisions: std::collections::HashMap<Vec<u8>, (bool, f64)>,
+    pub decisions: AHashMap<Vec<u8>, (bool, f64)>,
+    pub key_buffer: Vec<u8>,
 }
 
 impl Sampler for DistinctBernoulliSampler {
@@ -276,11 +278,11 @@ impl Sampler for DistinctBernoulliSampler {
         writer: &mut W,
         rng: &mut RapidRng,
     ) -> anyhow::Result<()> {
-        let key = if self.key_field_indices.is_empty() {
-            record.to_vec()
+        self.key_buffer.clear();
+        
+        if self.key_field_indices.is_empty() {
+            self.key_buffer.extend_from_slice(record);
         } else {
-            let mut parts = Vec::new();
-            
             // Extract specific fields for key
             let mut tab_iter = memchr::memchr_iter(b'\t', record);
             let mut last_pos = 0;
@@ -290,7 +292,7 @@ impl Sampler for DistinctBernoulliSampler {
 
             for (i, &target_idx) in self.key_field_indices.iter().enumerate() {
                 if i > 0 {
-                    parts.push(0x1f);
+                    self.key_buffer.push(0x1f); // Unit Separator as internal delimiter
                 }
 
                 // Advance to target_idx
@@ -311,23 +313,26 @@ impl Sampler for DistinctBernoulliSampler {
 
                 // Now at target_idx
                 let end = next_tab.unwrap_or(record.len());
-                parts.extend_from_slice(&record[last_pos..end]);
+                self.key_buffer.extend_from_slice(&record[last_pos..end]);
             }
-            parts
+        }
+
+        let (keep, r) = if let Some(&(keep, r)) = self.decisions.get(&self.key_buffer) {
+            (keep, r)
+        } else {
+            let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
+            let keep = r < self.prob;
+            self.decisions.insert(self.key_buffer.clone(), (keep, r));
+            (keep, r)
         };
 
-        let (keep, r) = self.decisions.entry(key).or_insert_with(|| {
-            let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
-            (r < self.prob, r)
-        });
-
-        if *keep {
+        if keep {
             write_with_optional_random(
                 writer,
                 record,
                 rng,
                 self.print_random,
-                Some(*r),
+                Some(r),
             )?;
         }
         Ok(())

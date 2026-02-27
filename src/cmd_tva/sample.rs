@@ -1,5 +1,6 @@
 use crate::libs::sampling::*;
 use crate::libs::tsv::reader::TsvReader;
+use ahash::AHashMap;
 use clap::*;
 use rapidhash::RapidRng;
 use std::io::Write;
@@ -260,7 +261,129 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
     }
 }
 
+enum SamplerEnum {
+    Bernoulli(BernoulliSampler),
+    Distinct(DistinctBernoulliSampler),
+    Reservoir(ReservoirSampler),
+    Weighted(WeightedReservoirSampler),
+    Shuffle(ShuffleSampler),
+    Inorder(InorderSampler),
+    Replacement(ReplacementSampler),
+    Compat(CompatRandomSampler),
+}
+
+impl Sampler for SamplerEnum {
+    fn process<W: Write>(
+        &mut self,
+        record: &[u8],
+        writer: &mut W,
+        rng: &mut RapidRng,
+    ) -> anyhow::Result<()> {
+        match self {
+            SamplerEnum::Bernoulli(s) => s.process(record, writer, rng),
+            SamplerEnum::Distinct(s) => s.process(record, writer, rng),
+            SamplerEnum::Reservoir(s) => s.process(record, writer, rng),
+            SamplerEnum::Weighted(s) => s.process(record, writer, rng),
+            SamplerEnum::Shuffle(s) => s.process(record, writer, rng),
+            SamplerEnum::Inorder(s) => s.process(record, writer, rng),
+            SamplerEnum::Replacement(s) => s.process(record, writer, rng),
+            SamplerEnum::Compat(s) => s.process(record, writer, rng),
+        }
+    }
+    fn finalize<W2: Write>(
+        &mut self,
+        writer: &mut W2,
+        rng: &mut RapidRng,
+        print_random: bool,
+    ) -> anyhow::Result<()> {
+        match self {
+            SamplerEnum::Bernoulli(s) => s.finalize(writer, rng, print_random),
+            SamplerEnum::Distinct(s) => s.finalize(writer, rng, print_random),
+            SamplerEnum::Reservoir(s) => s.finalize(writer, rng, print_random),
+            SamplerEnum::Weighted(s) => s.finalize(writer, rng, print_random),
+            SamplerEnum::Shuffle(s) => s.finalize(writer, rng, print_random),
+            SamplerEnum::Inorder(s) => s.finalize(writer, rng, print_random),
+            SamplerEnum::Replacement(s) => s.finalize(writer, rng, print_random),
+            SamplerEnum::Compat(s) => s.finalize(writer, rng, print_random),
+        }
+    }
+}
+
 fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Result<()> {
+    if config.gen_random_inorder {
+        run_gen_random_inorder(config, writer)
+    } else {
+        run_standard_sampling(config, writer)
+    }
+}
+
+fn run_gen_random_inorder<W: Write>(
+    config: SampleConfig,
+    writer: &mut W,
+) -> anyhow::Result<()> {
+    let mut rng = if !config.static_seed && config.seed_value == 0 {
+        RapidRng::default()
+    } else if config.seed_value != 0 {
+        RapidRng::new(config.seed_value)
+    } else {
+        RapidRng::new(2438424139)
+    };
+
+    let mut header_line: Option<Vec<u8>> = None;
+    let mut header_written = false;
+
+    for input in crate::libs::io::raw_input_sources(&config.infiles) {
+        let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
+        let mut is_first_record = true;
+
+        if !header_written && header_line.is_some() {
+            let header = header_line.as_ref().unwrap();
+            writer.write_all(config.random_value_header.as_bytes())?;
+            writer.write_all(b"\t")?;
+            writer.write_all(header)?;
+            writer.write_all(b"\n")?;
+            header_written = true;
+        }
+
+        reader.for_each_record(|record| {
+            if record.is_empty() {
+                writer.write_all(b"\n")?;
+                return Ok(());
+            }
+
+            if config.has_header && is_first_record {
+                is_first_record = false;
+                if header_line.is_none() {
+                    header_line = Some(record.to_vec());
+                    // Write header immediately
+                    writer.write_all(config.random_value_header.as_bytes())?;
+                    writer.write_all(b"\t")?;
+                    writer.write_all(record)?;
+                    writer.write_all(b"\n")?;
+                    header_written = true;
+                }
+                return Ok(());
+            }
+
+            // Not header or no header mode
+            let r = rng.next() as f64 * crate::libs::sampling::INV_U64_MAX_PLUS_1;
+            let mut buffer = ryu::Buffer::new();
+            let printed = buffer.format(r);
+            writer.write_all(printed.as_bytes())?;
+            writer.write_all(b"\t")?;
+            writer.write_all(record)?;
+            writer.write_all(b"\n")?;
+            Ok(())
+        })?;
+    }
+
+    Ok(())
+}
+
+fn run_standard_sampling<W: Write>(
+    config: SampleConfig,
+    writer: &mut W,
+) -> anyhow::Result<()> {
     let SampleConfig {
         infiles,
         has_header,
@@ -268,7 +391,6 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
         prob_opt,
         weight_field,
         print_random,
-        gen_random_inorder,
         random_value_header,
         compatibility_mode,
         key_fields,
@@ -276,6 +398,7 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
         static_seed,
         seed_value,
         replace,
+        ..
     } = config;
 
     let mut rng = if !static_seed && seed_value == 0 {
@@ -286,62 +409,14 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
         RapidRng::new(2438424139)
     };
 
-    // Prepare Sampler
-    enum SamplerEnum {
-        Bernoulli(BernoulliSampler),
-        Distinct(DistinctBernoulliSampler),
-        Reservoir(ReservoirSampler),
-        Weighted(WeightedReservoirSampler),
-        Shuffle(ShuffleSampler),
-        Inorder(InorderSampler),
-        Replacement(ReplacementSampler),
-        Compat(CompatRandomSampler),
-    }
-
-    impl Sampler for SamplerEnum {
-        fn process<W: Write>(
-            &mut self,
-            record: &[u8],
-            writer: &mut W,
-            rng: &mut RapidRng,
-        ) -> anyhow::Result<()> {
-            match self {
-                SamplerEnum::Bernoulli(s) => s.process(record, writer, rng),
-                SamplerEnum::Distinct(s) => s.process(record, writer, rng),
-                SamplerEnum::Reservoir(s) => s.process(record, writer, rng),
-                SamplerEnum::Weighted(s) => s.process(record, writer, rng),
-                SamplerEnum::Shuffle(s) => s.process(record, writer, rng),
-                SamplerEnum::Inorder(s) => s.process(record, writer, rng),
-                SamplerEnum::Replacement(s) => s.process(record, writer, rng),
-                SamplerEnum::Compat(s) => s.process(record, writer, rng),
-            }
-        }
-        fn finalize<W2: Write>(
-            &mut self,
-            writer: &mut W2,
-            rng: &mut RapidRng,
-            print_random: bool,
-        ) -> anyhow::Result<()> {
-            match self {
-                SamplerEnum::Bernoulli(s) => s.finalize(writer, rng, print_random),
-                SamplerEnum::Distinct(s) => s.finalize(writer, rng, print_random),
-                SamplerEnum::Reservoir(s) => s.finalize(writer, rng, print_random),
-                SamplerEnum::Weighted(s) => s.finalize(writer, rng, print_random),
-                SamplerEnum::Shuffle(s) => s.finalize(writer, rng, print_random),
-                SamplerEnum::Inorder(s) => s.finalize(writer, rng, print_random),
-                SamplerEnum::Replacement(s) => s.finalize(writer, rng, print_random),
-                SamplerEnum::Compat(s) => s.finalize(writer, rng, print_random),
-            }
-        }
-    }
-
     let mut sampler: SamplerEnum = if let Some(p) = prob_opt {
         if let Some(ref _key_spec) = key_fields {
             SamplerEnum::Distinct(DistinctBernoulliSampler {
                 prob: p,
                 key_field_indices: Vec::new(), // To be filled
                 print_random,
-                decisions: std::collections::HashMap::new(),
+                decisions: AHashMap::new(),
+                key_buffer: Vec::new(),
             })
         } else {
             // Generate initial skip for Bernoulli sampler
@@ -403,20 +478,9 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
     let distinct_key_spec = key_fields.as_deref();
     let weighted_weight_spec = weight_field.as_deref();
 
-    // Iterate over files manually to handle headers correctly
     for input in crate::libs::io::raw_input_sources(&infiles) {
-        // Use a larger buffer (512KB) for better I/O throughput
         let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_record = true;
-
-        if gen_random_inorder && !header_written && header_line.is_some() {
-            let header = header_line.as_ref().unwrap();
-            writer.write_all(random_value_header.as_bytes())?;
-            writer.write_all(b"\t")?;
-            writer.write_all(header)?;
-            writer.write_all(b"\n")?;
-            header_written = true;
-        }
 
         reader.for_each_record(|record| {
             if record.is_empty() {
@@ -500,16 +564,8 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
                         sampler_initialized = true;
                     }
 
-                    // Write header if streaming immediately (Bernoulli/Distinct) or gen_random_inorder
-                    if gen_random_inorder {
-                        writer.write_all(random_value_header.as_bytes())?;
-                        writer.write_all(b"\t")?;
-                        writer.write_all(record)?;
-                        writer.write_all(b"\n")?;
-                        header_written = true;
-                    } else if let SamplerEnum::Bernoulli(_) | SamplerEnum::Distinct(_) =
-                        sampler
-                    {
+                    // Write header if streaming immediately (Bernoulli/Distinct)
+                    if let SamplerEnum::Bernoulli(_) | SamplerEnum::Distinct(_) = sampler {
                         if print_random {
                             writer.write_all(random_value_header.as_bytes())?;
                             writer.write_all(b"\t")?;
@@ -568,27 +624,12 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
                 sampler_initialized = true;
             }
 
-            if gen_random_inorder {
-                // Special case: gen_random_inorder writes immediately
-                let r = rng.next() as f64 * crate::libs::sampling::INV_U64_MAX_PLUS_1;
-                let mut buffer = ryu::Buffer::new();
-                let printed = buffer.format(r);
-                writer.write_all(printed.as_bytes())?;
-                writer.write_all(b"\t")?;
-                writer.write_all(record)?;
-                writer.write_all(b"\n")?;
-            } else {
-                sampler
-                    .process(record, writer, &mut rng)
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-            }
+            sampler
+                .process(record, writer, &mut rng)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
             Ok(())
         })?;
-    }
-
-    if gen_random_inorder {
-        return Ok(());
     }
 
     // Write header for non-streaming samplers
