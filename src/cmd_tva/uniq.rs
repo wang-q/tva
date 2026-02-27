@@ -1,7 +1,9 @@
+use crate::libs::io::map_io_err;
+use crate::libs::tsv::reader::TsvReader;
 use clap::*;
 use rapidhash::rapidhash;
 use std::collections::HashMap;
-use std::io::{BufRead, Write};
+use std::io::Write;
 
 pub fn make_subcommand() -> Command {
     Command::new("uniq")
@@ -204,13 +206,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut equiv_map: HashMap<u64, EquivEntry> = HashMap::new();
 
-    for input in crate::libs::io::input_sources(&infiles) {
-        let reader = input.reader;
-        let mut is_first_line = true;
+    // Reusable buffer for constructing keys
+    let mut key_buffer = Vec::new();
+    let mut ends = Vec::new();
+    let delim_byte = delimiter as u8;
 
-        for line in reader.lines().map_while(Result::ok) {
-            if has_header && is_first_line {
-                if header.is_none() {
+    for input in crate::libs::io::raw_input_sources(&infiles) {
+        let mut tsv_reader = TsvReader::with_capacity(input.reader, 512 * 1024);
+
+        if has_header {
+            if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
+                 if header.is_none() {
+                    let line = String::from_utf8_lossy(&header_bytes);
                     header = Some(crate::libs::tsv::fields::Header::from_line(
                         &line, delimiter,
                     ));
@@ -235,69 +242,96 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
 
                 if !header_written {
-                    let mut header_line = line.clone();
+                    // Reconstruct header line (without newline)
+                    writer.write_all(&header_bytes)?;
+                    
                     if equiv_mode {
-                        header_line.push(delimiter);
-                        header_line.push_str(&equiv_header);
+                        writer.write_all(&[delimiter as u8])?;
+                        writer.write_all(equiv_header.as_bytes())?;
                     }
                     if number_mode {
-                        header_line.push(delimiter);
-                        header_line.push_str(&number_header);
+                        writer.write_all(&[delimiter as u8])?;
+                        writer.write_all(number_header.as_bytes())?;
                     }
-                    writer.write_fmt(format_args!("{}\n", header_line))?;
+                    writer.write_all(b"\n")?;
                     if line_buffered {
                         writer.flush()?;
                     }
                     header_written = true;
                 }
-                is_first_line = false;
-                continue;
+            } else {
+                continue; // Empty file
             }
+        }
 
-            is_first_line = false;
-
-            if key_fields.is_none() {
-                if let Some(ref spec) = fields_spec {
-                    if spec.trim() == "0" {
-                        key_fields = Some(Vec::new());
-                    } else {
-                        let parsed =
-                            crate::libs::tsv::fields::parse_field_list_with_header(
-                                spec, None, delimiter,
-                            );
-                        match parsed {
-                            Ok(v) => key_fields = Some(v),
-                            Err(e) => {
-                                arg_error(&e);
-                            }
+        if key_fields.is_none() {
+            if let Some(ref spec) = fields_spec {
+                if spec.trim() == "0" {
+                    key_fields = Some(Vec::new());
+                } else {
+                    let parsed =
+                        crate::libs::tsv::fields::parse_field_list_with_header(
+                            spec, None, delimiter,
+                        );
+                    match parsed {
+                        Ok(v) => key_fields = Some(v),
+                        Err(e) => {
+                            arg_error(&e);
                         }
                     }
                 }
             }
+        }
 
+        tsv_reader.for_each_record(|line| {
             let subject = if key_fields.as_ref().is_none_or(|v| v.is_empty()) {
                 if ignore_case {
-                    let lower = line.to_lowercase();
-                    rapidhash(lower.as_bytes())
+                    key_buffer.clear();
+                    // Basic ASCII lowercase, consistent with standard behavior for performance
+                    // For full unicode support, we might need more complex handling, but typically ASCII is assumed for TSV
+                    key_buffer.extend(line.iter().map(|b| b.to_ascii_lowercase()));
+                    rapidhash(&key_buffer)
                 } else {
-                    rapidhash(line.as_bytes())
+                    rapidhash(line)
                 }
             } else {
-                let fields: Vec<&str> = line.split(delimiter).collect();
-                let subset: Vec<&str> = key_fields
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .filter_map(|&i| fields.get(i - 1))
-                    .copied()
-                    .collect();
-                let concat = subset.join(&delimiter.to_string());
-                if ignore_case {
-                    let lower = concat.to_lowercase();
-                    rapidhash(lower.as_bytes())
-                } else {
-                    rapidhash(concat.as_bytes())
+                let k_fields = key_fields.as_ref().unwrap();
+                key_buffer.clear();
+                
+                ends.clear();
+                for pos in memchr::memchr_iter(delim_byte, line) {
+                    ends.push(pos);
                 }
+                ends.push(line.len());
+
+                let mut first = true;
+                for &idx in k_fields {
+                    if !first {
+                        key_buffer.push(delim_byte);
+                    }
+                    
+                    let field = if idx > 0 && idx <= ends.len() {
+                        let end = ends[idx - 1];
+                        let start = if idx == 1 { 0 } else { ends[idx - 2] + 1 };
+                        if start <= end {
+                            Some(&line[start..end])
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                    if let Some(f) = field {
+                        if ignore_case {
+                            key_buffer.extend(f.iter().map(|b| b.to_ascii_lowercase()));
+                        } else {
+                            key_buffer.extend_from_slice(f);
+                        }
+                    }
+                    first = false;
+                }
+                rapidhash(&key_buffer)
             };
 
             let entry = equiv_map.entry(subject).or_insert_with(|| {
@@ -323,25 +357,23 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             if is_output {
-                if !equiv_mode && !number_mode {
-                    writer.write_fmt(format_args!("{}\n", line))?;
-                } else {
-                    let mut out_line = line.clone();
-                    if equiv_mode {
-                        out_line.push(delimiter);
-                        out_line.push_str(&entry.equiv_id.to_string());
-                    }
-                    if number_mode {
-                        out_line.push(delimiter);
-                        out_line.push_str(&entry.count.to_string());
-                    }
-                    writer.write_fmt(format_args!("{}\n", out_line))?;
+                writer.write_all(line)?;
+                if equiv_mode {
+                    writer.write_all(&[delimiter as u8])?;
+                    writer.write_all(entry.equiv_id.to_string().as_bytes())?;
                 }
+                if number_mode {
+                    writer.write_all(&[delimiter as u8])?;
+                    writer.write_all(entry.count.to_string().as_bytes())?;
+                }
+                writer.write_all(b"\n")?;
+                
                 if line_buffered {
                     writer.flush()?;
                 }
             }
-        }
+            Ok(())
+        }).map_err(map_io_err)?;
     }
 
     Ok(())
