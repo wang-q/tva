@@ -108,7 +108,7 @@ fn arg_error(msg: &str) -> ! {
 
 fn parse_join_field_spec(
     spec_opt: Option<String>,
-    header: Option<&crate::libs::fields::Header>,
+    header: Option<&crate::libs::tsv::fields::Header>,
     delimiter: char,
 ) -> (bool, Option<Vec<usize>>) {
     let spec = spec_opt.unwrap_or_else(|| "0".to_string());
@@ -117,14 +117,14 @@ fn parse_join_field_spec(
         return (true, None);
     }
     let indices =
-        crate::libs::fields::parse_field_list_with_header(trimmed, header, delimiter)
+        crate::libs::tsv::fields::parse_field_list_with_header(trimmed, header, delimiter)
             .unwrap_or_else(|e| arg_error(&e));
     (false, Some(indices))
 }
 
 fn parse_append_field_spec(
     spec_opt: Option<String>,
-    header: Option<&crate::libs::fields::Header>,
+    header: Option<&crate::libs::tsv::fields::Header>,
     delimiter: char,
 ) -> Option<Vec<usize>> {
     let spec = spec_opt?;
@@ -132,7 +132,7 @@ fn parse_append_field_spec(
     if trimmed.is_empty() {
         return None;
     }
-    let indices = crate::libs::fields::parse_field_list_with_header_preserve_order(
+    let indices = crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
         trimmed, header, delimiter,
     )
     .unwrap_or_else(|e| arg_error(&e));
@@ -232,13 +232,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let filter_reader = crate::libs::io::reader(&filter_file);
     let mut filter_lines_iter = filter_reader.lines().map_while(Result::ok);
 
-    let mut filter_header: Option<crate::libs::fields::Header> = None;
+    let mut filter_header: Option<crate::libs::tsv::fields::Header> = None;
     if has_header {
         if let Some(mut header_line) = filter_lines_iter.next() {
             if let Some('\r') = header_line.chars().last() {
                 header_line.pop();
             }
-            filter_header = Some(crate::libs::fields::Header::from_line(
+            filter_header = Some(crate::libs::tsv::fields::Header::from_line(
                 &header_line,
                 delimiter,
             ));
@@ -319,7 +319,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         data_fields_spec.clone().or_else(|| key_fields_spec.clone());
                     let (whole_line, indices) = parse_join_field_spec(
                         effective_data_spec,
-                        Some(&crate::libs::fields::Header::from_line(&line, delimiter)),
+                        Some(&crate::libs::tsv::fields::Header::from_line(&line, delimiter)),
                         delimiter,
                     );
                     data_key_whole_line = whole_line;

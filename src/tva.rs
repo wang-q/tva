@@ -55,7 +55,7 @@ fn main() -> anyhow::Result<()> {
     let matches = app.get_matches();
 
     if matches.get_flag("help-fields") {
-        use tva::libs::fields::FIELD_SYNTAX_HELP;
+        use tva::libs::tsv::fields::FIELD_SYNTAX_HELP;
         println!("{}", FIELD_SYNTAX_HELP);
         return Ok(());
     }

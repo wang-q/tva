@@ -204,7 +204,7 @@ pub fn weighted_fixed_size_sample<W: std::io::Write>(
     rng: &mut RapidRng,
     config: WeightedSampleConfig,
 ) -> anyhow::Result<()> {
-    use crate::libs::fields::{parse_field_list_with_header, Header};
+    use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
 
     let n = rows.len();
     let k = config.k;
@@ -283,7 +283,7 @@ pub fn distinct_bernoulli_sample<W: std::io::Write>(
     rng: &mut RapidRng,
     config: DistinctSampleConfig,
 ) -> anyhow::Result<()> {
-    use crate::libs::fields::{parse_field_list_with_header, Header};
+    use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
     use std::collections::HashMap;
 
     if config.prob <= 0.0 {

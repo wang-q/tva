@@ -97,7 +97,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut exclude_indices: Option<Vec<usize>> = None;
     let mut exclude_set: Option<HashSet<usize>> = None;
 
-    let mut select_plan: Option<crate::libs::tsv::select::SelectPlan> = None;
+    let mut select_plan: Option<crate::libs::select::SelectPlan> = None;
     let mut output_ranges: Vec<Range<usize>> = Vec::new();
 
     let delim_byte = delimiter as u8;
@@ -110,11 +110,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if !header_written {
                     let line_str = String::from_utf8_lossy(&header_bytes);
                     let header =
-                        crate::libs::fields::Header::from_line(&line_str, delimiter);
+                        crate::libs::tsv::fields::Header::from_line(&line_str, delimiter);
 
                     if let Some(ref spec) = fields_spec {
                         field_indices = Some(
-                            crate::libs::fields::parse_field_list_with_header_preserve_order(
+                            crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
                                 spec,
                                 Some(&header),
                                 delimiter,
@@ -123,7 +123,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         );
                     } else if let Some(ref spec) = exclude_spec {
                         let indices =
-                            crate::libs::fields::parse_field_list_with_header_preserve_order(
+                            crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
                                 spec,
                                 Some(&header),
                                 delimiter,
@@ -169,7 +169,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         if fields_spec.is_some() && field_indices.is_none() {
             if let Some(ref spec) = fields_spec {
                 field_indices = Some(
-                    crate::libs::fields::parse_field_list_with_header_preserve_order(
+                    crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
                         spec, None, delimiter,
                     )
                     .map_err(map_io_err)?,
@@ -182,7 +182,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 exclude_set = Some(indices.iter().copied().collect());
             } else if let Some(ref spec) = exclude_spec {
                 let indices =
-                    crate::libs::fields::parse_field_list_with_header_preserve_order(
+                    crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
                         spec, None, delimiter,
                     )
                     .map_err(map_io_err)?;
@@ -198,9 +198,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             if let Some(ref idxs) = field_indices {
                 if select_plan.is_none() {
-                    select_plan = Some(crate::libs::tsv::select::SelectPlan::new(idxs));
+                    select_plan = Some(crate::libs::select::SelectPlan::new(idxs));
                 }
-                crate::libs::tsv::select::write_selected_from_bytes(
+                crate::libs::select::write_selected_from_bytes(
                     &mut writer,
                     line_bytes,
                     delim_byte,
@@ -208,7 +208,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     &mut output_ranges,
                 )?;
             } else if let Some(ref ex_set) = exclude_set {
-                crate::libs::tsv::select::write_excluding_from_bytes(
+                crate::libs::select::write_excluding_from_bytes(
                     &mut writer,
                     line_bytes,
                     delim_byte,

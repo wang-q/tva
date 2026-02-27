@@ -1,5 +1,5 @@
-use crate::libs::fields;
-use crate::libs::fields::Header;
+use crate::libs::tsv::fields;
+use crate::libs::tsv::fields::Header;
 use clap::*;
 use regex::Regex;
 use std::collections::HashSet;

@@ -6,7 +6,7 @@
 //! Basic numeric-only parsing:
 //!
 //! ```
-//! use tva::libs::fields::parse_numeric_field_list;
+//! use tva::libs::tsv::fields::parse_numeric_field_list;
 //!
 //! let indices = parse_numeric_field_list("1,3-5").unwrap();
 //! assert_eq!(indices, vec![1, 3, 4, 5]);
@@ -15,7 +15,7 @@
 //! Header-aware parsing (mixing indices and names):
 //!
 //! ```
-//! use tva::libs::fields::{Header, parse_field_list_with_header};
+//! use tva::libs::tsv::fields::{Header, parse_field_list_with_header};
 //!
 //! let header = Header::from_line("run\tuser_time\tsystem_time", '\t');
 //! let indices = parse_field_list_with_header("run,system_time", Some(&header), '\t').unwrap();
@@ -25,7 +25,7 @@
 use intspan::IntSpan;
 use std::collections::HashMap;
 
-pub const FIELD_SYNTAX_HELP: &str = include_str!("../../docs/help/fields.md");
+pub const FIELD_SYNTAX_HELP: &str = include_str!("../../../docs/help/fields.md");
 
 pub fn fields_to_ints(s: &str) -> IntSpan {
     let mut ints = IntSpan::new();

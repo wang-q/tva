@@ -1,4 +1,4 @@
-use crate::libs::fields;
+use crate::libs::tsv::fields;
 use crate::libs::io::reader;
 use crate::libs::stats::{Aggregator, OpKind, Operation};
 use clap::{Arg, ArgAction, ArgMatches, Command};

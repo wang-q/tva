@@ -194,7 +194,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let mut header_written = false;
-    let mut header: Option<crate::libs::fields::Header> = None;
+    let mut header: Option<crate::libs::tsv::fields::Header> = None;
     let mut key_fields: Option<Vec<usize>> = None;
 
     struct EquivEntry {
@@ -212,13 +212,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if has_header && is_first_line {
                 if header.is_none() {
                     header =
-                        Some(crate::libs::fields::Header::from_line(&line, delimiter));
+                        Some(crate::libs::tsv::fields::Header::from_line(&line, delimiter));
                     if let Some(ref spec) = fields_spec {
                         if spec.trim() == "0" {
                             key_fields = Some(Vec::new());
                         } else {
                             let parsed =
-                                crate::libs::fields::parse_field_list_with_header(
+                                crate::libs::tsv::fields::parse_field_list_with_header(
                                     spec,
                                     header.as_ref(),
                                     delimiter,
@@ -260,7 +260,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     if spec.trim() == "0" {
                         key_fields = Some(Vec::new());
                     } else {
-                        let parsed = crate::libs::fields::parse_field_list_with_header(
+                        let parsed = crate::libs::tsv::fields::parse_field_list_with_header(
                             spec, None, delimiter,
                         );
                         match parsed {

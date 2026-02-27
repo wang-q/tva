@@ -1132,7 +1132,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut total_matched: u64 = 0;
     let mut header_written = false;
     let mut header_seen = false;
-    let mut header_struct: Option<crate::libs::fields::Header> = None;
+    let mut header_struct: Option<crate::libs::tsv::fields::Header> = None;
 
     for input in crate::libs::io::input_sources(&infiles) {
         let reader = input.reader;
@@ -1160,7 +1160,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     header_written = true;
                 }
                 header_struct =
-                    Some(crate::libs::fields::Header::from_line(&line, delimiter));
+                    Some(crate::libs::tsv::fields::Header::from_line(&line, delimiter));
                 continue;
             }
 

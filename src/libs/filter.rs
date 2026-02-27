@@ -621,7 +621,7 @@ pub struct FilterSpecConfig<'a> {
 }
 
 pub fn build_tests(
-    header: Option<&crate::libs::fields::Header>,
+    header: Option<&crate::libs::tsv::fields::Header>,
     delimiter: char,
     config: FilterSpecConfig,
 ) -> Result<Vec<TestKind>, String> {
@@ -629,7 +629,7 @@ pub fn build_tests(
 
     for spec in config.empty_specs {
         let idxs =
-            crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
+            crate::libs::tsv::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::Empty { fields: vec![idx] });
         }
@@ -637,7 +637,7 @@ pub fn build_tests(
 
     for spec in config.not_empty_specs {
         let idxs =
-            crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
+            crate::libs::tsv::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::NotEmpty { fields: vec![idx] });
         }
@@ -645,7 +645,7 @@ pub fn build_tests(
 
     for spec in config.blank_specs {
         let idxs =
-            crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
+            crate::libs::tsv::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::Blank { fields: vec![idx] });
         }
@@ -653,7 +653,7 @@ pub fn build_tests(
 
     for spec in config.not_blank_specs {
         let idxs =
-            crate::libs::fields::parse_field_list_with_header(spec, header, delimiter)?;
+            crate::libs::tsv::fields::parse_field_list_with_header(spec, header, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::NotBlank { fields: vec![idx] });
         }
@@ -661,7 +661,7 @@ pub fn build_tests(
 
     for p in config.numeric_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::fields::parse_field_list_with_header(
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &field_part,
             header,
             delimiter,
@@ -690,7 +690,7 @@ pub fn build_tests(
 
     for p in config.str_cmp_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::fields::parse_field_list_with_header(
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &field_part,
             header,
             delimiter,
@@ -713,7 +713,7 @@ pub fn build_tests(
 
     for p in config.char_len_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::fields::parse_field_list_with_header(
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &field_part,
             header,
             delimiter,
@@ -739,7 +739,7 @@ pub fn build_tests(
 
     for p in config.byte_len_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::fields::parse_field_list_with_header(
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &field_part,
             header,
             delimiter,
@@ -764,7 +764,7 @@ pub fn build_tests(
     }
 
     for p in config.numeric_prop_specs {
-        let idxs = crate::libs::fields::parse_field_list_with_header(
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &p.spec, header, delimiter,
         )?;
         for idx in idxs {
@@ -782,7 +782,7 @@ pub fn build_tests(
 
     for p in config.str_eq_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::fields::parse_field_list_with_header(
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &field_part,
             header,
             delimiter,
@@ -808,7 +808,7 @@ pub fn build_tests(
 
     for p in config.substr_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::fields::parse_field_list_with_header(
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &field_part,
             header,
             delimiter,
@@ -825,7 +825,7 @@ pub fn build_tests(
 
     for p in config.regex_specs {
         let (field_part, pattern) = split_spec(&p.spec)?;
-        let idxs = crate::libs::fields::parse_field_list_with_header(
+        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &field_part,
             header,
             delimiter,
@@ -847,10 +847,10 @@ pub fn build_tests(
 
     for p in config.ff_numeric_specs {
         let (left_part, right_part) = split_spec(&p.spec)?;
-        let left_idxs = crate::libs::fields::parse_field_list_with_header(
+        let left_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &left_part, header, delimiter,
         )?;
-        let right_idxs = crate::libs::fields::parse_field_list_with_header(
+        let right_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &right_part,
             header,
             delimiter,
@@ -881,10 +881,10 @@ pub fn build_tests(
 
     for p in config.ff_str_specs {
         let (left_part, right_part) = split_spec(&p.spec)?;
-        let left_idxs = crate::libs::fields::parse_field_list_with_header(
+        let left_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &left_part, header, delimiter,
         )?;
-        let right_idxs = crate::libs::fields::parse_field_list_with_header(
+        let right_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             &right_part,
             header,
             delimiter,
@@ -917,10 +917,10 @@ pub fn build_tests(
                 p.spec
             ));
         };
-        let left_idxs = crate::libs::fields::parse_field_list_with_header(
+        let left_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             left_part, header, delimiter,
         )?;
-        let right_idxs = crate::libs::fields::parse_field_list_with_header(
+        let right_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             right_part, header, delimiter,
         )?;
         if left_idxs.len() != right_idxs.len() {
@@ -958,10 +958,10 @@ pub fn build_tests(
                 p.spec
             ));
         };
-        let left_idxs = crate::libs::fields::parse_field_list_with_header(
+        let left_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             left_part, header, delimiter,
         )?;
-        let right_idxs = crate::libs::fields::parse_field_list_with_header(
+        let right_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
             right_part, header, delimiter,
         )?;
         if left_idxs.len() != right_idxs.len() {
