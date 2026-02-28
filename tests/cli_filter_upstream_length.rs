@@ -1,36 +1,35 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+#[macro_use]
+#[path = "common/mod.rs"]
+mod common;
+
+use common::TvaCmd;
 
 #[test]
-fn upstream_char_len_eq_3_0() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-eq")
-        .arg("3:0")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_eq_3_0() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-eq",
+            "3:0",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!("F1\tF2\tF3\tF4\n", "100\t100\t\tAbC\n", "100\t101\t\t\n",);
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_eq_3_1() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-eq")
-        .arg("3:1")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_eq_3_1() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-eq",
+            "3:1",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -39,40 +38,34 @@ fn upstream_char_len_eq_3_1() -> anyhow::Result<()> {
         "-2\t-2.0\tß\tss\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_eq_3_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-eq")
-        .arg("3:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_eq_3_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-eq",
+            "3:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!("F1\tF2\tF3\tF4\n",);
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_ne_3_0() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-ne")
-        .arg("3:0")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_ne_3_0() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-ne",
+            "3:0",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -90,22 +83,19 @@ fn upstream_char_len_ne_3_0() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_ne_3_1() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-ne")
-        .arg("3:1")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_ne_3_1() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-ne",
+            "3:1",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "10\t10.1\tabc\tABC\n",
@@ -121,22 +111,19 @@ fn upstream_char_len_ne_3_1() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_ne_3_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-ne")
-        .arg("3:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_ne_3_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-ne",
+            "3:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -156,22 +143,19 @@ fn upstream_char_len_ne_3_2() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_le_4_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-le")
-        .arg("4:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_le_4_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-le",
+            "4:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -181,22 +165,19 @@ fn upstream_char_len_le_4_2() -> anyhow::Result<()> {
         "100\t101\t\t\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_lt_4_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-lt")
-        .arg("4:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_lt_4_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-lt",
+            "4:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -205,22 +186,19 @@ fn upstream_char_len_lt_4_2() -> anyhow::Result<()> {
         "100\t101\t\t\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_gt_4_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-gt")
-        .arg("4:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_gt_4_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-gt",
+            "4:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "10\t10.1\tabc\tABC\n",
@@ -235,22 +213,19 @@ fn upstream_char_len_gt_4_2() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_ge_4_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-ge")
-        .arg("4:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_ge_4_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-ge",
+            "4:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "10\t10.1\tabc\tABC\n",
@@ -266,22 +241,19 @@ fn upstream_char_len_ge_4_2() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_le_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-le")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_le_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-le",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "Mixed1\ta-雪\ta\tabcd\n",
@@ -296,22 +268,19 @@ fn upstream_char_len_le_3_3_unicode() -> anyhow::Result<()> {
         "Mixed16\tabcd-雪\taषि雪\ta\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_lt_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-lt")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_lt_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-lt",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "Mixed1\ta-雪\ta\tabcd\n",
@@ -322,22 +291,19 @@ fn upstream_char_len_lt_3_3_unicode() -> anyhow::Result<()> {
         "Mixed12\tabcd-雪\tषिषि\ta\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_ge_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-ge")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_ge_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-ge",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -363,22 +329,19 @@ fn upstream_char_len_ge_3_3_unicode() -> anyhow::Result<()> {
         "Mixed16\tabcd-雪\taषि雪\ta\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_gt_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-gt")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_gt_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-gt",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -400,22 +363,19 @@ fn upstream_char_len_gt_3_3_unicode() -> anyhow::Result<()> {
         "Mixed15\tabc-雪\tषिषिषिषिषि\tab\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_eq_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-eq")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_eq_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-eq",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "Mixed3\tabc-雪\tabc\tab\n",
@@ -424,22 +384,19 @@ fn upstream_char_len_eq_3_3_unicode() -> anyhow::Result<()> {
         "Mixed16\tabcd-雪\taषि雪\ta\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_ne_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-ne")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_ne_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-ne",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -467,61 +424,52 @@ fn upstream_char_len_ne_3_3_unicode() -> anyhow::Result<()> {
         "Mixed15\tabc-雪\tषिषिषिषिषि\tab\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_lt_1_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-lt")
-        .arg("1:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_lt_1_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-lt",
+            "1:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!("Language\tText 1\tText 2\tText 3\n",);
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_le_2_2_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-le")
-        .arg("2:2")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_le_2_2_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-le",
+            "2:2",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "Japanese\t吹雪\tサッカー選手\t町役場\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_ge_4_2_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-ge")
-        .arg("4:2")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_ge_4_2_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-ge",
+            "4:2",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -549,22 +497,19 @@ fn upstream_char_len_ge_4_2_unicode() -> anyhow::Result<()> {
         "Mixed15\tabc-雪\tषिषिषिषिषि\tab\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_ge_text_star_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-ge")
-        .arg("Text*:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_ge_text_star_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-ge",
+            "Text*:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -584,22 +529,19 @@ fn upstream_char_len_ge_text_star_3_unicode() -> anyhow::Result<()> {
         "Mixed14\tab-雪\tषिषिषिषि\tabc\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_ge_text_star_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-ge")
-        .arg("Text*:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_ge_text_star_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-ge",
+            "Text*:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -621,22 +563,19 @@ fn upstream_byte_len_ge_text_star_3_unicode() -> anyhow::Result<()> {
         "Mixed14\tab-雪\tषिषिषिषि\tabc\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_lt_header_escaped_space() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-lt")
-        .arg("Text\\ 2:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_lt_header_escaped_space() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-lt",
+            "Text\\ 2:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "Mixed1\ta-雪\ta\tabcd\n",
@@ -647,22 +586,19 @@ fn upstream_char_len_lt_header_escaped_space() -> anyhow::Result<()> {
         "Mixed12\tabcd-雪\tषिषि\ta\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_lt_header_escaped_space_arg_sep() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-lt")
-        .arg("Text\\ 2 3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_lt_header_escaped_space_arg_sep() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-lt",
+            "Text\\ 2 3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "Mixed1\ta-雪\ta\tabcd\n",
@@ -673,22 +609,19 @@ fn upstream_char_len_lt_header_escaped_space_arg_sep() -> anyhow::Result<()> {
         "Mixed12\tabcd-雪\tषिषि\ta\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_ge_range_input4() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-ge")
-        .arg("2-7:2")
-        .arg("tests/data/filter/input4.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_ge_range_input4() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-ge",
+            "2-7:2",
+            "tests/data/filter/input4.tsv",
+        ])
+        .run();
     let expected = concat!(
         "line\t2_apha\t3_apha\t4_num\t5_num\t6_num\t7_alpha\t8_num\t9_num\n",
         "1\tabc\tdef\t10\t20\t30\tghi\t40\t50\n",
@@ -697,40 +630,34 @@ fn upstream_char_len_ge_range_input4() -> anyhow::Result<()> {
         "11\tAADD\tAABDD\t10\t30\t15\tABD\t25\t25\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_eq_3_0() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-eq")
-        .arg("3:0")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_eq_3_0() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-eq",
+            "3:0",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!("F1\tF2\tF3\tF4\n", "100\t100\t\tAbC\n", "100\t101\t\t\n",);
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_eq_3_1() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-eq")
-        .arg("3:1")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_eq_3_1() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-eq",
+            "3:1",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -738,40 +665,34 @@ fn upstream_byte_len_eq_3_1() -> anyhow::Result<()> {
         "0\t0.0\tz\tAzB\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_eq_3_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-eq")
-        .arg("3:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_eq_3_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-eq",
+            "3:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!("F1\tF2\tF3\tF4\n", "-2\t-2.0\tß\tss\n",);
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_ne_3_0() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-ne")
-        .arg("3:0")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_ne_3_0() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-ne",
+            "3:0",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -789,22 +710,19 @@ fn upstream_byte_len_ne_3_0() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_ne_3_1() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-ne")
-        .arg("3:1")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_ne_3_1() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-ne",
+            "3:1",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "10\t10.1\tabc\tABC\n",
@@ -821,22 +739,19 @@ fn upstream_byte_len_ne_3_1() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_ne_3_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-ne")
-        .arg("3:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_ne_3_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-ne",
+            "3:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -855,22 +770,19 @@ fn upstream_byte_len_ne_3_2() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_le_4_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-le")
-        .arg("4:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_le_4_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-le",
+            "4:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -880,22 +792,19 @@ fn upstream_byte_len_le_4_2() -> anyhow::Result<()> {
         "100\t101\t\t\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_lt_4_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-lt")
-        .arg("4:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_lt_4_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-lt",
+            "4:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -904,22 +813,19 @@ fn upstream_byte_len_lt_4_2() -> anyhow::Result<()> {
         "100\t101\t\t\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_gt_4_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-gt")
-        .arg("4:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_gt_4_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-gt",
+            "4:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "10\t10.1\tabc\tABC\n",
@@ -934,22 +840,19 @@ fn upstream_byte_len_gt_4_2() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_ge_4_2() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-ge")
-        .arg("4:2")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_ge_4_2() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-ge",
+            "4:2",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "10\t10.1\tabc\tABC\n",
@@ -965,22 +868,19 @@ fn upstream_byte_len_ge_4_2() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_le_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-le")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_le_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-le",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "Mixed1\ta-雪\ta\tabcd\n",
@@ -989,44 +889,38 @@ fn upstream_byte_len_le_3_3_unicode() -> anyhow::Result<()> {
         "Mixed6\tab-雪\t雪\tabc\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_lt_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-lt")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_lt_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-lt",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "Mixed1\ta-雪\ta\tabcd\n",
         "Mixed2\tab-雪雪\tab\tabc\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_ge_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-ge")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_ge_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-ge",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -1056,22 +950,19 @@ fn upstream_byte_len_ge_3_3_unicode() -> anyhow::Result<()> {
         "Mixed16\tabcd-雪\taषि雪\ta\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_gt_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-gt")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_gt_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-gt",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -1099,44 +990,38 @@ fn upstream_byte_len_gt_3_3_unicode() -> anyhow::Result<()> {
         "Mixed16\tabcd-雪\taषि雪\ta\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_eq_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-eq")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_eq_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-eq",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "Mixed3\tabc-雪\tabc\tab\n",
         "Mixed6\tab-雪\t雪\tabc\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_ne_3_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-ne")
-        .arg("3:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_ne_3_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-ne",
+            "3:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -1166,22 +1051,19 @@ fn upstream_byte_len_ne_3_3_unicode() -> anyhow::Result<()> {
         "Mixed16\tabcd-雪\taषि雪\ta\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_ge_text_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-ge")
-        .arg("Text*:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_ge_text_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-ge",
+            "Text*:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -1201,22 +1083,19 @@ fn upstream_char_len_ge_text_3_unicode() -> anyhow::Result<()> {
         "Mixed14\tab-雪\tषिषिषिषि\tabc\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_byte_len_ge_text_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--byte-len-ge")
-        .arg("Text*:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_byte_len_ge_text_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--byte-len-ge",
+            "Text*:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "English\tsnow storm\tsoccer player\ttown hall\n",
@@ -1238,22 +1117,19 @@ fn upstream_byte_len_ge_text_3_unicode() -> anyhow::Result<()> {
         "Mixed14\tab-雪\tषिषिषिषि\tabc\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_char_len_lt_text_2_3_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--char-len-lt")
-        .arg("Text 2:3")
-        .arg("tests/data/filter/input_unicode.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_char_len_lt_text_2_3_unicode() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--char-len-lt",
+            "Text 2:3",
+            "tests/data/filter/input_unicode.tsv",
+        ])
+        .run();
     let expected = concat!(
         "Language\tText 1\tText 2\tText 3\n",
         "Mixed1\ta-雪\ta\tabcd\n",
@@ -1264,5 +1140,4 @@ fn upstream_char_len_lt_text_2_3_unicode() -> anyhow::Result<()> {
         "Mixed12\tabcd-雪\tषिषि\ta\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }

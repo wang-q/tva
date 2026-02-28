@@ -1616,12 +1616,7 @@ fn upstream_istr_eq_abc_input4_39() {
 #[test]
 fn upstream_str_eq_a_40() {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "filter",
-            "--str-eq",
-            "3:a",
-            "tests/data/filter/input1.tsv",
-        ])
+        .args(&["filter", "--str-eq", "3:a", "tests/data/filter/input1.tsv"])
         .run();
     let expected = concat!("1\t1.0\ta\tA\n",);
     assert_eq!(stdout, expected);

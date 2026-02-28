@@ -1,35 +1,34 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+#[macro_use]
+#[path = "common/mod.rs"]
+mod common;
+
+use common::TvaCmd;
 
 #[test]
-fn upstream_basic_eq_by_index_header() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--eq")
-        .arg("2:1")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_basic_eq_by_index_header() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--eq",
+            "2:1",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     assert_eq!(stdout, "F1\tF2\tF3\tF4\n1\t1.0\ta\tA\n");
-    Ok(())
 }
 
 #[test]
-fn upstream_basic_le_by_index_header() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--le")
-        .arg("2:101")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_basic_le_by_index_header() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--le",
+            "2:101",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -47,22 +46,19 @@ fn upstream_basic_le_by_index_header() -> anyhow::Result<()> {
         "100\t101\t\t\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_basic_ge_by_index_header() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--ge")
-        .arg("2:101")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_basic_ge_by_index_header() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--ge",
+            "2:101",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "100\t101\t\t\n",
@@ -70,22 +66,19 @@ fn upstream_basic_ge_by_index_header() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_basic_lt_by_index_header() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--lt")
-        .arg("2:101")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_basic_lt_by_index_header() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--lt",
+            "2:101",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -102,22 +95,19 @@ fn upstream_basic_lt_by_index_header() -> anyhow::Result<()> {
         "100\t100\tabc\t\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_basic_ne_by_index_header() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--ne")
-        .arg("2:101")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_basic_ne_by_index_header() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--ne",
+            "2:101",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
         "1\t1.0\ta\tA\n",
@@ -136,77 +126,65 @@ fn upstream_basic_ne_by_index_header() -> anyhow::Result<()> {
         "100\t103\tabc\tAbC\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn upstream_basic_eq_by_name_header() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("-H")
-        .arg("--eq")
-        .arg("F2:1")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_basic_eq_by_name_header() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "-H",
+            "--eq",
+            "F2:1",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     assert_eq!(stdout, "F1\tF2\tF3\tF4\n1\t1.0\ta\tA\n");
-    Ok(())
 }
 
 #[test]
-fn upstream_basic_count_eq_header() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--eq")
-        .arg("2:1")
-        .arg("--count")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_basic_count_eq_header() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--eq",
+            "2:1",
+            "--count",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     assert_eq!(stdout.trim(), "1");
-    Ok(())
 }
 
 #[test]
-fn upstream_basic_count_le_header() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--le")
-        .arg("2:101")
-        .arg("-c")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_basic_count_le_header() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--le",
+            "2:101",
+            "-c",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     assert_eq!(stdout.trim(), "13");
-    Ok(())
 }
 
 #[test]
-fn upstream_basic_pipe_delimiter() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--header")
-        .arg("--eq")
-        .arg("2:100")
-        .arg("--delimiter")
-        .arg("|")
-        .arg("tests/data/filter/input2_pipe-sep.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+fn upstream_basic_pipe_delimiter() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--header",
+            "--eq",
+            "2:100",
+            "--delimiter",
+            "|",
+            "tests/data/filter/input2_pipe-sep.tsv",
+        ])
+        .run();
     let expected = concat!(
         "F1|F2|F3|F4\n",
         "100|100|abc|AbC\n",
@@ -216,5 +194,4 @@ fn upstream_basic_pipe_delimiter() -> anyhow::Result<()> {
         "100|100|abc|\n",
     );
     assert_eq!(stdout, expected);
-    Ok(())
 }

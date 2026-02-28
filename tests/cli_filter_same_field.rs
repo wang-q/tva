@@ -1,17 +1,14 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+#[macro_use]
+#[path = "common/mod.rs"]
+mod common;
+
+use common::TvaCmd;
 
 #[test]
 fn ff_eq_same_field() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--ff-eq")
-        .arg("1:1")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["filter", "--ff-eq", "1:1", "tests/data/filter/input1.tsv"])
+        .run();
 
     // All data rows have numeric F1. Header "F1" is not numeric.
     let expected = concat!(
@@ -36,16 +33,14 @@ fn ff_eq_same_field() {
 
 #[test]
 fn ff_str_eq_same_field() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--ff-str-eq")
-        .arg("1:1")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--ff-str-eq",
+            "1:1",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
     // Strings: F1 == F1 is always true for all lines including header.
     let expected = concat!(
         "F1\tF2\tF3\tF4\n",
@@ -70,16 +65,14 @@ fn ff_str_eq_same_field() {
 
 #[test]
 fn ff_reldiff_same_field_zero() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("filter")
-        .arg("--ff-reldiff-le")
-        .arg("1:1:0.1")
-        .arg("tests/data/filter/input1.tsv")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "filter",
+            "--ff-reldiff-le",
+            "1:1:0.1",
+            "tests/data/filter/input1.tsv",
+        ])
+        .run();
 
     // Expect all data rows (header F1 fails parse).
     let expected = concat!(
