@@ -152,10 +152,10 @@
 | 特性 | xan join (SQL Style) | tva join (Stream Static) |
 | :--- | :--- | :--- |
 | **内存模型** | **全量加载 (Indexed Side)** | **部分加载 (Key + Append)** |
-| **数据结构** | `Vec<IndexNode>` (Arena) + `HashMap` (Index) | `HashMap<Key, AppendValues>` |
+| **数据结构** | `Vec<IndexNode>` (Arena) + `HashMap` (Index) | `HashMap<KeyBuffer, Vec<u8>>` |
 | **Join 类型** | Inner, Left, Right, Full, Cross (N-to-N) | Hash Semi-Join (N-to-1) |
 | **多重匹配** | 支持 (通过链表 `next` 指针) | **不支持** (Last-Win 或 Error) |
-| **Key 构建** | `ByteRecord` (Vector of Fields) | `Cow<'a, [u8]>` (Slice) |
+| **Key 构建** | `ByteRecord` (Vector of Fields) | `KeyBuffer` (SmallVec<[u8; 32]>) |
 
 *   **xan 的核心结构 (Arena + Linked List)**:
     ```rust
@@ -175,7 +175,8 @@
 *   **tva 的核心结构 (HashMap)**:
     ```rust
     // 仅存储 Key 和需要 Append 的字段
-    let mut filter_map: HashMap<Vec<u8>, Vec<u8>> = HashMap::new();
+    // KeyBuffer 是 SmallVec<[u8; 32]>，优化小 Key 的内存分配
+    let mut filter_map: HashMap<KeyBuffer, Vec<u8>> = HashMap::with_hasher(RandomState::new());
     ```
     *   **优势**: 极致的内存效率和速度。只存储必要数据。
     *   **劣势**: 仅支持 "查找并追加" 模式，无法处理 N-to-N 关系（Filter 文件中的 Key 必须唯一，否则需去重）。
@@ -257,12 +258,6 @@
 1.  **AVX2/NEON 优化**:
     *   探索使用 `std::simd` (Portable SIMD) 或手写 intrinsic，一次性处理 32/64 字节。
     *   **Bitmask 技术**: 生成 `\t` 和 `\n` 的位置掩码，利用 `tzcnt` (Trailing Zero Count) 快速跳跃，避免逐字节比较。
-2.  **Buffer 管理**:
-    *   实现环形缓冲区 (Ring Buffer) 或双缓冲 (Double Buffering)，实现 I/O 与解析的重叠 (虽然在单线程下受限，但通过 `io_uring` 或异步 I/O 可能有收益)。
-3.  **Profile-Guided Optimization (PGO)**:
-    *   使用真实数据收集性能剖析信息，指导编译器进行分支预测优化和函数内联。
-
----
 
 ## 计划中的功能
 
@@ -304,114 +299,4 @@
 ### 缺失值填充 (Fill Missing Values)
 
 *   `fill`: 实现前向/后向填充以及常数填充。
-
-
-## 性能优化路线图
-
-1.  **算法升级**: 将 `sample` 等命令的 O(N) 算法重构为 O(K) 或流式算法。
-2.  **指令集优化**: 在关键路径 (如 `split`, `newline` 查找) 引入 AVX2/NEON 优化。
-3.  **I/O 吞吐**: 增大默认缓冲区 (64KB -> 128KB+)，探索 `io_uring` (Linux)。
-
----
-
-## 对标分析: tsv-sample (D语言)
-
-为了彻底超越 `tsv-utils`，我们对其源码 (`tsv-sample.d`) 进行了深度逆向分析。
-
-### 1. 核心架构对比
-
-| 特性 | tsv-sample (D) | tva (Rust) | 差异分析 |
-| :--- | :--- | :--- | :--- |
-| **I/O 缓冲** | `bufferedByLine` (1MB Buffer) | `TsvReader` (64KB Buffer) | D 的缓冲区更大，减少了 syscall 次数。 |
-| **RNG** | `std.random.Mt19937` | `rapidhash` (Wyhash) | **Rust 胜出**。Wyhash 更快且质量足够。 |
-| **加权采样** | **A-Res (Heap)** - O(K) 内存 | **Naive Sort** - O(N) 内存 | **D 胜出**。D 使用最小堆维护 Top-K，Rust 目前全量排序导致大量内存分配。 |
-| **Bernoulli 采样** | **Skip Sampling** | Naive Check | **D 胜出**。D 计算跳过行数，Rust 逐行检查。 |
-
-### 2. 关键瓶颈定位 (v0.1.0)
-
-用户反馈 `tva sample -w` 比 `tsv-sample` 慢 3-4 倍，核心原因是 **算法复杂度差异**：
-
-*   **tsv-sample (D)**: 使用 **Efraimidis-Spirakis A-Res 算法**。
-    *   维护一个大小为 $K$ 的最小堆。
-    *   仅当新元素的 Key ($u^{1/w}$) 大于堆顶时才替换并调整堆。
-    *   内存: $O(K)$, CPU: $O(N \log K)$。
-
-*   **tva (Rust)**: 使用 **全量排序算法**。
-    *   `Vec::push` 保存所有记录。
-    *   最后 `sort_by` 全量排序。
-    *   内存: $O(N)$, CPU: $O(N \log N)$。
-    *   **后果**: 对于大文件 (如 1000万行)，Rust 版本会分配巨大的内存并进行昂贵的数据移动，导致性能雪崩。
-
-### 3. 优化行动项
-
-1.  **重构加权采样 (Weighted Sampling)**:
-    *   实现 `BinaryHeap` (Min-Heap) 版本的 A-Res 算法。
-    *   消除所有不必要的内存分配 (`Vec::push`)。
-
-2.  **实现 Skip Sampling**:
-    *   对于 `sample -p` (伯努利采样)，引入几何分布跳过算法，避免对每一行都调用 RNG。
-
-3.  **调整 I/O 参数**:
-    *   将输入缓冲区从 64KB 提升至 128KB 或 1MB。
-
----
-
-## 对标分析: tsv-join (D语言)
-
-为了解决 `tva join` 比 `tsv-join` 慢 1.5 倍的问题（通过优化 Key 构建逻辑，目前差距已缩小至 1.1 倍），我们对其源码 (`tsv-join.d`) 进行了深度逆向分析。
-
-### 1. 核心组件与流程对比
-
-| 组件 | tsv-join (D) | tva (Rust) | 差异与优势 |
-| :--- | :--- | :--- | :--- |
-| **I/O 缓冲** | `bufferedByLine` (1MB Buffer) | `TsvReader` (128KB Buffer) | **D 微弱优势**。更大的缓冲区能减少 syscall，但 128KB 已接近边际效益递减点。 |
-| **字段解析** | `splitter` (Range Based) | `SelectPlan` + `memchr` | **Rust 胜出**。`tva` 使用预计算的 Plan 和 SIMD 查找，避免了 D 语言 Range 抽象的开销。 |
-| **Key 构建** | `string.join` (Allocation!) | `Cow<'a, [u8]>` (Zero-Copy*) | **Rust 胜出**。D 在构建 Key 时（即使是单列）通常涉及字符串分配或切片复制；`tva` 对单列 Key 实现了完全零拷贝 (`Cow::Borrowed`)，仅多列 Key 需要分配。 |
-| **Hash Map** | `string[string]` (Built-in AA) | `HashMap` (SipHash) | **D 胜出**。这是剩余差距的主要来源。D 的关联数组 (AA) 经过高度优化，且极可能使用了非加密 Hash (如 Murmur)。Rust 默认 `SipHash` 虽然抗 DoS 攻击但速度较慢。 |
-| **内存管理** | GC (Garbage Collection) | RAII (Drop) | **D 胜出 (在小对象分配上)**。在多列 Join 需要分配 Key 时，D 的 GC 指针碰撞分配比 Rust 的 `malloc/free` 更快。 |
-
-### 2. 深度流程分析
-
-#### tsv-join.d (D)
-1.  **Read**: `bufferedByLine` 读取一行。
-2.  **Parse**: `splitter` 切分字段，生成 Range。
-3.  **Key Construction**:
-    *   使用 `InputFieldReordering` 提取字段。
-    *   **Crucial**: 代码中 `key = ... .join(cmdopt.delim).to!string` 表明，对于每一行数据，D 都会分配一个新的 `string` 作为 Key。
-4.  **Lookup**: `values = (key in filterHash)`。
-    *   使用 D 语言内置的 `Associative Array`。
-5.  **Write**: 写入匹配行。
-
-#### tva join.rs (Rust)
-1.  **Read**: `TsvReader` 读取一行 (`&[u8]`)。
-2.  **Parse**: `SelectPlan` 使用 `memchr` 填充 `Vec<Range>` (Zero Allocation, Reused Buffer)。
-3.  **Key Construction**:
-    *   **单列 (常见情况)**: 直接返回 `Cow::Borrowed(&line[range])`。**完全无内存分配**。
-    *   **多列**: `Vec::with_capacity` -> `extend_from_slice` -> `Cow::Owned`。
-4.  **Lookup**: `map.get(key)`。
-    *   Rust 的 `HashMap` 默认使用 `SipHash 1-3`，这是一种加密安全但相对较慢的哈希算法。
-5.  **Write**: 写入匹配行。
-
-### 3. 为什么还有 1.1x 差距?
-
-既然 `tva` 在 I/O 和 Parsing 上实现了零拷贝，甚至在 Key 构建上也优于 D（单列场景），为什么总时间依然慢 10%？
-
-**结论**: **哈希函数的开销掩盖了零拷贝的优势**。
-在 `join` 操作中，哈希表的查找是绝对的热点路径。对于数百万行的 Join，就需要计算数百万次 Hash。
-*   **Rust**: `SipHash` (安全，慢)。
-*   **D**: `MurmurHash` 或类似 (非加密，快)。
-
-### 4. 进一步优化建议
-
-1.  **Prefetching**:
-    *   在计算 Hash 的同时预取内存，但这在纯内存操作中收益可能有限。
-
-### 5. 已实施的优化 (v0.1.0+)
-
-1.  **更换 Hasher**:
-    *   已将 `HashMap` 的 Hasher 替换为 `ahash` (RandomState)。
-    *   预期: 消除 Hash 计算上的性能劣势。
-2.  **Inline Key (Small String Optimization)**:
-    *   使用 `SmallVec<[u8; 32]>` 作为 Key 类型。
-    *   对于短 Key (< 32 字节)，完全消除了堆分配（无论是单列还是多列）。
 
