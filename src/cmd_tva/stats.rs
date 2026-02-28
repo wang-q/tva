@@ -428,7 +428,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     let mut use_grouping = false;
 
     // Helper to setup processor
-    let mut setup_processor = |header_opt: Option<&fields::Header>| -> anyhow::Result<(StatsProcessor, Option<KeyExtractor>, Vec<String>)> {
+    let setup_processor = |header_opt: Option<&fields::Header>| -> anyhow::Result<(StatsProcessor, Option<KeyExtractor>, Vec<String>)> {
         let mut ops = Vec::new();
         let mut output_headers = Vec::new();
 

@@ -344,7 +344,7 @@ mod tests {
 
     #[test]
     fn test_reader_gzip_file() {
-        let mut file = NamedTempFile::new().unwrap();
+        let file = NamedTempFile::new().unwrap();
         let path = file.path().to_str().unwrap().to_string() + ".gz";
         
         {
