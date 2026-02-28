@@ -3,6 +3,8 @@
 mod common;
 
 use common::TvaCmd;
+use std::fs;
+use tempfile::TempDir;
 
 #[test]
 fn check_valid_ctg() -> anyhow::Result<()> {
@@ -59,4 +61,33 @@ fn check_empty_line_zero_fields() -> anyhow::Result<()> {
     ));
 
     Ok(())
+}
+
+#[test]
+fn check_multiple_files_fail_second() -> anyhow::Result<()> {
+    let temp = TempDir::new()?;
+    let file1 = temp.path().join("f1.tsv");
+    let file2 = temp.path().join("f2.tsv");
+    fs::write(&file1, "a\tb\n1\t2\n")?;
+    fs::write(&file2, "a\tb\n1\t2\t3\n")?;
+
+    let file1_str = file1.to_str().unwrap();
+    let file2_str = file2.to_str().unwrap();
+
+    let (_, stderr) = TvaCmd::new()
+        .args(&["check", file1_str, file2_str])
+        .run_fail();
+
+    assert!(stderr.contains("structure check failed"));
+
+    Ok(())
+}
+
+#[test]
+fn check_file_open_error() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["check", "non_existent_file_check.tsv"])
+        .run_fail();
+
+    assert!(stderr.contains("could not open"));
 }

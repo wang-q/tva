@@ -215,44 +215,6 @@ fn test_select_exclude_by_name_with_header() {
 }
 
 // -------------------------------------------------------------------------------------------------
-// Additional sort.rs coverage tests
-// -------------------------------------------------------------------------------------------------
-
-// Moved to tests/cli_sort.rs
-
-// -------------------------------------------------------------------------------------------------
-// check.rs coverage tests
-// -------------------------------------------------------------------------------------------------
-
-#[test]
-fn test_check_multiple_files_fail_second() -> anyhow::Result<()> {
-    let temp = TempDir::new()?;
-    let file1 = temp.path().join("f1.tsv");
-    let file2 = temp.path().join("f2.tsv");
-    fs::write(&file1, "a\tb\n1\t2\n")?;
-    fs::write(&file2, "a\tb\n1\t2\t3\n")?;
-
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("check")
-        .arg(&file1)
-        .arg(&file2)
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("structure check failed"));
-    Ok(())
-}
-
-#[test]
-fn test_check_file_open_error() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("check")
-        .arg("non_existent_file_check.tsv")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("could not open"));
-}
-
-// -------------------------------------------------------------------------------------------------
 // keep-header.rs coverage tests
 // -------------------------------------------------------------------------------------------------
 
