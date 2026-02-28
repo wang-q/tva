@@ -428,83 +428,78 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     let mut use_grouping = false;
 
     // Helper to setup processor
-    let setup_processor = |header: Option<&fields::Header>| -> anyhow::Result<(StatsProcessor, Option<KeyExtractor>, Vec<String>)> {
+    let mut setup_processor = |header_opt: Option<&fields::Header>| -> anyhow::Result<(StatsProcessor, Option<KeyExtractor>, Vec<String>)> {
         let mut ops = Vec::new();
         let mut output_headers = Vec::new();
 
         for config in &op_configs {
-            match config.kind {
-                OpKind::Count => {
+            if let OpKind::Count = config.kind {
+                ops.push(Operation {
+                    kind: OpKind::Count,
+                    field_idx: None,
+                });
+                output_headers.push("count".to_string());
+            } else if let Some(spec) = &config.spec {
+                let indices = fields::parse_field_list_with_header(
+                    spec,
+                    header_opt,
+                    '\t',
+                )
+                .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
+
+                for idx in indices {
+                    let field_idx = idx - 1;
                     ops.push(Operation {
-                        kind: OpKind::Count,
-                        field_idx: None,
+                        kind: config.kind.clone(),
+                        field_idx: Some(field_idx),
                     });
-                    output_headers.push("count".to_string());
-                }
-                _ => {
-                    if let Some(spec) = &config.spec {
-                        let indices = fields::parse_field_list_with_header(
-                            spec,
-                            header,
-                            '\t',
-                        )
-                        .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
 
-                        for idx in indices {
-                            let field_idx = idx - 1;
-                            ops.push(Operation {
-                                kind: config.kind.clone(),
-                                field_idx: Some(field_idx),
-                            });
+                    let suffix = match config.kind {
+                        OpKind::Sum => "_sum",
+                        OpKind::Mean => "_mean",
+                        OpKind::Min => "_min",
+                        OpKind::Max => "_max",
+                        OpKind::Median => "_median",
+                        OpKind::Stdev => "_stdev",
+                        OpKind::Variance => "_variance",
+                        OpKind::Mad => "_mad",
+                        OpKind::First => "_first",
+                        OpKind::Last => "_last",
+                        OpKind::NUnique => "_nunique",
+                        OpKind::Mode => "_mode",
+                        OpKind::GeoMean => "_geomean",
+                        OpKind::HarmMean => "_harmmean",
+                        OpKind::Q1 => "_q1",
+                        OpKind::Q3 => "_q3",
+                        OpKind::IQR => "_iqr",
+                        OpKind::CV => "_cv",
+                        OpKind::Range => "_range",
+                        OpKind::Unique => "_unique",
+                        OpKind::Collapse => "_collapse",
+                        OpKind::Rand => "_rand",
+                        OpKind::Count => "",
+                    };
 
-                            let suffix = match config.kind {
-                                OpKind::Sum => "_sum",
-                                OpKind::Mean => "_mean",
-                                OpKind::Min => "_min",
-                                OpKind::Max => "_max",
-                                OpKind::Median => "_median",
-                                OpKind::Stdev => "_stdev",
-                                OpKind::Variance => "_variance",
-                                OpKind::Mad => "_mad",
-                                OpKind::First => "_first",
-                                OpKind::Last => "_last",
-                                OpKind::NUnique => "_nunique",
-                                OpKind::Mode => "_mode",
-                                OpKind::GeoMean => "_geomean",
-                                OpKind::HarmMean => "_harmmean",
-                                OpKind::Q1 => "_q1",
-                                OpKind::Q3 => "_q3",
-                                OpKind::IQR => "_iqr",
-                                OpKind::CV => "_cv",
-                                OpKind::Range => "_range",
-                                OpKind::Unique => "_unique",
-                                OpKind::Collapse => "_collapse",
-                                OpKind::Rand => "_rand",
-                                OpKind::Count => "", // Should be handled by OpKind::Count branch above
-                            };
-
-                            let name = if let Some(h) = header {
-                                if field_idx < h.fields.len() {
-                                    format!("{}{}", h.fields[field_idx], suffix)
-                                } else {
-                                    format!("field{}{}", idx, suffix)
-                                }
-                            } else {
-                                format!("field{}{}", idx, suffix)
-                            };
-                            output_headers.push(name);
+                    let name = if let Some(h) = header_opt {
+                        if field_idx < h.fields.len() {
+                            format!("{}{}", h.fields[field_idx], suffix)
+                        } else {
+                            format!("field{}{}", idx, suffix)
                         }
-                    }
+                    } else {
+                        format!("field{}{}", idx, suffix)
+                    };
+                    output_headers.push(name);
                 }
             }
         }
 
         let extractor = if let Some(spec) = &group_by_spec {
-            let idxs = fields::parse_field_list_with_header(spec, header, '\t')
-                .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?
-                .into_iter()
-                .map(|i| i - 1)
-                .collect::<Vec<_>>();
+            let idxs = fields::parse_field_list_with_header(spec, header_opt, '\t')
+                .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?;
+                // .into_iter()
+                // .map(|i| i - 1) // KeyExtractor now takes 1-based indices!
+                // .collect::<Vec<_>>();
             if idxs.is_empty() {
                 None
             } else {
@@ -515,22 +510,23 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         };
 
         let mut final_headers = Vec::new();
-        if header_mode {
-            if let Some(h) = header {
-                if let Some(extractor) = &extractor {
-                    if let Some(indices) = &extractor.indices {
-                        for idx in indices {
-                            if *idx < h.fields.len() {
-                                final_headers.push(h.fields[*idx].clone());
-                            } else {
-                                final_headers.push(format!("field{}", idx + 1));
-                            }
+        if let Some(extractor) = &extractor {
+            if let Some(indices) = &extractor.indices {
+                for &idx in indices {
+                    // indices are 1-based
+                    if let Some(h) = header_opt {
+                        if idx > 0 && idx <= h.fields.len() {
+                            final_headers.push(h.fields[idx - 1].to_string());
+                        } else {
+                            final_headers.push(format!("field{}", idx));
                         }
+                    } else {
+                        final_headers.push(format!("field{}", idx));
                     }
                 }
             }
-            final_headers.extend(output_headers);
         }
+        final_headers.extend(output_headers);
 
         Ok((StatsProcessor::new(ops), extractor, final_headers))
     };

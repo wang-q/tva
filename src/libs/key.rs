@@ -47,7 +47,7 @@ pub struct KeyExtractor {
 impl KeyExtractor {
     /// Create a new KeyExtractor.
     /// 
-    /// * `indices`: List of field indices (0-based) to extract. If `None` or empty, the whole line is used as key.
+    /// * `indices`: List of field indices (1-based) to extract. If `None` or empty, the whole line is used as key.
     /// * `ignore_case`: If true, the key will be converted to lowercase.
     /// * `strict`: If true, `extract` returns error if any required field is missing. If false, missing fields are treated as empty.
     pub fn new(indices: Option<Vec<usize>>, ignore_case: bool, strict: bool) -> Self {
@@ -55,10 +55,8 @@ impl KeyExtractor {
             if idxs.is_empty() {
                 None
             } else {
-                // SelectPlan expects 1-based indices if implemented with `current_col_idx = 1`.
-                // Let's adjust to 1-based here.
-                let one_based: Vec<usize> = idxs.iter().map(|&i| i + 1).collect();
-                Some(SelectPlan::new(&one_based))
+                // SelectPlan expects 1-based indices.
+                Some(SelectPlan::new(idxs))
             }
         });
 
@@ -159,11 +157,19 @@ impl KeyExtractor {
 
         // Optimization: Single field
         if indices.len() == 1 {
-            let idx = indices[0]; // 0-based index
-            let field = record.get(idx).unwrap_or(&[]);
+            let idx = indices[0]; // 1-based index
+            // TsvRecord::get is 0-based
+            let field_idx = if idx > 0 { idx - 1 } else { 
+                // idx=0 shouldn't happen for valid SelectPlan/indices if we validate elsewhere,
+                // but if we allow it, it might mean "whole line" or error.
+                // Assuming indices are strictly fields > 0.
+                if self.strict { return Err(idx); } else { return Ok(ParsedKey::Ref(&[])); }
+            };
+            
+            let field = record.get(field_idx).unwrap_or(&[]);
             
             // Check strictness
-            if self.strict && idx >= record.len() {
+            if self.strict && field_idx >= record.len() {
                 return Err(idx);
             }
 
@@ -185,8 +191,12 @@ impl KeyExtractor {
                 key.push(delimiter);
             }
             
-            let field = if idx < record.len() {
-                record.get(idx).unwrap()
+            let field_idx = if idx > 0 { idx - 1 } else {
+                if self.strict { return Err(idx); } else { usize::MAX }
+            };
+
+            let field = if field_idx < record.len() {
+                record.get(field_idx).unwrap()
             } else {
                 if self.strict {
                     return Err(idx);
@@ -207,21 +217,12 @@ impl KeyExtractor {
 
     /// Extract key from a Row implementation.
     /// Note: `Row` trait uses 1-based indexing for `get_bytes`.
-    /// `KeyExtractor` uses 0-based indices internally (from `SelectPlan` or `indices` arg).
-    /// So we need to add 1 when calling `get_bytes`.
+    /// `KeyExtractor` now uses 1-based indices internally.
     pub fn extract_from_row<'a, R: crate::libs::tsv::record::Row + ?Sized>(&mut self, row: &'a R, delimiter: u8) -> Result<ParsedKey<'a>, usize> {
         // Case 1: Whole line
         if self.indices.is_none() {
             // Row trait doesn't expose whole line easily.
             // We assume caller handles whole line case or we fail.
-            // But for `stats`, if no group-by, we don't call this.
-            // If group-by is empty, `indices` is None? No, `new` handles empty -> None.
-            // If `group-by` is not provided, `indices` is empty vec in `stats.rs`?
-            // In `stats.rs`, `group_indices` is `Vec<usize>`.
-            // If it's empty, `use_grouping` is false, and we don't extract key.
-            // So for `stats`, we only call this when `indices` is Some/non-empty.
-            
-            // However, to be safe:
             return Ok(ParsedKey::Ref(&[])); // Or error?
         }
 
@@ -229,17 +230,11 @@ impl KeyExtractor {
 
         // Optimization: Single field
         if indices.len() == 1 {
-            let idx = indices[0]; // 0-based index
-            // Row uses 1-based index
-            let field = row.get_bytes(idx + 1).unwrap_or(&[]);
+            let idx = indices[0]; // 1-based index
+            let field = row.get_bytes(idx).unwrap_or(&[]);
             
             // Row::get_bytes returns None if out of bounds.
-            // If field is None, it means index is out of bounds (or 0).
-            // We check strictness.
-            if self.strict && row.get_bytes(idx + 1).is_none() {
-                 // Check if it's really out of bounds.
-                 // We don't know row length easily from Row trait.
-                 // But get_bytes returns None.
+            if self.strict && row.get_bytes(idx).is_none() {
                  return Err(idx);
             }
 
@@ -261,7 +256,7 @@ impl KeyExtractor {
                 key.push(delimiter);
             }
             
-            let field = row.get_bytes(idx + 1);
+            let field = row.get_bytes(idx);
             let field_bytes = if let Some(f) = field {
                 f
             } else {
@@ -308,8 +303,8 @@ mod tests {
 
     #[test]
     fn test_extract_single_field() {
-        // Field 1 is B
-        let mut extractor = KeyExtractor::new(Some(vec![1]), false, true);
+        // Field 1 is B (idx 2)
+        let mut extractor = KeyExtractor::new(Some(vec![2]), false, true);
         let line = b"A\tB\tC";
         
         let key = extractor.extract(line, b'\t').unwrap();
@@ -318,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_extract_single_field_ignore_case() {
-        let mut extractor = KeyExtractor::new(Some(vec![1]), true, true);
+        let mut extractor = KeyExtractor::new(Some(vec![2]), true, true);
         let line = b"A\tB\tC";
         
         let key = extractor.extract(line, b'\t').unwrap();
@@ -327,8 +322,8 @@ mod tests {
 
     #[test]
     fn test_extract_multiple_fields() {
-        // Indices 0 and 2 -> A and C
-        let mut extractor = KeyExtractor::new(Some(vec![0, 2]), false, true);
+        // Indices 1 and 3 -> A and C
+        let mut extractor = KeyExtractor::new(Some(vec![1, 3]), false, true);
         let line = b"A\tB\tC";
         
         let key = extractor.extract(line, b'\t').unwrap();
@@ -337,8 +332,8 @@ mod tests {
 
     #[test]
     fn test_extract_multiple_fields_reorder() {
-        // Indices: 2, 0 -> Fields "C", "A"
-        let mut extractor = KeyExtractor::new(Some(vec![2, 0]), false, true);
+        // Indices: 3, 1 -> Fields "C", "A"
+        let mut extractor = KeyExtractor::new(Some(vec![3, 1]), false, true);
         let line = b"A\tB\tC";
         
         let key = extractor.extract(line, b'\t').unwrap();
@@ -348,14 +343,9 @@ mod tests {
 
     #[test]
     fn test_strict_mode() {
-        // Index 3 out of bounds (0, 1, 2)
-        let mut extractor = KeyExtractor::new(Some(vec![3]), false, true);
+        // Index 4 out of bounds (1, 2, 3)
+        let mut extractor = KeyExtractor::new(Some(vec![4]), false, true);
         let line = b"A\tB\tC";
-        
-        // This fails because SelectPlan doesn't check strictness itself, 
-        // but KeyExtractor uses it.
-        // Wait, SelectPlan returns Err if missing.
-        // But KeyExtractor propagates it if strict.
         
         let result = extractor.extract(line, b'\t');
         assert!(result.is_err());
@@ -363,20 +353,18 @@ mod tests {
 
     #[test]
     fn test_non_strict_mode() {
-        // Index 3 out of bounds
-        let mut extractor = KeyExtractor::new(Some(vec![3]), false, false);
+        // Index 4 out of bounds
+        let mut extractor = KeyExtractor::new(Some(vec![4]), false, false);
         let line = b"A\tB\tC";
         
         let key = extractor.extract(line, b'\t').unwrap();
-        // Should be empty string if field missing and non-strict?
-        // Or strict error?
-        // If non-strict, KeyExtractor proceeds with empty range.
         assert_eq!(key.as_ref(), b"");
     }
 
     #[test]
     fn test_extract_from_record() {
-        let mut extractor = KeyExtractor::new(Some(vec![1]), false, true);
+        // Field 2 is B
+        let mut extractor = KeyExtractor::new(Some(vec![2]), false, true);
         let mut record = TsvRecord::new();
         record.parse_line(b"A\tB\tC", b'\t');
         
@@ -386,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_extract_from_record_ignore_case() {
-        let mut extractor = KeyExtractor::new(Some(vec![1]), true, true);
+        let mut extractor = KeyExtractor::new(Some(vec![2]), true, true);
         let mut record = TsvRecord::new();
         record.parse_line(b"A\tB\tC", b'\t');
         
@@ -396,7 +384,8 @@ mod tests {
 
     #[test]
     fn test_extract_from_record_strict() {
-        let mut extractor = KeyExtractor::new(Some(vec![3]), false, true);
+        // Index 4 out of bounds
+        let mut extractor = KeyExtractor::new(Some(vec![4]), false, true);
         let mut record = TsvRecord::new();
         record.parse_line(b"A\tB\tC", b'\t');
         

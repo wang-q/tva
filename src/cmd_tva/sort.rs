@@ -146,11 +146,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let indices = if key_indices.is_empty() {
+    let indices: Vec<usize> = if key_indices.is_empty() {
         let max_fields = rows.iter().map(|r| r.len()).max().unwrap_or(0);
-        (0..max_fields).collect()
+        (1..=max_fields).collect() // 1-based indices for all fields
     } else {
-        key_indices
+        key_indices.iter().map(|&i| i + 1).collect() // Convert 0-based to 1-based
     };
 
     if numeric {
@@ -158,8 +158,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut keyed_rows: Vec<(Vec<f64>, TsvRecord)> = Vec::with_capacity(rows.len());
         for record in rows {
             let mut key = Vec::with_capacity(indices.len());
-            for &idx in &indices {
-                let field = record.get(idx).unwrap_or(b"");
+            for &idx in &indices { // idx is 1-based
+                let field = record.get(idx - 1).unwrap_or(b""); // get is 0-based
                 // Optimization: parse directly from bytes without full utf8 check if possible,
                 // but standard parse requires &str.
                 // from_utf8_lossy might allocate, from_utf8 is better.
@@ -202,6 +202,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // Tab is \t (9). Visible chars >= 32.
         // So this optimization is valid for standard text.
         
+        // KeyExtractor now expects 1-based indices.
         let mut extractor = KeyExtractor::new(Some(indices), false, false); // strict=false to handle missing fields gracefully
         
         // We use KeyBuffer (SmallVec) to store keys.
