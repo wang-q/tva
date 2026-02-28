@@ -70,34 +70,29 @@ Alternatively, you can download individual files from the [docs/data](https://gi
 
 ## Commands
 
-### Selection & Sampling
-See [Selection & Sampling Documentation](docs/selection.md).
+### [Selection & Sampling](docs/selection.md)
 
 - **`select`**: Select and reorder columns.
 - **`slice`**: Slice rows by index (keep or drop). Supports multiple ranges and header preservation.
 - **`sample`**: Randomly sample rows (Bernoulli, reservoir, weighted).
 
-### Filtering
-See [Row Filtering Documentation](docs/filtering.md).
+### [Filtering](docs/filtering.md)
 
 - **`filter`**: Filter rows based on numeric, string, regex, or date criteria.
 
-### Ordering
-See [Ordering Documentation](docs/ordering.md).
+### [Ordering](docs/ordering.md)
 
 - **`sort`**: Sorts rows based on one or more key fields.
 - **`reverse`**: Reverses the order of lines (like `tac`), optionally keeping the header at the top.
 - **`transpose`**: Swaps rows and columns (matrix transposition).
 
-### Statistics & Summary
-See [Statistics Documentation](docs/statistics.md).
+### [Statistics & Summary](docs/statistics.md)
 
 - **`stats`**: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.
 - **`bin`**: Discretize numeric values into bins (useful for histograms).
 - **`uniq`**: Deduplicate rows or count unique occurrences (supports equivalence classes).
 
-### Reshaping
-See [Reshaping Documentation](docs/reshape.md).
+### [Reshaping](docs/reshape.md)
 
 - **`longer`**: Reshape wide to long (unpivot). Requires a header row.
 - **`wider`**: Reshape long to wide (pivot). Supports aggregation via `--op` (sum, count, etc.).
@@ -109,15 +104,13 @@ See [Reshaping Documentation](docs/reshape.md).
 | **Goal** | Summarize to rows | Reshape to columns |
 | **Output** | Long / Tall | Wide / Matrix |
 
-### Combining & Splitting
-See [Combining Documentation](docs/combining.md).
+### [Combining & Splitting](docs/combining.md)
 
 - **`join`**: Join two files based on common keys (inner, left, outer, anti).
 - **`append`**: Concatenate multiple TSV files, handling headers correctly.
 - **`split`**: Split a file into multiple files (by size, key, or random).
 
-### Formatting & Utilities
-See [Utilities Documentation](docs/utilities.md).
+### [Formatting & Utilities](docs/utilities.md)
 
 - **`from`**: Convert other formats to TSV (csv, xlsx).
 - **`to`**: Convert TSV to other formats (csv, xlsx).
