@@ -68,39 +68,7 @@ fn test_select_empty_selection() {
 // sort.rs coverage tests
 // -------------------------------------------------------------------------------------------------
 
-#[test]
-fn test_sort_invalid_delimiter() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sort")
-        .arg("--delimiter")
-        .arg("TAB")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("delimiter must be a single byte"));
-}
-
-#[test]
-fn test_sort_invalid_key() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sort")
-        .arg("--key")
-        .arg("0") // 1-based index required
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("field index must be >= 1"));
-}
-
-#[test]
-fn test_sort_empty_input() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sort")
-        .write_stdin("")
-        .assert()
-        .success()
-        .stdout(predicate::str::is_empty());
-}
+// Moved to tests/cli_sort.rs
 
 // -------------------------------------------------------------------------------------------------
 // sample.rs coverage tests
@@ -492,17 +460,7 @@ fn test_select_exclude_by_name_with_header() {
 // Additional sort.rs coverage tests
 // -------------------------------------------------------------------------------------------------
 
-#[test]
-fn test_sort_empty_key_part() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sort")
-        .arg("-k")
-        .arg("1,,2")
-        .write_stdin("a\tb\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("empty key list element"));
-}
+// Moved to tests/cli_sort.rs
 
 // -------------------------------------------------------------------------------------------------
 // check.rs coverage tests
