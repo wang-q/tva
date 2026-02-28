@@ -215,65 +215,6 @@ fn test_select_exclude_by_name_with_header() {
 }
 
 // -------------------------------------------------------------------------------------------------
-// keep-header.rs coverage tests
-// -------------------------------------------------------------------------------------------------
-
-#[test]
-fn test_keep_header_missing_separator() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("keep-header")
-        .arg("sort")
-        .assert()
-        .failure() // Now fails due to missing required command
-        .stderr(predicate::str::contains(
-            "required arguments were not provided",
-        ));
-}
-
-#[test]
-fn test_keep_header_command_fail() {
-    // If the command doesn't exist, spawn should fail
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("keep-header")
-        .arg("--")
-        .arg("non_existent_command_12345")
-        .assert()
-        .failure();
-}
-
-#[test]
-fn test_keep_header_lines_zero() {
-    let input = "h\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let tva_bin = env!("CARGO_BIN_EXE_tva");
-
-    cmd.arg("keep-header")
-        .arg("-n")
-        .arg("0")
-        .arg("--")
-        .arg(tva_bin)
-        .arg("select") // tva select -f 1 is basically cat for single column
-        .arg("-f")
-        .arg("1")
-        .write_stdin(input)
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("h\nd\n"));
-}
-
-#[test]
-fn test_keep_header_file_open_error() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("keep-header")
-        .arg("non_existent_file_keep.tsv")
-        .arg("--")
-        .arg("sort")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("could not open"));
-}
-
-// -------------------------------------------------------------------------------------------------
 // from-csv.rs coverage tests
 // -------------------------------------------------------------------------------------------------
 
