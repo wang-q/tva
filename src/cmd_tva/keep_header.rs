@@ -81,7 +81,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut remaining = header_lines;
 
         let mut reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
-        
+
         reader.for_each_record(|line| {
             file_had_content = true;
             if remaining > 0 {

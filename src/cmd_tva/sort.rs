@@ -1,6 +1,6 @@
-use clap::*;
+use crate::libs::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::record::TsvRecord;
-use crate::libs::key::{KeyExtractor, KeyBuffer};
+use clap::*;
 use intspan::IntSpan;
 use std::cmp::Ordering;
 use std::io::Write;
@@ -104,7 +104,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut header_written = false;
 
     for input in crate::libs::io::raw_input_sources(&infiles) {
-        let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
+        let mut reader =
+            crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_line = true;
 
         reader.for_each_record(|record| {
@@ -125,7 +126,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 tsv_rec.parse_line(record, delimiter);
                 rows.push(tsv_rec);
             }
-            
+
             is_first_line = false;
             Ok(())
         })?;
@@ -141,7 +142,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     if rows.is_empty() {
         if !header_written {
-             writer.flush()?;
+            writer.flush()?;
         }
         return Ok(());
     }
@@ -158,11 +159,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut keyed_rows: Vec<(Vec<f64>, TsvRecord)> = Vec::with_capacity(rows.len());
         for record in rows {
             let mut key = Vec::with_capacity(indices.len());
-            for &idx in &indices { // idx is 1-based
+            for &idx in &indices {
+                // idx is 1-based
                 let field = record.get(idx - 1).unwrap_or(b""); // get is 0-based
-                // Optimization: parse directly from bytes without full utf8 check if possible,
-                // but standard parse requires &str.
-                // from_utf8_lossy might allocate, from_utf8 is better.
+                                                                // Optimization: parse directly from bytes without full utf8 check if possible,
+                                                                // but standard parse requires &str.
+                                                                // from_utf8_lossy might allocate, from_utf8 is better.
                 let s = std::str::from_utf8(field).unwrap_or("");
                 let n: f64 = s.trim().parse().unwrap_or(0.0);
                 key.push(n);
@@ -201,13 +203,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // If delimiter < any content char, this is equivalent to tuple comparison.
         // Tab is \t (9). Visible chars >= 32.
         // So this optimization is valid for standard text.
-        
+
         // KeyExtractor now expects 1-based indices.
         let mut extractor = KeyExtractor::new(Some(indices), false, false); // strict=false to handle missing fields gracefully
-        
+
         // We use KeyBuffer (SmallVec) to store keys.
         let mut keyed_rows: Vec<(KeyBuffer, TsvRecord)> = Vec::with_capacity(rows.len());
-        
+
         for record in rows {
             let key_res = extractor.extract_from_record(&record, delimiter);
             let key = match key_res {

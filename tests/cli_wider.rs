@@ -421,7 +421,7 @@ fn wider_extended_stats() -> anyhow::Result<()> {
     writeln!(file, "A\tX\t1")?;
     writeln!(file, "A\tX\t3")?;
     writeln!(file, "A\tX\t5")?;
-    
+
     // Group B: 2, 2, 8.
     // Min=2, Max=8, Median=2, Mode=2
     writeln!(file, "B\tX\t2")?;
@@ -498,7 +498,7 @@ fn wider_extended_stats() -> anyhow::Result<()> {
     let stdout_mode = String::from_utf8(output_mode.stdout)?.replace("\r\n", "\n");
     // Mode for A is 1 (or 3 or 5, implementation dependent for ties, usually first/lowest?)
     // Our implementation sorts by count desc, then value asc. So 1.
-    assert!(stdout_mode.contains("A\t1")); 
+    assert!(stdout_mode.contains("A\t1"));
     assert!(stdout_mode.contains("B\t2"));
 
     Ok(())

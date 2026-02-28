@@ -1,6 +1,6 @@
 use crate::libs::io::map_io_err;
-use crate::libs::tsv::reader::TsvReader;
 use crate::libs::key::KeyExtractor;
+use crate::libs::tsv::reader::TsvReader;
 use clap::*;
 use rapidhash::rapidhash;
 use std::collections::HashMap;
@@ -198,7 +198,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut header_written = false;
     let mut header: Option<crate::libs::tsv::fields::Header> = None;
-    
+
     // Extractor handles key extraction logic
     let mut extractor: Option<KeyExtractor> = None;
 
@@ -214,14 +214,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         if has_header {
             if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
-                 if header.is_none() {
+                if header.is_none() {
                     let line = String::from_utf8_lossy(&header_bytes);
                     header = Some(crate::libs::tsv::fields::Header::from_line(
                         &line, delimiter,
                     ));
                     if let Some(ref spec) = fields_spec {
                         if spec.trim() == "0" {
-                             extractor = Some(KeyExtractor::new(None, ignore_case, false));
+                            extractor =
+                                Some(KeyExtractor::new(None, ignore_case, false));
                         } else {
                             let parsed =
                                 crate::libs::tsv::fields::parse_field_list_with_header(
@@ -230,7 +231,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                                     delimiter,
                                 );
                             match parsed {
-                                Ok(v) => extractor = Some(KeyExtractor::new(Some(v), ignore_case, false)),
+                                Ok(v) => {
+                                    extractor = Some(KeyExtractor::new(
+                                        Some(v),
+                                        ignore_case,
+                                        false,
+                                    ))
+                                }
                                 Err(e) => {
                                     arg_error(&e);
                                 }
@@ -242,7 +249,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if !header_written {
                     // Reconstruct header line (without newline)
                     writer.write_all(&header_bytes)?;
-                    
+
                     if equiv_mode {
                         writer.write_all(&[delimiter as u8])?;
                         writer.write_all(equiv_header.as_bytes())?;
@@ -267,12 +274,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if spec.trim() == "0" {
                     extractor = Some(KeyExtractor::new(None, ignore_case, false));
                 } else {
-                    let parsed =
-                        crate::libs::tsv::fields::parse_field_list_with_header(
-                            spec, None, delimiter,
-                        );
+                    let parsed = crate::libs::tsv::fields::parse_field_list_with_header(
+                        spec, None, delimiter,
+                    );
                     match parsed {
-                        Ok(v) => extractor = Some(KeyExtractor::new(Some(v), ignore_case, false)),
+                        Ok(v) => {
+                            extractor =
+                                Some(KeyExtractor::new(Some(v), ignore_case, false))
+                        }
                         Err(e) => {
                             arg_error(&e);
                         }
@@ -284,59 +293,62 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        tsv_reader.for_each_record(|line| {
-            let subject = {
-                let key_res = extractor.as_mut().unwrap().extract(line, delimiter as u8);
-                // With strict=false, extract should return Ok unless something internal fails heavily.
-                // Missing fields are treated as empty, so we get a key.
-                if let Ok(parsed_key) = key_res {
-                    rapidhash(parsed_key.as_ref())
-                } else {
-                    // Should theoretically not happen with strict=false, but as fallback
-                    rapidhash(&[])
-                }
-            };
+        tsv_reader
+            .for_each_record(|line| {
+                let subject = {
+                    let key_res =
+                        extractor.as_mut().unwrap().extract(line, delimiter as u8);
+                    // With strict=false, extract should return Ok unless something internal fails heavily.
+                    // Missing fields are treated as empty, so we get a key.
+                    if let Ok(parsed_key) = key_res {
+                        rapidhash(parsed_key.as_ref())
+                    } else {
+                        // Should theoretically not happen with strict=false, but as fallback
+                        rapidhash(&[])
+                    }
+                };
 
-            let entry = equiv_map.entry(subject).or_insert_with(|| {
-                let id = next_equiv_id;
-                next_equiv_id += 1;
-                EquivEntry {
-                    equiv_id: id,
-                    count: 0,
-                }
-            });
-            entry.count += 1;
+                let entry = equiv_map.entry(subject).or_insert_with(|| {
+                    let id = next_equiv_id;
+                    next_equiv_id += 1;
+                    EquivEntry {
+                        equiv_id: id,
+                        count: 0,
+                    }
+                });
+                entry.count += 1;
 
-            let mut is_output = false;
-            if entry.count == 1 {
-                if at_least <= 1 {
+                let mut is_output = false;
+                if entry.count == 1 {
+                    if at_least <= 1 {
+                        is_output = true;
+                    }
+                } else if (entry.count <= max && entry.count >= at_least)
+                    || (equiv_mode && max == 0)
+                    || (number_mode && max == 0)
+                {
                     is_output = true;
                 }
-            } else if (entry.count <= max && entry.count >= at_least)
-                || (equiv_mode && max == 0)
-                || (number_mode && max == 0)
-            {
-                is_output = true;
-            }
 
-            if is_output {
-                writer.write_all(line)?;
-                if equiv_mode {
-                    writer.write_all(&[delimiter as u8])?;
-                    writer.write_all(entry.equiv_id.to_string().as_bytes())?;
+                if is_output {
+                    writer.write_all(line)?;
+                    if equiv_mode {
+                        writer.write_all(&[delimiter as u8])?;
+                        writer.write_all(entry.equiv_id.to_string().as_bytes())?;
+                    }
+                    if number_mode {
+                        writer.write_all(&[delimiter as u8])?;
+                        writer.write_all(entry.count.to_string().as_bytes())?;
+                    }
+                    writer.write_all(b"\n")?;
+
+                    if line_buffered {
+                        writer.flush()?;
+                    }
                 }
-                if number_mode {
-                    writer.write_all(&[delimiter as u8])?;
-                    writer.write_all(entry.count.to_string().as_bytes())?;
-                }
-                writer.write_all(b"\n")?;
-                
-                if line_buffered {
-                    writer.flush()?;
-                }
-            }
-            Ok(())
-        }).map_err(map_io_err)?;
+                Ok(())
+            })
+            .map_err(map_io_err)?;
     }
 
     Ok(())

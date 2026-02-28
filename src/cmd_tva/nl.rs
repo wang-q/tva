@@ -92,7 +92,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
 
         let mut reader = crate::libs::tsv::reader::TsvReader::new(
-            crate::libs::io::raw_reader(infile)
+            crate::libs::io::raw_reader(infile),
         );
         let mut file_line_num: u64 = 0;
 

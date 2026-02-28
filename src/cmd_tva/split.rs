@@ -211,14 +211,14 @@ fn key_bucket(record: &[u8], indices: &[usize], num_files: usize) -> usize {
     for &target_idx in indices {
         // Advance to target_idx
         while field_idx < target_idx {
-             if let Some(pos) = next_tab {
-                 last_pos = pos + 1;
-                 next_tab = iter.next();
-                 field_idx += 1;
-             } else {
-                 // End of record
-                 break;
-             }
+            if let Some(pos) = next_tab {
+                last_pos = pos + 1;
+                next_tab = iter.next();
+                field_idx += 1;
+            } else {
+                // End of record
+                break;
+            }
         }
 
         if !first {
@@ -352,7 +352,8 @@ fn split_by_line_count(
     let mut current_lines: u64 = 0;
 
     for input in crate::libs::io::raw_input_sources(infiles) {
-        let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
+        let mut reader =
+            crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_nonempty = true;
 
         reader.for_each_record(|record| {
@@ -368,10 +369,7 @@ fn split_by_line_count(
                 return Ok(());
             }
 
-            if config.header_in_out
-                && !header_seen
-                && is_first_nonempty
-            {
+            if config.header_in_out && !header_seen && is_first_nonempty {
                 if header_line.is_none() {
                     header_line = Some(record.to_vec());
                 }
@@ -385,7 +383,9 @@ fn split_by_line_count(
             if current_writer.is_none() || current_lines >= lines_per_file {
                 let (writer, _) =
                     open_output_file(config, current_idx0, header_line.as_deref())
-                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                        .map_err(|e| {
+                            std::io::Error::new(std::io::ErrorKind::Other, e)
+                        })?;
                 current_writer = Some(writer);
                 current_lines = 0;
                 current_idx0 += 1;
@@ -422,7 +422,8 @@ fn split_randomly(
     let mut outputs: BTreeMap<usize, SplitOutput> = BTreeMap::new();
 
     for input in crate::libs::io::raw_input_sources(infiles) {
-        let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
+        let mut reader =
+            crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_nonempty = true;
 
         reader.for_each_record(|record| {
@@ -432,13 +433,10 @@ fn split_randomly(
                 // Let's assign to random bucket 0 if random, or key bucket hash("")?
                 // To match behavior, let's process them.
                 // But empty lines can't be header.
-                
+
                 // For simplicity, let's treat empty lines as data lines.
                 // If random, pick random. If key, key is empty string.
-            } else if config.header_in_out
-                && !header_seen
-                && is_first_nonempty
-            {
+            } else if config.header_in_out && !header_seen && is_first_nonempty {
                 if header_line.is_none() {
                     header_line = Some(record.to_vec());
                 }
@@ -459,13 +457,9 @@ fn split_randomly(
                 (r as usize) % num_files
             };
 
-            let output = get_or_create_output(
-                &mut outputs,
-                idx0,
-                config,
-                header_line.as_deref(),
-            )
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            let output =
+                get_or_create_output(&mut outputs, idx0, config, header_line.as_deref())
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
             if config.header_in_out && !output.header_written {
                 if let Some(header) = header_line.as_deref() {

@@ -3,10 +3,7 @@ use assert_cmd::cargo::cargo_bin_cmd;
 #[test]
 fn md_basic() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("md")
-        .write_stdin("H1\tH2\nA\t1\nB\t2\n")
-        .output()?;
+    let output = cmd.arg("md").write_stdin("H1\tH2\nA\t1\nB\t2\n").output()?;
 
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
     // The markdown formatter aligns columns
@@ -27,7 +24,8 @@ fn md_center() -> anyhow::Result<()> {
         .output()?;
 
     let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
-    let expected = "|  H1   | H2  |\n| :---: | --- |\n|   A   | 1   |\n|   B   | 2   |\n";
+    let expected =
+        "|  H1   | H2  |\n| :---: | --- |\n|   A   | 1   |\n|   B   | 2   |\n";
     assert_eq!(stdout, expected);
 
     Ok(())

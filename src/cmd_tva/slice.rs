@@ -111,7 +111,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     ranges.sort_by_key(|r| r.start);
 
     for input in crate::libs::io::raw_input_sources(&infiles) {
-        let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
+        let mut reader =
+            crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut line_num = 0;
 
         reader.for_each_record(|record| {

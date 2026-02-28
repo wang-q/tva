@@ -156,7 +156,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut state = ProcessState::new();
 
     for input in crate::libs::io::raw_input_sources(&infiles) {
-         process_file(input, &config, &mut state)?;
+        process_file(input, &config, &mut state)?;
     }
 
     write_output(&mut writer, &state, &config)?;
@@ -248,40 +248,42 @@ fn process_file(
     }
 
     // Process rows
-    tsv_reader.for_each_row(|row| {
-        // Extract ID key
-        let mut key = Vec::new();
-        for (k_i, &idx) in state.id_indices.iter().enumerate() {
-            if k_i > 0 {
-                key.push(b'\t');
+    tsv_reader
+        .for_each_row(|row| {
+            // Extract ID key
+            let mut key = Vec::new();
+            for (k_i, &idx) in state.id_indices.iter().enumerate() {
+                if k_i > 0 {
+                    key.push(b'\t');
+                }
+                if let Some(field) = row.get_bytes(idx + 1) {
+                    key.extend_from_slice(field);
+                }
             }
-            if let Some(field) = row.get_bytes(idx + 1) {
-                key.extend_from_slice(field);
-            }
-        }
 
-        // Extract Name
-        let name = row.get_bytes(state.names_idx + 1).unwrap_or(&[]).to_vec();
+            // Extract Name
+            let name = row.get_bytes(state.names_idx + 1).unwrap_or(&[]).to_vec();
 
-        // Extract Value
-        let value = if let Some(idx) = state.values_idx {
-            row.get_bytes(idx + 1).unwrap_or(&[])
-        } else {
-            &[]
-        };
+            // Extract Value
+            let value = if let Some(idx) = state.values_idx {
+                row.get_bytes(idx + 1).unwrap_or(&[])
+            } else {
+                &[]
+            };
 
-        state.all_names.insert(name.clone());
+            state.all_names.insert(name.clone());
 
-        state
-            .data
-            .entry(key)
-            .or_default()
-            .entry(name)
-            .or_insert_with(Cell::new)
-            .update(value, config.op);
-            
-        Ok(())
-    }).map_err(map_io_err)?;
+            state
+                .data
+                .entry(key)
+                .or_default()
+                .entry(name)
+                .or_insert_with(Cell::new)
+                .update(value, config.op);
+
+            Ok(())
+        })
+        .map_err(map_io_err)?;
 
     Ok(())
 }

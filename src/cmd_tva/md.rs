@@ -61,7 +61,7 @@ pub fn make_subcommand() -> Command {
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
     let mut reader = crate::libs::tsv::reader::TsvReader::new(
-        crate::libs::io::raw_reader(args.get_one::<String>("infile").unwrap())
+        crate::libs::io::raw_reader(args.get_one::<String>("infile").unwrap()),
     );
 
     let mut opt_center: intspan::IntSpan = if args.contains_id("center") {
@@ -91,11 +91,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut is_numeric_column = vec![];
 
     // Read all data into memory (required for alignment detection and markdown table structure)
-    // TsvReader iterates over bytes, we convert to String for now as markdown formatting 
+    // TsvReader iterates over bytes, we convert to String for now as markdown formatting
     // and numeric parsing needs strings.
     // Optimization: could store as Vec<Vec<Vec<u8>>> or similar but markdown formatter likely needs strings.
     let mut data: Vec<Vec<String>> = Vec::new();
-    
+
     reader.for_each_record(|line| {
         let fields: Vec<String> = line
             .split(|&b| b == b'\t')
@@ -115,7 +115,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             for row in data.iter().skip(1) {
                 // Skip the header row
                 for (i, value) in row.iter().enumerate() {
-                    if i < num_columns && is_numeric_column[i] && value.parse::<f64>().is_err() {
+                    if i < num_columns
+                        && is_numeric_column[i]
+                        && value.parse::<f64>().is_err()
+                    {
                         is_numeric_column[i] = false;
                     }
                 }
@@ -130,15 +133,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
             }
         } else if is_fmt {
-             // If fmt is on but num check logic didn't run (though we set is_num=true if is_fmt is true),
-             // actually logic above handles it. But let's ensure is_numeric_column is sized if needed later.
-             if is_numeric_column.is_empty() {
-                 is_numeric_column = vec![false; num_columns];
-             }
+            // If fmt is on but num check logic didn't run (though we set is_num=true if is_fmt is true),
+            // actually logic above handles it. But let's ensure is_numeric_column is sized if needed later.
+            if is_numeric_column.is_empty() {
+                is_numeric_column = vec![false; num_columns];
+            }
         } else {
-             if is_numeric_column.is_empty() {
-                 is_numeric_column = vec![false; num_columns];
-             }
+            if is_numeric_column.is_empty() {
+                is_numeric_column = vec![false; num_columns];
+            }
         }
 
         // Print the Markdown table
@@ -150,7 +153,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     // Don't touch first row
                     if i == 0 {
                         value.to_string()
-                    } else if is_fmt && j < is_numeric_column.len() && is_numeric_column[j] {
+                    } else if is_fmt
+                        && j < is_numeric_column.len()
+                        && is_numeric_column[j]
+                    {
                         if let Ok(num) = value.parse::<f64>() {
                             crate::libs::number::format_number(num, opt_digits)
                         } else {

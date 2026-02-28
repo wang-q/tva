@@ -1,5 +1,5 @@
-use clap::*;
 use crate::libs::tsv::reader::TsvReader;
+use clap::*;
 
 pub fn make_subcommand() -> Command {
     Command::new("check")
@@ -27,7 +27,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         reader.for_each_record(|record| {
             total_lines += 1;
-            
+
             let fields = if record.is_empty() {
                 0
             } else {

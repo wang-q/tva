@@ -306,12 +306,12 @@ fn stats_advanced_math() {
     let lines: Vec<&str> = stdout.trim().lines().collect();
     assert_eq!(lines.len(), 2);
     assert_eq!(lines[0], "val_geomean\tval_harmmean\tval_range\tval_cv");
-    
+
     let parts: Vec<&str> = lines[1].split('\t').collect();
     assert_eq!(parts[0], "4");
     assert_eq!(parts[1], "3.2");
     assert_eq!(parts[2], "6");
-    
+
     let cv: f64 = parts[3].parse().unwrap();
     assert!((cv - 0.848528).abs() < 1e-5);
 }
@@ -378,12 +378,12 @@ fn stats_string_ops() {
     let lines: Vec<&str> = stdout.trim().lines().collect();
     assert_eq!(lines.len(), 2);
     assert_eq!(lines[0], "txt_unique\ttxt_collapse");
-    
+
     // Unique: A,B (sorted)
-    // Collapse: A,B,A (input order preserved usually, but implementation dependent? 
+    // Collapse: A,B,A (input order preserved usually, but implementation dependent?
     // Actually implementation might just join. Let's check output.)
     // If unique sorts, it should be A,B.
-    
+
     let unique_val = lines[1].split('\t').next().unwrap();
     // Unique likely comma separated
     assert!(unique_val == "A,B" || unique_val == "B,A");
@@ -415,7 +415,7 @@ fn stats_rand() {
     let lines: Vec<&str> = stdout.trim().lines().collect();
     assert_eq!(lines.len(), 2);
     assert_eq!(lines[0], "val_rand");
-    
+
     let val = lines[1];
     assert!(val == "100" || val == "200");
 }

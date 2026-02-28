@@ -108,7 +108,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     format!(" in '{}'", infile)
                 };
 
-                eprintln!("tva from csv: invalid CSV{}{}: {}", file_info, line_info, err);
+                eprintln!(
+                    "tva from csv: invalid CSV{}{}: {}",
+                    file_info, line_info, err
+                );
                 std::process::exit(1);
             }
         }

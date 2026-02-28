@@ -168,7 +168,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 let mut computed_name = String::new();
                 if let Some(regex) = &names_pattern {
-                     if let Some(caps) = regex.captures(name_part) {
+                    if let Some(caps) = regex.captures(name_part) {
                         for i in 1..=names_to.len() {
                             if i > 1 {
                                 computed_name.push('\t');
@@ -181,7 +181,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         // Fallback: write original name in first col, tabs for others
                         computed_name.push_str(name_part);
                         for _ in 1..names_to.len() {
-                             computed_name.push('\t');
+                            computed_name.push('\t');
                         }
                     }
                 } else if let Some(sep) = names_sep {
@@ -209,7 +209,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let i_indices = id_indices.as_ref().unwrap();
         let name_bytes = melt_name_bytes.as_ref().unwrap();
         let mut field_buf: Vec<usize> = Vec::with_capacity(current_header_fields.len());
-        
+
         // Process remaining rows
         reader.for_each_record(|line| {
             if line.is_empty() {
@@ -229,7 +229,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if idx >= len {
                     return b"";
                 }
-                let end = if idx < ends.len() { ends[idx] } else { line.len() };
+                let end = if idx < ends.len() {
+                    ends[idx]
+                } else {
+                    line.len()
+                };
                 let start = if idx == 0 { 0 } else { ends[idx - 1] + 1 };
                 &line[start..end]
             };
@@ -237,7 +241,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             // Iterate over melt columns
             for (k, &melt_idx) in m_indices.iter().enumerate() {
                 let value = get_field(melt_idx);
-                
+
                 if drop_na && value.is_empty() {
                     continue;
                 }

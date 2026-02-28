@@ -311,10 +311,10 @@ pub fn writer(output: &str) -> Box<dyn Write> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
-    use std::io::Write;
     use flate2::write::GzEncoder;
     use flate2::Compression;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_is_stdin_name() {
@@ -346,7 +346,7 @@ mod tests {
     fn test_reader_gzip_file() {
         let file = NamedTempFile::new().unwrap();
         let path = file.path().to_str().unwrap().to_string() + ".gz";
-        
+
         {
             let f = File::create(&path).unwrap();
             let mut e = GzEncoder::new(f, Compression::default());
@@ -357,7 +357,7 @@ mod tests {
         let mut s = String::new();
         r.read_to_string(&mut s).unwrap();
         assert_eq!(s, "compressed hello");
-        
+
         std::fs::remove_file(path).unwrap();
     }
 
@@ -368,11 +368,11 @@ mod tests {
         let path = file.path().to_str().unwrap();
 
         assert!(has_nonempty_line(path).unwrap());
-        
+
         let mut empty_file = NamedTempFile::new().unwrap();
         writeln!(empty_file, "\n   \n").unwrap();
         let empty_path = empty_file.path().to_str().unwrap();
-        
+
         assert!(!has_nonempty_line(empty_path).unwrap());
     }
 

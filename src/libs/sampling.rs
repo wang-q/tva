@@ -1,8 +1,8 @@
+use ahash::AHashMap;
 use rapidhash::RapidRng;
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 use std::io::Write;
-use ahash::AHashMap;
 
 pub trait Sampler {
     fn process<W: Write>(
@@ -89,7 +89,7 @@ impl Sampler for BernoulliSampler {
 
         // Process current record (selected)
         let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
-        
+
         // If print_random is true, we need a random value for the output.
         // Even though selection was decided by skip_counter, we generate 'r' here
         // to maintain consistency if the user requested the random column.
@@ -251,9 +251,10 @@ impl Sampler for WeightedReservoirSampler {
         if self.heap.is_empty() {
             return Ok(());
         }
-        
+
         // Extract items and sort by key descending (highest probability first)
-        let mut items: Vec<WeightedItem> = self.heap.drain().map(|Reverse(item)| item).collect();
+        let mut items: Vec<WeightedItem> =
+            self.heap.drain().map(|Reverse(item)| item).collect();
         items.sort_by(|a, b| b.key.partial_cmp(&a.key).unwrap_or(Ordering::Equal));
 
         for item in items {
@@ -279,7 +280,7 @@ impl Sampler for DistinctBernoulliSampler {
         rng: &mut RapidRng,
     ) -> anyhow::Result<()> {
         self.key_buffer.clear();
-        
+
         if self.key_field_indices.is_empty() {
             self.key_buffer.extend_from_slice(record);
         } else {
@@ -327,13 +328,7 @@ impl Sampler for DistinctBernoulliSampler {
         };
 
         if keep {
-            write_with_optional_random(
-                writer,
-                record,
-                rng,
-                self.print_random,
-                Some(r),
-            )?;
+            write_with_optional_random(writer, record, rng, self.print_random, Some(r))?;
         }
         Ok(())
     }

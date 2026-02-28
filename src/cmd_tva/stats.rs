@@ -1,8 +1,8 @@
 use crate::libs::io::map_io_err;
+use crate::libs::key::{KeyBuffer, KeyExtractor};
 use crate::libs::stats::{Aggregator, OpKind, Operation, StatsProcessor};
 use crate::libs::tsv::fields;
 use crate::libs::tsv::reader::TsvReader;
-use crate::libs::key::{KeyExtractor, KeyBuffer};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::collections::HashMap;
 
@@ -428,7 +428,11 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     let mut use_grouping = false;
 
     // Helper to setup processor
-    let setup_processor = |header_opt: Option<&fields::Header>| -> anyhow::Result<(StatsProcessor, Option<KeyExtractor>, Vec<String>)> {
+    let setup_processor = |header_opt: Option<&fields::Header>| -> anyhow::Result<(
+        StatsProcessor,
+        Option<KeyExtractor>,
+        Vec<String>,
+    )> {
         let mut ops = Vec::new();
         let mut output_headers = Vec::new();
 
@@ -440,12 +444,11 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 });
                 output_headers.push("count".to_string());
             } else if let Some(spec) = &config.spec {
-                let indices = fields::parse_field_list_with_header(
-                    spec,
-                    header_opt,
-                    '\t',
-                )
-                .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
+                let indices =
+                    fields::parse_field_list_with_header(spec, header_opt, '\t')
+                        .map_err(|e| {
+                            anyhow::anyhow!("Error parsing field list: {}", e)
+                        })?;
 
                 for idx in indices {
                     let field_idx = idx - 1;
@@ -497,9 +500,9 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         let extractor = if let Some(spec) = &group_by_spec {
             let idxs = fields::parse_field_list_with_header(spec, header_opt, '\t')
                 .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?;
-                // .into_iter()
-                // .map(|i| i - 1) // KeyExtractor now takes 1-based indices!
-                // .collect::<Vec<_>>();
+            // .into_iter()
+            // .map(|i| i - 1) // KeyExtractor now takes 1-based indices!
+            // .collect::<Vec<_>>();
             if idxs.is_empty() {
                 None
             } else {
@@ -540,16 +543,17 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 if let Some(header_bytes) = header_bytes_opt {
                     let line = String::from_utf8_lossy(&header_bytes);
                     let header = fields::Header::from_line(&line, '\t');
-                    
+
                     let (proc, extractor, headers) = setup_processor(Some(&header))?;
                     processor = Some(proc);
                     group_extractor = extractor;
                     use_grouping = group_extractor.is_some();
-                    
+
                     if !use_grouping {
-                        aggregator = Some(processor.as_ref().unwrap().create_aggregator());
+                        aggregator =
+                            Some(processor.as_ref().unwrap().create_aggregator());
                     }
-                    
+
                     println!("{}", headers.join("\t"));
                 } else {
                     // Empty file with --header.
@@ -558,11 +562,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     processor = Some(proc);
                     group_extractor = extractor;
                     use_grouping = group_extractor.is_some();
-                    
+
                     if !use_grouping {
-                        aggregator = Some(processor.as_ref().unwrap().create_aggregator());
+                        aggregator =
+                            Some(processor.as_ref().unwrap().create_aggregator());
                     }
-                    
+
                     println!("{}", headers.join("\t"));
                 }
             }
@@ -572,31 +577,38 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 processor = Some(proc);
                 group_extractor = extractor;
                 use_grouping = group_extractor.is_some();
-                
+
                 if !use_grouping {
                     aggregator = Some(processor.as_ref().unwrap().create_aggregator());
                 }
             }
         }
-        
+
         if let Some(proc) = &processor {
-            reader.for_each_row(|row| {
-                if use_grouping {
-                    let key_res = group_extractor.as_mut().unwrap().extract_from_row(row, b'\t');
-                    let key = match key_res {
-                        Ok(k) => k.into_owned(),
-                        Err(_) => KeyBuffer::new(),
-                    };
-                    
-                    let agg = groups.entry(key).or_insert_with(|| proc.create_aggregator());
-                    proc.update(agg, row);
-                } else {
-                    if let Some(agg) = &mut aggregator {
+            reader
+                .for_each_row(|row| {
+                    if use_grouping {
+                        let key_res = group_extractor
+                            .as_mut()
+                            .unwrap()
+                            .extract_from_row(row, b'\t');
+                        let key = match key_res {
+                            Ok(k) => k.into_owned(),
+                            Err(_) => KeyBuffer::new(),
+                        };
+
+                        let agg = groups
+                            .entry(key)
+                            .or_insert_with(|| proc.create_aggregator());
                         proc.update(agg, row);
+                    } else {
+                        if let Some(agg) = &mut aggregator {
+                            proc.update(agg, row);
+                        }
                     }
-                }
-                Ok(())
-            }).map_err(map_io_err)?;
+                    Ok(())
+                })
+                .map_err(map_io_err)?;
         }
     }
 

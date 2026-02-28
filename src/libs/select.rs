@@ -36,7 +36,12 @@ impl SelectPlan {
     /// Returns `Ok(())` if all fields were found.
     /// Returns `Err(missing_idx)` if a requested field index was not found in the line.
     #[inline(always)]
-    pub fn extract_ranges(&self, line: &[u8], delimiter: u8, output_ranges: &mut Vec<Range<usize>>) -> Result<(), usize> {
+    pub fn extract_ranges(
+        &self,
+        line: &[u8],
+        delimiter: u8,
+        output_ranges: &mut Vec<Range<usize>>,
+    ) -> Result<(), usize> {
         let output_len = self.output_len;
         if output_ranges.len() != output_len {
             output_ranges.resize(output_len, 0..0);

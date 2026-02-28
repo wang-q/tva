@@ -1,9 +1,9 @@
+use crate::libs::key::{KeyBuffer, KeyExtractor};
+use ahash::RandomState;
 use clap::*;
 use std::collections::HashMap;
 use std::io::Write;
 use std::ops::Range;
-use ahash::RandomState;
-use crate::libs::key::{KeyExtractor, KeyBuffer};
 
 pub fn make_subcommand() -> Command {
     Command::new("join")
@@ -167,7 +167,7 @@ fn extract_values(
         );
         std::process::exit(1);
     }
-    
+
     let mut values = Vec::with_capacity(line.len());
     let mut first = true;
     for range in ranges_buf.iter() {
@@ -235,7 +235,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     // 1. Process Filter File
     let mut filter_reader = crate::libs::tsv::reader::TsvReader::new(
-        crate::libs::io::raw_reader(&filter_file)
+        crate::libs::io::raw_reader(&filter_file),
     );
 
     let mut filter_header: Option<crate::libs::tsv::fields::Header> = None;
@@ -254,22 +254,29 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         filter_header.as_ref(),
         delimiter_char,
     );
-    let append_indices =
-        parse_append_field_spec(append_fields_spec, filter_header.as_ref(), delimiter_char);
+    let append_indices = parse_append_field_spec(
+        append_fields_spec,
+        filter_header.as_ref(),
+        delimiter_char,
+    );
     let append_count = append_indices.as_ref().map(|v| v.len()).unwrap_or(0);
 
-    let mut filter_key_extractor = KeyExtractor::new(filter_key_indices.clone(), false, true);
-    let append_plan = append_indices.as_ref().map(|idxs| crate::libs::select::SelectPlan::new(idxs));
+    let mut filter_key_extractor =
+        KeyExtractor::new(filter_key_indices.clone(), false, true);
+    let append_plan = append_indices
+        .as_ref()
+        .map(|idxs| crate::libs::select::SelectPlan::new(idxs));
 
     // Map: Key -> Appended Values (as bytes)
-    let mut filter_map: HashMap<KeyBuffer, Vec<u8>, RandomState> = HashMap::with_hasher(RandomState::new());
+    let mut filter_map: HashMap<KeyBuffer, Vec<u8>, RandomState> =
+        HashMap::with_hasher(RandomState::new());
     let mut ranges_buf: Vec<Range<usize>> = Vec::new(); // Reusable buffer for ranges for append values
 
     filter_reader.for_each_record(|line| {
         if line.is_empty() {
             return Ok(());
         }
-        
+
         let key_result = filter_key_extractor.extract(line, delimiter);
         let key = match key_result {
             Ok(k) => k,
@@ -286,8 +293,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 std::process::exit(1);
             }
         };
-        
+
         let values = if let Some(ref plan) = append_plan {
+            ranges_buf.clear();
             extract_values(line, delimiter, plan, &mut ranges_buf)
         } else {
             Vec::new()
@@ -366,7 +374,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     for input in crate::libs::io::raw_input_sources(&infiles) {
         // Use 128KB buffer for data reader
-        let mut reader = crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 128 * 1024);
+        let mut reader =
+            crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 128 * 1024);
         let mut is_first_line = true;
 
         reader.for_each_record(|line| {
@@ -378,7 +387,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if !header_written {
                     let effective_data_spec =
                         data_fields_spec.clone().or_else(|| key_fields_spec.clone());
-                    
+
                     let header_str = String::from_utf8_lossy(line);
                     let (whole_line, indices) = parse_join_field_spec(
                         effective_data_spec,
@@ -387,7 +396,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         )),
                         delimiter_char,
                     );
-                    
                     data_key_whole_line = whole_line;
                     if let Some(ref idxs) = indices {
                         data_key_indices_len = idxs.len();
@@ -413,7 +421,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         writer.write_all(suffix.as_bytes())?;
                     }
                     writer.write_all(b"\n")?;
-                    
+
                     if line_buffered {
                         writer.flush()?;
                     }
@@ -431,7 +439,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     data_fields_spec.clone().or_else(|| key_fields_spec.clone());
                 let (whole_line, indices) =
                     parse_join_field_spec(effective_data_spec.clone(), None, delimiter_char);
-                
+
                 data_key_whole_line = whole_line;
                 if let Some(ref idxs) = indices {
                     data_key_indices_len = idxs.len();

@@ -174,50 +174,48 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut row_cursor: u32 = 0;
     let has_header = args.get_flag("header");
 
-    tsv_reader.for_each_row(|row| {
-        let format = if row_cursor == 0 && has_header {
-            &header_format
-        } else {
-            &normal_format
-        };
-
-        // Iterate fields using Row trait
-        let mut i = 1;
-        while let Some(field_bytes) = row.get_bytes(i) {
-            let col_idx = (i - 1) as u16;
-            
-            // Try to parse as number if possible, otherwise write as string
-            // Avoid string allocation if possible for checking
-            if let Ok(s) = std::str::from_utf8(field_bytes) {
-                if let Ok(val) = s.parse::<f64>() {
-                    worksheet.write_number_with_format(
-                        row_cursor,
-                        col_idx,
-                        val,
-                        format,
-                    ).map_err(map_io_err)?;
-                } else {
-                    worksheet.write_string_with_format(
-                        row_cursor,
-                        col_idx,
-                        s,
-                        format,
-                    ).map_err(map_io_err)?;
-                }
+    tsv_reader
+        .for_each_row(|row| {
+            let format = if row_cursor == 0 && has_header {
+                &header_format
             } else {
-                // Fallback for non-utf8 (shouldn't happen in valid TSV usually)
-                worksheet.write_string_with_format(
-                    row_cursor,
-                    col_idx,
-                    String::from_utf8_lossy(field_bytes).as_ref(),
-                    format,
-                ).map_err(map_io_err)?;
+                &normal_format
+            };
+
+            // Iterate fields using Row trait
+            let mut i = 1;
+            while let Some(field_bytes) = row.get_bytes(i) {
+                let col_idx = (i - 1) as u16;
+
+                // Try to parse as number if possible, otherwise write as string
+                // Avoid string allocation if possible for checking
+                if let Ok(s) = std::str::from_utf8(field_bytes) {
+                    if let Ok(val) = s.parse::<f64>() {
+                        worksheet
+                            .write_number_with_format(row_cursor, col_idx, val, format)
+                            .map_err(map_io_err)?;
+                    } else {
+                        worksheet
+                            .write_string_with_format(row_cursor, col_idx, s, format)
+                            .map_err(map_io_err)?;
+                    }
+                } else {
+                    // Fallback for non-utf8 (shouldn't happen in valid TSV usually)
+                    worksheet
+                        .write_string_with_format(
+                            row_cursor,
+                            col_idx,
+                            String::from_utf8_lossy(field_bytes).as_ref(),
+                            format,
+                        )
+                        .map_err(map_io_err)?;
+                }
+                i += 1;
             }
-            i += 1;
-        }
-        row_cursor += 1;
-        Ok(())
-    }).map_err(map_io_err)?;
+            row_cursor += 1;
+            Ok(())
+        })
+        .map_err(map_io_err)?;
 
     // Freeze header if present
     if has_header {

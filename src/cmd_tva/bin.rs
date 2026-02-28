@@ -1,7 +1,7 @@
+use crate::libs::tsv::fields::Header;
+use crate::libs::tsv::reader::TsvReader;
 use clap::*;
 use std::io::Write;
-use crate::libs::tsv::reader::TsvReader;
-use crate::libs::tsv::fields::Header;
 
 pub fn make_subcommand() -> Command {
     Command::new("bin")
@@ -106,19 +106,20 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     if !header_written {
                         // Resolve field name if needed
                         if field_idx.is_none() {
-                            let line_str = std::str::from_utf8(record)
-                                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                            let line_str = std::str::from_utf8(record).map_err(|e| {
+                                std::io::Error::new(std::io::ErrorKind::InvalidData, e)
+                            })?;
                             let h = Header::from_line(line_str, '\t');
                             if let Some(pos) = h.get_index(field_str) {
                                 field_idx = Some(pos);
                             } else {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
-                                    format!("Field '{}' not found in header", field_str)
+                                    format!("Field '{}' not found in header", field_str),
                                 ));
                             }
                         }
-                        
+
                         writer.write_all(record)?;
                         if let Some(name) = new_name {
                             writer.write_all(b"\t")?;
@@ -134,7 +135,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             // Process data line
-            let idx = field_idx.ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "Field index logic error"))?;
+            let idx = field_idx.ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::Other, "Field index logic error")
+            })?;
 
             if new_name.is_some() {
                 writer.write_all(record)?;
@@ -151,12 +154,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 } else {
                     // Skip idx-1 tabs
                     let mut skipped = 0;
-                    for _ in 0..idx-1 {
-                         if iter.next().is_some() {
-                             skipped += 1;
-                         } else {
-                             break;
-                         }
+                    for _ in 0..idx - 1 {
+                        if iter.next().is_some() {
+                            skipped += 1;
+                        } else {
+                            break;
+                        }
                     }
                     if skipped == idx - 1 {
                         if let Some(start_pos) = iter.next() {

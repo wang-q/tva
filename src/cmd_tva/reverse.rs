@@ -77,18 +77,18 @@ fn process_buffer(
         // find \n.
         // This \n belongs to the line BEFORE it (in forward order).
         // The content AFTER it is the line we just finished scanning (in reverse).
-        
+
         writer.write_all(&slice[i + 1..following_line_start])?;
         following_line_start = i + 1;
     }
 
     // Write the first line (remainder)
     writer.write_all(&slice[0..following_line_start])?;
-    
+
     // Note: if the original file didn't end with \n, the first printed line (originally last) won't have \n.
     // And the last printed line (originally first) will have \n (if it had one).
     // This is consistent with tac.
-    
+
     Ok(())
 }
 
@@ -111,7 +111,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             // If extremely large, tempfile is better.
             // Let's use tempfile fallback if needed, or just Vec for now as starter.
             // uutils uses tempfile, let's try to be robust.
-            
+
             let mut buf = Vec::new();
             stdin().read_to_end(&mut buf)?;
             process_buffer(&mut writer, &buf, b'\n', header_mode, &mut header_printed)?;
@@ -119,24 +119,36 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             let file = File::open(&infile)?;
             // Attempt mmap
             let mmap = unsafe { Mmap::map(&file) };
-            
+
             match mmap {
                 Ok(mmap) => {
                     // We advise random access or sequential? We read backwards.
                     // madvise(MADV_SEQUENTIAL) might assume forward.
                     // backwards is not standard sequential.
                     // But usually mmap is fast enough.
-                    process_buffer(&mut writer, &mmap, b'\n', header_mode, &mut header_printed)?;
+                    process_buffer(
+                        &mut writer,
+                        &mmap,
+                        b'\n',
+                        header_mode,
+                        &mut header_printed,
+                    )?;
                 }
                 Err(_) => {
                     // Fallback to reading file into Vec
                     // Or standard reading?
                     // If mmap fails (e.g. special file), read all.
                     let mut f = file; // reopen or reuse? File matches Read.
-                    // File cursor is at 0.
+                                      // File cursor is at 0.
                     let mut buf = Vec::new();
                     f.read_to_end(&mut buf)?;
-                    process_buffer(&mut writer, &buf, b'\n', header_mode, &mut header_printed)?;
+                    process_buffer(
+                        &mut writer,
+                        &buf,
+                        b'\n',
+                        header_mode,
+                        &mut header_printed,
+                    )?;
                 }
             }
         }

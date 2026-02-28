@@ -82,22 +82,29 @@ impl Cell {
         }
 
         // Parse float if needed
-        let val_opt = if matches!(op, OpKind::Count | OpKind::First | OpKind::Last | OpKind::Mode) {
-             None
+        let val_opt = if matches!(
+            op,
+            OpKind::Count | OpKind::First | OpKind::Last | OpKind::Mode
+        ) {
+            None
         } else {
-             // Only parse if we need numerical value
-             // Try to parse from bytes
-             // We can use simd-json or fast-float if available, but std is fine for now
-             if let Ok(s) = std::str::from_utf8(val_bytes) {
-                 s.trim().parse::<f64>().ok()
-             } else {
-                 None
-             }
+            // Only parse if we need numerical value
+            // Try to parse from bytes
+            // We can use simd-json or fast-float if available, but std is fine for now
+            if let Ok(s) = std::str::from_utf8(val_bytes) {
+                s.trim().parse::<f64>().ok()
+            } else {
+                None
+            }
         };
 
         if let Some(val) = val_opt {
             match op {
-                OpKind::Sum | OpKind::Mean | OpKind::CV | OpKind::Stdev | OpKind::Variance => {
+                OpKind::Sum
+                | OpKind::Mean
+                | OpKind::CV
+                | OpKind::Stdev
+                | OpKind::Variance => {
                     self.sum += val;
                     if matches!(op, OpKind::CV | OpKind::Stdev | OpKind::Variance) {
                         self.sum_sq += val * val;
@@ -167,8 +174,16 @@ impl Cell {
                     self.max.to_string()
                 }
             }
-            OpKind::First => self.first.as_ref().map(|v| String::from_utf8_lossy(v).to_string()).unwrap_or_default(),
-            OpKind::Last => self.last.as_ref().map(|v| String::from_utf8_lossy(v).to_string()).unwrap_or_default(),
+            OpKind::First => self
+                .first
+                .as_ref()
+                .map(|v| String::from_utf8_lossy(v).to_string())
+                .unwrap_or_default(),
+            OpKind::Last => self
+                .last
+                .as_ref()
+                .map(|v| String::from_utf8_lossy(v).to_string())
+                .unwrap_or_default(),
             OpKind::GeoMean => {
                 if self.count > 0 {
                     (self.sum_log / self.count as f64).exp().to_string()
@@ -987,20 +1002,41 @@ mod tests {
     #[test]
     fn test_basic_stats() {
         let ops = vec![
-            Operation { kind: OpKind::Count, field_idx: None },
-            Operation { kind: OpKind::Sum, field_idx: Some(0) },
-            Operation { kind: OpKind::Mean, field_idx: Some(0) },
-            Operation { kind: OpKind::Min, field_idx: Some(0) },
-            Operation { kind: OpKind::Max, field_idx: Some(0) },
+            Operation {
+                kind: OpKind::Count,
+                field_idx: None,
+            },
+            Operation {
+                kind: OpKind::Sum,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Mean,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Min,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Max,
+                field_idx: Some(0),
+            },
         ];
         let processor = StatsProcessor::new(ops);
         let mut agg = processor.create_aggregator();
-        
+
         // Data: 10, 20, 30
         let rows = vec![
-            TestRow { fields: vec!["10".to_string()] },
-            TestRow { fields: vec!["20".to_string()] },
-            TestRow { fields: vec!["30".to_string()] },
+            TestRow {
+                fields: vec!["10".to_string()],
+            },
+            TestRow {
+                fields: vec!["20".to_string()],
+            },
+            TestRow {
+                fields: vec!["30".to_string()],
+            },
         ];
 
         for row in &rows {
@@ -1008,23 +1044,32 @@ mod tests {
         }
 
         let results = processor.format_results(&agg);
-        assert_eq!(results[0], "3");   // Count
-        assert_eq!(results[1], "60");  // Sum
-        assert_eq!(results[2], "20");  // Mean
-        assert_eq!(results[3], "10");  // Min
-        assert_eq!(results[4], "30");  // Max
+        assert_eq!(results[0], "3"); // Count
+        assert_eq!(results[1], "60"); // Sum
+        assert_eq!(results[2], "20"); // Mean
+        assert_eq!(results[3], "10"); // Min
+        assert_eq!(results[4], "30"); // Max
     }
 
     #[test]
     fn test_variance_stdev_cv() {
         let ops = vec![
-            Operation { kind: OpKind::Variance, field_idx: Some(0) },
-            Operation { kind: OpKind::Stdev, field_idx: Some(0) },
-            Operation { kind: OpKind::CV, field_idx: Some(0) },
+            Operation {
+                kind: OpKind::Variance,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Stdev,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::CV,
+                field_idx: Some(0),
+            },
         ];
         let processor = StatsProcessor::new(ops);
         let mut agg = processor.create_aggregator();
-        
+
         // Data: 2, 4, 4, 4, 5, 5, 7, 9
         // Mean: 5
         // Variance: 4.571428...
@@ -1032,7 +1077,9 @@ mod tests {
         // CV: 0.427617...
         let data = vec![2, 4, 4, 4, 5, 5, 7, 9];
         for v in data {
-            let row = TestRow { fields: vec![v.to_string()] };
+            let row = TestRow {
+                fields: vec![v.to_string()],
+            };
             processor.update(&mut agg, &row);
         }
 
@@ -1049,21 +1096,35 @@ mod tests {
     #[test]
     fn test_quantiles() {
         let ops = vec![
-            Operation { kind: OpKind::Median, field_idx: Some(0) },
-            Operation { kind: OpKind::Q1, field_idx: Some(0) },
-            Operation { kind: OpKind::Q3, field_idx: Some(0) },
-            Operation { kind: OpKind::IQR, field_idx: Some(0) },
+            Operation {
+                kind: OpKind::Median,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Q1,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Q3,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::IQR,
+                field_idx: Some(0),
+            },
         ];
         let processor = StatsProcessor::new(ops);
         let mut agg = processor.create_aggregator();
-        
+
         // Data: 1, 2, 3, 4, 5
         // Median: 3
         // Q1: 2
         // Q3: 4
         // IQR: 2
         for i in 1..=5 {
-            let row = TestRow { fields: vec![i.to_string()] };
+            let row = TestRow {
+                fields: vec![i.to_string()],
+            };
             processor.update(&mut agg, &row);
         }
 
@@ -1077,18 +1138,26 @@ mod tests {
     #[test]
     fn test_geomean_harmmean() {
         let ops = vec![
-            Operation { kind: OpKind::GeoMean, field_idx: Some(0) },
-            Operation { kind: OpKind::HarmMean, field_idx: Some(0) },
+            Operation {
+                kind: OpKind::GeoMean,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::HarmMean,
+                field_idx: Some(0),
+            },
         ];
         let processor = StatsProcessor::new(ops);
         let mut agg = processor.create_aggregator();
-        
+
         // Data: 2, 8
         // GeoMean: 4
         // HarmMean: 3.2
         let data = vec![2, 8];
         for v in data {
-            let row = TestRow { fields: vec![v.to_string()] };
+            let row = TestRow {
+                fields: vec![v.to_string()],
+            };
             processor.update(&mut agg, &row);
         }
 
@@ -1100,41 +1169,63 @@ mod tests {
     #[test]
     fn test_mode_nunique() {
         let ops = vec![
-            Operation { kind: OpKind::Mode, field_idx: Some(0) },
-            Operation { kind: OpKind::NUnique, field_idx: Some(0) },
-            Operation { kind: OpKind::Unique, field_idx: Some(0) },
+            Operation {
+                kind: OpKind::Mode,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::NUnique,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Unique,
+                field_idx: Some(0),
+            },
         ];
         let processor = StatsProcessor::new(ops);
         let mut agg = processor.create_aggregator();
-        
+
         // Data: A, A, B
         let data = vec!["A", "A", "B"];
         for v in data {
-            let row = TestRow { fields: vec![v.to_string()] };
+            let row = TestRow {
+                fields: vec![v.to_string()],
+            };
             processor.update(&mut agg, &row);
         }
 
         let results = processor.format_results(&agg);
         assert_eq!(results[0], "A"); // Mode
         assert_eq!(results[1], "2"); // NUnique
-        // Unique order is sorted: A,B
+                                     // Unique order is sorted: A,B
         assert_eq!(results[2], "A,B");
     }
 
     #[test]
     fn test_first_last_range() {
         let ops = vec![
-            Operation { kind: OpKind::First, field_idx: Some(0) },
-            Operation { kind: OpKind::Last, field_idx: Some(0) },
-            Operation { kind: OpKind::Range, field_idx: Some(0) },
+            Operation {
+                kind: OpKind::First,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Last,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Range,
+                field_idx: Some(0),
+            },
         ];
         let processor = StatsProcessor::new(ops);
         let mut agg = processor.create_aggregator();
-        
+
         // Data: 10, 5, 20
         let data = vec!["10", "5", "20"];
         for v in data {
-            let row = TestRow { fields: vec![v.to_string()] };
+            let row = TestRow {
+                fields: vec![v.to_string()],
+            };
             processor.update(&mut agg, &row);
         }
 

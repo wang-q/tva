@@ -565,7 +565,8 @@ fn run_standard_sampling<W: Write>(
                     }
 
                     // Write header if streaming immediately (Bernoulli/Distinct)
-                    if let SamplerEnum::Bernoulli(_) | SamplerEnum::Distinct(_) = sampler {
+                    if let SamplerEnum::Bernoulli(_) | SamplerEnum::Distinct(_) = sampler
+                    {
                         if print_random {
                             writer.write_all(random_value_header.as_bytes())?;
                             writer.write_all(b"\t")?;

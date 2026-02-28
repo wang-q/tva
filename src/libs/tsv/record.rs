@@ -44,7 +44,7 @@ impl<'a, 'b> Row for TsvRow<'a, 'b> {
         }
 
         let start = if idx == 1 { 0 } else { self.ends[idx - 2] + 1 };
-        
+
         // Fix for when ends includes the last field end (like TsvRecord does)
         // If start > self.line.len(), it means previous field ended at line end or past it.
         // TsvRecord pushes line.len() as last end.
@@ -61,9 +61,9 @@ impl<'a, 'b> Row for TsvRow<'a, 'b> {
         } else {
             self.line.len()
         };
-        
+
         if start > end {
-             return None;
+            return None;
         }
         Some(&self.line[start..end])
     }
@@ -198,11 +198,7 @@ impl TsvRecord {
             return None;
         }
         let end = self.ends[i];
-        let start = if i == 0 {
-            0
-        } else {
-            self.ends[i - 1] + 1
-        };
+        let start = if i == 0 { 0 } else { self.ends[i - 1] + 1 };
         Some(&self.line[start..end])
     }
 
@@ -285,7 +281,7 @@ mod tests {
         assert_eq!(row.get_bytes(3), Some(b"c".as_slice()));
         assert_eq!(row.get_bytes(0), None);
         assert_eq!(row.get_bytes(4), None);
-        
+
         assert_eq!(row.get_str(1), Some("a"));
         assert_eq!(row.get_str(2), Some("b"));
     }
@@ -308,7 +304,7 @@ mod tests {
     fn test_tsv_record_eq() {
         let mut rec1 = TsvRecord::new();
         rec1.parse_line(b"a\tb", b'\t');
-        
+
         let mut rec2 = TsvRecord::new();
         rec2.parse_line(b"a\tb", b'\t');
 
@@ -351,11 +347,11 @@ mod tests {
     fn test_tsv_record_row_trait() {
         let mut rec = TsvRecord::new();
         rec.parse_line(b"a\tb", b'\t');
-        
+
         assert_eq!(rec.get_bytes(1), Some(b"a".as_slice()));
         assert_eq!(rec.get_bytes(2), Some(b"b".as_slice()));
         assert_eq!(rec.get_bytes(3), None);
-        
+
         assert_eq!(rec.get_str(1), Some("a"));
     }
 }
