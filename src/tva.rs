@@ -20,6 +20,7 @@ fn main() -> anyhow::Result<()> {
         )
         .subcommand(cmd_tva::append::make_subcommand())
         .subcommand(cmd_tva::bin::make_subcommand())
+        .subcommand(cmd_tva::blank::make_subcommand())
         .subcommand(cmd_tva::check::make_subcommand())
         .subcommand(cmd_tva::filter::make_subcommand())
         .subcommand(cmd_tva::r#from::make_subcommand())
@@ -46,7 +47,7 @@ fn main() -> anyhow::Result<()> {
 * Filtering: filter
 * Ordering: reverse, sort, transpose
 * Statistics & Summary: bin, stats, uniq
-* Reshaping: longer, wider
+* Reshaping: blank, longer, wider
 * Combining & Splitting: append, join, split
 * Formatting & Utilities: check, from, keep-header, md, nl
 "###,
@@ -63,6 +64,7 @@ fn main() -> anyhow::Result<()> {
     match matches.subcommand() {
         Some(("append", sub_matches)) => cmd_tva::append::execute(sub_matches),
         Some(("bin", sub_matches)) => cmd_tva::bin::execute(sub_matches),
+        Some(("blank", sub_matches)) => cmd_tva::blank::execute(sub_matches),
         Some(("check", sub_matches)) => cmd_tva::check::execute(sub_matches),
         Some(("filter", sub_matches)) => cmd_tva::filter::execute(sub_matches),
         Some(("from", sub_matches)) => cmd_tva::r#from::execute(sub_matches),
