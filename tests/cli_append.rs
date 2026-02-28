@@ -441,3 +441,101 @@ input3x5\tpqx\tpqy\tpqz
 
     assert_eq!(stdout, expected);
 }
+
+#[test]
+fn append_track_source() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--track-source",
+            "tests/data/append/input3x2.tsv",
+        ])
+        .run();
+
+    assert!(stdout.contains("input3x2\tfield1\tfield2\tfield3"));
+}
+
+#[test]
+fn append_source_header() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--source-header",
+            "filename",
+            "tests/data/append/input3x2.tsv",
+        ])
+        .run();
+
+    assert!(stdout.starts_with("filename\tfield1\tfield2\tfield3\n"));
+}
+
+#[test]
+fn append_file_mapping() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--file",
+            "custom_label=tests/data/append/input3x2.tsv",
+        ])
+        .run();
+
+    assert!(stdout.contains("custom_label\tfield1\tfield2\tfield3"));
+}
+
+#[test]
+fn append_invalid_file_mapping() {
+    let (_stdout, stderr) = TvaCmd::new()
+        .args(&["append", "--file", "invalid_format"])
+        .run_fail();
+
+    assert!(stderr.contains(
+        "invalid --file value `invalid_format`; expected LABEL=FILE"
+    ));
+}
+
+#[test]
+fn append_invalid_delimiter() {
+    let (_stdout, stderr) = TvaCmd::new()
+        .args(&["append", "--delimiter", "TooLong"])
+        .run_fail();
+
+    assert!(stderr.contains("delimiter must be a single byte"));
+}
+
+#[test]
+fn append_stdin_default() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&["append", "--track-source"])
+        .stdin("field1\tfield2\nval1\tval2\n")
+        .run();
+
+    assert!(stdout.contains("stdin\tfield1\tfield2"));
+}
+
+#[test]
+fn append_custom_delimiter() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--track-source",
+            "--delimiter",
+            ":",
+            "tests/data/append/input3x2.tsv",
+        ])
+        .run();
+
+    assert!(stdout.contains("input3x2:field1\tfield2\tfield3"));
+}
+
+#[test]
+fn append_subdir_filename_label() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--track-source",
+            "tests/data/append/input3x2.tsv",
+        ])
+        .run();
+
+    assert!(stdout.contains("input3x2\tfield1"));
+}

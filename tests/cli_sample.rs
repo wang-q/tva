@@ -101,6 +101,234 @@ fn sample_invalid_prob_rejected() -> anyhow::Result<()> {
 }
 
 #[test]
+fn test_sample_num_prob_conflict() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-n")
+        .arg("10")
+        .arg("-p")
+        .arg("0.5")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--num/-n and --prob/-p cannot be used together",
+        ));
+}
+
+#[test]
+fn test_sample_replace_prob_conflict() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-r")
+        .arg("-p")
+        .arg("0.5")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--replace/-r cannot be used with --prob/-p",
+        ));
+}
+
+#[test]
+fn test_sample_replace_no_num() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-r")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--replace/-r requires --num/-n greater than 0",
+        ));
+}
+
+#[test]
+fn test_sample_inorder_conflicts() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-i")
+        .arg("-r")
+        .arg("-n")
+        .arg("5")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--inorder/-i requires --num/-n without --replace/-r or --prob/-p",
+        ));
+}
+
+#[test]
+fn test_sample_weight_prob_conflict() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-w")
+        .arg("1")
+        .arg("-p")
+        .arg("0.5")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--weight-field/-w cannot be used with --prob/-p",
+        ));
+}
+
+#[test]
+fn test_sample_invalid_prob() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-p")
+        .arg("1.5")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid --prob/-p value"));
+}
+
+#[test]
+fn test_sample_gen_random_inorder_conflicts() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("--gen-random-inorder")
+        .arg("-n")
+        .arg("10")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--gen-random-inorder cannot be combined with sampling options",
+        ));
+}
+
+#[test]
+fn test_sample_weight_replace_conflict() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-w")
+        .arg("1")
+        .arg("-r")
+        .arg("-n")
+        .arg("10")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--weight-field/-w cannot be used with --replace/-r",
+        ));
+}
+
+#[test]
+fn test_sample_key_no_prob() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-k")
+        .arg("1")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--key-fields/-k requires --prob/-p",
+        ));
+}
+
+#[test]
+fn test_sample_key_conflicts() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-k")
+        .arg("1")
+        .arg("-p")
+        .arg("0.5")
+        .arg("-n")
+        .arg("10")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--key-fields/-k cannot be used with --num/-n",
+        ));
+}
+
+#[test]
+fn test_sample_print_random_gen_random_conflict() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("--print-random")
+        .arg("--gen-random-inorder")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--print-random cannot be used with --gen-random-inorder",
+        ));
+}
+
+#[test]
+fn test_sample_print_random_replace_conflict() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("--print-random")
+        .arg("-r")
+        .arg("-n")
+        .arg("10")
+        .write_stdin("a\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--print-random is not supported with --replace/-r",
+        ));
+}
+
+#[test]
+fn test_sample_weight_index_out_of_range() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-w")
+        .arg("5")
+        .arg("-n")
+        .arg("1")
+        .write_stdin("a\tb\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "weight field index 5 out of range",
+        ));
+}
+
+#[test]
+fn test_sample_weight_invalid_value() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-w")
+        .arg("1")
+        .arg("-n")
+        .arg("1")
+        .write_stdin("not_a_number\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "weight value `not_a_number` is not a valid number",
+        ));
+}
+
+#[test]
+fn test_sample_key_index_out_of_range() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.arg("sample")
+        .arg("-k")
+        .arg("5")
+        .arg("-p")
+        .arg("0.5")
+        .write_stdin("a\tb\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("key field index 5 out of range"));
+}
+
+#[test]
 fn sample_static_seed_produces_reproducible_output() -> anyhow::Result<()> {
     let input = "a\nb\nc\nd\n";
 
