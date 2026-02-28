@@ -2,6 +2,24 @@
 
 ## Unreleased - ReleaseDate
 
+### Added
+
+#### Data Import & Export
+- **`from xlsx`**: Added support for importing Excel files (`.xlsx`).
+- **`to csv`**: Added command to convert TSV to CSV.
+- **`to xlsx`**: Added command to export TSV to Excel (`.xlsx`).
+
+#### Performance & Core
+- **Zero-Copy Architecture**: Migrated core commands (`select`, `filter`, `stats`, `sample`) to use a new zero-copy `TsvReader` and `ByteRecord` implementation, significantly reducing memory allocation.
+- **SIMD Parsing**: Introduced `memchr`-based field splitting for parsing speeds approaching 1GB/s.
+- **Benchmarks**: Added comprehensive benchmark suite (`benches/parse_benchmark.rs`) comparing `tva` against `csv`, `simd-csv`, and `tsv-utils`.
+
+### Changed
+
+#### Code Quality & CI
+- **CI/CD**: Added GitHub Actions for documentation deployment (`docs.yml`).
+- **Refactoring**: Optimized `append` and `bin` commands to use the new `TsvReader`.
+
 ## 0.1.0 - 2026-02-25
 
 ### Added
