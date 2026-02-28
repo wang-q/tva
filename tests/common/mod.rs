@@ -1,3 +1,4 @@
+use assert_cmd::assert::Assert;
 use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 
@@ -33,6 +34,23 @@ impl TvaCmd {
         let stdout = String::from_utf8(output.stdout).expect("Invalid UTF-8 in stdout");
         let stderr = String::from_utf8(output.stderr).expect("Invalid UTF-8 in stderr");
 
+        (stdout, stderr)
+    }
+
+    pub fn assert(mut self) -> Assert {
+        if let Some(input) = self.stdin {
+            self.cmd.write_stdin(input);
+        }
+        self.cmd.assert()
+    }
+
+    pub fn run_fail(self) -> (String, String) {
+        let assert = self.assert().failure();
+        let output = assert.get_output();
+        let stdout =
+            String::from_utf8(output.stdout.clone()).expect("Invalid UTF-8 in stdout");
+        let stderr =
+            String::from_utf8(output.stderr.clone()).expect("Invalid UTF-8 in stderr");
         (stdout, stderr)
     }
 }
