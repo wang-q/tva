@@ -147,7 +147,12 @@ fn select_exclude_first_field_from_input1() {
 #[test]
 fn select_exclude_large_index_is_noop() {
     let (stdout, _) = TvaCmd::new()
-        .args(&["select", "-e", "1048576", "tests/data/select/input1.tsv"])
+        .args(&[
+            "select",
+            "-e",
+            "1048576",
+            "tests/data/select/input1.tsv",
+        ])
         .run();
 
     assert_eq!(
@@ -159,7 +164,12 @@ fn select_exclude_large_index_is_noop() {
 #[test]
 fn select_exclude_large_range_is_noop() {
     let (stdout, _) = TvaCmd::new()
-        .args(&["select", "-e", "5-1048576", "tests/data/select/input1.tsv"])
+        .args(&[
+            "select",
+            "-e",
+            "5-1048576",
+            "tests/data/select/input1.tsv",
+        ])
         .run();
 
     assert_eq!(
@@ -203,7 +213,12 @@ fn select_with_alternate_delimiter_hat_second_field() {
 #[test]
 fn select_from_empty_file_without_header() {
     let (stdout, _) = TvaCmd::new()
-        .args(&["select", "-f", "1", "tests/data/select/input_emptyfile.tsv"])
+        .args(&[
+            "select",
+            "-f",
+            "1",
+            "tests/data/select/input_emptyfile.tsv",
+        ])
         .run();
 
     assert_eq!(stdout, "");
@@ -291,7 +306,12 @@ fn select_cannot_use_fields_and_exclude_together() {
 #[test]
 fn select_error_zero_field_index() {
     let (_, stderr) = TvaCmd::new()
-        .args(&["select", "-f", "0", "tests/data/select/input1.tsv"])
+        .args(&[
+            "select",
+            "-f",
+            "0",
+            "tests/data/select/input1.tsv",
+        ])
         .run_fail();
 
     assert!(stderr.contains("field index must be >= 1"));
@@ -300,7 +320,12 @@ fn select_error_zero_field_index() {
 #[test]
 fn select_error_trailing_comma_in_field_list() {
     let (_, stderr) = TvaCmd::new()
-        .args(&["select", "-f", "1,", "tests/data/select/input1.tsv"])
+        .args(&[
+            "select",
+            "-f",
+            "1,",
+            "tests/data/select/input1.tsv",
+        ])
         .run_fail();
 
     assert!(stderr.contains("empty field list element"));
@@ -309,7 +334,12 @@ fn select_error_trailing_comma_in_field_list() {
 #[test]
 fn select_error_name_without_header() {
     let (_, stderr) = TvaCmd::new()
-        .args(&["select", "-f", "field1", "tests/data/select/input1.tsv"])
+        .args(&[
+            "select",
+            "-f",
+            "field1",
+            "tests/data/select/input1.tsv",
+        ])
         .run_fail();
 
     assert!(stderr.contains("requires header"));
@@ -343,4 +373,74 @@ fn select_error_unknown_field_name_with_header_exclude() {
         .run_fail();
 
     assert!(stderr.contains("unknown field name `no_such_field`"));
+}
+
+#[test]
+fn select_fields_exclude_conflict() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "--fields", "1", "--exclude", "2"])
+        .stdin("a\tb\n")
+        .run_fail();
+
+    assert!(stderr.contains("--fields/-f and --exclude/-e cannot be used together"));
+}
+
+#[test]
+fn select_missing_args() {
+    let (_, stderr) = TvaCmd::new().args(&["select"]).stdin("a\tb\n").run_fail();
+
+    assert!(stderr.contains("one of --fields/-f or --exclude/-e is required"));
+}
+
+#[test]
+fn select_invalid_delimiter() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "-f", "1", "--delimiter", "TAB"])
+        .stdin("a\tb\n")
+        .run_fail();
+
+    assert!(stderr.contains("delimiter must be a single character"));
+}
+
+#[test]
+fn select_empty_selection() {
+    let input = "a\tb\n1\t2\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "--exclude", "1,2"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("\n\n")); // Two newlines for two rows
+}
+
+#[test]
+fn select_invalid_field_spec() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "-f", "0"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("field index must be >= 1"));
+}
+
+#[test]
+fn select_exclude_with_header() {
+    let input = "h1\th2\th3\nv1\tv2\tv3\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "--header", "--exclude", "2"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("h1\th3\nv1\tv3"));
+}
+
+#[test]
+fn select_exclude_by_name_with_header() {
+    let input = "h1\th2\th3\nv1\tv2\tv3\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "--header", "--exclude", "h2"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("h1\th3\nv1\tv3"));
 }

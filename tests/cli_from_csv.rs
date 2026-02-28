@@ -9,7 +9,7 @@ fn normalize_newlines(s: &str) -> String {
 }
 
 #[test]
-fn from_csv_basic() -> anyhow::Result<()> {
+fn from_csv_basic() {
     let input = "color,count\nred,1\ngreen,2\n";
 
     let (stdout, _) = TvaCmd::new().stdin(input).args(&["from", "csv"]).run();
@@ -17,12 +17,10 @@ fn from_csv_basic() -> anyhow::Result<()> {
 
     let expected = "color\tcount\nred\t1\ngreen\t2\n";
     assert_eq!(stdout, expected);
-
-    Ok(())
 }
 
 #[test]
-fn from_csv_with_quotes_and_commas() -> anyhow::Result<()> {
+fn from_csv_with_quotes_and_commas() {
     let input = "name,comment\n\"a,b\",\"c,d\"\n\"x\"\"y\",z\n";
 
     let (stdout, _) = TvaCmd::new().stdin(input).args(&["from", "csv"]).run();
@@ -30,12 +28,10 @@ fn from_csv_with_quotes_and_commas() -> anyhow::Result<()> {
 
     let expected = "name\tcomment\na,b\tc,d\nx\"y\tz\n";
     assert_eq!(stdout, expected);
-
-    Ok(())
 }
 
 #[test]
-fn from_csv_with_custom_delimiter() -> anyhow::Result<()> {
+fn from_csv_with_custom_delimiter() {
     let input = "color;count\nred;1\ngreen;2\n";
 
     let (stdout, _) = TvaCmd::new()
@@ -46,12 +42,10 @@ fn from_csv_with_custom_delimiter() -> anyhow::Result<()> {
 
     let expected = "color\tcount\nred\t1\ngreen\t2\n";
     assert_eq!(stdout, expected);
-
-    Ok(())
 }
 
 #[test]
-fn from_csv_input1_format1_file() -> anyhow::Result<()> {
+fn from_csv_input1_format1_file() {
     let (stdout, _) = TvaCmd::new()
         .args(&["from", "csv", "tests/data/from_csv/input1_format1.csv"])
         .run();
@@ -86,12 +80,10 @@ a\tab\tabc\tabcd
 ";
 
     assert_eq!(stdout, expected);
-
-    Ok(())
 }
 
 #[test]
-fn from_csv_input3_multiline_and_tabs() -> anyhow::Result<()> {
+fn from_csv_input3_multiline_and_tabs() {
     let (stdout, _) = TvaCmd::new()
         .args(&["from", "csv", "tests/data/from_csv/input3.csv"])
         .run();
@@ -108,12 +100,10 @@ With TAB\tABC DEF\t123 456
 ";
 
     assert_eq!(stdout, expected);
-
-    Ok(())
 }
 
 #[test]
-fn from_csv_input_unicode() -> anyhow::Result<()> {
+fn from_csv_input_unicode() {
     let (stdout, _) = TvaCmd::new()
         .args(&["from", "csv", "tests/data/from_csv/input_unicode.csv"])
         .run();
@@ -128,12 +118,10 @@ suomalainen\tväri vihreä keltainen sininen valkoinen musta\tvihreä\tsininen
 ";
 
     assert_eq!(stdout, expected);
-
-    Ok(())
 }
 
 #[test]
-fn from_csv_input_bom() -> anyhow::Result<()> {
+fn from_csv_input_bom() {
     let (stdout, _) = TvaCmd::new()
         .args(&["from", "csv", "tests/data/from_csv/input_bom.csv"])
         .run();
@@ -146,12 +134,10 @@ ABC\tDEF\tGHI
 ";
 
     assert_eq!(stdout, expected);
-
-    Ok(())
 }
 
 #[test]
-fn from_csv_invalid1_should_fail() -> anyhow::Result<()> {
+fn from_csv_invalid1_should_fail() {
     let (_, stderr) = TvaCmd::new()
         .args(&["from", "csv", "tests/data/from_csv/invalid1.csv"])
         .run_fail();
@@ -167,21 +153,17 @@ fn from_csv_invalid1_should_fail() -> anyhow::Result<()> {
         "expected line information in stderr, got: {}",
         stderr
     );
-
-    Ok(())
 }
 
 #[test]
-fn from_csv_invalid2_should_fail() -> anyhow::Result<()> {
+fn from_csv_invalid2_should_fail() {
     let (_stdout, _stderr) = TvaCmd::new()
         .args(&["from", "csv", "tests/data/from_csv/invalid2.csv"])
         .run();
-
-    Ok(())
 }
 
 #[test]
-fn from_csv_stdin_filename_explicit() -> anyhow::Result<()> {
+fn from_csv_stdin_filename_explicit() {
     let input = "a,b\n1,2\n3,4\n";
 
     let (stdout, _) = TvaCmd::new()
@@ -192,12 +174,10 @@ fn from_csv_stdin_filename_explicit() -> anyhow::Result<()> {
 
     let expected = "a\tb\n1\t2\n3\t4\n";
     assert_eq!(stdout, expected);
-
-    Ok(())
 }
 
 #[test]
-fn from_csv_gz_matches_plain_csv() -> anyhow::Result<()> {
+fn from_csv_gz_matches_plain_csv() {
     // plain CSV
     let (stdout_plain, _) = TvaCmd::new()
         .args(&["from", "csv", "tests/data/from_csv/boston311-100.csv"])
@@ -211,6 +191,47 @@ fn from_csv_gz_matches_plain_csv() -> anyhow::Result<()> {
     let stdout_gz = normalize_newlines(&stdout_gz);
 
     assert_eq!(stdout_plain, stdout_gz);
+}
 
-    Ok(())
+#[test]
+fn from_csv_invalid_delimiter_length() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["from", "csv", "--delimiter", "TAB"])
+        .stdin("a,b\n1,2\n")
+        .run_fail();
+
+    assert!(stderr.contains("delimiter must be a single byte"));
+}
+
+#[test]
+fn from_csv_empty_records() {
+    let input = "a,b\n\n1,2\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "csv"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("a\tb\n1\t2\n"));
+}
+
+#[test]
+fn from_csv_stdin_error() {
+    let input = "a,b\n1,2,3\n";
+    let (_, stderr) = TvaCmd::new()
+        .args(&["from", "csv"])
+        .stdin(input)
+        .run_fail();
+
+    assert!(stderr.contains("tva from csv: invalid CSV at line"));
+}
+
+#[test]
+fn from_csv_file_error_no_line_info() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["from", "csv", "tests/data/from_csv/invalid1.csv"])
+        .run_fail();
+
+    assert!(
+        stderr.contains("tva from csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'")
+    );
 }
