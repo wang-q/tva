@@ -14,11 +14,13 @@ impl TvaCmd {
         Self { cmd, stdin: None }
     }
 
+    #[allow(dead_code)]
     pub fn stdin<S: Into<String>>(mut self, input: S) -> Self {
         self.stdin = Some(input.into());
         self
     }
 
+    #[allow(dead_code)]
     pub fn args(mut self, args: &[&str]) -> Self {
         self.cmd.args(args);
         self
@@ -37,6 +39,7 @@ impl TvaCmd {
         (stdout, stderr)
     }
 
+    #[allow(dead_code)]
     pub fn assert(mut self) -> Assert {
         if let Some(input) = self.stdin {
             self.cmd.write_stdin(input);
@@ -44,6 +47,7 @@ impl TvaCmd {
         self.cmd.assert()
     }
 
+    #[allow(dead_code)]
     pub fn run_fail(self) -> (String, String) {
         let assert = self.assert().failure();
         let output = assert.get_output();
