@@ -10,7 +10,7 @@ jobs:
     name: codecov pgr
     runs-on: ubuntu-latest
     container:
-      image: xd009642/tarpaulin:0.32.0
+      image: xd009642/tarpaulin:develop-nightly
       options: --security-opt seccomp=unconfined
     steps:
       - name: Checkout repository
