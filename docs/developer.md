@@ -283,6 +283,33 @@ git diff v0.1.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 
 *   `fill`: 实现前向/后向填充以及常数填充。
 
+### 借鉴 xan 的未来演进路线 (Future Roadmap: Lessons from xan)
+
+通过对 `xan` 源码的深入分析，我们发现了几个极具价值的功能模块，值得 `tva` 在未来版本中借鉴或引入。
+
+#### 1. Transform (列变换)
+*   **功能**: `xan transform` 允许使用表达式（基于 `moonblade` 解释器）对列进行就地修改。例如 `xan transform surname 'upper(_)'`。
+*   **价值**: `tva` 目前缺乏灵活的列处理能力。虽然 `awk` 可以胜任，但内置的 `transform` 可以提供更好的性能和更简便的语法（无需处理分隔符）。
+*   **建议**: 引入轻量级表达式引擎（如 `rhai` 或简单的自定义解析器），实现类似 `tva apply` 或 `tva transform` 的命令，支持常见的字符串处理（upper, lower, trim, regex_replace）和数值计算。
+
+#### 2. Search (高级搜索)
+*   **功能**: `xan search` 远超简单的 `grep`。它支持：
+    *   **多模式匹配**: 同时搜索数千个关键词（基于 Aho-Corasick 算法）。
+    *   **模糊匹配**: `xan fuzzy-join` 和搜索支持基于 Levenshtein 距离的匹配。
+    *   **替换**: 支持正则替换并输出到新列。
+*   **价值**: 在数据清洗（ETL）场景中，批量关键词匹配和替换是刚需。
+*   **建议**: 增强 `tva filter` 或新增 `tva search`，集成 `aho-corasick` crate 以支持高性能的多模式匹配。
+
+#### 3. Cluster (聚类/重复检测)
+*   **功能**: `xan cluster` 基于键值冲突（Key Collision）或指纹算法（Fingerprinting）来发现相似的行。
+*   **价值**: 这是数据质量分析的高级功能，用于发现拼写错误（如 "Apple Inc." vs "Apple Inc"）。
+*   **建议**: 作为一个高级功能，可以考虑在未来版本中引入，用于数据去重和清洗。
+
+#### 4. Vocabulary (词汇表管理)
+*   **功能**: `xan vocab` 用于管理文本数据的词汇表，支持文档-词项矩阵（Document-Term Matrix）的生成。
+*   **价值**: 对于NLP预处理非常有用。
+*   **建议**: 虽然 `tva` 定位于通用数据处理，但如果目标用户包含大量文本分析需求，这是一个值得考虑的方向。
+
 ---
 
 ## 深度模块分析：Plot (可视化)
