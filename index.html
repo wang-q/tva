@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-207fd3ee.js";
+            window.path_to_searchindex_js = "searchindex-27eaacd2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-bd30c85a.js"></script>
@@ -229,34 +229,29 @@ cd tva
 <p>Then you can run the commands exactly as shown in the docs (e.g., <code>tva select -f 1 docs/data/input.csv</code>).</p>
 <p>Alternatively, you can download individual files from the <a href="https://github.com/wang-q/tva/tree/master/docs/data">docs/data</a> directory on GitHub.</p>
 <h2 id="commands"><a class="header" href="#commands">Commands</a></h2>
-<h3 id="selection--sampling"><a class="header" href="#selection--sampling">Selection &amp; Sampling</a></h3>
-<p>See <a href="selection.html">Selection &amp; Sampling Documentation</a>.</p>
+<h3 id="selection--sampling"><a class="header" href="#selection--sampling"><a href="selection.html">Selection &amp; Sampling</a></a></h3>
 <ul>
 <li><strong><code>select</code></strong>: Select and reorder columns.</li>
 <li><strong><code>slice</code></strong>: Slice rows by index (keep or drop). Supports multiple ranges and header preservation.</li>
 <li><strong><code>sample</code></strong>: Randomly sample rows (Bernoulli, reservoir, weighted).</li>
 </ul>
-<h3 id="filtering"><a class="header" href="#filtering">Filtering</a></h3>
-<p>See <a href="filtering.html">Row Filtering Documentation</a>.</p>
+<h3 id="filtering"><a class="header" href="#filtering"><a href="filtering.html">Filtering</a></a></h3>
 <ul>
 <li><strong><code>filter</code></strong>: Filter rows based on numeric, string, regex, or date criteria.</li>
 </ul>
-<h3 id="ordering"><a class="header" href="#ordering">Ordering</a></h3>
-<p>See <a href="ordering.html">Ordering Documentation</a>.</p>
+<h3 id="ordering"><a class="header" href="#ordering"><a href="ordering.html">Ordering</a></a></h3>
 <ul>
 <li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
 <li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
 <li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
 </ul>
-<h3 id="statistics--summary"><a class="header" href="#statistics--summary">Statistics &amp; Summary</a></h3>
-<p>See <a href="statistics.html">Statistics Documentation</a>.</p>
+<h3 id="statistics--summary"><a class="header" href="#statistics--summary"><a href="statistics.html">Statistics &amp; Summary</a></a></h3>
 <ul>
 <li><strong><code>stats</code></strong>: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.</li>
 <li><strong><code>bin</code></strong>: Discretize numeric values into bins (useful for histograms).</li>
 <li><strong><code>uniq</code></strong>: Deduplicate rows or count unique occurrences (supports equivalence classes).</li>
 </ul>
-<h3 id="reshaping"><a class="header" href="#reshaping">Reshaping</a></h3>
-<p>See <a href="reshape.html">Reshaping Documentation</a>.</p>
+<h3 id="reshaping"><a class="header" href="#reshaping"><a href="reshape.html">Reshaping</a></a></h3>
 <ul>
 <li><strong><code>longer</code></strong>: Reshape wide to long (unpivot). Requires a header row.</li>
 <li><strong><code>wider</code></strong>: Reshape long to wide (pivot). Supports aggregation via <code>--op</code> (sum, count, etc.).</li>
@@ -273,15 +268,13 @@ cd tva
 </tbody>
 </table>
 </div>
-<h3 id="combining--splitting"><a class="header" href="#combining--splitting">Combining &amp; Splitting</a></h3>
-<p>See <a href="combining.html">Combining Documentation</a>.</p>
+<h3 id="combining--splitting"><a class="header" href="#combining--splitting"><a href="combining.html">Combining &amp; Splitting</a></a></h3>
 <ul>
 <li><strong><code>join</code></strong>: Join two files based on common keys (inner, left, outer, anti).</li>
 <li><strong><code>append</code></strong>: Concatenate multiple TSV files, handling headers correctly.</li>
 <li><strong><code>split</code></strong>: Split a file into multiple files (by size, key, or random).</li>
 </ul>
-<h3 id="formatting--utilities"><a class="header" href="#formatting--utilities">Formatting &amp; Utilities</a></h3>
-<p>See <a href="utilities.html">Utilities Documentation</a>.</p>
+<h3 id="formatting--utilities"><a class="header" href="#formatting--utilities"><a href="utilities.html">Formatting &amp; Utilities</a></a></h3>
 <ul>
 <li><strong><code>from</code></strong>: Convert other formats to TSV (csv, xlsx).</li>
 <li><strong><code>to</code></strong>: Convert TSV to other formats (csv, xlsx).</li>
