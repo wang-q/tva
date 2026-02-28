@@ -39,7 +39,7 @@ See [Design Documentation](docs/design.md) for details.
 
 ## Installation
 
-Current release: 0.1.0
+Current release: 0.2.0
 
 ```bash
 # Clone the repository and install via cargo

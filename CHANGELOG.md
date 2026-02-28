@@ -2,6 +2,8 @@
 
 ## Unreleased - ReleaseDate
 
+## 0.2.0 - 2026-02-28
+
 ### Added
 
 #### Data Import & Export
