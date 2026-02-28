@@ -300,3 +300,93 @@
 
 *   `fill`: 实现前向/后向填充以及常数填充。
 
+---
+
+## 深度模块分析：Plot (可视化)
+
+`xan` 的 `plot` 命令 (`xan/src/cmd/plot.rs`) 是一个功能强大的终端绘图工具，基于 `ratatui` 库实现。通过分析其源码，我们可以了解如何在终端中实现高质量的数据可视化。
+
+### 1. 核心流程
+
+`plot` 命令的处理流程可以概括为以下几个阶段：
+
+1.  **参数解析与配置**:
+    *   使用 `clap` 解析大量绘图选项（如 `--line`, `--bars`, `--time`, `--category` 等）。
+    *   处理颜色模式 (`--color`) 和输入配置 (`Config`)。
+    *   推断终端尺寸 (`cols`, `rows`) 和刻度数量 (`ticks`)。
+
+2.  **数据采集 (Data Collection)**:
+    *   **列选择**: 确定 x 轴、y 轴（可能多个）和分类列 (`category`)。
+    *   **Series 构建**: 使用 `SeriesBuilder` 动态构建数据系列。支持三种模式：
+        *   `Single`: 单一数据系列。
+        *   `Multiple`: 多列 y 值（如 `plot x y1 y2`）。
+        *   `Categorical`: 基于分类列分组（如 `plot x y -c category`）。
+    *   **数据解析**: 流式读取 CSV，利用 `fast_float` 解析数值，利用 `jiff` 解析时间戳。支持 `--ignore` 忽略错误。
+
+3.  **数据处理 (Data Processing)**:
+    *   **时间聚合**: 如果启用了 `--time` (`-T`)，会对 x 轴进行时间粒度推断 (`infer_temporal_granularity`) 和聚合计算 (`GroupAggregationProgram`)。
+    *   **域 (Domain) 计算**: 动态计算 x 和 y 的最大最小值 (`extent`)。
+    *   **排序**: 如果是折线图 (`--line`)，强制按 x 轴排序。
+
+4.  **布局与渲染 (Layout & Rendering)**:
+    *   **坐标轴推断**: `AxisInfo` 结构体负责根据所有 Series 的范围统一计算坐标轴的刻度和类型（Int, Float, Timestamp）。
+    *   **Ratatui 绘图**:
+        *   使用 `print_ratatui_frame_to_stdout` 将 TUI 帧直接输出到标准输出。
+        *   支持 **Small Multiples (小多图)**: 如果指定了 `-S`，会使用 `Layout` 将屏幕分割成网格，并在每个格子里独立绘图。
+        *   **Canvas Patching**: `patch_buffer` 函数直接修改 `ratatui` 的底层 Buffer，用于绘制更精细的网格线 (`┼`, `─`, `│`) 和刻度，这是标准 `Chart` widget 难以做到的。
+
+### 2. 关键技术点
+
+*   **混合坐标轴类型**: `AxisType` 枚举处理 `Int`, `Float`, `Timestamp` 的混合逻辑，确保不同系列能共享坐标轴。
+*   **Liang-Barsky 裁剪**: 实现了 `clip` 算法，用于计算回归线在图表边界内的端点。
+*   **鲁棒的日期解析**: 组合了 `jiff` 的多种解析能力 (`parse_zoned`, `parse_partial_date`)，支持多种时间格式。
+*   **终端自适应**: 能够根据终端大小自动调整图表尺寸和刻度密度。
+
+### 3. Hist (直方图) 补充分析
+
+除了 `plot`，`xan` 还提供了一个专门的 `hist` 命令 (`xan/src/cmd/hist.rs`)，用于绘制水平条形图（Horizontal Bar Charts）。
+
+*   **定位差异**:
+    *   `plot`: 通用绘图工具，支持散点图、折线图、垂直条形图，基于 `ratatui`，交互性强，适合复杂数据探索。
+    *   `hist`: 专注于**频次分布可视化**，通常配合 `freq` 或 `bins` 命令使用。它不使用 `ratatui`，而是直接通过 Unicode 字符（如 `█`, `▌`）在标准输出打印，更轻量，适合管道操作。
+*   **核心逻辑**:
+    *   **数据模型**: 期望输入包含 `field` (可选), `value` (标签), `count` (数值) 三列。
+    *   **渲染**: 手动计算每个条形的宽度，使用 `Scale` 进行线性或对数缩放，并处理颜色（Rainbow/Category/Stripes）。
+    *   **特色功能**: 支持日期补全 (`--dates`)，自动填充缺失的日期并设为 0；支持间隙压缩 (`--compress-gaps`)，隐藏连续的 0 值。
+
+### 4. 频率与分箱 (Freq & Bins)
+
+`xan` 的可视化能力通常依赖于预处理命令 `frequency` (或 `freq`) 和 `bins`，它们生成 `hist` 所需的格式化数据。
+
+*   **Frequency (`freq`)**:
+    *   **功能**: 计算离散值的频次表（Top-K）。
+    *   **实现**: 使用 `Counter` (基于 Hashmap) 进行计数。支持并行计算 (`--parallel`)，利用 `rayon` 加速。
+    *   **关键点**: 支持近似算法 (`--approx`)，在内存受限时使用 Space-Saving 算法计算 Top-K。
+*   **Bins (`bins`)**:
+    *   **功能**: 将连续数值离散化为桶（分箱）。
+    *   **实现**: 支持多种分箱启发式算法 (`freedman-diaconis`, `sturges`, `sqrt`) 自动确定最佳桶数。
+    *   **关键点**: `LinearScale::nice` 用于生成人类可读的桶边界（如 0-10, 10-20 而非 0-9.87, 9.87-19.74）。
+
+### 5. Bin vs Bins: 两种分箱哲学
+
+`tva` 的 `bin` 命令目前借鉴了 GNU `datamash` 的设计，而 `xan` 的 `bins` 则展现了完全不同的思路。
+
+| 特性 | tva bin (Datamash Style) | xan bins (Auto/Nice) |
+| :--- | :--- | :--- |
+| **核心逻辑** | `floor((val - min) / width) * width + min` | 自动计算桶数 + "Nice" 刻度 |
+| **输入** | **流式 (Streaming)** | **全量加载 (In-Memory)** |
+| **参数** | 必须指定 `--width` (桶宽) | 指定 `--bins` (桶数) 或启发式算法 |
+| **输出** | 替换/追加原列数值 (Row-wise) | 生成新的统计表 (Summary Table) |
+| **用途** | 数据清洗/ETL (如将年龄 23 变为 20) | 数据探索/直方图预处理 |
+
+*   **tva 的优势**: 极快，恒定内存，适合作为中间步骤（例如 `bin` 后再 `groupby`）。
+*   **xan 的优势**: 智能，无需用户猜测 `width`，直接生成可视化友好的统计结果（包含 `lower_bound`, `upper_bound`, `count`）。
+*   **借鉴意义**:
+    *   **启发式算法**: `xan` 实现了 `Freedman-Diaconis`, `Sturges`, `Sqrt` 等算法来自动推断最佳桶数，这对数据探索非常有价值。
+    *   **Nice Scaling**: `LinearScale::nice` 算法能生成人类可读的边界（10, 20, 30），而不是数学上精确但丑陋的边界（10.123, 20.246）。
+    *   **未来方向**: `tva` 可以保留现有的流式 `bin` 用于 ETL，但可以考虑增加一个聚合模式（或单独的 `histogram` 命令）来吸纳 `xan` 的自动分箱能力。
+
+### 6. 对 `tva` 的启示
+
+`tva` 目前专注于数据处理，但 `plot` 展示了 Rust 在终端可视化方面的潜力。虽然 `tva` 的核心原则是 "do one thing well" (数据处理)，但提供一个基本的 `preview` 或 `hist` 命令（基于简单的 ASCII 字符）可能对快速数据探索非常有价值，而无需引入完整的 `ratatui` 依赖。
+
