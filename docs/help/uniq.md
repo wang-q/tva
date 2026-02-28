@@ -20,7 +20,7 @@ Field Syntax:
 
 Examples:
 1.  Deduplicate whole rows:
-    `tva uniq tests/genome/ctg.tsv`
+    tva uniq tests/genome/ctg.tsv
 
 2.  Deduplicate by column 2:
-    `tva uniq tests/genome/ctg.tsv -f 2`
+    tva uniq tests/genome/ctg.tsv -f 2`

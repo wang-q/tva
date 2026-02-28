@@ -6,6 +6,7 @@ use clap::*;
 pub fn make_subcommand() -> Command {
     Command::new("csv")
         .about("Converts TSV input to CSV")
+        .after_help(include_str!("../../../docs/help/to_csv.md"))
         .arg(
             Arg::new("infile")
                 .num_args(0..=1)

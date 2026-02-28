@@ -4,7 +4,8 @@ use std::io::Write;
 
 pub fn make_subcommand() -> Command {
     Command::new("xlsx")
-        .about("Converts XLSX/XLS input to TSV")
+        .about("Converts Excel input to TSV")
+        .after_help(include_str!("../../../docs/help/from_xlsx.md"))
         .arg(
             Arg::new("infile")
                 .required(true)

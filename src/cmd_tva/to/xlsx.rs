@@ -10,7 +10,8 @@ use std::path::Path;
 
 pub fn make_subcommand() -> Command {
     Command::new("xlsx")
-        .about("Converts TSV to XLSX")
+        .about("Converts TSV input to Excel (xlsx)")
+        .after_help(include_str!("../../../docs/help/to_xlsx.md"))
         .arg(
             Arg::new("infile")
                 .required(true)

@@ -1,4 +1,4 @@
-# from-csv
+# from csv
 
 Reads CSV data from a file or standard input and writes it as TSV.
 
@@ -17,10 +17,10 @@ Output:
 
 Examples:
 1.  Convert a CSV file to TSV
-    tva from-csv data.csv > data.tsv
+    tva from csv data.csv > data.tsv
 
 2.  Read CSV from stdin and convert to TSV
-    cat data.csv | tva from-csv > data.tsv
+    cat data.csv | tva from csv > data.tsv
 
 3.  Use a custom delimiter
-    tva from-csv --delimiter ';' data.csv > data.tsv
+    tva from csv --delimiter ';' data.csv > data.tsv
