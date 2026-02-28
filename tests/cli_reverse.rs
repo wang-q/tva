@@ -9,10 +9,7 @@ fn reverse_basic() {
     let input = "1\n2\n3\n";
     let expected = "3\n2\n1\n";
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&["reverse"])
-        .stdin(input)
-        .run();
+    let (stdout, _) = TvaCmd::new().args(&["reverse"]).stdin(input).run();
 
     assert_eq!(stdout, expected);
 }
@@ -35,10 +32,7 @@ fn reverse_stdin() {
     let input = "1\n2\n3\n";
     let expected = "3\n2\n1\n";
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&["reverse"])
-        .stdin(input)
-        .run();
+    let (stdout, _) = TvaCmd::new().args(&["reverse"]).stdin(input).run();
 
     assert_eq!(stdout, expected);
 }

@@ -270,12 +270,7 @@ C\t9\tQ2\t8
 ";
 
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input1.tsv",
-            "--cols",
-            "2-3",
-        ]) // Melt Q1 and Q2, leaving Q3 as ID
+        .args(&["longer", "tests/data/longer/input1.tsv", "--cols", "2-3"]) // Melt Q1 and Q2, leaving Q3 as ID
         .run();
 
     assert_eq!(stdout, expected);

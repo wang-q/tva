@@ -1,81 +1,60 @@
-use assert_cmd::cargo::cargo_bin_cmd;
-use predicates::prelude::*;
+#[macro_use]
+#[path = "common/mod.rs"]
+mod common;
+
+use common::TvaCmd;
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 
 #[test]
-fn sample_shuffle_basic() -> anyhow::Result<()> {
+fn sample_shuffle_basic() {
     let input = "a\nb\nc\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd.arg("sample").write_stdin(input).output().unwrap();
-    let out_str = String::from_utf8_lossy(&output.stdout);
+    let (stdout, _) = TvaCmd::new().args(&["sample"]).stdin(input).run();
 
-    let mut lines: Vec<&str> = out_str.lines().collect();
+    let mut lines: Vec<&str> = stdout.lines().collect();
     lines.sort();
     assert_eq!(lines, vec!["a", "b", "c", "d"]);
-
-    Ok(())
 }
 
 #[test]
-fn sample_num_limited() -> anyhow::Result<()> {
+fn sample_num_limited() {
     let input = "a\nb\nc\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--num")
-        .arg("2")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    let out_str = String::from_utf8_lossy(&output.stdout);
-    let lines: Vec<&str> = out_str.lines().collect();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "--num", "2"])
+        .stdin(input)
+        .run();
+    let lines: Vec<&str> = stdout.lines().collect();
 
     assert_eq!(lines.len(), 2);
     for line in &lines {
         assert!(["a", "b", "c", "d"].contains(line));
     }
-
-    Ok(())
 }
 
 #[test]
-fn sample_prob_keeps_subset() -> anyhow::Result<()> {
+fn sample_prob_keeps_subset() {
     let input = "a\nb\nc\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--prob")
-        .arg("0.5")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    let out_str = String::from_utf8_lossy(&output.stdout);
-    let lines: Vec<&str> = out_str.lines().collect();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "--prob", "0.5"])
+        .stdin(input)
+        .run();
+    let lines: Vec<&str> = stdout.lines().collect();
 
     assert!(lines.len() <= 4);
     for line in &lines {
         assert!(["a", "b", "c", "d"].contains(line));
     }
-
-    Ok(())
 }
 
 #[test]
-fn sample_header_preserved() -> anyhow::Result<()> {
+fn sample_header_preserved() {
     let input = "h1\n1\n2\n3\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--header")
-        .arg("--num")
-        .arg("2")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    let out_str = String::from_utf8_lossy(&output.stdout);
-    let mut lines = out_str.lines();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "--header", "--num", "2"])
+        .stdin(input)
+        .run();
+    let mut lines = stdout.lines();
 
     let header = lines.next().unwrap();
     assert_eq!(header, "h1");
@@ -85,418 +64,255 @@ fn sample_header_preserved() -> anyhow::Result<()> {
     for line in &data {
         assert!(["1", "2", "3"].contains(line));
     }
-
-    Ok(())
 }
 
 #[test]
-fn sample_invalid_prob_rejected() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample").arg("--prob").arg("0.0");
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains("invalid --prob/-p value"));
+fn sample_invalid_prob_rejected() {
+    let (_, stderr) = TvaCmd::new().args(&["sample", "--prob", "0.0"]).run_fail();
 
-    Ok(())
+    assert!(stderr.contains("invalid --prob/-p value"));
 }
 
 #[test]
-fn test_sample_num_prob_conflict() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-n")
-        .arg("10")
-        .arg("-p")
-        .arg("0.5")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--num/-n and --prob/-p cannot be used together",
-        ));
+fn sample_num_prob_conflict() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-n", "10", "-p", "0.5"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("--num/-n and --prob/-p cannot be used together"));
 }
 
 #[test]
-fn test_sample_replace_prob_conflict() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-r")
-        .arg("-p")
-        .arg("0.5")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--replace/-r cannot be used with --prob/-p",
-        ));
+fn sample_replace_prob_conflict() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-r", "-p", "0.5"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("--replace/-r cannot be used with --prob/-p"));
 }
 
 #[test]
-fn test_sample_replace_no_num() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-r")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--replace/-r requires --num/-n greater than 0",
-        ));
+fn sample_replace_no_num() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-r"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("--replace/-r requires --num/-n greater than 0"));
 }
 
 #[test]
-fn test_sample_inorder_conflicts() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-i")
-        .arg("-r")
-        .arg("-n")
-        .arg("5")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--inorder/-i requires --num/-n without --replace/-r or --prob/-p",
-        ));
+fn sample_inorder_conflicts() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-i", "-r", "-n", "5"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr
+        .contains("--inorder/-i requires --num/-n without --replace/-r or --prob/-p"));
 }
 
 #[test]
-fn test_sample_weight_prob_conflict() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-w")
-        .arg("1")
-        .arg("-p")
-        .arg("0.5")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--weight-field/-w cannot be used with --prob/-p",
-        ));
+fn sample_weight_prob_conflict() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-w", "1", "-p", "0.5"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("--weight-field/-w cannot be used with --prob/-p"));
 }
 
 #[test]
-fn test_sample_invalid_prob() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-p")
-        .arg("1.5")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("invalid --prob/-p value"));
+fn sample_invalid_prob() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-p", "1.5"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("invalid --prob/-p value"));
 }
 
 #[test]
-fn test_sample_gen_random_inorder_conflicts() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("--gen-random-inorder")
-        .arg("-n")
-        .arg("10")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--gen-random-inorder cannot be combined with sampling options",
-        ));
+fn sample_gen_random_inorder_conflicts() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "--gen-random-inorder", "-n", "10"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(
+        stderr.contains("--gen-random-inorder cannot be combined with sampling options")
+    );
 }
 
 #[test]
-fn test_sample_weight_replace_conflict() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-w")
-        .arg("1")
-        .arg("-r")
-        .arg("-n")
-        .arg("10")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--weight-field/-w cannot be used with --replace/-r",
-        ));
+fn sample_weight_replace_conflict() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-w", "1", "-r", "-n", "10"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("--weight-field/-w cannot be used with --replace/-r"));
 }
 
 #[test]
-fn test_sample_key_no_prob() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-k")
-        .arg("1")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--key-fields/-k requires --prob/-p",
-        ));
+fn sample_key_no_prob() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-k", "1"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("--key-fields/-k requires --prob/-p"));
 }
 
 #[test]
-fn test_sample_key_conflicts() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-k")
-        .arg("1")
-        .arg("-p")
-        .arg("0.5")
-        .arg("-n")
-        .arg("10")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--key-fields/-k cannot be used with --num/-n",
-        ));
+fn sample_key_conflicts() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-k", "1", "-p", "0.5", "-n", "10"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("--key-fields/-k cannot be used with --num/-n"));
 }
 
 #[test]
-fn test_sample_print_random_gen_random_conflict() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("--print-random")
-        .arg("--gen-random-inorder")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--print-random cannot be used with --gen-random-inorder",
-        ));
+fn sample_print_random_gen_random_conflict() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "--print-random", "--gen-random-inorder"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("--print-random cannot be used with --gen-random-inorder"));
 }
 
 #[test]
-fn test_sample_print_random_replace_conflict() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("--print-random")
-        .arg("-r")
-        .arg("-n")
-        .arg("10")
-        .write_stdin("a\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "--print-random is not supported with --replace/-r",
-        ));
+fn sample_print_random_replace_conflict() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "--print-random", "-r", "-n", "10"])
+        .stdin("a\n")
+        .run_fail();
+
+    assert!(stderr.contains("--print-random is not supported with --replace/-r"));
 }
 
 #[test]
-fn test_sample_weight_index_out_of_range() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-w")
-        .arg("5")
-        .arg("-n")
-        .arg("1")
-        .write_stdin("a\tb\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "weight field index 5 out of range",
-        ));
+fn sample_weight_index_out_of_range() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-w", "5", "-n", "1"])
+        .stdin("a\tb\n")
+        .run_fail();
+
+    assert!(stderr.contains("weight field index 5 out of range"));
 }
 
 #[test]
-fn test_sample_weight_invalid_value() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-w")
-        .arg("1")
-        .arg("-n")
-        .arg("1")
-        .write_stdin("not_a_number\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "weight value `not_a_number` is not a valid number",
-        ));
+fn sample_weight_invalid_value() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-w", "1", "-n", "1"])
+        .stdin("not_a_number\n")
+        .run_fail();
+
+    assert!(stderr.contains("weight value `not_a_number` is not a valid number"));
 }
 
 #[test]
-fn test_sample_key_index_out_of_range() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("sample")
-        .arg("-k")
-        .arg("5")
-        .arg("-p")
-        .arg("0.5")
-        .write_stdin("a\tb\n")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("key field index 5 out of range"));
+fn sample_key_index_out_of_range() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "-k", "5", "-p", "0.5"])
+        .stdin("a\tb\n")
+        .run_fail();
+
+    assert!(stderr.contains("key field index 5 out of range"));
 }
 
 #[test]
-fn sample_static_seed_produces_reproducible_output() -> anyhow::Result<()> {
+fn sample_static_seed_produces_reproducible_output() {
     let input = "a\nb\nc\nd\n";
 
-    let mut cmd1 = cargo_bin_cmd!("tva");
-    let out1 = cmd1
-        .arg("sample")
-        .arg("--num")
-        .arg("3")
-        .arg("--static-seed")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    let s1 = String::from_utf8(out1.stdout).unwrap();
+    let (s1, _) = TvaCmd::new()
+        .args(&["sample", "--num", "3", "--static-seed"])
+        .stdin(input)
+        .run();
 
-    let mut cmd2 = cargo_bin_cmd!("tva");
-    let out2 = cmd2
-        .arg("sample")
-        .arg("--num")
-        .arg("3")
-        .arg("--static-seed")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    let s2 = String::from_utf8(out2.stdout).unwrap();
+    let (s2, _) = TvaCmd::new()
+        .args(&["sample", "--num", "3", "--static-seed"])
+        .stdin(input)
+        .run();
 
     assert_eq!(s1, s2);
-
-    Ok(())
 }
 
 #[test]
-fn sample_replace_requires_num() -> anyhow::Result<()> {
+fn sample_replace_requires_num() {
     let input = "a\nb\nc\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--replace")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "--replace"])
+        .stdin(input)
+        .run_fail();
 
-    assert!(!output.status.success());
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        stderr.contains("requires --num/-n greater than 0"),
-        "stderr was: {}",
-        stderr
-    );
-
-    Ok(())
+    assert!(stderr.contains("requires --num/-n greater than 0"));
 }
 
 #[test]
-fn sample_replace_conflicts_with_prob() -> anyhow::Result<()> {
+fn sample_replace_conflicts_with_prob() {
     let input = "a\nb\nc\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--replace")
-        .arg("--num")
-        .arg("2")
-        .arg("--prob")
-        .arg("0.5")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-
-    assert!(!output.status.success());
-
-    Ok(())
+    TvaCmd::new()
+        .args(&["sample", "--replace", "--num", "2", "--prob", "0.5"])
+        .stdin(input)
+        .run_fail();
 }
 
 #[test]
-fn sample_replace_basic() -> anyhow::Result<()> {
+fn sample_replace_basic() {
     let input = "a\nb\nc\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--num")
-        .arg("10")
-        .arg("--replace")
-        .arg("--static-seed")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "--num", "10", "--replace", "--static-seed"])
+        .stdin(input)
+        .run();
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let lines: Vec<&str> = stdout.lines().collect();
     assert_eq!(lines.len(), 10);
     for line in &lines {
         assert!(["a", "b", "c", "d"].contains(line));
     }
-
-    Ok(())
 }
 
 #[test]
-fn sample_inorder_requires_num() -> anyhow::Result<()> {
+fn sample_inorder_requires_num() {
     let input = "a\nb\nc\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--inorder")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-
-    assert!(!output.status.success());
-
-    Ok(())
+    TvaCmd::new()
+        .args(&["sample", "--inorder"])
+        .stdin(input)
+        .run_fail();
 }
 
 #[test]
-fn sample_inorder_conflicts_with_prob() -> anyhow::Result<()> {
+fn sample_inorder_conflicts_with_prob() {
     let input = "a\nb\nc\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--num")
-        .arg("2")
-        .arg("--prob")
-        .arg("0.5")
-        .arg("--inorder")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-
-    assert!(!output.status.success());
-
-    Ok(())
+    TvaCmd::new()
+        .args(&["sample", "--num", "2", "--prob", "0.5", "--inorder"])
+        .stdin(input)
+        .run_fail();
 }
 
 #[test]
-fn sample_inorder_conflicts_with_replace() -> anyhow::Result<()> {
+fn sample_inorder_conflicts_with_replace() {
     let input = "a\nb\nc\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--num")
-        .arg("2")
-        .arg("--replace")
-        .arg("--inorder")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-
-    assert!(!output.status.success());
-
-    Ok(())
+    TvaCmd::new()
+        .args(&["sample", "--num", "2", "--replace", "--inorder"])
+        .stdin(input)
+        .run_fail();
 }
 
 #[test]
-fn sample_inorder_basic() -> anyhow::Result<()> {
+fn sample_inorder_basic() {
     let input = "a\nb\nc\nd\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--num")
-        .arg("2")
-        .arg("--inorder")
-        .arg("--static-seed")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "--num", "2", "--inorder", "--static-seed"])
+        .stdin(input)
+        .run();
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let lines: Vec<&str> = stdout.lines().collect();
     assert_eq!(lines.len(), 2);
     for line in &lines {
@@ -511,150 +327,108 @@ fn sample_inorder_basic() -> anyhow::Result<()> {
         _ => 10,
     };
     assert!(pos(lines[0]) < pos(lines[1]));
-
-    Ok(())
 }
 
 #[test]
-fn sample_weight_field_basic() -> anyhow::Result<()> {
+fn sample_weight_field_basic() {
     let input = "x\t1\nx\t10\nx\t100\nx\t1000\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--num")
-        .arg("1")
-        .arg("--weight-field")
-        .arg("2")
-        .arg("--static-seed")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--num",
+            "1",
+            "--weight-field",
+            "2",
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run();
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let lines: Vec<&str> = stdout.lines().collect();
     assert_eq!(lines.len(), 1);
     assert_eq!(lines[0], "x\t1000");
-
-    Ok(())
 }
 
 #[test]
-fn sample_weight_field_header_by_name() -> anyhow::Result<()> {
+fn sample_weight_field_header_by_name() {
     let input = "name\tw\nx\t1\ny\t10\nz\t100\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--header")
-        .arg("--num")
-        .arg("1")
-        .arg("--weight-field")
-        .arg("w")
-        .arg("--static-seed")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--header",
+            "--num",
+            "1",
+            "--weight-field",
+            "w",
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run();
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let lines: Vec<&str> = stdout.lines().collect();
     assert_eq!(lines.len(), 2);
     assert_eq!(lines[0], "name\tw");
-
-    Ok(())
 }
 
 #[test]
-fn sample_weight_field_conflicts_with_prob_and_replace() -> anyhow::Result<()> {
+fn sample_weight_field_conflicts_with_prob_and_replace() {
     let input = "x\t1\nx\t10\n";
 
-    let mut cmd1 = cargo_bin_cmd!("tva");
-    let out1 = cmd1
-        .arg("sample")
-        .arg("--num")
-        .arg("1")
-        .arg("--weight-field")
-        .arg("2")
-        .arg("--prob")
-        .arg("0.5")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    assert!(!out1.status.success());
+    TvaCmd::new()
+        .args(&[
+            "sample",
+            "--num",
+            "1",
+            "--weight-field",
+            "2",
+            "--prob",
+            "0.5",
+        ])
+        .stdin(input)
+        .run_fail();
 
-    let mut cmd2 = cargo_bin_cmd!("tva");
-    let out2 = cmd2
-        .arg("sample")
-        .arg("--num")
-        .arg("1")
-        .arg("--weight-field")
-        .arg("2")
-        .arg("--replace")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    assert!(!out2.status.success());
-
-    Ok(())
+    TvaCmd::new()
+        .args(&["sample", "--num", "1", "--weight-field", "2", "--replace"])
+        .stdin(input)
+        .run_fail();
 }
 
 #[test]
-fn sample_weight_field_invalid_field_list_reports_error() -> anyhow::Result<()> {
+fn sample_weight_field_invalid_field_list_reports_error() {
     let input = "x\t1\nx\t10\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--num")
-        .arg("1")
-        .arg("--weight-field")
-        .arg("0")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let (_, stderr) = TvaCmd::new()
+        .args(&["sample", "--num", "1", "--weight-field", "0"])
+        .stdin(input)
+        .run_fail();
 
-    assert!(!output.status.success());
-    let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("tva sample:"));
-
-    Ok(())
 }
 
 #[test]
-fn sample_key_fields_requires_prob() -> anyhow::Result<()> {
+fn sample_key_fields_requires_prob() {
     let input = "k\tv\na\t1\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--header")
-        .arg("--key-fields")
-        .arg("k")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-
-    assert!(!output.status.success());
-
-    Ok(())
+    TvaCmd::new()
+        .args(&["sample", "--header", "--key-fields", "k"])
+        .stdin(input)
+        .run_fail();
 }
 
 #[test]
-fn sample_key_fields_distinct_per_key() -> anyhow::Result<()> {
+fn sample_key_fields_distinct_per_key() {
     let input = "k\tv\na\t1\na\t2\nb\t3\nb\t4\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--header")
-        .arg("--prob")
-        .arg("0.5")
-        .arg("--key-fields")
-        .arg("k")
-        .arg("--static-seed")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--header",
+            "--prob",
+            "0.5",
+            "--key-fields",
+            "k",
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run();
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let mut lines = stdout.lines();
 
     let header = lines.next().unwrap();
@@ -674,25 +448,21 @@ fn sample_key_fields_distinct_per_key() -> anyhow::Result<()> {
 
     assert!(count_a == 0 || count_a == 2);
     assert!(count_b == 0 || count_b == 2);
-
-    Ok(())
 }
 
 #[test]
-fn sample_gen_random_inorder_basic() -> anyhow::Result<()> {
+fn sample_gen_random_inorder_basic() {
     let input = "k\tv\na\t1\nb\t2\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--header")
-        .arg("--gen-random-inorder")
-        .arg("--static-seed")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--header",
+            "--gen-random-inorder",
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run();
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let mut lines = stdout.lines();
 
     let header = lines.next().unwrap();
@@ -713,53 +483,31 @@ fn sample_gen_random_inorder_basic() -> anyhow::Result<()> {
     assert!(cols2[0].parse::<f64>().is_ok());
     assert_eq!(cols2[1], "b");
     assert_eq!(cols2[2], "2");
-
-    Ok(())
 }
 
 #[test]
-fn sample_gen_random_inorder_conflicts_with_sampling() -> anyhow::Result<()> {
+fn sample_gen_random_inorder_conflicts_with_sampling() {
     let input = "a\nb\nc\n";
 
-    let mut cmd1 = cargo_bin_cmd!("tva");
-    let out1 = cmd1
-        .arg("sample")
-        .arg("--gen-random-inorder")
-        .arg("--num")
-        .arg("2")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    assert!(!out1.status.success());
+    TvaCmd::new()
+        .args(&["sample", "--gen-random-inorder", "--num", "2"])
+        .stdin(input)
+        .run_fail();
 
-    let mut cmd2 = cargo_bin_cmd!("tva");
-    let out2 = cmd2
-        .arg("sample")
-        .arg("--gen-random-inorder")
-        .arg("--prob")
-        .arg("0.5")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    assert!(!out2.status.success());
-
-    Ok(())
+    TvaCmd::new()
+        .args(&["sample", "--gen-random-inorder", "--prob", "0.5"])
+        .stdin(input)
+        .run_fail();
 }
 
 #[test]
-fn sample_print_random_basic() -> anyhow::Result<()> {
+fn sample_print_random_basic() {
     let input = "a\nb\nc\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--print-random")
-        .arg("--static-seed")
-        .write_stdin(input)
-        .output()
-        .unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "--print-random", "--static-seed"])
+        .stdin(input)
+        .run();
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let lines: Vec<&str> = stdout.lines().collect();
     assert_eq!(lines.len(), 3);
 
@@ -767,96 +515,74 @@ fn sample_print_random_basic() -> anyhow::Result<()> {
         let cols: Vec<&str> = line.split('\t').collect();
         assert!(cols[0].parse::<f64>().is_ok());
     }
-
-    Ok(())
 }
 
 #[test]
-fn sample_print_random_not_allowed_with_replace() -> anyhow::Result<()> {
+fn sample_print_random_not_allowed_with_replace() {
     let input = "a\nb\nc\n";
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--num")
-        .arg("5")
-        .arg("--replace")
-        .arg("--print-random")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-
-    assert!(!output.status.success());
-
-    Ok(())
+    TvaCmd::new()
+        .args(&["sample", "--num", "5", "--replace", "--print-random"])
+        .stdin(input)
+        .run_fail();
 }
 
 #[test]
-fn sample_compat_num_superset() -> anyhow::Result<()> {
+fn sample_compat_num_superset() {
     let mut input = String::new();
     for i in 0..20 {
         input.push_str(&format!("{}\n", i));
     }
 
-    let mut cmd_small = cargo_bin_cmd!("tva");
-    let out_small = cmd_small
-        .arg("sample")
-        .arg("--compatibility-mode")
-        .arg("--static-seed")
-        .arg("--num")
-        .arg("5")
-        .write_stdin(input.clone())
-        .output()
-        .unwrap();
-    assert!(out_small.status.success());
-    let lines_small: HashSet<String> = String::from_utf8_lossy(&out_small.stdout)
-        .lines()
-        .map(|s| s.to_string())
-        .collect();
+    let (stdout_small, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--compatibility-mode",
+            "--static-seed",
+            "--num",
+            "5",
+        ])
+        .stdin(input.clone())
+        .run();
+    let lines_small: HashSet<String> =
+        stdout_small.lines().map(|s| s.to_string()).collect();
 
-    let mut cmd_large = cargo_bin_cmd!("tva");
-    let out_large = cmd_large
-        .arg("sample")
-        .arg("--compatibility-mode")
-        .arg("--static-seed")
-        .arg("--num")
-        .arg("10")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    assert!(out_large.status.success());
-    let lines_large: HashSet<String> = String::from_utf8_lossy(&out_large.stdout)
-        .lines()
-        .map(|s| s.to_string())
-        .collect();
+    let (stdout_large, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--compatibility-mode",
+            "--static-seed",
+            "--num",
+            "10",
+        ])
+        .stdin(input)
+        .run();
+    let lines_large: HashSet<String> =
+        stdout_large.lines().map(|s| s.to_string()).collect();
 
     assert!(lines_small.is_subset(&lines_large));
-
-    Ok(())
 }
 
 #[test]
-fn sample_compat_multi_file_from_tsv_sample_inputs() -> anyhow::Result<()> {
+fn sample_compat_multi_file_from_tsv_sample_inputs() {
     let base = PathBuf::from("tests/data/sample");
     let input1 = base.join("input3x10.tsv");
     let input2 = base.join("input3x25.tsv");
 
-    let header_input = fs::read_to_string(&input1)?;
+    let header_input = fs::read_to_string(&input1).unwrap();
     let mut header_lines = header_input.lines();
     let expected_header = header_lines.next().unwrap();
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--header")
-        .arg("--static-seed")
-        .arg("--compatibility-mode")
-        .arg(&input1)
-        .arg(&input2)
-        .output()
-        .unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--header",
+            "--static-seed",
+            "--compatibility-mode",
+            input1.to_str().unwrap(),
+            input2.to_str().unwrap(),
+        ])
+        .run();
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let mut out_lines = stdout.lines();
     let header = out_lines.next().unwrap();
     assert_eq!(header, expected_header);
@@ -868,42 +594,39 @@ fn sample_compat_multi_file_from_tsv_sample_inputs() -> anyhow::Result<()> {
         Ok(it.count())
     }
 
-    let expected_rows = count_data_rows(&input1)? + count_data_rows(&input2)?;
+    let expected_rows =
+        count_data_rows(&input1).unwrap() + count_data_rows(&input2).unwrap();
     let out_data: Vec<&str> = out_lines.collect();
     assert_eq!(out_data.len(), expected_rows);
-
-    Ok(())
 }
 
 #[test]
-fn sample_compat_stdin_and_files_from_tsv_sample_inputs() -> anyhow::Result<()> {
+fn sample_compat_stdin_and_files_from_tsv_sample_inputs() {
     let base = PathBuf::from("tests/data/sample");
     let stdin_path = base.join("input3x10.tsv");
     let file1 = base.join("input3x3.tsv");
     let file2 = base.join("input3x4.tsv");
 
-    let stdin_data = fs::read_to_string(&stdin_path)?;
+    let stdin_data = fs::read_to_string(&stdin_path).unwrap();
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--header")
-        .arg("--static-seed")
-        .arg("--compatibility-mode")
-        .arg("--")
-        .arg("-")
-        .arg(&file1)
-        .arg(&file2)
-        .write_stdin(stdin_data)
-        .output()
-        .unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--header",
+            "--static-seed",
+            "--compatibility-mode",
+            "--",
+            "-",
+            file1.to_str().unwrap(),
+            file2.to_str().unwrap(),
+        ])
+        .stdin(stdin_data)
+        .run();
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let mut out_lines = stdout.lines();
     let header = out_lines.next().unwrap();
 
-    let stdin_header = fs::read_to_string(&stdin_path)?;
+    let stdin_header = fs::read_to_string(&stdin_path).unwrap();
     let mut stdin_lines = stdin_header.lines();
     let expected_header = stdin_lines.next().unwrap();
     assert_eq!(header, expected_header);
@@ -920,43 +643,33 @@ fn sample_compat_stdin_and_files_from_tsv_sample_inputs() -> anyhow::Result<()> 
         Ok(it.count())
     }
 
-    let expected_rows = count_rows_with_header(&stdin_path, true)?
-        + count_rows_with_header(&file1, true)?
-        + count_rows_with_header(&file2, true)?;
+    let expected_rows = count_rows_with_header(&stdin_path, true).unwrap()
+        + count_rows_with_header(&file1, true).unwrap()
+        + count_rows_with_header(&file2, true).unwrap();
 
     let out_data: Vec<&str> = out_lines.collect();
     assert_eq!(out_data.len(), expected_rows);
-
-    Ok(())
 }
 
 #[test]
-fn sample_windows_newlines_from_tsv_sample_inputs() -> anyhow::Result<()> {
+fn sample_windows_newlines_from_tsv_sample_inputs() {
     let base = PathBuf::from("tests/data/sample");
     let unix_path = base.join("input3x25.tsv");
     let dos_path = base.join("input3x25.dos_tsv");
 
-    let unix_contents = fs::read_to_string(&unix_path)?;
+    let unix_contents = fs::read_to_string(&unix_path).unwrap();
     let mut unix_lines = unix_contents.lines();
     let unix_header = unix_lines.next().unwrap();
     let unix_data_count = unix_lines.count();
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("sample")
-        .arg("--header")
-        .arg(&dos_path)
-        .output()
-        .unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "--header", dos_path.to_str().unwrap()])
+        .run();
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let mut out_lines = stdout.lines();
     let header = out_lines.next().unwrap();
     assert_eq!(header, unix_header);
 
     let out_data: Vec<&str> = out_lines.collect();
     assert_eq!(out_data.len(), unix_data_count);
-
-    Ok(())
 }

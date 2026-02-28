@@ -147,12 +147,7 @@ fn select_exclude_first_field_from_input1() {
 #[test]
 fn select_exclude_large_index_is_noop() {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "select",
-            "-e",
-            "1048576",
-            "tests/data/select/input1.tsv",
-        ])
+        .args(&["select", "-e", "1048576", "tests/data/select/input1.tsv"])
         .run();
 
     assert_eq!(
@@ -164,12 +159,7 @@ fn select_exclude_large_index_is_noop() {
 #[test]
 fn select_exclude_large_range_is_noop() {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "select",
-            "-e",
-            "5-1048576",
-            "tests/data/select/input1.tsv",
-        ])
+        .args(&["select", "-e", "5-1048576", "tests/data/select/input1.tsv"])
         .run();
 
     assert_eq!(
@@ -213,12 +203,7 @@ fn select_with_alternate_delimiter_hat_second_field() {
 #[test]
 fn select_from_empty_file_without_header() {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "select",
-            "-f",
-            "1",
-            "tests/data/select/input_emptyfile.tsv",
-        ])
+        .args(&["select", "-f", "1", "tests/data/select/input_emptyfile.tsv"])
         .run();
 
     assert_eq!(stdout, "");
@@ -306,12 +291,7 @@ fn select_cannot_use_fields_and_exclude_together() {
 #[test]
 fn select_error_zero_field_index() {
     let (_, stderr) = TvaCmd::new()
-        .args(&[
-            "select",
-            "-f",
-            "0",
-            "tests/data/select/input1.tsv",
-        ])
+        .args(&["select", "-f", "0", "tests/data/select/input1.tsv"])
         .run_fail();
 
     assert!(stderr.contains("field index must be >= 1"));
@@ -320,12 +300,7 @@ fn select_error_zero_field_index() {
 #[test]
 fn select_error_trailing_comma_in_field_list() {
     let (_, stderr) = TvaCmd::new()
-        .args(&[
-            "select",
-            "-f",
-            "1,",
-            "tests/data/select/input1.tsv",
-        ])
+        .args(&["select", "-f", "1,", "tests/data/select/input1.tsv"])
         .run_fail();
 
     assert!(stderr.contains("empty field list element"));
@@ -334,12 +309,7 @@ fn select_error_trailing_comma_in_field_list() {
 #[test]
 fn select_error_name_without_header() {
     let (_, stderr) = TvaCmd::new()
-        .args(&[
-            "select",
-            "-f",
-            "field1",
-            "tests/data/select/input1.tsv",
-        ])
+        .args(&["select", "-f", "field1", "tests/data/select/input1.tsv"])
         .run_fail();
 
     assert!(stderr.contains("requires header"));
