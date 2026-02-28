@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27eaacd2.js";
+            window.path_to_searchindex_js = "searchindex-cb4f8568.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-bd30c85a.js"></script>
@@ -2108,11 +2108,11 @@ from standard input.</li>
 <ol>
 <li>
 <p>Deduplicate whole rows:
-<code>tva uniq tests/genome/ctg.tsv</code></p>
+tva uniq tests/genome/ctg.tsv</p>
 </li>
 <li>
 <p>Deduplicate by column 2:
-<code>tva uniq tests/genome/ctg.tsv -f 2</code></p>
+tva uniq tests/genome/ctg.tsv -f 2`</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -2318,7 +2318,7 @@ directory).</li>
 <li>By default, existing files are rejected; use –append/-a to append to them.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="from-csv"><a class="header" href="#from-csv">from-csv</a></h1>
+<h1 id="from-csv"><a class="header" href="#from-csv">from csv</a></h1>
 <p>Reads CSV data from a file or standard input and writes it as TSV.</p>
 <p>The goal is to provide a simple entry point into the tva toolkit for
 CSV sources. Parsing is delegated to the Rust <code>csv</code> crate, so quoted
@@ -2338,15 +2338,15 @@ from standard input.</li>
 <ol>
 <li>
 <p>Convert a CSV file to TSV
-tva from-csv data.csv &gt; data.tsv</p>
+tva from csv data.csv &gt; data.tsv</p>
 </li>
 <li>
 <p>Read CSV from stdin and convert to TSV
-cat data.csv | tva from-csv &gt; data.tsv</p>
+cat data.csv | tva from csv &gt; data.tsv</p>
 </li>
 <li>
 <p>Use a custom delimiter
-tva from-csv –delimiter ‘;’ data.csv &gt; data.tsv</p>
+tva from csv –delimiter ‘;’ data.csv &gt; data.tsv</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
