@@ -445,11 +445,7 @@ input3x5\tpqx\tpqy\tpqz
 #[test]
 fn append_track_source() {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "append",
-            "--track-source",
-            "tests/data/append/input3x2.tsv",
-        ])
+        .args(&["append", "--track-source", "tests/data/append/input3x2.tsv"])
         .run();
 
     assert!(stdout.contains("input3x2\tfield1\tfield2\tfield3"));
@@ -488,9 +484,9 @@ fn append_invalid_file_mapping() {
         .args(&["append", "--file", "invalid_format"])
         .run_fail();
 
-    assert!(stderr.contains(
-        "invalid --file value `invalid_format`; expected LABEL=FILE"
-    ));
+    assert!(
+        stderr.contains("invalid --file value `invalid_format`; expected LABEL=FILE")
+    );
 }
 
 #[test]
@@ -530,11 +526,7 @@ fn append_custom_delimiter() {
 #[test]
 fn append_subdir_filename_label() {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "append",
-            "--track-source",
-            "tests/data/append/input3x2.tsv",
-        ])
+        .args(&["append", "--track-source", "tests/data/append/input3x2.tsv"])
         .run();
 
     assert!(stdout.contains("input3x2\tfield1"));

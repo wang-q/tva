@@ -1,4 +1,8 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+#[macro_use]
+#[path = "common/mod.rs"]
+mod common;
+
+use common::TvaCmd;
 use rust_xlsxwriter::Workbook;
 use tempfile::Builder;
 
@@ -19,13 +23,8 @@ fn from_xlsx_basic() -> Result<(), Box<dyn std::error::Error>> {
     workbook.save(file_path)?;
 
     // Run tva from xlsx
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("from")
-        .arg("xlsx")
-        .arg(file_path)
-        .assert()
-        .success()
-        .stdout("Header1\tHeader2\nValue1\t123\nValue2\t45.6\n");
+    let (stdout, _) = TvaCmd::new().args(&["from", "xlsx", file_path]).run();
+    assert_eq!(stdout, "Header1\tHeader2\nValue1\t123\nValue2\t45.6\n");
 
     Ok(())
 }
@@ -40,14 +39,10 @@ fn from_xlsx_list_sheets() -> Result<(), Box<dyn std::error::Error>> {
     let _ = workbook.add_worksheet().set_name("Sheet2")?;
     workbook.save(file_path)?;
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("from")
-        .arg("xlsx")
-        .arg("--list-sheets")
-        .arg(file_path)
-        .assert()
-        .success()
-        .stdout("Sheet1\nSheet2\n");
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "xlsx", "--list-sheets", file_path])
+        .run();
+    assert_eq!(stdout, "Sheet1\nSheet2\n");
 
     Ok(())
 }
@@ -70,15 +65,10 @@ fn from_xlsx_specific_sheet() -> Result<(), Box<dyn std::error::Error>> {
 
     workbook.save(file_path)?;
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("from")
-        .arg("xlsx")
-        .arg("--sheet")
-        .arg("Sheet2")
-        .arg(file_path)
-        .assert()
-        .success()
-        .stdout("S2\n");
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "xlsx", "--sheet", "Sheet2", file_path])
+        .run();
+    assert_eq!(stdout, "S2\n");
 
     Ok(())
 }
@@ -87,15 +77,7 @@ fn from_xlsx_specific_sheet() -> Result<(), Box<dyn std::error::Error>> {
 fn from_xlsx_formats_file_default() -> Result<(), Box<dyn std::error::Error>> {
     let file_path = "tests/data/xlsx/formats.xlsx";
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("xlsx")
-        .arg(file_path)
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8(output.get_output().stdout.clone())?;
+    let (stdout, _) = TvaCmd::new().args(&["from", "xlsx", file_path]).run();
     let lines: Vec<&str> = stdout.lines().collect();
 
     // Check line count (allowing for trailing empty line handling difference)
@@ -110,17 +92,9 @@ fn from_xlsx_formats_file_default() -> Result<(), Box<dyn std::error::Error>> {
 fn from_xlsx_formats_file_sheet_borders() -> Result<(), Box<dyn std::error::Error>> {
     let file_path = "tests/data/xlsx/formats.xlsx";
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("xlsx")
-        .arg(file_path)
-        .arg("--sheet")
-        .arg("Borders")
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8(output.get_output().stdout.clone())?;
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "xlsx", file_path, "--sheet", "Borders"])
+        .run();
     let lines: Vec<&str> = stdout.lines().collect();
 
     assert_eq!(lines.len(), 37);
@@ -137,37 +111,24 @@ fn from_xlsx_formats_file_sheet_borders() -> Result<(), Box<dyn std::error::Erro
 fn from_xlsx_formats_file_list_sheets() -> Result<(), Box<dyn std::error::Error>> {
     let file_path = "tests/data/xlsx/formats.xlsx";
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("from")
-        .arg("xlsx")
-        .arg("--list-sheets")
-        .arg(file_path)
-        .assert()
-        .success()
-        // Updated expectation: The first sheet is named "Introduction", not "Sections"
-        .stdout(predicates::str::contains("Introduction\nFonts\nNamed colors\nStandard colors\nNumeric formats\nBorders\nPatterns\nAlignment\nMiscellaneous\n"));
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "xlsx", "--list-sheets", file_path])
+        .run();
+    assert!(stdout.contains("Introduction\nFonts\nNamed colors\nStandard colors\nNumeric formats\nBorders\nPatterns\nAlignment\nMiscellaneous\n"));
 
     Ok(())
 }
 
 #[test]
 fn from_xlsx_error_missing_file() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("from")
-        .arg("xlsx")
-        .assert()
-        .failure()
-        // Updated expectation: Match generic "Usage:" or "required arguments"
-        .stderr(predicates::str::contains("Usage:"));
+    let (_stdout, stderr) = TvaCmd::new().args(&["from", "xlsx"]).run_fail();
+    assert!(stderr.contains("Usage:"));
 }
 
 #[test]
 fn from_xlsx_error_non_existent_file() {
-    let mut cmd = cargo_bin_cmd!("tva");
-    cmd.arg("from")
-        .arg("xlsx")
-        .arg("tests/data/xlsx/non_existent.xlsx")
-        .assert()
-        .failure()
-        .stderr(predicates::str::contains("Failed to open file"));
+    let (_stdout, stderr) = TvaCmd::new()
+        .args(&["from", "xlsx", "tests/data/xlsx/non_existent.xlsx"])
+        .run_fail();
+    assert!(stderr.contains("Failed to open file"));
 }

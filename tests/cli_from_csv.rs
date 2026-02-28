@@ -1,4 +1,8 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+#[macro_use]
+#[path = "common/mod.rs"]
+mod common;
+
+use common::TvaCmd;
 
 fn normalize_newlines(s: &str) -> String {
     s.replace("\r\n", "\n")
@@ -8,15 +12,7 @@ fn normalize_newlines(s: &str) -> String {
 fn from_csv_basic() -> anyhow::Result<()> {
     let input = "color,count\nred,1\ngreen,2\n";
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("csv")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new().stdin(input).args(&["from", "csv"]).run();
     let stdout = normalize_newlines(&stdout);
 
     let expected = "color\tcount\nred\t1\ngreen\t2\n";
@@ -29,15 +25,7 @@ fn from_csv_basic() -> anyhow::Result<()> {
 fn from_csv_with_quotes_and_commas() -> anyhow::Result<()> {
     let input = "name,comment\n\"a,b\",\"c,d\"\n\"x\"\"y\",z\n";
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("csv")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new().stdin(input).args(&["from", "csv"]).run();
     let stdout = normalize_newlines(&stdout);
 
     let expected = "name\tcomment\na,b\tc,d\nx\"y\tz\n";
@@ -50,17 +38,10 @@ fn from_csv_with_quotes_and_commas() -> anyhow::Result<()> {
 fn from_csv_with_custom_delimiter() -> anyhow::Result<()> {
     let input = "color;count\nred;1\ngreen;2\n";
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("csv")
-        .arg("--delimiter")
-        .arg(";")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["from", "csv", "--delimiter", ";"])
+        .run();
     let stdout = normalize_newlines(&stdout);
 
     let expected = "color\tcount\nred\t1\ngreen\t2\n";
@@ -71,15 +52,9 @@ fn from_csv_with_custom_delimiter() -> anyhow::Result<()> {
 
 #[test]
 fn from_csv_input1_format1_file() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("csv")
-        .arg("tests/data/from_csv/input1_format1.csv")
-        .output()
-        .unwrap();
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "csv", "tests/data/from_csv/input1_format1.csv"])
+        .run();
     let stdout = normalize_newlines(&stdout);
 
     let expected = "\
@@ -117,15 +92,9 @@ a\tab\tabc\tabcd
 
 #[test]
 fn from_csv_input3_multiline_and_tabs() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("csv")
-        .arg("tests/data/from_csv/input3.csv")
-        .output()
-        .unwrap();
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "csv", "tests/data/from_csv/input3.csv"])
+        .run();
     let stdout = normalize_newlines(&stdout);
 
     let expected = "\
@@ -145,15 +114,9 @@ With TAB\tABC DEF\t123 456
 
 #[test]
 fn from_csv_input_unicode() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("csv")
-        .arg("tests/data/from_csv/input_unicode.csv")
-        .output()
-        .unwrap();
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "csv", "tests/data/from_csv/input_unicode.csv"])
+        .run();
     let stdout = normalize_newlines(&stdout);
 
     let expected = "\
@@ -171,15 +134,9 @@ suomalainen\tväri vihreä keltainen sininen valkoinen musta\tvihreä\tsininen
 
 #[test]
 fn from_csv_input_bom() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("csv")
-        .arg("tests/data/from_csv/input_bom.csv")
-        .output()
-        .unwrap();
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "csv", "tests/data/from_csv/input_bom.csv"])
+        .run();
     let stdout = normalize_newlines(&stdout);
 
     let expected = "\
@@ -195,17 +152,9 @@ ABC\tDEF\tGHI
 
 #[test]
 fn from_csv_invalid1_should_fail() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("csv")
-        .arg("tests/data/from_csv/invalid1.csv")
-        .output()
-        .unwrap();
-
-    assert!(!output.status.success());
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    let (_, stderr) = TvaCmd::new()
+        .args(&["from", "csv", "tests/data/from_csv/invalid1.csv"])
+        .run_fail();
     let stderr = normalize_newlines(&stderr);
     assert!(
         stderr
@@ -224,15 +173,9 @@ fn from_csv_invalid1_should_fail() -> anyhow::Result<()> {
 
 #[test]
 fn from_csv_invalid2_should_fail() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("csv")
-        .arg("tests/data/from_csv/invalid2.csv")
-        .output()
-        .unwrap();
-
-    assert!(output.status.success());
+    let (_stdout, _stderr) = TvaCmd::new()
+        .args(&["from", "csv", "tests/data/from_csv/invalid2.csv"])
+        .run();
 
     Ok(())
 }
@@ -241,16 +184,10 @@ fn from_csv_invalid2_should_fail() -> anyhow::Result<()> {
 fn from_csv_stdin_filename_explicit() -> anyhow::Result<()> {
     let input = "a,b\n1,2\n3,4\n";
 
-    let mut cmd = cargo_bin_cmd!("tva");
-    let output = cmd
-        .arg("from")
-        .arg("csv")
-        .arg("stdin")
-        .write_stdin(input)
-        .output()
-        .unwrap();
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["from", "csv", "stdin"])
+        .run();
     let stdout = normalize_newlines(&stdout);
 
     let expected = "a\tb\n1\t2\n3\t4\n";
@@ -262,29 +199,15 @@ fn from_csv_stdin_filename_explicit() -> anyhow::Result<()> {
 #[test]
 fn from_csv_gz_matches_plain_csv() -> anyhow::Result<()> {
     // plain CSV
-    let mut cmd_plain = cargo_bin_cmd!("tva");
-    let output_plain = cmd_plain
-        .arg("from")
-        .arg("csv")
-        .arg("tests/data/from_csv/boston311-100.csv")
-        .output()
-        .unwrap();
-
-    assert!(output_plain.status.success());
-    let stdout_plain = String::from_utf8(output_plain.stdout).unwrap();
+    let (stdout_plain, _) = TvaCmd::new()
+        .args(&["from", "csv", "tests/data/from_csv/boston311-100.csv"])
+        .run();
     let stdout_plain = normalize_newlines(&stdout_plain);
 
     // gzipped CSV
-    let mut cmd_gz = cargo_bin_cmd!("tva");
-    let output_gz = cmd_gz
-        .arg("from")
-        .arg("csv")
-        .arg("tests/data/from_csv/boston311-100.csv.gz")
-        .output()
-        .unwrap();
-
-    assert!(output_gz.status.success());
-    let stdout_gz = String::from_utf8(output_gz.stdout).unwrap();
+    let (stdout_gz, _) = TvaCmd::new()
+        .args(&["from", "csv", "tests/data/from_csv/boston311-100.csv.gz"])
+        .run();
     let stdout_gz = normalize_newlines(&stdout_gz);
 
     assert_eq!(stdout_plain, stdout_gz);
