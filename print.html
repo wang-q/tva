@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-cb4f8568.js";
+            window.path_to_searchindex_js = "searchindex-e9b86a09.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-bd30c85a.js"></script>
+        <script src="toc-be0b4150.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -2347,6 +2347,84 @@ cat data.csv | tva from csv &gt; data.tsv</p>
 <li>
 <p>Use a custom delimiter
 tva from csv –delimiter ‘;’ data.csv &gt; data.tsv</p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="from-xlsx"><a class="header" href="#from-xlsx">from xlsx</a></h1>
+<p>Reads data from an Excel file (.xlsx) and writes it as TSV.</p>
+<p>This command converts Excel spreadsheets into TSV format. It supports reading from
+specific sheets and handles basic cell values.</p>
+<p>Input:</p>
+<ul>
+<li>An Excel file path is required.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Each row in the spreadsheet becomes one TSV line.</li>
+<li>Cells are joined with TAB characters.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Convert an Excel file to TSV (first sheet)
+tva from xlsx data.xlsx &gt; data.tsv</p>
+</li>
+<li>
+<p>Read a specific sheet
+tva from xlsx –sheet “Sheet2” data.xlsx &gt; data.tsv</p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="to-csv"><a class="header" href="#to-csv">to csv</a></h1>
+<p>Reads TSV data and writes it as CSV.</p>
+<p>This command converts TSV data into CSV format, ensuring that fields containing
+delimiters, quotes, or newlines are properly escaped and quoted according to the
+CSV specification.</p>
+<p>Input:</p>
+<ul>
+<li>TSV data from a file or standard input.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>CSV data where fields are separated by a custom delimiter (default: ,).</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Convert a TSV file to CSV
+tva to csv data.tsv &gt; data.csv</p>
+</li>
+<li>
+<p>Read from stdin and convert to CSV
+cat data.tsv | tva to csv &gt; data.csv</p>
+</li>
+<li>
+<p>Use a custom delimiter
+tva to csv –delimiter ‘;’ data.tsv &gt; data.csv</p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="to-xlsx"><a class="header" href="#to-xlsx">to xlsx</a></h1>
+<p>Reads TSV data and writes it as an Excel file (.xlsx).</p>
+<p>This command allows you to create an Excel spreadsheet from TSV data. It writes
+all input rows into a single sheet named “Sheet1”.</p>
+<p>Input:</p>
+<ul>
+<li>TSV data from a file or standard input.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>An Excel (.xlsx) file containing the data.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Convert a TSV file to Excel
+tva to xlsx data.tsv &gt; data.xlsx</p>
+</li>
+<li>
+<p>Read from stdin and convert to Excel
+cat data.tsv | tva to xlsx &gt; data.xlsx</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
