@@ -151,7 +151,8 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
 - 集成测试位于 `tests/` 目录下，文件命名为 `cli_<command>.rs`。
 - 测试数据通常放在 `tests/data/<command>/` 目录下。
-- 使用 `assert_cmd` 或类似的库来测试 CLI 调用和输出验证。
+- **推荐使用 `TvaCmd` 辅助结构体**（定义在 `tests/common/mod.rs`）来编写集成测试，以简化子进程调用和断言。
+- 必须使用 `assert_cmd::cargo::cargo_bin_cmd!` 宏来定位二进制文件，以兼容自定义构建目录。
 - **稳定性原则 (Zero Panic)**: 任何用户输入（包括畸形数据、二进制文件）都不应导致程序 Panic。必须捕获所有错误并返回友好的错误信息。
 - **基准测试**: 性能敏感的变更必须伴随 `benches/` 下的基准测试结果（使用 `criterion`）。
 
@@ -160,19 +161,23 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 ```rust
 // tests/cli_example.rs
 
-use std::process::Command;
-use assert_cmd::prelude::*;
+#[macro_use]
+#[path = "common/mod.rs"]
+mod common;
+
+use common::TvaCmd;
 
 #[test]
-fn test_example_basic() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("tva")?;
-    cmd.arg("example").arg("input.tsv");
+fn test_example_basic() {
+    let input = "id\tval\n1\ta\n";
+    let expected = "id\tval\n1\ta\n";
+    
+    let (result, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["example", "--flag"])
+        .run();
 
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("expected output"));
-
-    Ok(())
+    assert_eq!(result, expected);
 }
 ```
 
@@ -249,26 +254,72 @@ fn test_example_basic() -> Result<(), Box<dyn std::error::Error>> {
 
 ## 帮助文本规范 (Help Text Style Guide)
 
-* **`about`**: Third-person singular, describing the TSV operation
+### Rust 实现规范 (Implementation)
+
+* **`about`**: 使用第三人称单数动词，简要描述 TSV 操作。
   (e.g., "Converts TSV to markdown table", "Deduplicates TSV rows").
-* **`after_help`**: Use raw string `r###"..."###`.
-    * **Description**: Short paragraph of what the subcommand does and its trade-offs.
-    * **Notes**: Bullet points starting with `*`.
-        * TSV input: `* Supports plain text and gzipped (.gz) TSV files`
-        * Stdin behavior:
-            * Single-input tools (e.g. `md`): `* Reads from stdin if input file is 'stdin' or no input file is given`
-            * Multi-input tools (e.g. `uniq`): `* Reads from stdin if no input file is given or if input file is 'stdin'`
-        * Memory-heavy tools (e.g. `uniq`): `* Keeps a hash for each unique row; does not count occurrences`
-    * **Examples**: Numbered list (`1.`, `2.`) with code blocks indented by 3 spaces.
+* **`after_help`**: 使用 `include_str!("../../docs/help/<cmd>.md")` 引入外部文档。
 * **Arguments**:
-    * **Input**: `infile` (single) or `infiles` (multiple).
+    * **Input**: 命名为 `infile` (单文件) 或 `infiles` (多文件)。
         * Help (single): `Input TSV file to process (default: stdin).`
         * Help (multiple): `Input TSV file(s) to process`.
-    * **Output**: `outfile` (`-o`, `--outfile`).
+    * **Output**: 命名为 `outfile` (`-o`, `--outfile`)。
         * Help: `Output filename. [stdout] for screen`.
 * **Terminology**:
-    * Prefer "TSV" when referring to files.
-    *   Use "row" / "column" in help text where it makes sense.
+    * 优先使用 "TSV" 而非 "file"。
+    * **Column vs Field**:
+        * **Column**: 用于文档和概念描述，指代数据的垂直维度 (e.g., "Select the first column").
+        * **Field**: 仅用于指代 CLI 参数 (`--field` / `-f`) 或底层分隔符逻辑 (e.g., "tab-separated fields").
+    * **Key**:
+        * 特指用于排序、连接、去重等操作的那些 Column (e.g., "Sort by the first column as key").
+    * **Row vs Line**:
+        * **Row**: 指代数据记录 (Data Record)，通常不包含表头。
+        * **Line**: 指代物理文本行 (e.g., "The first line is a header").
+
+### 文档内容规范 (Markdown Content)
+
+所有子命令的帮助文档 (`docs/help/<cmd>.md`) 必须遵循以下统一风格：
+
+1.  **标题**:
+    *   以 `# <command>` 开头。
+2.  **简述 (Description)**:
+    *   标题后紧跟一行简洁的功能描述。
+    *   可以包含一段关于该命令做什么及其权衡的简短段落。
+3.  **分节结构**:
+    *   使用 `Section Name:` (加粗，后跟冒号) 作为节标题，而不是 Markdown 的 `##`。
+    *   **不要**包含 `Usage:` 或 `Options:` 小节 (这些由 `clap` 自动生成)。
+4.  **内容格式**:
+    *   **列表**: 使用 `*` 引导的无序列表来描述行为细节 (Input, Header behavior, Logic 等)。
+        * TSV input: `* Supports plain text and gzipped (.gz) TSV files`
+        * Stdin behavior: `* Reads from stdin if input file is 'stdin' or no input file is given`
+    *   **参数引用**: 使用反引号包裹参数，如 `` `--header` / `-H` ``。
+    *   **语法说明**: 通常包含 `Input:`, `Field syntax:` 等固定小节。
+5.  **示例 (Examples)**:
+    *   使用 `Examples:` 作为标题。
+    *   采用编号列表 (`1.`, `2.`)。
+    *   描述后紧跟一个缩进的代码块或反引号包裹的命令。
+
+### 完整示例 (Example)
+
+```markdown
+# command-name
+
+Short description of what the command does.
+
+Input:
+*   Reads from files or standard input; multiple files are processed as one stream.
+*   Files ending in `.gz` are transparently decompressed.
+
+Specific Behavior:
+*   `--flag`: Description of specific flag behavior.
+
+Output:
+*   Writes processed records to standard output...
+
+Examples:
+1. Example description:
+   `tva command -f input.tsv`
+```
 
 ## 用户文档工作流
 
