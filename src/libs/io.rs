@@ -195,7 +195,7 @@ pub fn has_nonempty_line(input: &str) -> io::Result<bool> {
             return Ok(false);
         }
         let trimmed = buf.trim_end_matches(&['\n', '\r'][..]);
-        if !trimmed.is_empty() {
+        if !trimmed.trim().is_empty() {
             return Ok(true);
         }
     }
@@ -306,4 +306,113 @@ pub fn writer(output: &str) -> Box<dyn Write> {
     };
 
     writer
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::NamedTempFile;
+    use std::io::Write;
+    use flate2::write::GzEncoder;
+    use flate2::Compression;
+
+    #[test]
+    fn test_is_stdin_name() {
+        assert!(is_stdin_name("stdin"));
+        assert!(is_stdin_name("-"));
+        assert!(!is_stdin_name("file.txt"));
+    }
+
+    #[test]
+    fn test_map_io_err() {
+        let err = map_io_err("custom error");
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert_eq!(err.to_string(), "custom error");
+    }
+
+    #[test]
+    fn test_reader_regular_file() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, "hello").unwrap();
+        let path = file.path().to_str().unwrap();
+
+        let mut r = reader(path);
+        let mut s = String::new();
+        r.read_to_string(&mut s).unwrap();
+        assert!(s.contains("hello"));
+    }
+
+    #[test]
+    fn test_reader_gzip_file() {
+        let mut file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap().to_string() + ".gz";
+        
+        {
+            let f = File::create(&path).unwrap();
+            let mut e = GzEncoder::new(f, Compression::default());
+            e.write_all(b"compressed hello").unwrap();
+        }
+
+        let mut r = reader(&path);
+        let mut s = String::new();
+        r.read_to_string(&mut s).unwrap();
+        assert_eq!(s, "compressed hello");
+        
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn test_has_nonempty_line() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, "\n   \ncontent").unwrap();
+        let path = file.path().to_str().unwrap();
+
+        assert!(has_nonempty_line(path).unwrap());
+        
+        let mut empty_file = NamedTempFile::new().unwrap();
+        writeln!(empty_file, "\n   \n").unwrap();
+        let empty_path = empty_file.path().to_str().unwrap();
+        
+        assert!(!has_nonempty_line(empty_path).unwrap());
+    }
+
+    #[test]
+    fn test_read_lines() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, "line1").unwrap();
+        writeln!(file, "line2").unwrap();
+        let path = file.path().to_str().unwrap();
+
+        let lines = read_lines(path);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0], "line1");
+        assert_eq!(lines[1], "line2");
+    }
+
+    #[test]
+    fn test_read_replaces() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, "k1\tv1\tv2").unwrap();
+        writeln!(file, "k2\tv3").unwrap();
+        let path = file.path().to_str().unwrap();
+
+        let replaces = read_replaces(path);
+        assert_eq!(replaces.len(), 2);
+        assert_eq!(replaces["k1"], vec!["v1", "v2"]);
+        assert_eq!(replaces["k2"], vec!["v3"]);
+    }
+
+    #[test]
+    fn test_writer_file() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap();
+
+        {
+            let mut w = writer(path);
+            writeln!(w, "test output").unwrap();
+        }
+
+        let content = std::fs::read_to_string(path).unwrap();
+        assert!(content.contains("test output"));
+    }
 }

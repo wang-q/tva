@@ -44,11 +44,27 @@ impl<'a, 'b> Row for TsvRow<'a, 'b> {
         }
 
         let start = if idx == 1 { 0 } else { self.ends[idx - 2] + 1 };
+        
+        // Fix for when ends includes the last field end (like TsvRecord does)
+        // If start > self.line.len(), it means previous field ended at line end or past it.
+        // TsvRecord pushes line.len() as last end.
+        // If line="a\tb", len=3. ends=[1, 3].
+        // Field 1: start=0.
+        // Field 2: start=ends[0]+1=2.
+        // Field 3: start=ends[1]+1=4. > line.len().
+        if start > self.line.len() {
+            return None;
+        }
+
         let end = if i < self.ends.len() {
             self.ends[i]
         } else {
             self.line.len()
         };
+        
+        if start > end {
+             return None;
+        }
         Some(&self.line[start..end])
     }
 }
@@ -256,5 +272,90 @@ mod tests {
         assert_eq!(rec.get(0), Some(b"".as_slice()));
         assert_eq!(rec.get(1), Some(b"".as_slice()));
         assert_eq!(rec.get(2), Some(b"".as_slice()));
+    }
+
+    #[test]
+    fn test_tsv_row() {
+        let line = b"a\tb\tc";
+        let ends = vec![1, 3, 5];
+        let row = TsvRow { line, ends: &ends };
+
+        assert_eq!(row.get_bytes(1), Some(b"a".as_slice()));
+        assert_eq!(row.get_bytes(2), Some(b"b".as_slice()));
+        assert_eq!(row.get_bytes(3), Some(b"c".as_slice()));
+        assert_eq!(row.get_bytes(0), None);
+        assert_eq!(row.get_bytes(4), None);
+        
+        assert_eq!(row.get_str(1), Some("a"));
+        assert_eq!(row.get_str(2), Some("b"));
+    }
+
+    #[test]
+    fn test_str_slice_row() {
+        let fields = vec!["a", "b", "c"];
+        let row = StrSliceRow { fields: &fields };
+
+        assert_eq!(row.get_bytes(1), Some(b"a".as_slice()));
+        assert_eq!(row.get_bytes(2), Some(b"b".as_slice()));
+        assert_eq!(row.get_bytes(3), Some(b"c".as_slice()));
+        assert_eq!(row.get_bytes(0), None);
+        assert_eq!(row.get_bytes(4), None);
+
+        assert_eq!(row.get_str(1), Some("a"));
+    }
+
+    #[test]
+    fn test_tsv_record_eq() {
+        let mut rec1 = TsvRecord::new();
+        rec1.parse_line(b"a\tb", b'\t');
+        
+        let mut rec2 = TsvRecord::new();
+        rec2.parse_line(b"a\tb", b'\t');
+
+        let mut rec3 = TsvRecord::new();
+        rec3.parse_line(b"a\tc", b'\t');
+
+        assert_eq!(rec1, rec2);
+        assert_ne!(rec1, rec3);
+    }
+
+    #[test]
+    fn test_tsv_record_debug() {
+        let mut rec = TsvRecord::new();
+        rec.parse_line(b"a\tb", b'\t');
+        let debug_str = format!("{:?}", rec);
+        assert!(debug_str.contains("TsvRecord"));
+        assert!(debug_str.contains("\"a\""));
+        assert!(debug_str.contains("\"b\""));
+    }
+
+    #[test]
+    fn test_tsv_record_clear() {
+        let mut rec = TsvRecord::new();
+        rec.parse_line(b"a\tb", b'\t');
+        assert!(!rec.is_empty());
+        rec.clear();
+        assert!(rec.is_empty());
+        assert_eq!(rec.len(), 0);
+    }
+
+    #[test]
+    fn test_tsv_record_iter() {
+        let mut rec = TsvRecord::new();
+        rec.parse_line(b"a\tb\tc", b'\t');
+        let fields: Vec<&[u8]> = rec.iter().collect();
+        assert_eq!(fields, vec![b"a", b"b", b"c"]);
+    }
+
+    #[test]
+    fn test_tsv_record_row_trait() {
+        let mut rec = TsvRecord::new();
+        rec.parse_line(b"a\tb", b'\t');
+        
+        assert_eq!(rec.get_bytes(1), Some(b"a".as_slice()));
+        assert_eq!(rec.get_bytes(2), Some(b"b".as_slice()));
+        assert_eq!(rec.get_bytes(3), None);
+        
+        assert_eq!(rec.get_str(1), Some("a"));
     }
 }

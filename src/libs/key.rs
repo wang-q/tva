@@ -55,7 +55,10 @@ impl KeyExtractor {
             if idxs.is_empty() {
                 None
             } else {
-                Some(SelectPlan::new(idxs))
+                // SelectPlan expects 1-based indices if implemented with `current_col_idx = 1`.
+                // Let's adjust to 1-based here.
+                let one_based: Vec<usize> = idxs.iter().map(|&i| i + 1).collect();
+                Some(SelectPlan::new(&one_based))
             }
         });
 
@@ -277,5 +280,127 @@ impl KeyExtractor {
         }
 
         Ok(ParsedKey::Owned(key))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libs::tsv::record::TsvRecord;
+
+    #[test]
+    fn test_extract_whole_line() {
+        let mut extractor = KeyExtractor::new(None, false, true);
+        let line = b"A\tB\tC";
+        
+        let key = extractor.extract(line, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"A\tB\tC");
+    }
+
+    #[test]
+    fn test_extract_whole_line_ignore_case() {
+        let mut extractor = KeyExtractor::new(None, true, true);
+        let line = b"A\tB\tC";
+        
+        let key = extractor.extract(line, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"a\tb\tc");
+    }
+
+    #[test]
+    fn test_extract_single_field() {
+        // Field 1 is B
+        let mut extractor = KeyExtractor::new(Some(vec![1]), false, true);
+        let line = b"A\tB\tC";
+        
+        let key = extractor.extract(line, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"B");
+    }
+
+    #[test]
+    fn test_extract_single_field_ignore_case() {
+        let mut extractor = KeyExtractor::new(Some(vec![1]), true, true);
+        let line = b"A\tB\tC";
+        
+        let key = extractor.extract(line, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"b");
+    }
+
+    #[test]
+    fn test_extract_multiple_fields() {
+        // Indices 0 and 2 -> A and C
+        let mut extractor = KeyExtractor::new(Some(vec![0, 2]), false, true);
+        let line = b"A\tB\tC";
+        
+        let key = extractor.extract(line, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"A\tC");
+    }
+
+    #[test]
+    fn test_extract_multiple_fields_reorder() {
+        // Indices: 2, 0 -> Fields "C", "A"
+        let mut extractor = KeyExtractor::new(Some(vec![2, 0]), false, true);
+        let line = b"A\tB\tC";
+        
+        let key = extractor.extract(line, b'\t').unwrap();
+        // Expect "C\tA"
+        assert_eq!(key.as_ref(), b"C\tA");
+    }
+
+    #[test]
+    fn test_strict_mode() {
+        // Index 3 out of bounds (0, 1, 2)
+        let mut extractor = KeyExtractor::new(Some(vec![3]), false, true);
+        let line = b"A\tB\tC";
+        
+        // This fails because SelectPlan doesn't check strictness itself, 
+        // but KeyExtractor uses it.
+        // Wait, SelectPlan returns Err if missing.
+        // But KeyExtractor propagates it if strict.
+        
+        let result = extractor.extract(line, b'\t');
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_non_strict_mode() {
+        // Index 3 out of bounds
+        let mut extractor = KeyExtractor::new(Some(vec![3]), false, false);
+        let line = b"A\tB\tC";
+        
+        let key = extractor.extract(line, b'\t').unwrap();
+        // Should be empty string if field missing and non-strict?
+        // Or strict error?
+        // If non-strict, KeyExtractor proceeds with empty range.
+        assert_eq!(key.as_ref(), b"");
+    }
+
+    #[test]
+    fn test_extract_from_record() {
+        let mut extractor = KeyExtractor::new(Some(vec![1]), false, true);
+        let mut record = TsvRecord::new();
+        record.parse_line(b"A\tB\tC", b'\t');
+        
+        let key = extractor.extract_from_record(&record, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"B");
+    }
+
+    #[test]
+    fn test_extract_from_record_ignore_case() {
+        let mut extractor = KeyExtractor::new(Some(vec![1]), true, true);
+        let mut record = TsvRecord::new();
+        record.parse_line(b"A\tB\tC", b'\t');
+        
+        let key = extractor.extract_from_record(&record, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"b");
+    }
+
+    #[test]
+    fn test_extract_from_record_strict() {
+        let mut extractor = KeyExtractor::new(Some(vec![3]), false, true);
+        let mut record = TsvRecord::new();
+        record.parse_line(b"A\tB\tC", b'\t');
+        
+        let result = extractor.extract_from_record(&record, b'\t');
+        assert!(result.is_err());
     }
 }
