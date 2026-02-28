@@ -1,7 +1,7 @@
 use crate::libs::tsv::record::Row;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OpKind {
     Count,
     Sum,
@@ -32,6 +32,234 @@ pub enum OpKind {
 pub struct Operation {
     pub kind: OpKind,
     pub field_idx: Option<usize>, // None for count
+}
+
+/// A cell that holds aggregated data for a single value.
+/// This is used by `wider` command where each cell in the pivot table
+/// is an independent aggregation.
+pub struct Cell {
+    pub count: usize,
+    pub sum: f64,
+    pub sum_sq: f64,
+    pub sum_log: f64,
+    pub sum_inv: f64,
+    pub min: f64,
+    pub max: f64,
+    pub first: Option<Vec<u8>>,
+    pub last: Option<Vec<u8>>,
+    pub values: Vec<f64>,
+    pub value_counts: HashMap<Vec<u8>, usize>, // For Mode
+}
+
+impl Cell {
+    pub fn new() -> Self {
+        Self {
+            count: 0,
+            sum: 0.0,
+            sum_sq: 0.0,
+            sum_log: 0.0,
+            sum_inv: 0.0,
+            min: f64::INFINITY,
+            max: f64::NEG_INFINITY,
+            first: None,
+            last: None,
+            values: Vec::new(),
+            value_counts: HashMap::new(),
+        }
+    }
+
+    pub fn update(&mut self, val_bytes: &[u8], op: OpKind) {
+        self.count += 1;
+
+        if self.first.is_none() {
+            self.first = Some(val_bytes.to_vec());
+        }
+        self.last = Some(val_bytes.to_vec());
+
+        // Mode needs raw bytes
+        if op == OpKind::Mode {
+            *self.value_counts.entry(val_bytes.to_vec()).or_insert(0) += 1;
+        }
+
+        // Parse float if needed
+        let val_opt = if matches!(op, OpKind::Count | OpKind::First | OpKind::Last | OpKind::Mode) {
+             None
+        } else {
+             // Only parse if we need numerical value
+             // Try to parse from bytes
+             // We can use simd-json or fast-float if available, but std is fine for now
+             if let Ok(s) = std::str::from_utf8(val_bytes) {
+                 s.trim().parse::<f64>().ok()
+             } else {
+                 None
+             }
+        };
+
+        if let Some(val) = val_opt {
+            match op {
+                OpKind::Sum | OpKind::Mean | OpKind::CV | OpKind::Stdev | OpKind::Variance => {
+                    self.sum += val;
+                    if matches!(op, OpKind::CV | OpKind::Stdev | OpKind::Variance) {
+                        self.sum_sq += val * val;
+                    }
+                }
+                OpKind::Min | OpKind::Range => {
+                    if val < self.min {
+                        self.min = val;
+                    }
+                    // Range needs max too
+                    if op == OpKind::Range && val > self.max {
+                        self.max = val;
+                    }
+                }
+                OpKind::Max => {
+                    if val > self.max {
+                        self.max = val;
+                    }
+                }
+                OpKind::GeoMean => {
+                    if val > 0.0 {
+                        self.sum_log += val.ln();
+                    }
+                }
+                OpKind::HarmMean => {
+                    if val != 0.0 {
+                        self.sum_inv += 1.0 / val;
+                    }
+                }
+                OpKind::Median | OpKind::Q1 | OpKind::Q3 | OpKind::IQR => {
+                    self.values.push(val);
+                }
+                _ => {}
+            }
+
+            if matches!(op, OpKind::Min | OpKind::Range) && val < self.min {
+                self.min = val;
+            }
+            if matches!(op, OpKind::Max | OpKind::Range) && val > self.max {
+                self.max = val;
+            }
+        }
+    }
+
+    pub fn result(&self, op: OpKind) -> String {
+        match op {
+            OpKind::Count => self.count.to_string(),
+            OpKind::Sum => self.sum.to_string(),
+            OpKind::Mean => {
+                if self.count > 0 {
+                    (self.sum / self.count as f64).to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            OpKind::Min => {
+                if self.min == f64::INFINITY {
+                    "nan".to_string()
+                } else {
+                    self.min.to_string()
+                }
+            }
+            OpKind::Max => {
+                if self.max == f64::NEG_INFINITY {
+                    "nan".to_string()
+                } else {
+                    self.max.to_string()
+                }
+            }
+            OpKind::First => self.first.as_ref().map(|v| String::from_utf8_lossy(v).to_string()).unwrap_or_default(),
+            OpKind::Last => self.last.as_ref().map(|v| String::from_utf8_lossy(v).to_string()).unwrap_or_default(),
+            OpKind::GeoMean => {
+                if self.count > 0 {
+                    (self.sum_log / self.count as f64).exp().to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            OpKind::HarmMean => {
+                if self.count > 0 && self.sum_inv != 0.0 {
+                    (self.count as f64 / self.sum_inv).to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            OpKind::Range => {
+                if self.min != f64::INFINITY && self.max != f64::NEG_INFINITY {
+                    (self.max - self.min).to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            OpKind::CV => {
+                if self.count > 1 {
+                    let mean = self.sum / self.count as f64;
+                    let variance = (self.sum_sq
+                        - (self.sum * self.sum) / self.count as f64)
+                        / (self.count as f64 - 1.0);
+                    let stdev = variance.sqrt();
+                    if mean != 0.0 {
+                        (stdev / mean).to_string()
+                    } else {
+                        "nan".to_string()
+                    }
+                } else {
+                    "nan".to_string()
+                }
+            }
+            OpKind::Stdev => {
+                if self.count > 1 {
+                    let variance = (self.sum_sq
+                        - (self.sum * self.sum) / self.count as f64)
+                        / (self.count as f64 - 1.0);
+                    variance.sqrt().to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            OpKind::Variance => {
+                if self.count > 1 {
+                    let variance = (self.sum_sq
+                        - (self.sum * self.sum) / self.count as f64)
+                        / (self.count as f64 - 1.0);
+                    variance.to_string()
+                } else {
+                    "nan".to_string()
+                }
+            }
+            OpKind::Median | OpKind::Q1 | OpKind::Q3 | OpKind::IQR => {
+                let mut sorted_vals = self.values.clone();
+                sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                match op {
+                    OpKind::Median => {
+                        Aggregator::calculate_quantile(&sorted_vals, 0.5).to_string()
+                    }
+                    OpKind::Q1 => {
+                        Aggregator::calculate_quantile(&sorted_vals, 0.25).to_string()
+                    }
+                    OpKind::Q3 => {
+                        Aggregator::calculate_quantile(&sorted_vals, 0.75).to_string()
+                    }
+                    OpKind::IQR => {
+                        let q1 = Aggregator::calculate_quantile(&sorted_vals, 0.25);
+                        let q3 = Aggregator::calculate_quantile(&sorted_vals, 0.75);
+                        (q3 - q1).to_string()
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            OpKind::Mode => {
+                if self.value_counts.is_empty() {
+                    "".to_string()
+                } else {
+                    let mut count_vec: Vec<(&Vec<u8>, &usize)> =
+                        self.value_counts.iter().collect();
+                    count_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+                    String::from_utf8_lossy(count_vec[0].0).to_string()
+                }
+            }
+            _ => "nan".to_string(), // Fallback for unimplemented
+        }
+    }
 }
 
 /// Plan for executing statistics.

@@ -480,7 +480,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                                 OpKind::Unique => "_unique",
                                 OpKind::Collapse => "_collapse",
                                 OpKind::Rand => "_rand",
-                                _ => "",
+                                OpKind::Count => "", // Should be handled by OpKind::Count branch above
                             };
 
                             let name = if let Some(h) = header {

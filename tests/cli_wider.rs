@@ -408,3 +408,319 @@ fn wider_aggregation_ops() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn wider_extended_stats() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let mut file = tempfile::NamedTempFile::new()?;
+    use std::io::Write;
+    writeln!(file, "ID\tKey\tVal")?;
+    // Group A: 1, 3, 5.
+    // Min=1, Max=5, Median=3, Mean=3
+    // Range=4, Stdev=2, Variance=4
+    writeln!(file, "A\tX\t1")?;
+    writeln!(file, "A\tX\t3")?;
+    writeln!(file, "A\tX\t5")?;
+    
+    // Group B: 2, 2, 8.
+    // Min=2, Max=8, Median=2, Mode=2
+    writeln!(file, "B\tX\t2")?;
+    writeln!(file, "B\tX\t2")?;
+    writeln!(file, "B\tX\t8")?;
+    let path = file.path().to_str().unwrap();
+
+    // 1. Min/Max/Range
+    let output_min = cmd
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("min")
+        .output()?;
+    let stdout_min = String::from_utf8(output_min.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_min.contains("A\t1"));
+    assert!(stdout_min.contains("B\t2"));
+
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output_max = cmd2
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("max")
+        .output()?;
+    let stdout_max = String::from_utf8(output_max.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_max.contains("A\t5"));
+    assert!(stdout_max.contains("B\t8"));
+
+    // 2. Median
+    let mut cmd3 = cargo_bin_cmd!("tva");
+    let output_median = cmd3
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("median")
+        .output()?;
+    let stdout_median = String::from_utf8(output_median.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_median.contains("A\t3"));
+    assert!(stdout_median.contains("B\t2"));
+
+    // 3. Mode (B has mode 2)
+    let mut cmd4 = cargo_bin_cmd!("tva");
+    let output_mode = cmd4
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("mode")
+        .output()?;
+    let stdout_mode = String::from_utf8(output_mode.stdout)?.replace("\r\n", "\n");
+    // Mode for A is 1 (or 3 or 5, implementation dependent for ties, usually first/lowest?)
+    // Our implementation sorts by count desc, then value asc. So 1.
+    assert!(stdout_mode.contains("A\t1")); 
+    assert!(stdout_mode.contains("B\t2"));
+
+    Ok(())
+}
+
+#[test]
+fn wider_first_last() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let mut file = tempfile::NamedTempFile::new()?;
+    use std::io::Write;
+    writeln!(file, "ID\tKey\tVal")?;
+    writeln!(file, "A\tX\tfirst_val")?;
+    writeln!(file, "A\tX\tmiddle_val")?;
+    writeln!(file, "A\tX\tlast_val")?;
+    let path = file.path().to_str().unwrap();
+
+    // First
+    let output_first = cmd
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("first")
+        .output()?;
+    let stdout_first = String::from_utf8(output_first.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_first.contains("A\tfirst_val"));
+
+    // Last
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output_last = cmd2
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("last")
+        .output()?;
+    let stdout_last = String::from_utf8(output_last.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_last.contains("A\tlast_val"));
+
+    Ok(())
+}
+
+#[test]
+fn wider_quartiles_iqr() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let mut file = tempfile::NamedTempFile::new()?;
+    use std::io::Write;
+    writeln!(file, "ID\tKey\tVal")?;
+    // Data: 1, 2, 3, 4, 5
+    // Q1 (25th): 2
+    // Q3 (75th): 4
+    // IQR: 4 - 2 = 2
+    // Median (50th): 3
+    for i in 1..=5 {
+        writeln!(file, "A\tX\t{}", i)?;
+    }
+    let path = file.path().to_str().unwrap();
+
+    // Q1
+    let output_q1 = cmd
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("q1")
+        .output()?;
+    let stdout_q1 = String::from_utf8(output_q1.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_q1.contains("A\t2"));
+
+    // Q3
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output_q3 = cmd2
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("q3")
+        .output()?;
+    let stdout_q3 = String::from_utf8(output_q3.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_q3.contains("A\t4"));
+
+    // IQR
+    let mut cmd3 = cargo_bin_cmd!("tva");
+    let output_iqr = cmd3
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("iqr")
+        .output()?;
+    let stdout_iqr = String::from_utf8(output_iqr.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_iqr.contains("A\t2"));
+
+    Ok(())
+}
+
+#[test]
+fn wider_advanced_math_stats() -> anyhow::Result<()> {
+    let mut cmd = cargo_bin_cmd!("tva");
+    let mut file = tempfile::NamedTempFile::new()?;
+    use std::io::Write;
+    writeln!(file, "ID\tKey\tVal")?;
+    // Data: 2, 8
+    // Mean = 5
+    // GeoMean = sqrt(2*8) = 4
+    // HarmMean = 2 / (1/2 + 1/8) = 2 / (0.625) = 3.2
+    // Variance (sample): ((2-5)^2 + (8-5)^2) / (2-1) = (9 + 9)/1 = 18
+    // Stdev: sqrt(18) ≈ 4.2426
+    // CV: Stdev / Mean = 4.2426 / 5 ≈ 0.8485
+    writeln!(file, "A\tX\t2")?;
+    writeln!(file, "A\tX\t8")?;
+    let path = file.path().to_str().unwrap();
+
+    // GeoMean
+    let output_geo = cmd
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("geomean")
+        .output()?;
+    let stdout_geo = String::from_utf8(output_geo.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_geo.contains("A\t4"));
+
+    // HarmMean
+    let mut cmd2 = cargo_bin_cmd!("tva");
+    let output_harm = cmd2
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("harmmean")
+        .output()?;
+    let stdout_harm = String::from_utf8(output_harm.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_harm.contains("A\t3.2"));
+
+    // Variance
+    let mut cmd3 = cargo_bin_cmd!("tva");
+    let output_var = cmd3
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("variance")
+        .output()?;
+    let stdout_var = String::from_utf8(output_var.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_var.contains("A\t18"));
+
+    // Stdev
+    let mut cmd4 = cargo_bin_cmd!("tva");
+    let output_std = cmd4
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("stdev")
+        .output()?;
+    let stdout_std = String::from_utf8(output_std.stdout)?.replace("\r\n", "\n");
+    // Check prefix
+    assert!(stdout_std.contains("A\t4.242"));
+
+    // CV
+    let mut cmd5 = cargo_bin_cmd!("tva");
+    let output_cv = cmd5
+        .arg("wider")
+        .arg(path)
+        .arg("--names-from")
+        .arg("Key")
+        .arg("--values-from")
+        .arg("Val")
+        .arg("--id-cols")
+        .arg("ID")
+        .arg("--op")
+        .arg("cv")
+        .output()?;
+    let stdout_cv = String::from_utf8(output_cv.stdout)?.replace("\r\n", "\n");
+    assert!(stdout_cv.contains("A\t0.848"));
+
+    Ok(())
+}
