@@ -52,9 +52,7 @@ fn stats_mean() {
 #[test]
 fn stats_min_max() {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats", "--header", "--min", "value", "--max", "value",
-        ])
+        .args(&["stats", "--header", "--min", "value", "--max", "value"])
         .stdin(INPUT)
         .run();
 
@@ -110,9 +108,7 @@ fn stats_mad() {
 #[test]
 fn stats_first_last() {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats", "--header", "--first", "value", "--last", "value",
-        ])
+        .args(&["stats", "--header", "--first", "value", "--last", "value"])
         .stdin(INPUT)
         .run();
 
@@ -151,10 +147,7 @@ fn stats_group_by() {
         .stdin(INPUT)
         .run();
 
-    assert_eq!(
-        stdout,
-        "header1\tcount\tvalue_sum\nA\t3\t60\nB\t3\t150\n"
-    );
+    assert_eq!(stdout, "header1\tcount\tvalue_sum\nA\t3\t60\nB\t3\t150\n");
 }
 
 #[test]
@@ -231,14 +224,7 @@ fn stats_quartiles() {
 fn stats_string_ops() {
     let input = "txt\nA\nB\nA\n";
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--unique",
-            "txt",
-            "--collapse",
-            "txt",
-        ])
+        .args(&["stats", "--header", "--unique", "txt", "--collapse", "txt"])
         .stdin(input)
         .run();
 

@@ -206,10 +206,7 @@ fn from_csv_invalid_delimiter_length() {
 #[test]
 fn from_csv_empty_records() {
     let input = "a,b\n\n1,2\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["from", "csv"])
-        .stdin(input)
-        .run();
+    let (stdout, _) = TvaCmd::new().args(&["from", "csv"]).stdin(input).run();
 
     assert!(stdout.contains("a\tb\n1\t2\n"));
 }
@@ -217,10 +214,7 @@ fn from_csv_empty_records() {
 #[test]
 fn from_csv_stdin_error() {
     let input = "a,b\n1,2,3\n";
-    let (_, stderr) = TvaCmd::new()
-        .args(&["from", "csv"])
-        .stdin(input)
-        .run_fail();
+    let (_, stderr) = TvaCmd::new().args(&["from", "csv"]).stdin(input).run_fail();
 
     assert!(stderr.contains("tva from csv: invalid CSV at line"));
 }
@@ -231,7 +225,6 @@ fn from_csv_file_error_no_line_info() {
         .args(&["from", "csv", "tests/data/from_csv/invalid1.csv"])
         .run_fail();
 
-    assert!(
-        stderr.contains("tva from csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'")
-    );
+    assert!(stderr
+        .contains("tva from csv: invalid CSV in 'tests/data/from_csv/invalid1.csv'"));
 }

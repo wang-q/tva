@@ -27,7 +27,9 @@ fn transpose_invalid_structure_from_stdin() {
     let (_, stderr) = TvaCmd::new().args(&["transpose"]).stdin(input).run_fail();
 
     assert!(stderr.contains("line 2 (2 fields):"));
-    assert!(stderr.contains("tva transpose: structure check failed: line 2 has 2 fields (expected 3)"));
+    assert!(stderr.contains(
+        "tva transpose: structure check failed: line 2 has 2 fields (expected 3)"
+    ));
 }
 
 #[test]

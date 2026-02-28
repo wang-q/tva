@@ -209,23 +209,19 @@ fn split_key_fields_invalid_field_list_reports_error() {
 fn split_requires_mode() {
     let (_, stderr) = TvaCmd::new().args(&["split"]).run_fail();
 
-    assert!(stderr.contains("either --lines-per-file/-l or --num-files/-n must be specified"));
+    assert!(stderr
+        .contains("either --lines-per-file/-l or --num-files/-n must be specified"));
 }
 
 #[test]
 fn split_rejects_conflicting_modes() {
     let (_, stderr) = TvaCmd::new()
-        .args(&[
-            "split",
-            "--lines-per-file",
-            "10",
-            "--num-files",
-            "3",
-        ])
+        .args(&["split", "--lines-per-file", "10", "--num-files", "3"])
         .stdin("1\n2\n3\n")
         .run_fail();
 
-    assert!(stderr.contains("tva split: --lines-per-file/-l cannot be used with --num-files/-n"));
+    assert!(stderr
+        .contains("tva split: --lines-per-file/-l cannot be used with --num-files/-n"));
 }
 
 #[test]
@@ -319,7 +315,8 @@ fn split_random_by_key_on_input4x18_groups_keys_together() {
 fn split_missing_args() {
     let (_, stderr) = TvaCmd::new().args(&["split"]).stdin("a\n").run_fail();
 
-    assert!(stderr.contains("either --lines-per-file/-l or --num-files/-n must be specified"));
+    assert!(stderr
+        .contains("either --lines-per-file/-l or --num-files/-n must be specified"));
 }
 
 #[test]
@@ -387,5 +384,6 @@ fn split_key_no_num() {
         .stdin("a\n")
         .run_fail();
 
-    assert!(stderr.contains("either --lines-per-file/-l or --num-files/-n must be specified"));
+    assert!(stderr
+        .contains("either --lines-per-file/-l or --num-files/-n must be specified"));
 }

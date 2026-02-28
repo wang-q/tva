@@ -71,7 +71,9 @@ fn tsv_utils_test_20_basic_count_min_max() {
         .stdin(INPUT_5FIELD_A)
         .run();
 
-    assert!(stdout.contains("count\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max"));
+    assert!(stdout.contains(
+        "count\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max"
+    ));
     assert!(stdout.contains("7\t7.4\t1\t2\t16\t6\t7"));
 }
 
@@ -79,7 +81,15 @@ fn tsv_utils_test_20_basic_count_min_max() {
 fn tsv_utils_test_28_group_by_1() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "stats", "--header", "--group-by", "1", "--count", "--min", "3,4,5", "--max", "3,4,5",
+            "stats",
+            "--header",
+            "--group-by",
+            "1",
+            "--count",
+            "--min",
+            "3,4,5",
+            "--max",
+            "3,4,5",
         ])
         .stdin(INPUT_5FIELD_A)
         .run();
@@ -93,7 +103,15 @@ fn tsv_utils_test_28_group_by_1() {
 fn tsv_utils_test_34_group_by_1_2() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "stats", "--header", "--group-by", "1,2", "--count", "--min", "3,4,5", "--max", "3,4,5",
+            "stats",
+            "--header",
+            "--group-by",
+            "1,2",
+            "--count",
+            "--min",
+            "3,4,5",
+            "--max",
+            "3,4,5",
         ])
         .stdin(INPUT_5FIELD_A)
         .run();
@@ -175,7 +193,9 @@ fn tsv_utils_test_58_multi_file() {
         ])
         .run();
 
-    assert!(stdout.contains("count\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max"));
+    assert!(stdout.contains(
+        "count\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max"
+    ));
     assert!(stdout.contains("12\t6\t1\t2\t16\t7\t8"));
 }
 
@@ -260,7 +280,16 @@ fn tsv_utils_test_154_count_unique_count_files() {
 fn tsv_utils_test_243_mean() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "stats", "--header", "--group-by", "1", "--min", "3-5", "--max", "3-5", "--mean", "3-5",
+            "stats",
+            "--header",
+            "--group-by",
+            "1",
+            "--min",
+            "3-5",
+            "--max",
+            "3-5",
+            "--mean",
+            "3-5",
         ])
         .stdin(INPUT_5FIELD_D)
         .run();
@@ -350,7 +379,15 @@ fn tsv_utils_error_test_invalid_field_list_empty_element() {
 fn tsv_utils_test_stdin_group_by() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "stats", "--header", "--group-by", "2", "--count", "--min", "3,4,5", "--max", "3,4,5",
+            "stats",
+            "--header",
+            "--group-by",
+            "2",
+            "--count",
+            "--min",
+            "3,4,5",
+            "--max",
+            "3,4,5",
         ])
         .stdin(INPUT_5FIELD_A)
         .run();
@@ -445,14 +482,25 @@ fn tsv_utils_test_extended_stats() {
         .run();
 
     assert!(stdout.contains("length_first\tlength_last\tlength_median\tlength_mad\tlength_variance\tlength_stdev\tcolor_mode"));
-    assert!(stdout.contains("10\t7.4\t11\t3\t9.613333333333307\t3.100537587795592\tblue"));
+    assert!(
+        stdout.contains("10\t7.4\t11\t3\t9.613333333333307\t3.100537587795592\tblue")
+    );
 }
 
 #[test]
 fn tsv_utils_test_float_precision_defaults() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "stats", "--header", "--group-by", "1", "--min", "3,4,5", "--max", "3,4,5", "--mean", "3,4,5",
+            "stats",
+            "--header",
+            "--group-by",
+            "1",
+            "--min",
+            "3,4,5",
+            "--max",
+            "3,4,5",
+            "--mean",
+            "3,4,5",
         ])
         .stdin(INPUT_5FIELD_D)
         .run();
@@ -567,10 +615,7 @@ fn tsv_utils_test_1field_no_header() {
 
 #[test]
 fn tsv_utils_test_empty_file_no_header() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--count"])
-        .stdin("")
-        .run();
+    let (stdout, _) = TvaCmd::new().args(&["stats", "--count"]).stdin("").run();
 
     assert!(stdout.contains("0"));
 }

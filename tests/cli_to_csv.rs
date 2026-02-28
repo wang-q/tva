@@ -42,9 +42,7 @@ fn to_csv_file() {
     let file_path = file.path().to_str().unwrap();
     fs::write(file_path, "a\tb\n1\t2\n").unwrap();
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&["to", "csv", file_path])
-        .run();
+    let (stdout, _) = TvaCmd::new().args(&["to", "csv", file_path]).run();
 
     assert_eq!(stdout, "a,b\n1,2\n");
 }
