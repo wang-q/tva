@@ -1,17 +1,13 @@
 #[macro_use]
-extern crate assert_cmd;
+#[path = "common/mod.rs"]
+mod common;
+
+use common::TvaCmd;
 
 #[test]
-fn slice_keep_single_range() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let mut file = tempfile::NamedTempFile::new()?;
-    use std::io::Write;
-    writeln!(file, "h1\nr1\nr2\nr3\nr4\nr5")?;
-    let path = file.path().to_str().unwrap();
-
+fn slice_keep_single_range() {
+    let input = "h1\nr1\nr2\nr3\nr4\nr5\n";
     // Keep rows 2-4 (r2, r3, r4)
-    let output = cmd.arg("slice").arg("-r").arg("3-5").arg(path).output()?;
-
     // Original line numbers:
     // 1: h1
     // 2: r1
@@ -21,136 +17,96 @@ fn slice_keep_single_range() -> anyhow::Result<()> {
     // 6: r5
 
     let expected = "r2\nr3\nr4\n";
-    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "-r", "3-5"])
+        .stdin(input)
+        .run();
+
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn slice_keep_multiple_ranges() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let mut file = tempfile::NamedTempFile::new()?;
-    use std::io::Write;
-    writeln!(file, "1\n2\n3\n4\n5\n6\n7\n8\n9\n10")?;
-    let path = file.path().to_str().unwrap();
-
+fn slice_keep_multiple_ranges() {
+    let input = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n";
     // Keep 1-3 and 8-10
-    let output = cmd
-        .arg("slice")
-        .arg("-r")
-        .arg("1-3")
-        .arg("-r")
-        .arg("8-10")
-        .arg(path)
-        .output()?;
-
     let expected = "1\n2\n3\n8\n9\n10\n";
-    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "-r", "1-3", "-r", "8-10"])
+        .stdin(input)
+        .run();
+
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn slice_drop_single_row() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let mut file = tempfile::NamedTempFile::new()?;
-    use std::io::Write;
-    writeln!(file, "1\n2\n3\n4\n5")?;
-    let path = file.path().to_str().unwrap();
-
+fn slice_drop_single_row() {
+    let input = "1\n2\n3\n4\n5\n";
     // Drop row 3
-    let output = cmd
-        .arg("slice")
-        .arg("-r")
-        .arg("3")
-        .arg("--invert")
-        .arg(path)
-        .output()?;
-
     let expected = "1\n2\n4\n5\n";
-    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "-r", "3", "--invert"])
+        .stdin(input)
+        .run();
+
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn slice_keep_header_drop_range() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let mut file = tempfile::NamedTempFile::new()?;
-    use std::io::Write;
-    writeln!(file, "Header\nData1\nData2\nData3\nData4")?;
-    let path = file.path().to_str().unwrap();
-
+fn slice_keep_header_drop_range() {
+    let input = "Header\nData1\nData2\nData3\nData4\n";
     // Drop rows 1-3 (Header, Data1, Data2) but keep header with -H
     // So result should be: Header, Data3, Data4
-    let output = cmd
-        .arg("slice")
-        .arg("-r")
-        .arg("1-3")
-        .arg("--invert")
-        .arg("--header")
-        .arg(path)
-        .output()?;
-
     let expected = "Header\nData3\nData4\n";
-    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "-r", "1-3", "--invert", "--header"])
+        .stdin(input)
+        .run();
+
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn slice_keep_header_keep_range() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let mut file = tempfile::NamedTempFile::new()?;
-    use std::io::Write;
-    writeln!(file, "Header\nData1\nData2\nData3\nData4")?;
-    let path = file.path().to_str().unwrap();
-
+fn slice_keep_header_keep_range() {
+    let input = "Header\nData1\nData2\nData3\nData4\n";
     // Keep rows 4-5 (Data3, Data4) plus Header
-    let output = cmd
-        .arg("slice")
-        .arg("-r")
-        .arg("4-5")
-        .arg("--header")
-        .arg(path)
-        .output()?;
-
     let expected = "Header\nData3\nData4\n";
-    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "-r", "4-5", "--header"])
+        .stdin(input)
+        .run();
+
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn slice_open_ranges() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let mut file = tempfile::NamedTempFile::new()?;
-    use std::io::Write;
-    writeln!(file, "1\n2\n3\n4\n5")?;
-    let path = file.path().to_str().unwrap();
-
+fn slice_open_ranges() {
+    let input = "1\n2\n3\n4\n5\n";
     // 4- (4, 5)
-    let output = cmd.arg("slice").arg("-r").arg("4-").arg(path).output()?;
-
     let expected = "4\n5\n";
-    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "-r", "4-"])
+        .stdin(input)
+        .run();
+
     assert_eq!(stdout, expected);
-    Ok(())
 }
 
 #[test]
-fn slice_start_ranges() -> anyhow::Result<()> {
-    let mut cmd = cargo_bin_cmd!("tva");
-    let mut file = tempfile::NamedTempFile::new()?;
-    use std::io::Write;
-    writeln!(file, "1\n2\n3\n4\n5")?;
-    let path = file.path().to_str().unwrap();
-
+fn slice_start_ranges() {
+    let input = "1\n2\n3\n4\n5\n";
     // -2 (1, 2)
-    let output = cmd.arg("slice").arg("-r").arg("-2").arg(path).output()?;
-
     let expected = "1\n2\n";
-    let stdout = String::from_utf8(output.stdout)?.replace("\r\n", "\n");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "-r", "-2"])
+        .stdin(input)
+        .run();
+
     assert_eq!(stdout, expected);
-    Ok(())
 }

@@ -5,7 +5,7 @@ mod common;
 use common::TvaCmd;
 
 #[test]
-fn test_sort_invalid_delimiter() {
+fn sort_invalid_delimiter() {
     let (stdout, stderr) = TvaCmd::new()
         .args(&["sort", "--delimiter", "TAB"])
         .stdin("a\n")
@@ -16,7 +16,7 @@ fn test_sort_invalid_delimiter() {
 }
 
 #[test]
-fn test_sort_invalid_key() {
+fn sort_invalid_key() {
     let (stdout, stderr) = TvaCmd::new()
         .args(&["sort", "--key", "0"])
         .stdin("a\n")
@@ -27,7 +27,7 @@ fn test_sort_invalid_key() {
 }
 
 #[test]
-fn test_sort_empty_input() {
+fn sort_empty_input() {
     let (stdout, _) = TvaCmd::new().args(&["sort"]).stdin("").run();
 
     assert!(stdout.is_empty());
@@ -133,7 +133,7 @@ fn sort_with_header() {
 }
 
 #[test]
-fn test_sort_empty_key_part() {
+fn sort_empty_key_part() {
     let (stdout, stderr) = TvaCmd::new()
         .args(&["sort", "-k", "1,,2"])
         .stdin("a\tb\n")
