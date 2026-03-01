@@ -1,5 +1,6 @@
 use crate::libs::aggregation::{Aggregator, Calculator};
 use crate::libs::aggregation::ops::parse_float;
+use crate::libs::aggregation::math;
 use crate::libs::tsv::record::Row;
 
 pub struct Mean {
@@ -18,11 +19,9 @@ impl Calculator for Mean {
 
     fn format(&self, agg: &Aggregator) -> String {
         let count = agg.field_counts[self.count_slot];
-        if count > 0 {
-            (agg.sums[self.sum_slot] / count as f64).to_string()
-        } else {
-            "nan".to_string()
-        }
+        let sum = agg.sums[self.sum_slot];
+        let res = math::mean(sum, count);
+        if res.is_nan() { "nan".to_string() } else { res.to_string() }
     }
 }
 
@@ -44,11 +43,9 @@ impl Calculator for GeoMean {
 
     fn format(&self, agg: &Aggregator) -> String {
         let count = agg.field_counts[self.count_slot];
-        if count > 0 {
-            (agg.sum_logs[self.sum_log_slot] / count as f64).exp().to_string()
-        } else {
-            "nan".to_string()
-        }
+        let sum_log = agg.sum_logs[self.sum_log_slot];
+        let res = math::geomean(sum_log, count);
+        if res.is_nan() { "nan".to_string() } else { res.to_string() }
     }
 }
 
@@ -71,10 +68,7 @@ impl Calculator for HarmMean {
     fn format(&self, agg: &Aggregator) -> String {
         let count = agg.field_counts[self.count_slot];
         let sum_inv = agg.sum_invs[self.sum_inv_slot];
-        if count > 0 && sum_inv != 0.0 {
-            (count as f64 / sum_inv).to_string()
-        } else {
-            "nan".to_string()
-        }
+        let res = math::harmmean(sum_inv, count);
+        if res.is_nan() { "nan".to_string() } else { res.to_string() }
     }
 }

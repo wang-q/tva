@@ -31,6 +31,7 @@
 
 pub mod aggregator;
 pub mod cell;
+pub mod math;
 pub mod ops;
 pub mod processor;
 pub mod traits;

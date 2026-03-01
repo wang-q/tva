@@ -1,5 +1,6 @@
 use crate::libs::aggregation::{Aggregator, Calculator};
 use crate::libs::aggregation::ops::parse_float;
+use crate::libs::aggregation::math;
 use crate::libs::tsv::record::Row;
 
 pub struct Variance {
@@ -20,14 +21,10 @@ impl Calculator for Variance {
 
     fn format(&self, agg: &Aggregator) -> String {
         let count = agg.field_counts[self.count_slot];
-        if count > 1 {
-            let sum = agg.sums[self.sum_slot];
-            let sum_sq = agg.sum_sqs[self.sum_sq_slot];
-            let variance = (sum_sq - (sum * sum) / count as f64) / (count as f64 - 1.0);
-            variance.to_string()
-        } else {
-            "nan".to_string()
-        }
+        let sum = agg.sums[self.sum_slot];
+        let sum_sq = agg.sum_sqs[self.sum_sq_slot];
+        let res = math::variance(sum_sq, sum, count);
+        if res.is_nan() { "nan".to_string() } else { res.to_string() }
     }
 }
 
@@ -49,14 +46,10 @@ impl Calculator for Stdev {
 
     fn format(&self, agg: &Aggregator) -> String {
         let count = agg.field_counts[self.count_slot];
-        if count > 1 {
-            let sum = agg.sums[self.sum_slot];
-            let sum_sq = agg.sum_sqs[self.sum_sq_slot];
-            let variance = (sum_sq - (sum * sum) / count as f64) / (count as f64 - 1.0);
-            variance.sqrt().to_string()
-        } else {
-            "nan".to_string()
-        }
+        let sum = agg.sums[self.sum_slot];
+        let sum_sq = agg.sum_sqs[self.sum_sq_slot];
+        let res = math::stdev(sum_sq, sum, count);
+        if res.is_nan() { "nan".to_string() } else { res.to_string() }
     }
 }
 
@@ -78,18 +71,9 @@ impl Calculator for CV {
 
     fn format(&self, agg: &Aggregator) -> String {
         let count = agg.field_counts[self.count_slot];
-        if count > 1 {
-            let sum = agg.sums[self.sum_slot];
-            let sum_sq = agg.sum_sqs[self.sum_sq_slot];
-            let variance = (sum_sq - (sum * sum) / count as f64) / (count as f64 - 1.0);
-            let mean = sum / count as f64;
-            if mean != 0.0 {
-                (variance.sqrt() / mean).to_string()
-            } else {
-                "nan".to_string()
-            }
-        } else {
-            "nan".to_string()
-        }
+        let sum = agg.sums[self.sum_slot];
+        let sum_sq = agg.sum_sqs[self.sum_sq_slot];
+        let res = math::cv(sum_sq, sum, count);
+        if res.is_nan() { "nan".to_string() } else { res.to_string() }
     }
 }

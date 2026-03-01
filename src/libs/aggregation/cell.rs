@@ -1,5 +1,5 @@
 use super::OpKind;
-use crate::libs::aggregation::Aggregator;
+use crate::libs::aggregation::math;
 
 #[derive(Debug, Clone)]
 pub enum Cell {
@@ -537,61 +537,37 @@ impl Cell {
             }
             Cell::Values(vals) => match op {
                 OpKind::Mean => {
-                    if vals.len() >= 2 && vals[1] > 0.0 {
-                        (vals[0] / vals[1]).to_string()
-                    } else {
-                        "nan".to_string()
-                    }
+                    let sum = vals[0];
+                    let count = vals[1] as usize;
+                    math::mean(sum, count).to_string()
                 }
                 OpKind::GeoMean => {
-                    if vals.len() >= 2 && vals[1] > 0.0 {
-                        (vals[0] / vals[1]).exp().to_string()
-                    } else {
-                        "nan".to_string()
-                    }
+                    let sum_log = vals[0];
+                    let count = vals[1] as usize;
+                    math::geomean(sum_log, count).to_string()
                 }
                 OpKind::HarmMean => {
-                    if vals.len() >= 2 && vals[1] > 0.0 && vals[0] != 0.0 {
-                        (vals[1] / vals[0]).to_string()
-                    } else {
-                        "nan".to_string()
-                    }
+                    let sum_inv = vals[0];
+                    let count = vals[1] as usize;
+                    math::harmmean(sum_inv, count).to_string()
                 }
                 OpKind::Variance => {
-                    if vals.len() >= 3 && vals[2] > 1.0 {
-                        let sum = vals[0];
-                        let sum_sq = vals[1];
-                        let count = vals[2];
-                        ((sum_sq - (sum * sum) / count) / (count - 1.0)).to_string()
-                    } else {
-                        "nan".to_string()
-                    }
+                    let sum = vals[0];
+                    let sum_sq = vals[1];
+                    let count = vals[2] as usize;
+                    math::variance(sum_sq, sum, count).to_string()
                 }
                 OpKind::Stdev => {
-                    if vals.len() >= 3 && vals[2] > 1.0 {
-                        let sum = vals[0];
-                        let sum_sq = vals[1];
-                        let count = vals[2];
-                        ((sum_sq - (sum * sum) / count) / (count - 1.0)).sqrt().to_string()
-                    } else {
-                        "nan".to_string()
-                    }
+                    let sum = vals[0];
+                    let sum_sq = vals[1];
+                    let count = vals[2] as usize;
+                    math::stdev(sum_sq, sum, count).to_string()
                 }
                 OpKind::CV => {
-                    if vals.len() >= 3 && vals[2] > 1.0 {
-                        let sum = vals[0];
-                        let sum_sq = vals[1];
-                        let count = vals[2];
-                        let variance = (sum_sq - (sum * sum) / count) / (count - 1.0);
-                        let mean = sum / count;
-                        if mean != 0.0 {
-                            (variance.sqrt() / mean).to_string()
-                        } else {
-                            "nan".to_string()
-                        }
-                    } else {
-                        "nan".to_string()
-                    }
+                    let sum = vals[0];
+                    let sum_sq = vals[1];
+                    let count = vals[2] as usize;
+                    math::cv(sum_sq, sum, count).to_string()
                 }
                 OpKind::Range => {
                     if vals.len() >= 2 && vals[0] != f64::INFINITY && vals[1] != f64::NEG_INFINITY {
@@ -604,36 +580,32 @@ impl Cell {
                     if vals.is_empty() { return "nan".to_string(); }
                     let mut v = vals.clone();
                     v.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                    Aggregator::calculate_quantile(&v, 0.5).to_string()
+                    math::quantile(&v, 0.5).to_string()
                 }
                 OpKind::Mad => {
                     if vals.is_empty() { return "nan".to_string(); }
                     let mut v = vals.clone();
                     v.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                    let median = Aggregator::calculate_quantile(&v, 0.5);
-                    let mut deviations: Vec<f64> = v.iter().map(|x| (x - median).abs()).collect();
-                    deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                    let mad = Aggregator::calculate_quantile(&deviations, 0.5);
-                    (mad * 1.4826).to_string()
+                    math::mad(&v).to_string()
                 }
                 OpKind::Q1 => {
                     if vals.is_empty() { return "nan".to_string(); }
                     let mut v = vals.clone();
                     v.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                    Aggregator::calculate_quantile(&v, 0.25).to_string()
+                    math::quantile(&v, 0.25).to_string()
                 }
                 OpKind::Q3 => {
                     if vals.is_empty() { return "nan".to_string(); }
                     let mut v = vals.clone();
                     v.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                    Aggregator::calculate_quantile(&v, 0.75).to_string()
+                    math::quantile(&v, 0.75).to_string()
                 }
                 OpKind::IQR => {
                     if vals.is_empty() { return "nan".to_string(); }
                     let mut v = vals.clone();
                     v.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                    let q1 = Aggregator::calculate_quantile(&v, 0.25);
-                    let q3 = Aggregator::calculate_quantile(&v, 0.75);
+                    let q1 = math::quantile(&v, 0.25);
+                    let q3 = math::quantile(&v, 0.75);
                     (q3 - q1).to_string()
                 }
                 _ => "".to_string(),

@@ -1,5 +1,6 @@
 use crate::libs::aggregation::{Aggregator, Calculator};
 use crate::libs::aggregation::ops::parse_float;
+use crate::libs::aggregation::math;
 use crate::libs::tsv::record::Row;
 
 pub struct Median {
@@ -19,7 +20,8 @@ impl Calculator for Median {
         if !vals.is_empty() {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            Aggregator::calculate_quantile(&sorted_vals, 0.5).to_string()
+            let res = math::quantile(&sorted_vals, 0.5);
+            if res.is_nan() { "nan".to_string() } else { res.to_string() }
         } else {
             "nan".to_string()
         }
@@ -43,7 +45,8 @@ impl Calculator for Q1 {
         if !vals.is_empty() {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            Aggregator::calculate_quantile(&sorted_vals, 0.25).to_string()
+            let res = math::quantile(&sorted_vals, 0.25);
+            if res.is_nan() { "nan".to_string() } else { res.to_string() }
         } else {
             "nan".to_string()
         }
@@ -67,7 +70,8 @@ impl Calculator for Q3 {
         if !vals.is_empty() {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            Aggregator::calculate_quantile(&sorted_vals, 0.75).to_string()
+            let res = math::quantile(&sorted_vals, 0.75);
+            if res.is_nan() { "nan".to_string() } else { res.to_string() }
         } else {
             "nan".to_string()
         }
@@ -91,9 +95,10 @@ impl Calculator for IQR {
         if !vals.is_empty() {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            let q1 = Aggregator::calculate_quantile(&sorted_vals, 0.25);
-            let q3 = Aggregator::calculate_quantile(&sorted_vals, 0.75);
-            (q3 - q1).to_string()
+            let q1 = math::quantile(&sorted_vals, 0.25);
+            let q3 = math::quantile(&sorted_vals, 0.75);
+            let res = q3 - q1;
+            if res.is_nan() { "nan".to_string() } else { res.to_string() }
         } else {
             "nan".to_string()
         }
@@ -117,18 +122,8 @@ impl Calculator for Mad {
         if !vals.is_empty() {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            let median = Aggregator::calculate_quantile(&sorted_vals, 0.5);
-            
-            let mut deviations: Vec<f64> = vals
-                .iter()
-                .map(|v| (v - median).abs())
-                .collect();
-            deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            
-            let mad = Aggregator::calculate_quantile(&deviations, 0.5);
-            
-            // Scale by 1.4826 to be consistent with normal distribution (like R's mad)
-            (mad * 1.4826).to_string()
+            let res = math::mad(&sorted_vals);
+            if res.is_nan() { "nan".to_string() } else { res.to_string() }
         } else {
             "nan".to_string()
         }

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use super::math;
 
 #[derive(Debug, Clone)]
 pub struct Aggregator {
@@ -41,21 +42,10 @@ impl Default for Aggregator {
 }
 
 impl Aggregator {
+    /// Calculate quantile on a SORTED slice.
+    /// This is a convenience wrapper around math::quantile.
+    #[inline]
     pub fn calculate_quantile(sorted_vals: &[f64], p: f64) -> f64 {
-        let len = sorted_vals.len();
-        if len == 0 {
-            return f64::NAN;
-        }
-        if len == 1 {
-            return sorted_vals[0];
-        }
-        let pos = p * (len - 1) as f64;
-        let i = pos.floor() as usize;
-        let fract = pos - i as f64;
-        if i >= len - 1 {
-            sorted_vals[len - 1]
-        } else {
-            sorted_vals[i] * (1.0 - fract) + sorted_vals[i + 1] * fract
-        }
+        math::quantile(sorted_vals, p)
     }
 }
