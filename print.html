@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-eb915521.js";
+            window.path_to_searchindex_js = "searchindex-d95a97d7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-be0b4150.js"></script>
@@ -182,7 +182,7 @@
 <p>Tab-separated Values Assistant.
 Fast, reliable TSV processing toolkit in Rust.</p>
 <p><a href="https://github.com/wang-q/tva/actions"><img src="https://github.com/wang-q/tva/actions/workflows/build.yml/badge.svg" alt="Build"></a>
-<a href="https://codecov.io/gh/wang-q/tva"><img src="https://codecov.io/gh/wang-q/tva/graph/badge.svg?token=c76YHsQnW7" alt="codecov"></a>
+<a href="https://codecov.io/gh/wang-q/tva"><img src="https://img.shields.io/codecov/c/github/wang-q/tva/master" alt="codecov"></a>
 <a href="https://github.com/wang-q/tva"><img src="https://img.shields.io/github/license/wang-q/tva" alt="license"></a>
 <a href="https://wang-q.github.io/tva/"><img src="https://img.shields.io/badge/docs-online-blue" alt="Documentation"></a></p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
@@ -254,18 +254,6 @@ cd tva
 <li><strong><code>longer</code></strong>: Reshape wide to long (unpivot). Requires a header row.</li>
 <li><strong><code>wider</code></strong>: Reshape long to wide (pivot). Supports aggregation via <code>--op</code> (sum, count, etc.).</li>
 </ul>
-<p><strong>Comparison: <code>stats</code> vs <code>wider</code></strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>stats</code> (Group By)</th><th style="text-align: left"><code>wider</code> (Pivot)</th></tr>
-</thead>
-<tbody>
-<tr><td style="text-align: left"><strong>Goal</strong></td><td style="text-align: left">Summarize to rows</td><td style="text-align: left">Reshape to columns</td></tr>
-<tr><td style="text-align: left"><strong>Output</strong></td><td style="text-align: left">Long / Tall</td><td style="text-align: left">Wide / Matrix</td></tr>
-</tbody>
-</table>
-</div>
 <h3 id="combining--splitting"><a class="header" href="#combining--splitting"><a href="#combining--splitting-documentation">Combining &amp; Splitting</a></a></h3>
 <ul>
 <li><strong><code>join</code></strong>: Join two files based on common keys (inner, left, outer, anti).</li>
@@ -274,8 +262,9 @@ cd tva
 </ul>
 <h3 id="formatting--utilities"><a class="header" href="#formatting--utilities"><a href="#formatting--utilities-documentation">Formatting &amp; Utilities</a></a></h3>
 <ul>
-<li><strong><code>from</code></strong>: Convert other formats to TSV (csv, xlsx).</li>
-<li><strong><code>to</code></strong>: Convert TSV to other formats (csv, xlsx).</li>
+<li><strong><code>from</code></strong>: Convert other formats to TSV (<code>csv</code>, <code>xlsx</code>).</li>
+<li><strong><code>to</code></strong>: Convert TSV to other formats (<code>csv</code>, <code>xlsx</code>).</li>
+<li><strong><code>blank</code></strong>: Replace consecutive identical values in selected columns with empty strings (sparsify).</li>
 <li><strong><code>check</code></strong>: Validate TSV file structure (column counts, encoding).</li>
 <li><strong><code>md</code></strong>: Convert TSV to Markdown table for display.</li>
 <li><strong><code>nl</code></strong>: Add line numbers to rows.</li>
@@ -1264,6 +1253,18 @@ A	M	18	10
 <li><strong><code>longer</code></strong>: Reshapes “wide” data into a “long” format.</li>
 <li><strong><code>wider</code></strong>: Reshapes “long” data into a “wide” format.</li>
 </ul>
+<p><strong>Comparison: <code>stats</code> vs <code>wider</code></strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>stats</code> (Group By)</th><th style="text-align: left"><code>wider</code> (Pivot)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Goal</strong></td><td style="text-align: left">Summarize to rows</td><td style="text-align: left">Reshape to columns</td></tr>
+<tr><td style="text-align: left"><strong>Output</strong></td><td style="text-align: left">Long / Tall</td><td style="text-align: left">Wide / Matrix</td></tr>
+</tbody>
+</table>
+</div>
 <h2 id="longer-wide-to-long"><a class="header" href="#longer-wide-to-long"><code>longer</code> (Wide to Long)</a></h2>
 <p>The <code>longer</code> command is designed to reshape “wide” data into a “long” format. “Wide” data often has column names that are actually values of a variable. For example, a table might have columns like <code>2020</code>, <code>2021</code>, <code>2022</code> representing years. <code>longer</code> gathers these columns into a pair of key-value columns (e.g., <code>year</code> and <code>population</code>), making the data “longer” (more rows, fewer columns) and easier to analyze.</p>
 <h3 id="basic-usage-6"><a class="header" href="#basic-usage-6">Basic Usage</a></h3>

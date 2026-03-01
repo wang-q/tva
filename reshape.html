@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-eb915521.js";
+            window.path_to_searchindex_js = "searchindex-d95a97d7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-be0b4150.js"></script>
@@ -193,6 +193,18 @@
 <li><strong><code>longer</code></strong>: Reshapes “wide” data into a “long” format.</li>
 <li><strong><code>wider</code></strong>: Reshapes “long” data into a “wide” format.</li>
 </ul>
+<p><strong>Comparison: <code>stats</code> vs <code>wider</code></strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>stats</code> (Group By)</th><th style="text-align: left"><code>wider</code> (Pivot)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Goal</strong></td><td style="text-align: left">Summarize to rows</td><td style="text-align: left">Reshape to columns</td></tr>
+<tr><td style="text-align: left"><strong>Output</strong></td><td style="text-align: left">Long / Tall</td><td style="text-align: left">Wide / Matrix</td></tr>
+</tbody>
+</table>
+</div>
 <h2 id="longer-wide-to-long"><a class="header" href="#longer-wide-to-long"><code>longer</code> (Wide to Long)</a></h2>
 <p>The <code>longer</code> command is designed to reshape “wide” data into a “long” format. “Wide” data often has column names that are actually values of a variable. For example, a table might have columns like <code>2020</code>, <code>2021</code>, <code>2022</code> representing years. <code>longer</code> gathers these columns into a pair of key-value columns (e.g., <code>year</code> and <code>population</code>), making the data “longer” (more rows, fewer columns) and easier to analyze.</p>
 <h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
