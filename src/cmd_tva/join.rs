@@ -384,38 +384,40 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             if has_header && is_first_line {
+                // Always re-parse header for each file to handle potentially different column orders
+                let effective_data_spec =
+                    data_fields_spec.clone().or_else(|| key_fields_spec.clone());
+
+                let header_str = String::from_utf8_lossy(line);
+                let (whole_line, indices) = parse_join_field_spec(
+                    effective_data_spec,
+                    Some(&crate::libs::tsv::fields::Header::from_line(
+                        &header_str, delimiter_char,
+                    )),
+                    delimiter_char,
+                );
+                data_key_whole_line = whole_line;
+                if let Some(ref idxs) = indices {
+                    data_key_indices_len = idxs.len();
+                } else {
+                    data_key_indices_len = 0; // not really 0, but implicit
+                }
+                data_key_extractor = Some(KeyExtractor::new(indices, false, true));
+
+                // Validate key lengths match
+                if !filter_key_whole_line && !data_key_whole_line {
+                    let fk_len = filter_key_indices.as_ref().unwrap().len();
+                    let dk_len = data_key_indices_len;
+                    if fk_len != dk_len {
+                        eprintln!(
+                            "tva join: different number of key-fields and data-fields in file {}",
+                            input.name
+                        );
+                        std::process::exit(1);
+                    }
+                }
+
                 if !header_written {
-                    let effective_data_spec =
-                        data_fields_spec.clone().or_else(|| key_fields_spec.clone());
-
-                    let header_str = String::from_utf8_lossy(line);
-                    let (whole_line, indices) = parse_join_field_spec(
-                        effective_data_spec,
-                        Some(&crate::libs::tsv::fields::Header::from_line(
-                            &header_str, delimiter_char,
-                        )),
-                        delimiter_char,
-                    );
-                    data_key_whole_line = whole_line;
-                    if let Some(ref idxs) = indices {
-                        data_key_indices_len = idxs.len();
-                    } else {
-                        data_key_indices_len = 0; // not really 0, but implicit
-                    }
-                    data_key_extractor = Some(KeyExtractor::new(indices, false, true));
-
-                    // Validate key lengths match
-                    if !filter_key_whole_line && !data_key_whole_line {
-                        let fk_len = filter_key_indices.as_ref().unwrap().len();
-                        let dk_len = data_key_indices_len;
-                        if fk_len != dk_len {
-                            eprintln!(
-                                "tva join: different number of key-fields and data-fields"
-                            );
-                            std::process::exit(1);
-                        }
-                    }
-
                     writer.write_all(line)?;
                     if let Some(ref suffix) = append_header_suffix {
                         writer.write_all(suffix.as_bytes())?;
