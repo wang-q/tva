@@ -41,39 +41,43 @@ cargo test
 - **`src/lib.rs`** - 库入口，导出模块。
 - **`src/cmd_tva/`** - 命令实现模块。每个子命令对应一个 `.rs` 文件（例如 `stats.rs`, `select.rs`）。
 - **`src/libs/`** - 共享工具库和核心逻辑。
-  - **`tsv/`** - 核心 TSV 解析与处理模块。
-    - **`fields.rs`** - 强大的字段选择逻辑。
-        - 支持统一的字段语法: 数字索引 (`1,3-5`), 倒序范围 (`5-3`), 名称匹配 (`user_id`), 通配符 (`*_time`, `col*`), 名称范围 (`start_col-end_col`)。
-        - 处理转义字符，支持包含空格或特殊字符的列名。
-    - **`reader.rs`** - 高性能零拷贝 TSV 读取器。
-        - `TsvReader`: 管理内部缓冲区，支持行级迭代，避免字符串分配。
-        - 自动处理 `CRLF` 和行尾异常。
-    - **`record.rs`** - 记录抽象。
-        - `TsvRecord`: 拥有数据的记录结构，记录字段偏移量。
-        - `TsvRow`: 借用数据的轻量级视图，实现零拷贝访问。
-    - **`split.rs`** - 基于 SIMD 的字段切分工具。
-        - `TsvSplitter`: 使用 `memchr` 快速迭代字段切片。
-  - **`filter.rs`** - 过滤逻辑引擎。
-    - 支持多种比较操作符 (`eq`, `le`, `str-in-fld` 等)。
-    - 针对数值和字符串优化的求值逻辑。
+  - **`aggregation/`** - 高性能 SoA 聚合引擎 (用于 `stats`)。
+    - **`aggregator.rs`** - 扁平化的状态存储 (`Vec<f64>`)，实现 Struct-of-Arrays 布局。
+    - **`processor.rs`** - 聚合计划与执行器，管理 `Calculator` 集合。
+    - **`ops/`** - 具体算子实现 (Sum, Mean, Unique 等)，通过 `Calculator` trait 解耦。
+    - **`math.rs`** - 核心数学函数库 (Mean, Variance, Quantile, MAD)。
+  - **`cell.rs`** - AoS 聚合单元 (用于 `wider`)。
+    - `Cell`: 动态类型的聚合状态容器，支持多种 OpKind。
+  - **`filter/`** - 模块化过滤引擎。
+    - **`config.rs`** - 过滤配置结构定义。
+    - **`builder.rs`** - 解析配置并构建测试链。
+    - **`engine.rs`** - `TestKind` 枚举与核心求值逻辑。
+    - **`runner.rs`** - 过滤命令的执行主循环。
+  - **`fmt.rs`** - 通用格式化工具 (原 `number.rs`)。
+    - `format_number`: 支持千位分隔符与小数位控制。
   - **`io.rs`** - I/O 辅助函数。
     - 统一处理 stdin/stdout 和文件。
     - 透明处理 `.gz` 压缩/解压。
     - `InputSource`: 提供多文件统一视图。
-  - **`key.rs`** - Key 提取与处理。
-    - `ParsedKey`: 优化的小 Key 存储 (`SmallVec`) 与零拷贝引用 (`&[u8]`)。
-  - **`number.rs`** - 数字格式化工具。
-    - `format_number`: 支持千位分隔符与小数位控制。
   - **`sampling.rs`** - 高级采样算法。
     - 实现 Reservoir Sampling (蓄水池采样)。
     - 实现 Weighted Reservoir Sampling (A-Res 算法) - O(K) 内存。
     - 实现 Bernoulli Sampling (Skip Sampling) - 几何分布跳过。
-  - **`select.rs`** - 列选择与重排引擎。
-    - `SelectPlan`: 预计算字段映射计划。
-    - `write_selected_from_bytes`: 基于计划的高性能零拷贝输出。
-  - **`stats.rs`** - 统计计算。
-    - 流式计算 sum, min, max, mean, stdev。
-    - 支持中位数和四分位数 (需内存缓冲)。
+  - **`tsv/`** - 核心 TSV 解析与处理模块。
+    - **`reader.rs`** - 高性能零拷贝 TSV 读取器。
+        - `TsvReader`: 管理内部缓冲区，支持行级迭代，避免字符串分配。
+    - **`record.rs`** - 记录抽象。
+        - `TsvRecord` / `TsvRow`: 实现 `Row` trait 的零拷贝访问。
+    - **`fields.rs`** - 强大的字段选择逻辑。
+        - 支持统一的字段语法: 数字索引, 名称匹配, 通配符等。
+    - **`key.rs`** - Key 提取与处理。
+        - `KeyExtractor`: 基于字段选择提取 Key。
+        - `ParsedKey`: 优化的小 Key 存储 (`SmallVec`)。
+    - **`select.rs`** - 列选择与重排引擎。
+        - `SelectPlan`: 预计算字段映射计划。
+        - `write_selected_from_bytes`: 基于计划的高性能零拷贝输出。
+    - **`split.rs`** - 基于 SIMD 的字段切分工具。
+        - `TsvSplitter`: 使用 `memchr` 快速迭代字段切片。
 
 ### 命令结构 (Command Structure)
 
@@ -122,20 +126,6 @@ cargo test
 - 使用 `cargo clippy` 检查潜在问题。
 - 优先使用标准库和项目中已引入的 crate (`csv`, `clap`, `anyhow`, `regex` 等)。
 - 保持代码简洁，注重性能。
-
-### 关键算法与性能规范
-
-1.  **采样算法 (Sampling)**:
-    *   **加权采样 (Weighted)**: 必须使用 **A-Res 算法** (Efraimidis-Spirakis) 配合 Min-Heap。
-        *   *禁止*: 全量排序 (Naive Sort)，因为其内存复杂度为 O(N)。
-    *   **伯努利采样 (Bernoulli)**: 必须使用 **几何分布跳过 (Geometric Skip)** 算法。
-        *   *禁止*: 对每一行调用 RNG，这在低概率采样时效率极低。
-
-2.  **I/O 与 解析 (I/O & Parsing)**:
-    *   **零拷贝 (Zero-Copy)**: 优先使用 `&[u8]` 切片或 `Cow<'a, [u8]>`。
-        *   *禁止*: 在热点路径中无谓地将 `&[u8]` 转换为 `String`。
-    *   **SIMD**: 使用 `memchr` crate 查找分隔符 (`\t`, `\n`)。
-    *   **缓冲**: 所有文件 I/O 必须包裹在 `BufReader` / `BufWriter` 中（推荐缓冲区大小 **128KB** 以减少 syscall）。
 
 ### 并发与并行策略 (Concurrency Strategy)
 

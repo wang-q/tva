@@ -450,8 +450,7 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 
 ##### G. 综合建议 (Action Items)
 1.  **分级特化**: 借鉴 `tsv-utils`，针对单列 GroupBy (特别是整数列) 使用特化路径，避免 `KeyBuffer` 构建。
-2.  **保持顺序**: 将 GroupBy 的 `HashMap` 替换为 `IndexMap`，以零成本支持“保持插入顺序”。
-3.  **数值稳定性**: 借鉴 `xan`，引入 Welford 算法作为默认或可选 (`--stable`) 实现。
-4.  **近似算法**: 借鉴 `xan`，针对大数据场景引入 `--approx-unique` (HyperLogLog) 和 `--approx-quantile` (T-Digest)。
+2.  **数值稳定性**: 借鉴 `xan`，引入 Welford 算法作为默认或可选 (`--stable`) 实现。
+3.  **近似算法**: 借鉴 `xan`，针对大数据场景引入 `--approx-unique` (HyperLogLog) 和 `--approx-quantile` (T-Digest)。
 5.  **向量化思考**: 借鉴 `dplyr`，在实现 `tva` 的 `window` 或 `mutate` 功能时，应优先考虑基于 Chunk 的向量化计算，而非逐行迭代。
 6.  **缓存机制**: 借鉴 `qsv`，考虑为 `tva stats` 引入可选的缓存机制，特别是针对大文件的元数据（行数、类型）。

@@ -4,7 +4,7 @@ use crate::libs::tsv::fields;
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::reader::TsvReader;
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 pub fn make_subcommand() -> Command {
     Command::new("stats")
@@ -423,7 +423,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
     let mut processor: Option<StatsProcessor> = None;
     let mut aggregator: Option<Aggregator> = None;
-    let mut groups: HashMap<KeyBuffer, Aggregator> = HashMap::new();
+    let mut groups: IndexMap<KeyBuffer, Aggregator> = IndexMap::new();
     let mut group_extractor: Option<KeyExtractor> = None;
     let mut use_grouping = false;
 
