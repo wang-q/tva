@@ -400,46 +400,51 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 
 | 特性 | tva | xan | tsv-utils | datamash | dplyr | qsv |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **模式** | **SoA + Trait** | **Enum** | **Template** | **Stateful Struct** | **Masking** | **Hybrid** |
-| **核心** | `Vec<f64>` | `enum Agg` | `Summarizer` | `struct op` | `eval(mask)` | `Stats+Idx` |
-| **内存** | 极致紧凑 | 碎片化 | AoS | O(1) (Streaming) | 向量化 | 混合 |
-| **GroupBy** | 统一 Hash | 统一 Hash | **分级特化** | **Sort-based** | Vectorized | Parallel |
-| **亮点** | 模块化+低开销 | 模块化 | 稳定排序 | 高精度 | 避免小对象 | 缓存+并行 |
+| **模式** | **SoA + Dyn Trait** | **Enum Dispatch** | **Template Strategy** | **Stateful Struct** | **Masking** | **Hybrid** |
+| **核心** | `Vec<f64>` + `Box<dyn>` | `enum Agg` | `Summarizer` | `struct op` | `eval(mask)` | `Stats+Idx` |
+| **内存** | 极致紧凑 (SoA) | 碎片化 (Enum) | AoS (Struct) | O(1) (Streaming) | 向量化 | 混合 |
+| **GroupBy** | **Stable Hash (IndexMap)** | Hash Map | **Stable Hash (DList)** | **Sort-based** | Vectorized | Parallel |
+| **亮点** | 模块化+低编译时间 | 强类型 | 极致特化性能 | 高精度 | 避免小对象 | 缓存+并行 |
 
 ### 2. 详细分析
 
-#### A. tva: 极致性能与模块化平衡
-*   **设计**: **Hybrid SoA (SoA Storage + Modular Logic)**。Schema (`StatsProcessor`) 管理计算图，State (`Aggregator`) 保持紧凑的列式存储 (`Vec<f64>`, `Vec<String>`)。计算逻辑通过 `Calculator` trait 解耦。
-*   **优势**: 在处理海量 GroupBy 时，依然保持极低的内存开销（仅分配几个 Vec）。同时，新增聚合算子只需实现 `Calculator` 接口，无需侵入核心处理循环，极大提升了可扩展性。
-*   **权衡**: 引入了 `Calculator` trait 的动态分发（Dynamic Dispatch），在极高性能敏感场景下可能比硬编码循环略慢（但在 I/O 密集型任务中通常可忽略）。
+#### A. tva: 运行时多态与内存布局的平衡 (Runtime Polymorphism)
+*   **设计**: **Hybrid SoA**。Schema (`StatsProcessor`) 在运行时构建计算图，State (`Aggregator`) 采用紧凑的列式存储 (`Vec<f64>`, `Vec<String>`)。计算逻辑通过 `Box<dyn Calculator>` trait 动态分发。
+*   **优势**:
+    *   **内存友好**: 即使有数百万个分组，每个分组的 `Aggregator` 开销也极低（仅分配几个 `Vec` 头部）。
+    *   **模块化**: 新增算子只需实现 `Calculator` trait，完全解耦。
+    *   **编译速度**: 相比泛型/模板膨胀，`dyn Trait` 显著减少了编译时间和二进制大小。
+    *   **确定性**: 使用 `IndexMap` 保证了 GroupBy 输出顺序与输入首次出现顺序一致。
+*   **权衡**: 虚函数调用 (`vtable`) 在极高频循环中（如每行调用 10 次）相比内联代码有微小开销，但在 I/O 主导的 CLI 工具中通常可忽略。
 
-#### B. xan: 算法模块化导向
-*   **设计**: 每个统计指标是一个独立的结构体，通过 Enum 分发。
-*   **优势**: 极易集成复杂算法。例如 `ApproxCardinality` 封装了 `HyperLogLog`，`Welford` 封装了在线方差状态。
-*   **短板**: 每个指标是一个独立对象，GroupBy 时内存碎片较多，虚函数/Match 开销在大循环中不可忽视。
+#### B. xan: 枚举分发 (Enum Dispatch)
+*   **设计**: 每个统计指标是一个独立的结构体，通过巨大的 `enum Agg { Sum(SumState), Mean(MeanState), ... }` 进行分发。
+*   **优势**: 避免了堆分配 (`Box`) 和虚函数调用；利用 Rust 的 `match` 优化。
+*   **短板**: `enum` 的大小取决于最大的成员；添加新算子需要修改核心枚举定义（侵入式）；GroupBy 时每个状态是独立对象，内存碎片较多。
 
-##### C. tsv-utils (D Language): Template Strategy
+#### C. tsv-utils (D Language): 编译时模板特化 (Compile-time Polymorphism)
 *   **模式**: **Template-based Strategy Pattern**
 *   **核心**: `SummarizerBase` -> `NoKeySummarizer` / `OneKeySummarizer` / `KeySummarizerBase`。
 *   **亮点**:
-    *   **分级特化**: 针对最常见的“单列 GroupBy”场景 (`OneKeySummarizer`) 进行了特化优化，避免通用逻辑开销。
-    *   **保持顺序**: 默认使用 `DList` (双向链表) 记录 Key 的插入顺序，保证输出稳定。
+    *   **极致性能**: 利用 D 语言强大的模板元编程，在编译时生成针对特定列类型的代码路径（特化），完全消除运行时检查。
+    *   **稳定排序**: 使用 `DList` (双向链表) 维护插入顺序。
+*   **短板**: 编译时间长；代码复杂度极高（大量模板样板代码）。
 
-##### D. datamash (C Language): Sort-based Streaming
+#### D. datamash (C Language): Sort-based Streaming
 *   **模式**: **Stateful Fat Struct**
 *   **核心**: `struct fieldop` (包含 Schema 和 State)。
 *   **策略**: **Sort-based Grouping**。依赖输入已排序，每次只处理一个组，处理完即重置。
 *   **优势**: 内存占用极低 (O(1) Groups)；使用 `long double` 提供更高精度的累加。
 *   **劣势**: 必须预先排序 (O(N log N))；无法处理无序数据的 Hash GroupBy。
 
-##### E. dplyr (R/C++): Hybrid Mask Evaluation
+#### E. dplyr (R/C++): Hybrid Mask Evaluation
 *   **模式**: **Vectorized Evaluation (Masking)**
 *   **核心**: `dplyr_mask_eval_all_summarise` (src/summarise.cpp)。
 *   **策略**: 不为每个组创建单独的 Aggregator 对象。相反，它利用 R 的向量化特性，通过 **Mask (位掩码)** 迭代每个组，对整个向量切片进行求值。
 *   **优势**: 极致利用 R 的向量化生态；避免了成千上万个小对象的创建开销。
 *   **劣势**: 极其依赖列式存储（Columnar Store），不适合流式处理（Row-based Streaming）。
 
-##### F. qsv (Rust): Caching & Parallelism
+#### F. qsv (Rust): Caching & Parallelism
 *   **模式**: **Hybrid (Streaming + Indexed)**
 *   **策略**:
     *   **缓存优先**: 将 `stats` 结果缓存为 `<file>.stats.csv`，后续命令 (如 `frequency`) 直接读取，极大提升工作流效率。
@@ -452,5 +457,8 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 1.  **分级特化**: 借鉴 `tsv-utils`，针对单列 GroupBy (特别是整数列) 使用特化路径，避免 `KeyBuffer` 构建。
 2.  **数值稳定性**: 借鉴 `xan`，引入 Welford 算法作为默认或可选 (`--stable`) 实现。
 3.  **近似算法**: 借鉴 `xan`，针对大数据场景引入 `--approx-unique` (HyperLogLog) 和 `--approx-quantile` (T-Digest)。
-5.  **向量化思考**: 借鉴 `dplyr`，在实现 `tva` 的 `window` 或 `mutate` 功能时，应优先考虑基于 Chunk 的向量化计算，而非逐行迭代。
-6.  **缓存机制**: 借鉴 `qsv`，考虑为 `tva stats` 引入可选的缓存机制，特别是针对大文件的元数据（行数、类型）。
+4.  **向量化思考**: 借鉴 `dplyr`，在实现 `tva` 的 `window` 或 `mutate` 功能时，应优先考虑基于 Chunk 的向量化计算，而非逐行迭代。
+5.  **缓存机制**: 借鉴 `qsv`，考虑为 `tva stats` 引入可选的缓存机制，特别是针对大文件的元数据（行数、类型）。
+6.  **缺省值策略**: 借鉴 `tsv-utils`，引入全局 `--replace-missing <VAL>` 选项，明确处理空值，增强鲁棒性。
+7.  **极致解析**: 借鉴 `tsv-utils` 对性能的关注，引入 `fast_float` 或 `lexical` crate 替代标准库解析，进一步提升 `stats` 吞吐量。
+8.  **类型化键优化**: 借鉴 `tsv-utils` 的模板特化思路，为整数 Key 提供专门的 `u64` 哈希路径，避免字符串转换开销。
