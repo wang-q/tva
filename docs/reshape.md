@@ -14,6 +14,13 @@ Data is often described as "long" or "wide":
 *   **`longer`**: Reshapes "wide" data into a "long" format.
 *   **`wider`**: Reshapes "long" data into a "wide" format.
 
+**Comparison: `stats` vs `wider`**
+
+| Feature | `stats` (Group By) | `wider` (Pivot) |
+| :--- | :--- | :--- |
+| **Goal** | Summarize to rows | Reshape to columns |
+| **Output** | Long / Tall | Wide / Matrix |
+
 ## `longer` (Wide to Long)
 
 The `longer` command is designed to reshape "wide" data into a "long" format. "Wide" data often has column names that are actually values of a variable. For example, a table might have columns like `2020`, `2021`, `2022` representing years. `longer` gathers these columns into a pair of key-value columns (e.g., `year` and `population`), making the data "longer" (more rows, fewer columns) and easier to analyze.

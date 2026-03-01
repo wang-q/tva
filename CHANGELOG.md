@@ -2,6 +2,20 @@
 
 ## Unreleased - ReleaseDate
 
+### Added
+
+#### Data Manipulation
+- **`blank`**: New command to replace consecutive identical values in selected columns (e.g., `1,2,3,3,4` -> `1,2,3,,4`). Supports custom replacements and case-insensitive comparison.
+
+### Changed
+
+#### Documentation
+- **`CLAUDE.md` Update**: Updated source code organization section to accurately reflect the current project structure, particularly the `src/libs/` module hierarchy.
+
+#### Testing
+- **Test Infrastructure**: Introduced `tests/common/mod.rs` with `TvaCmd` struct to standardize command execution and assertion in tests.
+- **Integration Tests Refactoring**: Migrated numerous integration tests (`cli_*.rs`) to use a unified `TvaCmd` helper in `tests/common/mod.rs`. This improves test readability, consistency, and maintenance.
+
 ## 0.2.0 - 2026-02-28
 
 ### Added

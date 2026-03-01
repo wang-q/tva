@@ -5,8 +5,8 @@
 ## changelog
 
 ```bash
-git log v0.1.0..HEAD > gitlog.txt
-git diff v0.1.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
+git log v0.2.0..HEAD > gitlog.txt
+git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 
 ```
 
@@ -258,11 +258,20 @@ git diff v0.1.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 *   **多度量透视 (Multi-measure Pivoting)**:
     *   `longer`: 支持在 `--names-to` 中使用 `.value` 哨兵，同时透视到多个值列。
     *   `wider`: 允许 `--values-from` 接受多个列。
-*   **列拆分/合并**:
-    *   `unpack`: 使用分隔符或正则将单个字符串列拆分为多个列。
-    *   `pack`: 使用模板或分隔符将多个列合并为单个字符串列。
+*   **列拆分/合并 (Column Splitting/Merging)**:
+    *   `separate` (unpack): 使用分隔符或正则将单个字符串列拆分为多个列。
+    *   `unite` (pack): 使用模板或分隔符将多个列合并为单个字符串列。
+*   **行拆分 (Row Splitting)**:
+    *   `separate-rows` (explode): 将包含分隔符的单元格拆分为多行 (e.g. "a,b" -> 2 rows)。
 *   **致密化 (Densification)**:
-    *   `complete`: 暴露数据因子的缺失组合。
+    *   `complete`: 暴露数据因子的缺失组合，并支持填充默认值。
+    *   `expand`: 仅生成唯一值的笛卡尔积（Cartesian Product），用于构建参考网格。
+*   **行复制 (Row Replication)**:
+    *   `uncount`: 根据计数列的值复制行（逆向 `count`）。
+*   **缺失值处理 (Missing Values)**:
+    *   `fill`: 类似于 `tidyr::fill`，支持向上/向下填充 (LOCF/NOCB)。
+    *   `replace_na`: 将显式 `NA` (空字符串) 替换为指定值。
+    *   `drop_na`: 丢弃包含缺失值的行。
 
 ### 数据操作 (Data Manipulation) - dplyr 核心模式
 
