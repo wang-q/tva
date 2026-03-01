@@ -531,3 +531,202 @@ fn append_subdir_filename_label() {
 
     assert!(stdout.contains("input3x2\tfield1"));
 }
+
+#[test]
+fn append_mixed_order_pos_flag() {
+    // A -f B
+    // input1x3: row 1\nrow 2
+    // input1x4: next-empty\n\nlast-line
+    // --file implies --track-source, so source column is added.
+    let expected = "file\tfield1
+input1x3\trow 1
+input1x3\trow 2
+L\tnext-empty
+L\t
+L\tlast-line
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "-H",
+            "tests/data/append/input1x3.tsv",
+            "--file",
+            "L=tests/data/append/input1x4.tsv",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn append_mixed_order_flag_pos() {
+    // -f B A
+    let expected = "file\tfield1
+L\tnext-empty
+L\t
+L\tlast-line
+input1x3\trow 1
+input1x3\trow 2
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "-H",
+            "--file",
+            "L=tests/data/append/input1x4.tsv",
+            "tests/data/append/input1x3.tsv",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn append_mixed_order_pos_flag_pos() {
+    // A -f B C
+    // input3x2 (3 lines) -> input1x4 (3 lines) -> input3x5 (4 lines)
+    // -H to strip headers
+    let expected = "file\tfield1\tfield2\tfield3
+input3x2\tabc\tdef\tghi
+L\tnext-empty
+L\t
+L\tlast-line
+input3x5\tjkl\tmno\tpqr
+input3x5\t123\t456\t789
+input3x5\txy1\txy2\txy3
+input3x5\tpqx\tpqy\tpqz
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "-H",
+            "tests/data/append/input3x2.tsv",
+            "--file",
+            "L=tests/data/append/input1x4.tsv",
+            "tests/data/append/input3x5.tsv",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn append_unicode_header_and_source_labels() {
+    let expected = "πηγή\tfield1
+κόκκινος\trow 1
+κόκκινος\trow 2
+άσπρο\tnext-empty
+άσπρο\t
+άσπρο\tlast-line
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "-H",
+            "-t",
+            "-s", "πηγή",
+            "-f", "κόκκινος=tests/data/append/input1x3.tsv",
+            "-f", "άσπρο=tests/data/append/input1x4.tsv",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn append_empty_file() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&["append", "tests/data/append/empty-file.txt"])
+        .run();
+    assert!(stdout.is_empty());
+}
+
+#[test]
+fn append_header_empty_file() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&["append", "-H", "tests/data/append/empty-file.txt"])
+        .run();
+    assert!(stdout.is_empty());
+}
+
+#[test]
+fn append_stdin_pipe() {
+    let input = "field1\tfield2\tfield3\nabc\tdef\tghi\n";
+    let expected = "field1\tfield2\tfield3\nabc\tdef\tghi\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["append"])
+        .stdin(input)
+        .run();
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn append_stdin_dash_arg_middle() {
+    let stdin_input = "field1\tfield2\tfield3\njkl\tmno\tpqr\n123\t456\t789\nxy1\txy2\txy3\npqx\tpqy\tpqz\n";
+    let expected = "field1\tfield2\tfield3
+abc\tdef\tghi
+field1\tfield2\tfield3
+jkl\tmno\tpqr
+123\t456\t789
+xy1\txy2\txy3
+pqx\tpqy\tpqz
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--",
+            "tests/data/append/input3x2.tsv",
+            "-",
+        ])
+        .stdin(stdin_input)
+        .run();
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn append_stdin_dash_arg_middle_with_header() {
+    let stdin_input = "field1\tfield2\tfield3\njkl\tmno\tpqr\n123\t456\t789\nxy1\txy2\txy3\npqx\tpqy\tpqz\n";
+    let expected = "field1\tfield2\tfield3
+abc\tdef\tghi
+jkl\tmno\tpqr
+123\t456\t789
+xy1\txy2\txy3
+pqx\tpqy\tpqz
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "-H",
+            "--",
+            "tests/data/append/input3x2.tsv",
+            "-",
+        ])
+        .stdin(stdin_input)
+        .run();
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn append_stdin_explicit_file_mapping() {
+    let stdin_input = "field1\tfield2\tfield3\nabc\tdef\tghi\n";
+    // 3x5: jkl..., 123...
+    // standard-input: abc...
+    // 3x5: jkl... (again, but with label '3x5')
+    let expected = "file\tfield1\tfield2\tfield3
+standard-input\tabc\tdef\tghi
+3x5\tjkl\tmno\tpqr
+3x5\t123\t456\t789
+3x5\txy1\txy2\txy3
+3x5\tpqx\tpqy\tpqz
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "-H",
+            "-f", "standard-input=-",
+            "-f", "3x5=tests/data/append/input3x5.tsv"
+        ])
+        .stdin(stdin_input)
+        .run();
+    assert_eq!(stdout, expected);
+}

@@ -18,7 +18,7 @@ pub fn make_subcommand() -> Command {
             Arg::new("line-buffered")
                 .long("line-buffered")
                 .action(ArgAction::SetTrue)
-                .help("Enable line-buffered output (currently a no-op, for compatibility)"),
+                .help("Enable line-buffered output (flush after each line)"),
         )
         .arg(
             Arg::new("header")
@@ -87,35 +87,14 @@ fn default_source_label(path: &str) -> String {
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
-    let _line_buffered = args.get_flag("line-buffered");
-
-    let base_infiles: Vec<String> = match args.get_many::<String>("infiles") {
-        Some(values) => values.cloned().collect(),
-        None => Vec::new(),
-    };
-
-    let mut file_mappings: Vec<(String, String)> = Vec::new();
-    if let Some(values) = args.get_many::<String>("file") {
-        for v in values {
-            let raw = v.as_str();
-            let mut parts = raw.splitn(2, '=');
-            let label = parts.next().unwrap_or("");
-            let file = parts.next().unwrap_or("");
-            if label.is_empty() || file.is_empty() {
-                return Err(anyhow::anyhow!(
-                    "invalid --file value `{}`; expected LABEL=FILE",
-                    raw
-                ));
-            }
-            file_mappings.push((label.to_string(), file.to_string()));
-        }
-    }
+    let line_buffered = args.get_flag("line-buffered");
 
     let mut has_header = args.get_flag("header");
     let mut track_source = args.get_flag("track-source");
     let source_header = args.get_one::<String>("source-header").cloned();
 
-    if !file_mappings.is_empty() {
+    // Check if --file was used (track_source implied)
+    if args.contains_id("file") {
         track_source = true;
     }
     if source_header.is_some() {
@@ -136,23 +115,59 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
     let delimiter = delimiter_bytes[0] as char;
 
-    let mut specs: Vec<InputSpec> = Vec::new();
+    // Collect inputs respecting command line order
+    let mut input_specs: Vec<(usize, InputSpec)> = Vec::new();
 
-    if base_infiles.is_empty() && file_mappings.is_empty() {
-        specs.push(InputSpec {
-            path: "stdin".to_string(),
-            label: None,
-        });
-    } else {
-        for path in base_infiles {
-            specs.push(InputSpec { path, label: None });
+    // Positional args
+    if let Some(indices) = args.indices_of("infiles") {
+        if let Some(values) = args.get_many::<String>("infiles") {
+            for (idx, val) in indices.zip(values) {
+                input_specs.push((
+                    idx,
+                    InputSpec {
+                        path: val.clone(),
+                        label: None,
+                    },
+                ));
+            }
         }
     }
 
-    for (label, path) in file_mappings {
+    // Flag args (--file LABEL=FILE)
+    if let Some(indices) = args.indices_of("file") {
+        if let Some(values) = args.get_many::<String>("file") {
+            for (idx, val) in indices.zip(values) {
+                let raw = val.as_str();
+                let mut parts = raw.splitn(2, '=');
+                let label = parts.next().unwrap_or("");
+                let file = parts.next().unwrap_or("");
+                if label.is_empty() || file.is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "invalid --file value `{}`; expected LABEL=FILE",
+                        raw
+                    ));
+                }
+                input_specs.push((
+                    idx,
+                    InputSpec {
+                        path: file.to_string(),
+                        label: Some(label.to_string()),
+                    },
+                ));
+            }
+        }
+    }
+
+    // Sort by index to preserve command line order
+    input_specs.sort_by_key(|k| k.0);
+
+    let mut specs: Vec<InputSpec> = input_specs.into_iter().map(|(_, spec)| spec).collect();
+
+    // Default to stdin if no inputs
+    if specs.is_empty() {
         specs.push(InputSpec {
-            path,
-            label: Some(label),
+            path: "stdin".to_string(),
+            label: None,
         });
     }
 
@@ -182,21 +197,24 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         writer.write_all(&header)?;
                         writer.write_all(b"\n")?;
                     }
+                    if line_buffered {
+                        writer.flush()?;
+                    }
                 }
             }
         }
 
         reader.for_each_record(|record| {
-            if !track_source {
-                writer.write_all(record)?;
-                writer.write_all(b"\n")?;
-                return Ok(());
+            if track_source {
+                writer.write_all(label_bytes)?;
+                writer.write_all(&[delimiter as u8])?;
             }
-
-            writer.write_all(label_bytes)?;
-            writer.write_all(&[delimiter as u8])?;
             writer.write_all(record)?;
             writer.write_all(b"\n")?;
+
+            if line_buffered {
+                writer.flush()?;
+            }
 
             Ok(())
         })?;
