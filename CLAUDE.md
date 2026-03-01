@@ -23,21 +23,6 @@ cargo build
 cargo build --release
 ```
 
-### 文档构建
-
-项目使用 `mdBook` 构建文档网站。文档源位于 `docs/` 目录。
-根目录的 `README.md` 是主页的源文件，构建时会自动同步到 `docs/README.md`。
-
-```bash
-# 同步 README.md 并构建文档
-./build-docs.ps1
-
-# 本地预览 (需手动同步 README.md 或先运行 build-docs.ps1)
-mdbook serve
-```
-
-Do not use the `cargo build --release` option during development as it takes a long time.
-
 ### 测试
 
 ```bash
@@ -68,24 +53,27 @@ cargo test
         - `TsvRow`: 借用数据的轻量级视图，实现零拷贝访问。
     - **`split.rs`** - 基于 SIMD 的字段切分工具。
         - `TsvSplitter`: 使用 `memchr` 快速迭代字段切片。
+  - **`filter.rs`** - 过滤逻辑引擎。
+    - 支持多种比较操作符 (`eq`, `le`, `str-in-fld` 等)。
+    - 针对数值和字符串优化的求值逻辑。
   - **`io.rs`** - I/O 辅助函数。
     - 统一处理 stdin/stdout 和文件。
     - 透明处理 `.gz` 压缩/解压。
     - `InputSource`: 提供多文件统一视图。
-  - **`select.rs`** - 列选择与重排引擎。
-    - `SelectPlan`: 预计算字段映射计划。
-    - `write_selected_from_bytes`: 基于计划的高性能零拷贝输出。
-  - **`filter.rs`** - 过滤逻辑引擎。
-    - 支持多种比较操作符 (`eq`, `le`, `str-in-fld` 等)。
-    - 针对数值和字符串优化的求值逻辑。
+  - **`key.rs`** - Key 提取与处理。
+    - `ParsedKey`: 优化的小 Key 存储 (`SmallVec`) 与零拷贝引用 (`&[u8]`)。
+  - **`number.rs`** - 数字格式化工具。
+    - `format_number`: 支持千位分隔符与小数位控制。
   - **`sampling.rs`** - 高级采样算法。
     - 实现 Reservoir Sampling (蓄水池采样)。
     - 实现 Weighted Reservoir Sampling (A-Res 算法) - O(K) 内存。
     - 实现 Bernoulli Sampling (Skip Sampling) - 几何分布跳过。
+  - **`select.rs`** - 列选择与重排引擎。
+    - `SelectPlan`: 预计算字段映射计划。
+    - `write_selected_from_bytes`: 基于计划的高性能零拷贝输出。
   - **`stats.rs`** - 统计计算。
     - 流式计算 sum, min, max, mean, stdev。
     - 支持中位数和四分位数 (需内存缓冲)。
-  - **`number.rs`** - 数字格式化工具。
 
 ### 命令结构 (Command Structure)
 
@@ -98,34 +86,6 @@ cargo test
 2.  **`execute`**: 命令执行逻辑。
     -   接收 `&clap::ArgMatches`。
     -   返回 `anyhow::Result<()>`。
-
-示例模式：
-
-```rust
-// src/cmd_tva/example.rs
-use clap::{Arg, ArgMatches, Command};
-
-pub fn make_subcommand() -> Command {
-    Command::new("example")
-        .about("Example command description")
-        .after_help(include_str!("../../docs/help/example.md"))
-        .arg(Arg::new("input")...)
-}
-
-pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
-    // Parse arguments
-    let input = matches.get_one::<String>("input");
-
-    // Input/Output handling (using shared libs)
-    // let mut writer = crate::libs::io::writer(outfile);
-    // for input in crate::libs::io::input_sources(&infiles) { ... }
-
-    // Execution logic
-    // ...
-
-    Ok(())
-}
-```
 
 ### 关键架构模式
 
@@ -155,31 +115,6 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 - 必须使用 `assert_cmd::cargo::cargo_bin_cmd!` 宏来定位二进制文件，以兼容自定义构建目录。
 - **稳定性原则 (Zero Panic)**: 任何用户输入（包括畸形数据、二进制文件）都不应导致程序 Panic。必须捕获所有错误并返回友好的错误信息。
 - **基准测试**: 性能敏感的变更必须伴随 `benches/` 下的基准测试结果（使用 `criterion`）。
-
-示例测试结构：
-
-```rust
-// tests/cli_example.rs
-
-#[macro_use]
-#[path = "common/mod.rs"]
-mod common;
-
-use common::TvaCmd;
-
-#[test]
-fn test_example_basic() {
-    let input = "id\tval\n1\ta\n";
-    let expected = "id\tval\n1\ta\n";
-    
-    let (result, _) = TvaCmd::new()
-        .stdin(input)
-        .args(&["example", "--flag"])
-        .run();
-
-    assert_eq!(result, expected);
-}
-```
 
 ## 代码规范
 
@@ -211,13 +146,6 @@ fn test_example_basic() {
 2.  **未来并行方向 (Future Parallelism)**:
     *   对于 CPU 密集型任务 (如复杂 `filter` 或 `stats`)，架构应支持基于 "Chunking" 的数据并行。
     *   利用 TSV `\n` 的唯一性，将大文件切分为多个 `Chunk`，分发给线程池处理，最后聚合结果。
-
-### 依赖选择策略 (Dependency Policy)
-
-1.  **CSV/TSV 解析**:
-    *   **标准路径**: 使用 `csv` crate 处理复杂的 CSV 兼容性场景（如需要处理引号时）。
-    *   **高性能路径**: 对于纯 TSV 处理，优先使用 `memchr` + `split` 手写逻辑，避免 `csv` crate 的状态机开销。
-    *   **谨慎引入**: 类似 `simd-csv` 的库虽然快，但可能引入复杂的构建依赖或平台限制，仅在基准测试证明有显著收益（>20%）时才考虑引入。
 
 ### Hash 算法选择规范
 
@@ -298,28 +226,6 @@ fn test_example_basic() {
     *   使用 `Examples:` 作为标题。
     *   采用编号列表 (`1.`, `2.`)。
     *   描述后紧跟一个缩进的代码块或反引号包裹的命令。
-
-### 完整示例 (Example)
-
-```markdown
-# command-name
-
-Short description of what the command does.
-
-Input:
-*   Reads from files or standard input; multiple files are processed as one stream.
-*   Files ending in `.gz` are transparently decompressed.
-
-Specific Behavior:
-*   `--flag`: Description of specific flag behavior.
-
-Output:
-*   Writes processed records to standard output...
-
-Examples:
-1. Example description:
-   `tva command -f input.tsv`
-```
 
 ## 用户文档工作流
 
