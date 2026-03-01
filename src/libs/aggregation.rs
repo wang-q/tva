@@ -14,7 +14,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use tva::libs::stats::{OpKind, Operation, StatsProcessor};
+//! use tva::libs::aggregation::{OpKind, Operation, StatsProcessor};
 //!
 //! // Define operations: Sum of field 0, Mean of field 1
 //! let ops = vec![

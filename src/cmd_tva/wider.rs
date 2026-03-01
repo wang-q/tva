@@ -1,5 +1,5 @@
+use crate::libs::aggregation::{Cell, OpKind};
 use crate::libs::io::map_io_err;
-use crate::libs::stats::{Cell, OpKind};
 use crate::libs::tsv::fields;
 use crate::libs::tsv::fields::Header;
 use crate::libs::tsv::reader::TsvReader;
