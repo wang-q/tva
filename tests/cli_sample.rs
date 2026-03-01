@@ -970,7 +970,7 @@ A	1
     let lines: Vec<&str> = stdout.lines().collect();
     if !lines.is_empty() {
         // If selected, both lines should be present and have SAME random value?
-        // Wait, tsv-sample distinct sampling assigns random value per KEY.
+        // tsv-sample distinct sampling assigns random value per KEY.
         // So they should be identical.
         let parts0: Vec<&str> = lines[0].split('\t').collect();
         let parts1: Vec<&str> = lines[1].split('\t').collect();
@@ -1028,7 +1028,7 @@ A	2	X
 ";
     // Keys: (A,1), (A,1), (A,2)
     // Row 1 and 2 share key (A,1) if we use k=1,2.
-    // Wait, row 2 is A,1,Y. Row 1 is A,1,X.
+    // Row 1 is A,1,X. Row 2 is A,1,Y.
     // If k=1,2, keys are "A", "1".
     // So row 1 and 2 are SAME key.
 
@@ -1379,13 +1379,23 @@ fn sample_compat_mode_single_col() {
     // Usually uses Mersenne Twister. tva uses RapidRng.
     // Compatibility mode in tva primarily affects the algorithm choice (e.g. CompatRandomSampler).
     // It reads all lines into memory and shuffles.
-    let input: String = (0..10).map(|i| format!("line{}", i)).collect::<Vec<_>>().join("
-");
+    let input: String = (0..10)
+        .map(|i| format!("line{}", i))
+        .collect::<Vec<_>>()
+        .join(
+            "
+",
+        );
     let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--compatibility-mode", "--header", "--static-seed"])
+        .args(&[
+            "sample",
+            "--compatibility-mode",
+            "--header",
+            "--static-seed",
+        ])
         .stdin(&input)
         .run();
-        
+
     let lines: Vec<&str> = stdout.lines().collect();
     // Should contain all lines (no -n specified, shuffle mode)
     // 10 lines + header? No, input has no header really, but we said --header.
@@ -1393,7 +1403,7 @@ fn sample_compat_mode_single_col() {
     // Remaining 9 lines shuffled.
     assert_eq!(lines.len(), 10);
     assert_eq!(lines[0], "line0");
-    
+
     // Check if other lines are present
     for i in 1..10 {
         assert!(lines.contains(&format!("line{}", i).as_str()));
@@ -1413,19 +1423,26 @@ fn sample_weighted_print_random() {
     // Or just a random number?
     // tsv-sample docs say "Print the random value used for sampling".
     // For weighted reservoir (A-Res), that value is the Key.
-    
+
     // We should fix this in WeightedReservoirSampler to store the key and output it if print_random is true.
-    
+
     let input = "h1\th2\nA\t10\nB\t1\n";
     let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--header", "--weight-field", "2", "--print-random", "--static-seed"])
+        .args(&[
+            "sample",
+            "--header",
+            "--weight-field",
+            "2",
+            "--print-random",
+            "--static-seed",
+        ])
         .stdin(input)
         .run();
-        
+
     let lines: Vec<&str> = stdout.lines().collect();
     // Check header
     assert!(lines[0].starts_with("random_value\th1"));
-    
+
     // Check values.
     // A has weight 10. Key = ln(u1)/10. (Negative, close to 0)
     // B has weight 1. Key = ln(u2)/1. (Negative, can be large magnitude)

@@ -89,13 +89,13 @@ impl Sampler for BernoulliSampler {
             let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
 
             if r < self.prob {
-                write_with_optional_random(writer, record, rng, self.print_random, Some(r))?;
-            } else if self.print_random {
-                // If we are not selecting the row, but we might want to print something?
-                // No, standard behavior is only print if selected.
-                // But wait, if 'print-random' is on, usually we only print for selected rows in Bernoulli.
-                // The issue is if we are in 'gen-random-inorder' mode (which uses a different path).
-                // Here we are in standard Bernoulli sampling.
+                write_with_optional_random(
+                    writer,
+                    record,
+                    rng,
+                    self.print_random,
+                    Some(r),
+                )?;
             }
             return Ok(());
         }
@@ -287,7 +287,13 @@ impl Sampler for WeightedReservoirSampler {
         }
 
         for item in items {
-            write_with_optional_random(writer, &item.record, rng, print_random, Some(item.key))?;
+            write_with_optional_random(
+                writer,
+                &item.record,
+                rng,
+                print_random,
+                Some(item.key),
+            )?;
         }
         Ok(())
     }
@@ -381,36 +387,6 @@ impl Sampler for DistinctBernoulliSampler {
             // "Distinct sampling: An integer, zero and up, representing a selection group."
             // "if (hasher.get % numBuckets == 0) { ... if (printRandom) outputStream.put('0'); ... }"
             // So it just prints '0' if print_random is true.
-            // But wait, the previous tva implementation generated a random float.
-            // Let's check tsv-sample.d source again:
-            // if (cmdopt.printRandom) { outputStream.put('0'); ... }
-            // So it seems tsv-sample just outputs '0' for distinct sampling random value?
-            // Or maybe it outputs the bucket index?
-            // "Distinct sampling: An integer, zero and up, representing a selection group."
-            // "outputStream.formatValue(hasher.get % numBuckets, randomValueFormatSpec);" (only for generateRandomAll)
-            // But for standard distinct sampling:
-            // "if (hasher.get % numBuckets == 0) { ... outputStream.put('0'); ... }"
-            // Yes, it prints '0'.
-            // However, to keep it somewhat consistent with our interface which expects f64 for random value...
-            // We can just pass 0.0.
-
-            // Wait, tsv-sample doc says: "The inclusion probability determines the number of selection groups."
-            // And "Distinct sampling: An integer, zero and up..."
-
-            // In our previous implementation:
-            // let val = rng.next() as f64 * INV_U64_MAX_PLUS_1;
-            // distinct_random_values.insert(key_buffer.clone(), val);
-
-            // If we want to be stateless, we can't store the random value.
-            // But if we just need to decide selection, we use hash % bucket.
-            // If we need to print a random value, tsv-sample prints '0'.
-            // Let's stick to '0.0' for now to match tsv-sample behavior for selected items.
-            // Or better, use (hash / num_buckets) normalized if we wanted a "random" value, but that's not consistent.
-
-            // Let's use 0.0 as the "random value" for distinct sampling,
-            // because distinct sampling selection is deterministic based on key.
-            // The "randomness" comes from the hash.
-
             let r = 0.0;
             write_with_optional_random(writer, record, rng, self.print_random, Some(r))?;
         }

@@ -25,7 +25,7 @@ pub fn make_subcommand() -> Command {
                 .long("delimiter")
                 .short('d')
                 .alias("csv-delim") // Match csv2tsv --csv-delim
-                .short_alias('c')   // Match csv2tsv -c
+                .short_alias('c') // Match csv2tsv -c
                 .num_args(1)
                 .default_value(",")
                 .help("CSV field delimiter character (default: ,)"),
@@ -44,7 +44,7 @@ pub fn make_subcommand() -> Command {
                 .short('r')
                 .num_args(1)
                 .default_value(" ")
-                .help("Replacement for TAB characters in fields (default: Space)"),
+                .help("String to replace TAB characters found in input fields"),
         )
         .arg(
             Arg::new("newline-replacement")
@@ -52,7 +52,7 @@ pub fn make_subcommand() -> Command {
                 .short('n')
                 .num_args(1)
                 .default_value(" ")
-                .help("Replacement for Newline characters in fields (default: Space)"),
+                .help("String to replace Newline characters found in input fields"),
         )
 }
 
@@ -189,7 +189,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     if !first {
                         writer.write_all(b"\t")?;
                     }
-                    sanitize_field(field, &mut writer, tab_replacement, newline_replacement)?;
+                    sanitize_field(
+                        field,
+                        &mut writer,
+                        tab_replacement,
+                        newline_replacement,
+                    )?;
                     first = false;
                 }
                 writer.write_all(b"\n")?;

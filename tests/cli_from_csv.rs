@@ -164,29 +164,19 @@ a\tab\tabc\tabcd
 
 #[test]
 fn from_csv_input2_custom_options() {
-    // csv2tsv --quote # --csv-delim | --tsv-delim $ --tab-replacement <==> --newline-replacement <==> input2.csv
-    // tva doesn't have --tsv-delim (output is always TSV, i.e., TAB delimited).
-    // If csv2tsv allows changing output delimiter, tva doesn't currently support it via `from csv`.
-    // But tva has replacements.
-    // The gold file shows output delimited by $.
-    // If tva always outputs TAB, we can't match exact output if delimiter is changed.
-    // However, the test uses --tsv-delim $.
-    // Let's assume tva outputs TABs and we check content.
-
-    // Wait, csv2tsv uses --tsv-delim to set the OUTPUT delimiter.
-    // tva `from csv` outputs TSV (TAB).
-    // If we want to test custom replacements, we can.
-
-    // Let's verify standard behavior with replacements.
-
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "from", "csv",
-            "--quote", "#",
-            "--delimiter", "|",
-            "--tab-replacement", "<==>",
-            "--newline-replacement", "<==>",
-            "tests/data/from_csv/input2.csv"
+            "from",
+            "csv",
+            "--quote",
+            "#",
+            "--delimiter",
+            "|",
+            "--tab-replacement",
+            "<==>",
+            "--newline-replacement",
+            "<==>",
+            "tests/data/from_csv/input2.csv",
         ])
         .run();
     let stdout = normalize_newlines(&stdout);
@@ -204,17 +194,19 @@ ABC\tDEF\tGHI
 
 #[test]
 fn from_csv_input2_short_options() {
-    // csv2tsv -q # -c | -t @ -r <--> -n <--> input2.csv
-    // tva: -q # -d | -r <--> -n <-->
-
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "from", "csv",
-            "-q", "#",
-            "-d", "|",
-            "-r", "<-->",
-            "-n", "<-->",
-            "tests/data/from_csv/input2.csv"
+            "from",
+            "csv",
+            "-q",
+            "#",
+            "-d",
+            "|",
+            "-r",
+            "<-->",
+            "-n",
+            "<-->",
+            "tests/data/from_csv/input2.csv",
         ])
         .run();
     let stdout = normalize_newlines(&stdout);
@@ -253,7 +245,13 @@ With TAB\tABC DEF\t123 456
 fn from_csv_input3_replacements() {
     // --tab-replacement <TAB>
     let (stdout, _) = TvaCmd::new()
-        .args(&["from", "csv", "--tab-replacement", "<TAB>", "tests/data/from_csv/input3.csv"])
+        .args(&[
+            "from",
+            "csv",
+            "--tab-replacement",
+            "<TAB>",
+            "tests/data/from_csv/input3.csv",
+        ])
         .run();
     let stdout = normalize_newlines(&stdout);
 
@@ -261,7 +259,13 @@ fn from_csv_input3_replacements() {
 
     // --newline-replacement <NL>
     let (stdout, _) = TvaCmd::new()
-        .args(&["from", "csv", "--newline-replacement", "<NL>", "tests/data/from_csv/input3.csv"])
+        .args(&[
+            "from",
+            "csv",
+            "--newline-replacement",
+            "<NL>",
+            "tests/data/from_csv/input3.csv",
+        ])
         .run();
     let stdout = normalize_newlines(&stdout);
 
@@ -422,7 +426,8 @@ fn from_csv_delimiter_quote_same_error() {
     let (_, stderr) = TvaCmd::new()
         .args(&["from", "csv", "--delimiter", "x", "--quote", "x"])
         .run_fail();
-    assert!(stderr.contains("CSV quote and CSV field delimiter characters must be different"));
+    assert!(stderr
+        .contains("CSV quote and CSV field delimiter characters must be different"));
 }
 
 #[test]
@@ -430,7 +435,9 @@ fn from_csv_replacement_newline_error() {
     let (_, stderr) = TvaCmd::new()
         .args(&["from", "csv", "--tab-replacement", "\n"])
         .run_fail();
-    assert!(stderr.contains("Replacement character cannot contain newlines or TSV field delimiters"));
+    assert!(stderr.contains(
+        "Replacement character cannot contain newlines or TSV field delimiters"
+    ));
 }
 
 #[test]
@@ -438,5 +445,7 @@ fn from_csv_replacement_tab_error() {
     let (_, stderr) = TvaCmd::new()
         .args(&["from", "csv", "--tab-replacement", "\t"])
         .run_fail();
-    assert!(stderr.contains("Replacement character cannot contain newlines or TSV field delimiters"));
+    assert!(stderr.contains(
+        "Replacement character cannot contain newlines or TSV field delimiters"
+    ));
 }

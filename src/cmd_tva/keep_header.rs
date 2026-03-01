@@ -94,7 +94,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     // Write it, then interrupt iteration to switch to block copy.
                     child_stdin.write_all(line)?;
                     child_stdin.write_all(b"\n")?;
-                    return Err(io::Error::new(io::ErrorKind::Interrupted, "Switch to block copy"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::Interrupted,
+                        "Switch to block copy",
+                    ));
                 }
                 Ok(())
             });
@@ -124,13 +127,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     skipped += 1;
                 } else {
                     // Found body line. Interrupt to switch to block copy.
-                    // But wait, the current line is ALREADY read into buffer and passed as slice.
+                    // The current line is ALREADY read into buffer and passed as slice.
                     // We need to write THIS line, then copy remainder.
-                    // Oh, if we return Interrupted, `for_each_record` advances `pos` past this line.
+                    // If we return Interrupted, `for_each_record` advances `pos` past this line.
                     // So we must write THIS line here.
                     child_stdin.write_all(line)?;
                     child_stdin.write_all(b"\n")?;
-                    return Err(io::Error::new(io::ErrorKind::Interrupted, "Switch to block copy"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::Interrupted,
+                        "Switch to block copy",
+                    ));
                 }
                 Ok(())
             });

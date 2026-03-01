@@ -53,18 +53,18 @@ DataD\tD";
         .run();
 
     let lines: Vec<&str> = stdout.lines().collect();
-    
+
     // Expected output:
     // Header (from file 1): ID\tData\tVal
     // Match A (file 1): A\tDataA\tFilterA
     // Match B (file 2): DataB\tB\tFilterB  (Note: output preserves file 2's column order, but appends correct val)
-    
+
     assert_eq!(lines.len(), 3);
     assert_eq!(lines[0], "ID\tData\tVal");
-    
+
     // Check file 1 match
     assert!(lines.contains(&"A\tDataA\tFilterA"));
-    
+
     // Check file 2 match
     // For file 2, the line is "DataB\tB". Since key "B" matches filter, "FilterB" is appended.
     // So output line is "DataB\tB\tFilterB".

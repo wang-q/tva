@@ -122,17 +122,20 @@ fn sample_data2x10a_weighted_shuffle() {
             fpath.to_str().unwrap(),
         ])
         .run();
-    
-    // We check that output is valid TSV, has header, and weights are respected statistically 
+
+    // We check that output is valid TSV, has header, and weights are respected statistically
     // (though with fixed seed we get deterministic output).
     // Note: tva uses a different PRNG than tsv-utils (D language), so we cannot match exact output lines.
     // Instead we verify structural correctness and that weighted sampling logic ran.
     let lines: Vec<&str> = stdout.lines().collect();
     assert_eq!(lines.len(), 11); // Header + 10 rows
     assert!(lines[0].starts_with("random_value\tline\tweight"));
-    
+
     // Verify all original lines are present (shuffle)
-    let mut ids: Vec<&str> = lines[1..].iter().map(|l| l.split('\t').nth(1).unwrap()).collect();
+    let mut ids: Vec<&str> = lines[1..]
+        .iter()
+        .map(|l| l.split('\t').nth(1).unwrap())
+        .collect();
     ids.sort();
     assert_eq!(ids, vec!["1", "10", "2", "3", "4", "5", "6", "7", "8", "9"]);
 }
@@ -151,18 +154,21 @@ fn sample_data2x10b_weighted_shuffle() {
             fpath.to_str().unwrap(),
         ])
         .run();
-    
+
     let lines: Vec<&str> = stdout.lines().collect();
     assert_eq!(lines.len(), 11);
-    
+
     // Check random values are descending (weighted shuffle implementation detail)
     let random_vals: Vec<f64> = lines[1..]
         .iter()
         .map(|l| l.split('\t').next().unwrap().parse::<f64>().unwrap())
         .collect();
-        
+
     for i in 0..random_vals.len() - 1 {
-        assert!(random_vals[i] >= random_vals[i+1], "Random values should be descending in weighted shuffle output");
+        assert!(
+            random_vals[i] >= random_vals[i + 1],
+            "Random values should be descending in weighted shuffle output"
+        );
     }
 }
 
@@ -193,51 +199,55 @@ fn sample_data5x25_distinct_k2_p40() {
             fpath.to_str().unwrap(),
         ])
         .run();
-        
+
     let lines: Vec<&str> = stdout.lines().collect();
     // Header should be present
     assert_eq!(lines[0], "ID\tShape\tColor\tSize\tWeight");
-    
+
     // Verify distinct property: all rows with same Shape are either present or absent together
     let mut shapes_present = std::collections::HashSet::new();
     let mut shapes_absent = std::collections::HashSet::new();
-    
+
     // All possible shapes in data5x25
     let all_shapes = vec!["circle", "square", "ellipse", "triangle"];
-    
+
     for line in &lines[1..] {
         let shape = line.split('\t').nth(1).unwrap();
         shapes_present.insert(shape);
     }
-    
+
     for shape in all_shapes {
         if !shapes_present.contains(shape) {
             shapes_absent.insert(shape);
         }
     }
-    
+
     // Now verify against original data that no "absent" shape appears in output
     // (This is tautological here, but logic check)
     // More importantly: verify that for a present shape, ALL its instances are there?
     // Distinct sampling includes ALL records for selected keys.
-    
+
     // Let's count expected instances for each shape in original data
     let mut shape_counts = std::collections::HashMap::new();
     for line in DATA_5X25.lines().skip(1) {
         let shape = line.split('\t').nth(1).unwrap();
         *shape_counts.entry(shape).or_insert(0) += 1;
     }
-    
+
     // Count instances in output
     let mut output_shape_counts = std::collections::HashMap::new();
     for line in &lines[1..] {
         let shape = line.split('\t').nth(1).unwrap();
         *output_shape_counts.entry(shape).or_insert(0) += 1;
     }
-    
+
     for shape in shapes_present {
-        assert_eq!(output_shape_counts.get(shape), shape_counts.get(shape), 
-            "All instances of shape {} should be present", shape);
+        assert_eq!(
+            output_shape_counts.get(shape),
+            shape_counts.get(shape),
+            "All instances of shape {} should be present",
+            shape
+        );
     }
 }
 
@@ -257,18 +267,18 @@ fn sample_data5x25_distinct_k2_k4_p20() {
             fpath.to_str().unwrap(),
         ])
         .run();
-        
+
     let lines: Vec<&str> = stdout.lines().collect();
-    
+
     // Verify key consistency
     let mut keys_present = std::collections::HashSet::new();
-    
+
     for line in &lines[1..] {
         let cols: Vec<&str> = line.split('\t').collect();
         let key = format!("{}-{}", cols[1], cols[3]);
         keys_present.insert(key);
     }
-    
+
     // Check counts
     let mut key_counts_orig = std::collections::HashMap::new();
     for line in DATA_5X25.lines().skip(1) {
@@ -276,17 +286,21 @@ fn sample_data5x25_distinct_k2_k4_p20() {
         let key = format!("{}-{}", cols[1], cols[3]);
         *key_counts_orig.entry(key).or_insert(0) += 1;
     }
-    
+
     let mut key_counts_out = std::collections::HashMap::new();
     for line in &lines[1..] {
         let cols: Vec<&str> = line.split('\t').collect();
         let key = format!("{}-{}", cols[1], cols[3]);
         *key_counts_out.entry(key).or_insert(0) += 1;
     }
-    
+
     for key in keys_present {
-        assert_eq!(key_counts_out.get(&key), key_counts_orig.get(&key),
-             "All instances of key {} should be present", key);
+        assert_eq!(
+            key_counts_out.get(&key),
+            key_counts_orig.get(&key),
+            "All instances of key {} should be present",
+            key
+        );
     }
 }
 
@@ -305,28 +319,32 @@ fn sample_data1x25_distinct_k1_p20() {
             fpath.to_str().unwrap(),
         ])
         .run();
-        
+
     let lines: Vec<&str> = stdout.lines().collect();
-    
+
     // Verify key consistency for single column file
     let mut keys_present = std::collections::HashSet::new();
     for line in &lines[1..] {
         keys_present.insert(line);
     }
-    
+
     let mut key_counts_orig = std::collections::HashMap::new();
     for line in DATA_1X25.lines().skip(1) {
         *key_counts_orig.entry(line).or_insert(0) += 1;
     }
-    
+
     let mut key_counts_out = std::collections::HashMap::new();
     for line in &lines[1..] {
         *key_counts_out.entry(line).or_insert(0) += 1;
     }
-    
+
     for key in keys_present {
-        assert_eq!(key_counts_out.get(key), key_counts_orig.get(key),
-             "All instances of key {} should be present", key);
+        assert_eq!(
+            key_counts_out.get(key),
+            key_counts_orig.get(key),
+            "All instances of key {} should be present",
+            key
+        );
     }
 }
 
@@ -342,13 +360,13 @@ fn sample_data5x25_distinct_range_keys() {
             "-p",
             "0.20",
             "-k",
-            "2-4", 
+            "2-4",
             fpath.to_str().unwrap(),
         ])
         .run();
-    
+
     let lines: Vec<&str> = stdout.lines().collect();
-    
+
     // Check if output is consistent
     let mut keys_present = std::collections::HashSet::new();
     for line in &lines[1..] {
@@ -356,23 +374,27 @@ fn sample_data5x25_distinct_range_keys() {
         let key = format!("{}-{}-{}", cols[1], cols[2], cols[3]);
         keys_present.insert(key);
     }
-    
+
     let mut key_counts_orig = std::collections::HashMap::new();
     for line in DATA_5X25.lines().skip(1) {
         let cols: Vec<&str> = line.split('\t').collect();
         let key = format!("{}-{}-{}", cols[1], cols[2], cols[3]);
         *key_counts_orig.entry(key).or_insert(0) += 1;
     }
-    
+
     let mut key_counts_out = std::collections::HashMap::new();
     for line in &lines[1..] {
         let cols: Vec<&str> = line.split('\t').collect();
         let key = format!("{}-{}-{}", cols[1], cols[2], cols[3]);
         *key_counts_out.entry(key).or_insert(0) += 1;
     }
-    
+
     for key in keys_present {
-        assert_eq!(key_counts_out.get(&key), key_counts_orig.get(&key),
-             "All instances of key {} should be present", key);
+        assert_eq!(
+            key_counts_out.get(&key),
+            key_counts_orig.get(&key),
+            "All instances of key {} should be present",
+            key
+        );
     }
 }

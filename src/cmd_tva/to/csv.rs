@@ -60,7 +60,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             // Row trait has no iterator, but we can access `row.ends` in TsvRow.
             // Or simply implement an iterator for TsvRow or access underlying slice via get_bytes
             // TsvRow has ends, so we can iterate indices.
-            // Wait, TsvRow::ends length is the number of fields.
 
             let mut fields = Vec::with_capacity(row.ends.len());
             let mut i = 1;

@@ -624,9 +624,12 @@ fn append_unicode_header_and_source_labels() {
             "append",
             "-H",
             "-t",
-            "-s", "πηγή",
-            "-f", "κόκκινος=tests/data/append/input1x3.tsv",
-            "-f", "άσπρο=tests/data/append/input1x4.tsv",
+            "-s",
+            "πηγή",
+            "-f",
+            "κόκκινος=tests/data/append/input1x3.tsv",
+            "-f",
+            "άσπρο=tests/data/append/input1x4.tsv",
         ])
         .run();
 
@@ -653,10 +656,7 @@ fn append_header_empty_file() {
 fn append_stdin_pipe() {
     let input = "field1\tfield2\tfield3\nabc\tdef\tghi\n";
     let expected = "field1\tfield2\tfield3\nabc\tdef\tghi\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["append"])
-        .stdin(input)
-        .run();
+    let (stdout, _) = TvaCmd::new().args(&["append"]).stdin(input).run();
     assert_eq!(stdout, expected);
 }
 
@@ -672,12 +672,7 @@ xy1\txy2\txy3
 pqx\tpqy\tpqz
 ";
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "append",
-            "--",
-            "tests/data/append/input3x2.tsv",
-            "-",
-        ])
+        .args(&["append", "--", "tests/data/append/input3x2.tsv", "-"])
         .stdin(stdin_input)
         .run();
     assert_eq!(stdout, expected);
@@ -694,13 +689,7 @@ xy1\txy2\txy3
 pqx\tpqy\tpqz
 ";
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "append",
-            "-H",
-            "--",
-            "tests/data/append/input3x2.tsv",
-            "-",
-        ])
+        .args(&["append", "-H", "--", "tests/data/append/input3x2.tsv", "-"])
         .stdin(stdin_input)
         .run();
     assert_eq!(stdout, expected);
@@ -723,8 +712,10 @@ standard-input\tabc\tdef\tghi
         .args(&[
             "append",
             "-H",
-            "-f", "standard-input=-",
-            "-f", "3x5=tests/data/append/input3x5.tsv"
+            "-f",
+            "standard-input=-",
+            "-f",
+            "3x5=tests/data/append/input3x5.tsv",
         ])
         .stdin(stdin_input)
         .run();

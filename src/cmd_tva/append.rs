@@ -161,7 +161,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     // Sort by index to preserve command line order
     input_specs.sort_by_key(|k| k.0);
 
-    let mut specs: Vec<InputSpec> = input_specs.into_iter().map(|(_, spec)| spec).collect();
+    let mut specs: Vec<InputSpec> =
+        input_specs.into_iter().map(|(_, spec)| spec).collect();
 
     // Default to stdin if no inputs
     if specs.is_empty() {

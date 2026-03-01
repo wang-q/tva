@@ -597,13 +597,6 @@ fn split_randomly(
                 is_first_line_of_file = false;
             }
 
-            // Wait, if I have 10 empty lines, then header.
-            // 10 empty lines are processed. `is_first_line_of_file` remains true.
-            // 11th line (Header) is processed. Matches `else if`. Captured. `is_first_line_of_file` = false.
-            // 12th line (Data). Processed.
-
-            // This looks correct.
-
             let idx0 = if let Some(indices) = key_indices {
                 key_bucket(record, indices, num_files, manager.config.delimiter)
             } else {

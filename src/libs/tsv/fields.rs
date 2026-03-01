@@ -182,53 +182,8 @@ fn split_name_range_token(token: &str) -> Option<(String, String)> {
     }
 
     if let Some(idx) = split_idx {
-        // Correctly handle escaped characters in the parts?
-        // unescape_name_pattern handles escaping.
-        // But we return raw strings here.
-        // Wait, split_name_range_token is used by parse_field_list...
-        // which then calls header.get_index(&start_str).
-        // Header lookup expects UNESCAPED name?
-        // No, header fields are raw strings.
-        // But user input has escapes.
-        // e.g. "field\-1". Input "field\-1".
-        // split loop sees '\', escapes '-', continues. No split.
-        // Returns None.
-        // parse_field_list treats as single name.
-        // Calls unescape_name_pattern("field\-1") -> "field-1".
-        // Looks up "field-1". Correct.
-
-        // "field1-field2".
-        // split loop sees '-'. Split at 6.
-        // Returns ("field1", "field2").
-        // parse_field_list parses "field1".
-        // If not numeric, calls header.get_index("field1").
-        // header.get_index expects raw name.
-        // Does "field1" need unescaping?
-        // If it was "field\:1-field2".
-        // Input "field\:1-field2".
-        // Split at '-'. start="field\:1".
-        // header.get_index("field\:1")? No, header has "field:1".
-        // So we MUST unescape the parts too!
-        // But parse_field_list does NOT unescape start_str/end_str before lookup?
-        // Let's check parse_field_list.
-        /*
-            header.get_index(&start_str)
-        */
-        // It uses start_str directly.
-        // So split_name_range_token must return UNESCAPED parts?
-        // Or parse_field_list should unescape?
-        // tsv-select logic:
-        // "field\:1-field2" -> range from "field:1" to "field2".
-
-        // If I change split_name_range_token to return raw slices,
-        // I need to update parse_field_list to unescape them.
-
         let start = token[..idx].to_string();
         let end = token[idx + 1..].to_string();
-
-        // I should unescape them here?
-        // unescape_name_pattern returns (String, bool).
-        // Let's use unescape_name_pattern in parse_field_list.
 
         if start.is_empty() || end.is_empty() {
             return None;
@@ -496,11 +451,6 @@ pub fn parse_field_list_with_header_preserve_order(
             }
             indices.push(idx);
         } else if let Some((start_str, end_str)) = split_name_range_token(&token) {
-            // Range logic
-            // We need to unescape range parts because split_name_range_token returns raw parts
-            // But if they are numeric, unescape doesn't change them (usually).
-            // But "field\:1" needs unescaping.
-
             let (start_unescaped, _) = unescape_name_pattern(&start_str);
             let (end_unescaped, _) = unescape_name_pattern(&end_str);
 

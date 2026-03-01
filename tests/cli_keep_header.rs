@@ -277,7 +277,8 @@ fn keep_header_oneblankline_cat() {
             "--",
             tva_bin,
             "select", // Use select/cat to pass through
-            "-f", "1-",
+            "-f",
+            "1-",
         ])
         .run();
     // In tva, read_line preserves \n.
@@ -294,12 +295,7 @@ fn keep_header_stdin_sort() {
     let tva_bin = env!("CARGO_BIN_EXE_tva");
 
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "keep-header",
-            "--",
-            tva_bin,
-            "sort",
-        ])
+        .args(&["keep-header", "--", tva_bin, "sort"])
         .stdin(input)
         .run();
     let stdout = normalize_newlines(&stdout);
@@ -331,7 +327,11 @@ fn keep_header_stdin_pipe_complex() {
             "--",
             tva_bin,
             "sort",
-            "-t", ",", "-k", "2", "-n"
+            "-t",
+            ",",
+            "-k",
+            "2",
+            "-n",
         ])
         .stdin(input1)
         .run();
