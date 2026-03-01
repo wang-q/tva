@@ -1,5 +1,33 @@
+//! State container for aggregation operations used by `tva wider`.
+//!
+//! This module defines the `Cell` enum, which is a stateful container used to accumulate values
+//! for a single cell in the output of a pivot/wider operation.
+//!
+//! # Relationship with `libs::aggregation`
+//!
+//! While `libs::aggregation` provides a high-performance, column-oriented aggregation engine
+//! (optimized for `tva stats` which aggregates entire columns), this module provides a
+//! simplified, cell-oriented aggregation mechanism for `tva wider`.
+//!
+//! - `libs::aggregation`: Uses `Aggregator` and `StatsProcessor` with specialized `Calculator`
+//!   implementations. It processes data column-wise or group-wise with highly optimized memory layout.
+//!   It uses a **Structure of Arrays (SoA)** approach where statistics (sums, counts, etc.) are stored in parallel vectors
+//!   for efficient SIMD processing and cache locality.
+//! - `libs::cell`: Uses `Cell` enum to store state for a *single* output cell (intersection of row and column in pivot table).
+//!   It uses an **Array of Structures (AoS)** approach (each `Cell` is an independent object).
+//!   It is more flexible but less memory-efficient for massive datasets compared to `libs::aggregation`.
+//!
+//! However, `Cell` reuses the math logic from `libs::aggregation::math` to ensure consistency
+//! in statistical calculations.
+
 use crate::libs::aggregation::{math, OpKind};
 
+/// A state container for accumulating values in `tva wider`.
+///
+/// It can hold:
+/// - A single float value (for simple sums, counts, min, max)
+/// - A vector of floats (for mean, variance, median, etc.)
+/// - A vector of strings (for string operations, mode, unique, etc.)
 #[derive(Debug, Clone)]
 pub enum Cell {
     Empty,

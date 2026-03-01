@@ -1,3 +1,8 @@
+//! Key extraction from TSV records.
+//!
+//! Used by commands like `join`, `sample`, `uniq` to extract composite keys
+//! from one or more fields.
+
 use crate::libs::tsv::select::SelectPlan;
 use smallvec::SmallVec;
 use std::ops::Range;

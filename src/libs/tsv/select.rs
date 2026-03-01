@@ -1,3 +1,8 @@
+//! Efficient field selection logic.
+//!
+//! Implements the `SelectPlan` which pre-computes how to extract a set of fields
+//! from a line, handling reordering and repetition.
+
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io;
@@ -211,7 +216,7 @@ pub fn write_with_rest(
     // Assume number of fields is not huge (e.g. < 1M).
     // Rest mode is rare.
 
-    let mut exclude_set: Option<Vec<bool>> = None;
+    let _exclude_set: Option<Vec<bool>> = None;
 
     // selected_set for fast lookup of what is "selected" (so we don't output it in rest)
     let selected_set: HashSet<usize> = selected_indices.iter().cloned().collect();
