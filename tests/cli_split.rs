@@ -358,8 +358,9 @@ fn split_file_exists_no_append() {
     let temp = tempdir().unwrap();
     let dir = temp.path();
 
-    // Create a file that split would try to create: split-1.tsv
-    let file_path = dir.join("split-1.tsv");
+    // Create a file that split would try to create: split-0.tsv
+    // With -n 1, it generates split-0.tsv (0-based index)
+    let file_path = dir.join("split-0.tsv");
     fs::write(&file_path, "existing").unwrap();
 
     let (_, stderr) = TvaCmd::new()
@@ -386,4 +387,282 @@ fn split_key_no_num() {
 
     assert!(stderr
         .contains("either --lines-per-file/-l or --num-files/-n must be specified"));
+}
+
+#[test]
+fn split_header_in_only_skips_header() {
+    let input = "Header\n1\n2\n3\n4\n";
+
+    let dir = tempdir().unwrap();
+    let dir_path: PathBuf = dir.path().to_path_buf();
+    let dir_str = dir_path.to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--lines-per-file",
+            "2",
+            "--header-in-only",
+            "--dir",
+            dir_str,
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.is_empty());
+
+    let mut files: Vec<PathBuf> = fs::read_dir(&dir_path)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    files.sort_by_key(|p| p.file_name().unwrap().to_owned());
+
+    assert_eq!(files.len(), 2);
+
+    let c1 = fs::read_to_string(&files[0]).unwrap();
+    assert_eq!(c1, "1\n2\n");
+
+    let c2 = fs::read_to_string(&files[1]).unwrap();
+    assert_eq!(c2, "3\n4\n");
+}
+
+#[test]
+fn split_delimiter_custom() {
+    let input = "a,1\nb,1\nc,2\nd,2\n";
+
+    let dir = tempdir().unwrap();
+    let dir_path: PathBuf = dir.path().to_path_buf();
+    let dir_str = dir_path.to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--num-files",
+            "2",
+            "--key-fields",
+            "2",
+            "--delimiter",
+            ",",
+            "--dir",
+            dir_str,
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.is_empty());
+
+    let mut files: Vec<PathBuf> = fs::read_dir(&dir_path)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    files.sort();
+
+    let mut key_map = HashMap::new();
+    for (f_idx, path) in files.iter().enumerate() {
+        let content = fs::read_to_string(path).unwrap();
+        for line in content.lines() {
+            let parts: Vec<&str> = line.split(',').collect();
+            let key = parts[1];
+            if let Some(&prev_idx) = key_map.get(key) {
+                assert_eq!(prev_idx, f_idx, "Key {} found in multiple files", key);
+            } else {
+                key_map.insert(key.to_string(), f_idx);
+            }
+        }
+    }
+}
+
+#[test]
+fn split_max_open_files_lru() {
+    let input = "1\n2\n3\n4\n5\n6\n";
+
+    let dir = tempdir().unwrap();
+    let dir_path: PathBuf = dir.path().to_path_buf();
+    let dir_str = dir_path.to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--num-files",
+            "3",
+            "--max-open-files",
+            "1",
+            "--dir",
+            dir_str,
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.is_empty());
+
+    let mut files: Vec<PathBuf> = fs::read_dir(&dir_path)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    files.sort();
+
+    let mut all_lines = Vec::new();
+    for path in files {
+        let content = fs::read_to_string(path).unwrap();
+        for line in content.lines() {
+            all_lines.push(line.to_string());
+        }
+    }
+    all_lines.sort();
+    assert_eq!(all_lines, vec!["1", "2", "3", "4", "5", "6"]);
+}
+
+#[test]
+fn split_multiple_files_with_headers() {
+    let input1 = "H1\tH2\nA\t1\nB\t2\n";
+    let input2 = "H1\tH2\nC\t3\nD\t4\n";
+
+    let dir = tempdir().unwrap();
+    let dir_path = dir.path();
+
+    let in1 = dir_path.join("in1.tsv");
+    let in2 = dir_path.join("in2.tsv");
+    fs::write(&in1, input1).unwrap();
+    fs::write(&in2, input2).unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--lines-per-file",
+            "2",
+            "--header-in-out",
+            "--dir",
+            dir_path.to_str().unwrap(),
+            in1.to_str().unwrap(),
+            in2.to_str().unwrap(),
+        ])
+        .run();
+
+    assert!(stdout.is_empty());
+
+    let mut files: Vec<PathBuf> = fs::read_dir(&dir_path)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| {
+            p.file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with("split-")
+        })
+        .collect();
+    files.sort();
+
+    assert_eq!(files.len(), 2);
+
+    let c1 = fs::read_to_string(&files[0]).unwrap();
+    // File 1: Header + A, B
+    assert_eq!(c1, "H1\tH2\nA\t1\nB\t2\n");
+
+    let c2 = fs::read_to_string(&files[1]).unwrap();
+    // File 2: Header + C, D. Note: Input2's header should be skipped.
+    assert_eq!(c2, "H1\tH2\nC\t3\nD\t4\n");
+}
+
+#[test]
+fn split_append_mode_correctness() {
+    let input1 = "H\n1\n2\n";
+    let input2 = "H\n3\n4\n";
+
+    let dir = tempdir().unwrap();
+    let dir_str = dir.path().to_str().unwrap();
+
+    // Run 1: Create split-0.txt
+    TvaCmd::new()
+        .args(&[
+            "split",
+            "--lines-per-file",
+            "2",
+            "--header-in-out",
+            "--dir",
+            dir_str,
+            "--prefix",
+            "part-",
+            "--suffix",
+            ".txt",
+            "--digit-width",
+            "1",
+        ])
+        .stdin(input1)
+        .run();
+
+    // Run 2: Append to split-0.txt and create split-1.txt (if needed, but here we append)
+    // We use lines-per-file 2.
+    // Input 2 has 2 lines (plus header).
+    // But split logic counts output lines.
+    // If we run again, "current_idx0" starts at 0.
+    // It will open part-0.txt.
+    // Since it exists and --append is on, it appends.
+    // It writes 2 lines (3, 4).
+    // Then closes.
+
+    TvaCmd::new()
+        .args(&[
+            "split",
+            "--lines-per-file",
+            "2",
+            "--header-in-out",
+            "--dir",
+            dir_str,
+            "--prefix",
+            "part-",
+            "--suffix",
+            ".txt",
+            "--digit-width",
+            "1",
+            "--append",
+        ])
+        .stdin(input2)
+        .run();
+
+    let f1 = dir.path().join("part-0.txt");
+    let c1 = fs::read_to_string(f1).unwrap();
+
+    // Expected:
+    // H
+    // 1
+    // 2
+    // 3  <-- Appended, NO header repeated
+    // 4
+    assert_eq!(c1, "H\n1\n2\n3\n4\n");
+}
+
+#[test]
+fn split_empty_file_no_output() {
+    let dir = tempdir().unwrap();
+    let dir_str = dir.path().to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["split", "-l", "100", "--dir", dir_str])
+        .stdin("")
+        .run();
+
+    assert!(stdout.is_empty());
+
+    let count = fs::read_dir(dir.path()).unwrap().count();
+    assert_eq!(count, 0);
+}
+
+#[test]
+fn split_numeric_filenames_padding() {
+    let input = "1\n2\n";
+    let dir = tempdir().unwrap();
+    let dir_str = dir.path().to_str().unwrap();
+
+    TvaCmd::new()
+        .args(&["split", "-l", "1", "--digit-width", "3", "--dir", dir_str])
+        .stdin(input)
+        .run();
+
+    let f1 = dir.path().join("split-000.tsv");
+    let f2 = dir.path().join("split-001.tsv");
+
+    assert!(f1.exists());
+    assert!(f2.exists());
 }
