@@ -46,14 +46,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let cmd_parts: Vec<String> = match args.get_many::<String>("command") {
         Some(values) => values.cloned().collect(),
         None => {
-            // This should be unreachable if required(true) works as expected,
-            // but for safety/legacy behavior matching:
             eprintln!("Synopsis: tva keep-header [file...] -- program [args...]");
             return Ok(());
         }
     };
 
-    // If cmd_parts is empty (shouldn't be due to required(true) + num_args(1..)), fail
     if cmd_parts.is_empty() {
         eprintln!("Synopsis: tva keep-header [file...] -- program [args...]");
         return Ok(());
@@ -68,6 +65,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut child_stdin = child.stdin.take().unwrap();
     let mut header_source_used = false;
+
+    // Use line buffering for stdout to ensure headers appear before child output where possible
     let mut stdout = io::stdout();
 
     let filenames: Vec<String> = if file_args.is_empty() {
@@ -77,36 +76,56 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     for input in crate::libs::io::raw_input_sources(&filenames) {
-        let mut file_had_content = false;
-        let mut remaining = header_lines;
-
         let mut reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
 
-        reader.for_each_record(|line| {
-            file_had_content = true;
-            if remaining > 0 {
-                if !header_source_used {
+        if !header_source_used {
+            let mut current_file_records = 0;
+
+            reader.for_each_record(|line| {
+                current_file_records += 1;
+
+                if current_file_records <= header_lines {
                     stdout.write_all(line)?;
                     stdout.write_all(b"\n")?;
+                    stdout.flush()?;
+                } else {
+                    child_stdin.write_all(line)?;
+                    child_stdin.write_all(b"\n")?;
                 }
-                remaining -= 1;
-            } else {
-                child_stdin.write_all(line)?;
-                child_stdin.write_all(b"\n")?;
+                Ok(())
+            })?;
+
+            if current_file_records > 0 {
+                header_source_used = true;
             }
-            Ok(())
-        })?;
-
-        if file_had_content && !header_source_used {
-            stdout.flush()?;
-            header_source_used = true;
+        } else {
+            let mut skipped = 0;
+            reader.for_each_record(|line| {
+                if skipped < header_lines {
+                    skipped += 1;
+                } else {
+                    child_stdin.write_all(line)?;
+                    child_stdin.write_all(b"\n")?;
+                }
+                Ok(())
+            })?;
         }
-
-        child_stdin.flush()?;
     }
 
     drop(child_stdin);
-    let _status = child.wait()?;
+
+    let status = child.wait()?;
+
+    // Final flush not strictly needed as child has finished and we are exiting, but good practice.
+    stdout.flush()?;
+
+    if !status.success() {
+        if let Some(code) = status.code() {
+            std::process::exit(code);
+        } else {
+            std::process::exit(1);
+        }
+    }
 
     Ok(())
 }
