@@ -1,25 +1,17 @@
 # Reshaping Documentation
 
-This document explains how to use the reshaping commands in `tva`: **`longer`** and **`wider`**. These commands are inspired by the `pivot_longer()` and `pivot_wider()` functions from the R package `tidyr`.
+This document explains how to use the reshaping commands in `tva`: **`longer`**, **`wider`**, **`fill`**, and **`blank`**. These commands are inspired by the data tidying philosophy of the R package `tidyr`.
 
 ## Introduction
 
-Data is often described as "long" or "wide":
+Data reshaping involves changing the structure of a dataset without necessarily changing the information it contains. `tva` provides a suite of tools for these tasks:
 
-*   **Long data**: Has more rows and fewer columns. This format is typically "tidy" and easier for analysis, where each row is an observation and each column is a variable.
-*   **Wide data**: Has more columns and fewer rows. This format is often better for data entry or presentation (e.g., a spreadsheet with years as columns).
-
-`tva` provides tools to switch between these formats:
-
-*   **`longer`**: Reshapes "wide" data into a "long" format.
-*   **`wider`**: Reshapes "long" data into a "wide" format.
-
-**Comparison: `stats` vs `wider`**
-
-| Feature | `stats` (Group By) | `wider` (Pivot) |
-| :--- | :--- | :--- |
-| **Goal** | Summarize to rows | Reshape to columns |
-| **Output** | Long / Tall | Wide / Matrix |
+*   **Pivoting**:
+    *   **`longer`**: Reshapes "wide" data (many columns) into "long" data (many rows).
+    *   **`wider`**: Reshapes "long" data into "wide" data.
+*   **Completion**:
+    *   **`fill`**: Fills missing values with previous non-missing values (LOCF) or constants.
+    *   **`blank`**: The inverse of `fill`; replaces repeated values with empty strings (sparsify).
 
 ## `longer` (Wide to Long)
 
@@ -126,21 +118,30 @@ Afghanistan	AF	AFG	1980	sp	m	014	NA
 
 If column names are consistently separated by a character, you can use **`--names-sep`**.
 
-Input `docs/data/household.tsv`:
+Consider a dataset `docs/data/semester.tsv` where columns represent `year_semester`:
+
 ```tsv
-family	dob_child1	dob_child2	name_child1	name_child2
-1	1998-11-26	2000-01-29	J	K
+student	2020_1	2020_2	2021_1
+Alice	85	90	88
+Bob	78	82	80
 ```
 
-(Note: Handling "multiple observations per row" like `tidyr`'s `.value` sentinel is not yet fully supported in a single pass, but basic splitting is.)
-
-For a simpler example, if columns are `year_semester` (e.g., `2020_1`, `2020_2`):
+We can split the column names into two separate columns: `year` and `semester`.
 
 ```bash
-tva longer data.tsv --cols "20*" --names-to year semester --names-sep "_"
+tva longer docs/data/semester.tsv --cols 2-4 --names-to year semester --names-sep "_"
 ```
 
-This splits `2020_1` into `2020` (year) and `1` (semester).
+Output:
+```tsv
+student	year	semester	value
+Alice	2020	1	85
+Alice	2020	2	90
+Alice	2021	1	88
+Bob	2020	1	78
+Bob	2020	2	82
+Bob	2021	1	80
+```
 
 ## `wider` (Long to Wide)
 
@@ -158,6 +159,13 @@ tva wider [input_files...] --names-from <column> --values-from <column> [options
 *   **`--values-fill`**: (Optional) Value to use for missing cells (default: empty).
 *   **`--names-sort`**: (Optional) Sort the new column headers alphabetically.
 *   **`--op`**: (Optional) Aggregation operation (e.g., `sum`, `mean`, `count`, `last`). Default: `last`.
+
+**Comparison: `stats` vs `wider`**
+
+| Feature | `stats` (Group By) | `wider` (Pivot) |
+| :--- | :--- | :--- |
+| **Goal** | Summarize to rows | Reshape to columns |
+| **Output** | Long / Tall | Wide / Matrix |
 
 ### Example 1: US Rent and Income
 
@@ -351,19 +359,113 @@ B       30  40
 ```
 (Spreads categories horizontally)
 
+## `fill` (Fill Missing Values)
+
+The `fill` command fills missing values in selected columns using the previous non-missing value (Last Observation Carried Forward, or LOCF) or a constant. This is common in time-series data or reports where values are only listed when they change.
+
+### Basic Usage
+
+```bash
+tva fill [options]
+```
+
+*   **`--field` / `-f`**: Columns to fill.
+*   **`--direction`**: Currently only `down` (default) is supported.
+*   **`--value` / `-v`**: If provided, fills with this constant value instead of the previous value.
+*   **`--na`**: String to consider as missing (default: empty string).
+
+### Example: Filling Down
+
+Input `docs/data/pet_names.tsv`:
+```tsv
+Pet	Name	Age
+Dog	Rex	5
+	Spot	3
+Cat	Felix	2
+	Tom	4
+```
+
+To fill the `Pet` column downwards:
+
+```bash
+tva fill -H -f Pet docs/data/pet_names.tsv
+```
+
+Output:
+```tsv
+Pet	Name	Age
+Dog	Rex	5
+Dog	Spot	3
+Cat	Felix	2
+Cat	Tom	4
+```
+
+### Example: Filling with Constant
+
+To replace missing values with "Unknown":
+
+```bash
+tva fill -H -f Pet -v "Unknown" docs/data/pet_names.tsv
+```
+
+## `blank` (Sparsify / Inverse Fill)
+
+The `blank` command replaces repeated values in selected columns with an empty string (or a custom placeholder). This is the inverse of `fill` and is useful for creating human-readable reports where repeated group labels are visually redundant.
+
+### Basic Usage
+
+```bash
+tva blank [options]
+```
+
+*   **`--field` / `-f`**: Columns to blank.
+*   **`--ignore-case` / `-i`**: Ignore case when comparing values.
+
+### Example
+
+Input `docs/data/blank_example.tsv`:
+```tsv
+Group	Item
+A	1
+A	2
+B	1
+```
+
+Command:
+```bash
+tva blank -H -f Group docs/data/blank_example.tsv
+```
+
+Output:
+```tsv
+Group	Item
+A	1
+	2
+B	1
+```
+
 ## Detailed Options
 
 | Option | Description |
 | :--- | :--- |
-| `--cols <cols>` | **(Longer Only)** Columns to reshape. Supports indices (`1`, `1-3`), names (`year`), and wildcards (`wk*`). |
-| `--names-to <names...>` | **(Longer Only)** Name(s) for the new key column(s). |
-| `--values-to <name>` | **(Longer Only)** Name for the new value column. |
-| `--names-from <col>` | **(Wider Only)** Column for new headers. |
-| `--values-from <col>` | **(Wider Only)** Column for new values. |
-| `--id-cols <cols>` | **(Wider Only)** Columns identifying rows. |
-| `--values-fill <str>` | **(Wider Only)** Fill value for missing cells. |
-| `--names-sort` | **(Wider Only)** Sort new column headers. |
-| `--op <op>` | **(Wider Only)** Aggregation operation (`sum`, `mean`, `count`, etc.). |
+| `--cols <cols>` | **(Longer)** Columns to reshape. Supports indices (`1`, `1-3`), names (`year`), and wildcards (`wk*`). |
+| `--names-to <names...>` | **(Longer)** Name(s) for the new key column(s). |
+| `--values-to <name>` | **(Longer)** Name for the new value column. |
+| `--names-prefix <str>` | **(Longer)** String to remove from start of column names. |
+| `--names-sep <str>` | **(Longer)** Separator to split column names. |
+| `--names-pattern <regex>` | **(Longer)** Regex with capture groups for column names. |
+| `--values-drop-na` | **(Longer)** Drop rows where value is empty. |
+| `--names-from <col>` | **(Wider)** Column for new headers. |
+| `--values-from <col>` | **(Wider)** Column for new values. |
+| `--id-cols <cols>` | **(Wider)** Columns identifying rows. |
+| `--values-fill <str>` | **(Wider)** Fill value for missing cells. |
+| `--names-sort` | **(Wider)** Sort new column headers. |
+| `--op <op>` | **(Wider)** Aggregation operation (`sum`, `mean`, `count`, etc.). |
+| `--field <cols>` | **(Fill/Blank)** Columns to process. |
+| `--direction <dir>` | **(Fill)** Direction to fill (`down` is default). |
+| `--value <val>` | **(Fill)** Constant value to fill with. |
+| `--na <str>` | **(Fill)** String to treat as missing (default: empty). |
+| `--ignore-case` | **(Blank)** Ignore case when comparing values. |
 
 ## Comparison with R `tidyr`
 
