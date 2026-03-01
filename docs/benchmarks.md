@@ -130,9 +130,9 @@ hyperfine \
     --warmup 3 \
     --min-runs 5 \
     --export-csv benchmark_filter.csv \
-    "tva filter -H --gt 1:0.5 hepmass.tsv > /dev/null" \
-    "tsv-filter -H --gt 1:0.5 hepmass.tsv > /dev/null" \
-    "awk -F '\t' '\$1 > 0.5' hepmass.tsv > /dev/null"
+    -n "tva filter" "tva filter -H --gt 1:0.5 hepmass.tsv > /dev/null" \
+    -n "tsv-filter" "tsv-filter -H --gt 1:0.5 hepmass.tsv > /dev/null" \
+    -n "awk" "awk -F '\t' '\$1 > 0.5' hepmass.tsv > /dev/null"
 
 # Scenario 2: Column Selection
 hyperfine \
@@ -148,9 +148,9 @@ hyperfine \
     --warmup 3 \
     --min-runs 5 \
     --export-csv benchmark_join.csv \
-    "tva join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv > /dev/null" \
-    "tsv-join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv > /dev/null" \
-    "xan join -d '\t' --semi row_id hepmass_left.tsv row_id hepmass_right.tsv > /dev/null"
+    -n "tva join" "tva join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv > /dev/null" \
+    -n "tsv-join" "tsv-join -H -f hepmass_right.tsv -k 1 hepmass_left.tsv > /dev/null" \
+    -n "xan join" "xan join -d '\t' --semi row_id hepmass_left.tsv row_id hepmass_right.tsv > /dev/null"
 
     # qsv join is too slow
     # "qsv join row_id hepmass_left.tsv row_id hepmass_right.tsv > /dev/null"
@@ -160,8 +160,8 @@ hyperfine \
     --warmup 3 \
     --min-runs 5 \
     --export-csv benchmark_stats.csv \
-    "tva stats -H --count --sum 3,5,20 --min 3,5,20 --max 3,5,20 --mean 3,5,20 --stdev 3,5,20 hepmass.tsv > /dev/null" \
-    "tsv-summarize -H --count --sum 3,5,20 --min 3,5,20 --max 3,5,20 --mean 3,5,20 --stdev 3,5,20 hepmass.tsv > /dev/null"
+    -n "tva stats" "tva stats -H --count --sum 3,5,20 --min 3,5,20 --max 3,5,20 --mean 3,5,20 --stdev 3,5,20 hepmass.tsv > /dev/null" \
+    -n "tsv-summarize" "tsv-summarize -H --count --sum 3,5,20 --min 3,5,20 --max 3,5,20 --mean 3,5,20 --stdev 3,5,20 hepmass.tsv > /dev/null"
 
 # Scenario 5: Weighted Sampling (k=1000)
 # Assumes column 5 is a suitable weight (positive float)
@@ -169,47 +169,47 @@ hyperfine \
     --warmup 3 \
     --min-runs 5 \
     --export-csv benchmark_sample.csv \
-    "tva sample -H --weight-field 5 -n 1000 hepmass.tsv > /dev/null" \
-    "tsv-sample -H --weight-field 5 -n 1000 hepmass.tsv > /dev/null"
+    -n "tva sample" "tva sample -H --weight-field 5 -n 1000 hepmass.tsv > /dev/null" \
+    -n "tsv-sample" "tsv-sample -H --weight-field 5 -n 1000 hepmass.tsv > /dev/null"
 
 # Scenario 6: Uniq (Hash-based Deduplication)
 hyperfine \
     --warmup 3 \
     --min-runs 5 \
     --export-csv benchmark_uniq.csv \
-    "tva uniq -H -f 1 hepmass.tsv > /dev/null" \
-    "tsv-uniq -H -f 1 hepmass.tsv > /dev/null"
+    -n "tva uniq" "tva uniq -H -f 1 hepmass.tsv > /dev/null" \
+    -n "tsv-uniq" "tsv-uniq -H -f 1 hepmass.tsv > /dev/null"
 
 # Scenario 7: Sort (Numeric)
 hyperfine \
     --warmup 2 \
     --min-runs 3 \
     --export-csv benchmark_sort.csv \
-    "tva sort -H -k 1 -n hepmass.tsv > /dev/null"
+    -n "tva sort" "tva sort -H -k 1 -n hepmass.tsv > /dev/null"
 
 # Scenario 8: Slice (Middle of file)
 hyperfine \
     --warmup 3 \
     --min-runs 5 \
     --export-csv benchmark_slice.csv \
-    "tva slice -r 1000000-2000000 hepmass.tsv > /dev/null" \
-    "sed -n '1000000,2000000p' hepmass.tsv > /dev/null"
+    -n "tva slice" "tva slice -r 1000000-2000000 hepmass.tsv > /dev/null" \
+    -n "sed" "sed -n '1000000,2000000p' hepmass.tsv > /dev/null"
 
 # Scenario 9: Reverse
 hyperfine \
     --warmup 2 \
     --min-runs 5 \
     --export-csv benchmark_reverse.csv \
-    "tva reverse hepmass.tsv > /dev/null" \
-    "tac hepmass.tsv > /dev/null"
+    -n "tva reverse" "tva reverse hepmass.tsv > /dev/null" \
+    -n "tac" "tac hepmass.tsv > /dev/null"
 
 # Scenario 10: Append
 hyperfine \
     --warmup 2 \
     --min-runs 5 \
     --export-csv benchmark_append.csv \
-    "tva append hepmass.tsv hepmass.tsv > /dev/null" \
-    "cat hepmass.tsv hepmass.tsv > /dev/null"
+    -n "tva append" "tva append hepmass.tsv hepmass.tsv > /dev/null" \
+    -n "cat" "cat hepmass.tsv hepmass.tsv > /dev/null"
 
 # 3. 结果处理与可视化 (Process & Visualize)
 # ------------------------------
