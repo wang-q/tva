@@ -57,7 +57,6 @@ fn arg_error(msg: &str) -> ! {
 }
 
 use crate::libs::io::map_io_err;
-use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::select;
 use crate::libs::tsv::select::SelectPlan;
 

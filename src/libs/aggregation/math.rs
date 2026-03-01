@@ -64,6 +64,16 @@ pub fn cv(sum_sq: f64, sum: f64, count: usize) -> f64 {
     }
 }
 
+/// Calculates the range (max - min).
+#[inline]
+pub fn range(min: f64, max: f64) -> f64 {
+    if min.is_finite() && max.is_finite() {
+        max - min
+    } else {
+        f64::NAN
+    }
+}
+
 /// Calculates the quantile value at probability p.
 /// The input slice MUST be sorted.
 pub fn quantile(sorted_vals: &[f64], p: f64) -> f64 {

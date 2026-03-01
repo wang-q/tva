@@ -1,3 +1,4 @@
+use crate::libs::aggregation::math;
 use crate::libs::aggregation::ops::parse_float;
 use crate::libs::aggregation::{Aggregator, Calculator};
 use crate::libs::tsv::record::Row;
@@ -100,10 +101,11 @@ impl Calculator for Range {
     fn format(&self, agg: &Aggregator) -> String {
         let min = agg.mins[self.min_slot];
         let max = agg.maxs[self.max_slot];
-        if min != f64::INFINITY && max != f64::NEG_INFINITY {
-            (max - min).to_string()
-        } else {
+        let res = math::range(min, max);
+        if res.is_nan() {
             "nan".to_string()
+        } else {
+            res.to_string()
         }
     }
 }

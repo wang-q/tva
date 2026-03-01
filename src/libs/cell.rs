@@ -236,11 +236,13 @@ impl Cell {
                     math::cv(sum_sq, sum, count).to_string()
                 }
                 OpKind::Range => {
-                    if vals.len() >= 2
-                        && vals[0] != f64::INFINITY
-                        && vals[1] != f64::NEG_INFINITY
-                    {
-                        (vals[1] - vals[0]).to_string()
+                    if vals.len() >= 2 {
+                        let res = math::range(vals[0], vals[1]);
+                        if res.is_nan() {
+                            "nan".to_string()
+                        } else {
+                            res.to_string()
+                        }
                     } else {
                         "nan".to_string()
                     }

@@ -1,15 +1,9 @@
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
-use crate::libs::tsv::select::SelectPlan;
 use ahash::RandomState;
 use clap::*;
-use memchr::memchr;
-use std::collections::{HashMap, HashSet};
-use std::io::{self, BufWriter, Write};
+use std::collections::HashMap;
+use std::io::Write;
 use std::ops::Range;
-
-use crate::libs::io::map_io_err;
-use crate::libs::tsv::reader::TsvReader;
-use crate::libs::tsv::select::{write_excluding_from_bytes, write_selected_from_bytes};
 
 pub fn make_subcommand() -> Command {
     Command::new("join")
