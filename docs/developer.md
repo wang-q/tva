@@ -400,18 +400,18 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 
 | 特性 | tva | xan | tsv-utils | datamash | dplyr | qsv |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **模式** | **SoA** | **Enum** | **Template** | **Stateful Struct** | **Masking** | **Hybrid** |
+| **模式** | **SoA + Trait** | **Enum** | **Template** | **Stateful Struct** | **Masking** | **Hybrid** |
 | **核心** | `Vec<f64>` | `enum Agg` | `Summarizer` | `struct op` | `eval(mask)` | `Stats+Idx` |
 | **内存** | 极致紧凑 | 碎片化 | AoS | O(1) (Streaming) | 向量化 | 混合 |
 | **GroupBy** | 统一 Hash | 统一 Hash | **分级特化** | **Sort-based** | Vectorized | Parallel |
-| **亮点** | 极低开销 | 模块化 | 稳定排序 | 高精度 | 避免小对象 | 缓存+并行 |
+| **亮点** | 模块化+低开销 | 模块化 | 稳定排序 | 高精度 | 避免小对象 | 缓存+并行 |
 
 ### 2. 详细分析
 
-#### A. tva: 极致性能导向
-*   **设计**: Schema-State 分离。Schema (`StatsProcessor`) 计算好内存布局，State (`Aggregator`) 只是一个扁平的 `Vec<f64>`。
-*   **优势**: 在处理海量 GroupBy (如 1000万个组) 时，创建 Aggregator 的开销极低（仅分配几个 Vec），且内存占用最小。
-*   **短板**: 逻辑与数据紧耦合，增加新算法（如 HLL）需要修改核心结构。
+#### A. tva: 极致性能与模块化平衡
+*   **设计**: **Hybrid SoA (SoA Storage + Modular Logic)**。Schema (`StatsProcessor`) 管理计算图，State (`Aggregator`) 保持紧凑的列式存储 (`Vec<f64>`, `Vec<String>`)。计算逻辑通过 `Calculator` trait 解耦。
+*   **优势**: 在处理海量 GroupBy 时，依然保持极低的内存开销（仅分配几个 Vec）。同时，新增聚合算子只需实现 `Calculator` 接口，无需侵入核心处理循环，极大提升了可扩展性。
+*   **权衡**: 引入了 `Calculator` trait 的动态分发（Dynamic Dispatch），在极高性能敏感场景下可能比硬编码循环略慢（但在 I/O 密集型任务中通常可忽略）。
 
 #### B. xan: 算法模块化导向
 *   **设计**: 每个统计指标是一个独立的结构体，通过 Enum 分发。
@@ -455,53 +455,3 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 4.  **近似算法**: 借鉴 `xan`，针对大数据场景引入 `--approx-unique` (HyperLogLog) 和 `--approx-quantile` (T-Digest)。
 5.  **向量化思考**: 借鉴 `dplyr`，在实现 `tva` 的 `window` 或 `mutate` 功能时，应优先考虑基于 Chunk 的向量化计算，而非逐行迭代。
 6.  **缓存机制**: 借鉴 `qsv`，考虑为 `tva stats` 引入可选的缓存机制，特别是针对大文件的元数据（行数、类型）。
-
-### 3. 代码结构重构建议 (Refactoring Proposal)
-
-目前的 `src/libs/aggregation.rs` 已成为一个“上帝类”，包含 1500+ 行代码，逻辑紧耦合。为了提高可维护性，建议进行以下重构：
-
-#### A. 拆分文件结构
-将单文件拆分为模块化结构：
-```text
-src/libs/aggregation/
-├── mod.rs           # 公共接口 (OpKind, Aggregator, StatsProcessor)
-├── processor.rs     # 核心逻辑 (StatsProcessor 实现)
-├── aggregator.rs    # 状态容器 (Aggregator 实现)
-├── ops/             # 具体算子实现 (按功能分组)
-│   ├── basic.rs     # Count, Sum, Min, Max
-│   ├── mean.rs      # Mean, GeoMean, HarmMean
-│   ├── variance.rs  # Stdev, Variance, CV
-│   ├── quantile.rs  # Median, Quartiles, IQR
-│   ├── set.rs       # Unique, Mode, NUnique
-│   └── text.rs      # First, Last, Collapse
-└── traits.rs        # 定义 Calculator Trait
-```
-
-#### B. 引入 Calculator Trait
-为了解耦 `StatsProcessor`，引入类似 `tsv-utils` 的 `Calculator` 模式，但保持底层的 SoA 内存布局。
-
-```rust
-/// 抽象计算逻辑，每个 OpKind 对应一个实现
-trait Calculator {
-    /// 告诉 Processor 需要分配多少个 f64 槽位
-    fn slots_needed(&self) -> usize;
-    
-    /// 处理单行数据，更新 Aggregator 状态
-    /// 注意：直接传入底层 Vec 的切片，保持零开销
-    fn update(&self, state: &mut [f64], value: f64);
-    
-    /// 计算最终结果
-    fn finalize(&self, state: &[f64]) -> f64;
-}
-```
-
-#### C. 宏与代码生成
-大量重复的样板代码（如 `Sum`, `Min`, `Max` 的更新逻辑）可以通过声明式宏 (`macro_rules!`) 或过程宏来简化。
-
-```rust
-// 示例：定义简单累加算子
-define_simple_op!(Sum, |acc, val| *acc += val);
-define_simple_op!(Min, |acc, val| if val < *acc { *acc = val });
-```
-
-### 4. 高精度计算 (High Precision)
