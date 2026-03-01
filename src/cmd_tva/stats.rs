@@ -1,4 +1,6 @@
-use crate::libs::aggregation::{Aggregator, OpKind, Operation, StatsProcessor};
+use crate::libs::aggregation::{
+    Aggregator, OpKind, Operation, StatsConfig, StatsProcessor,
+};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::fields;
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
@@ -104,6 +106,7 @@ pub fn make_subcommand() -> Command {
         .arg(
             Arg::new("nunique")
                 .long("nunique")
+                .visible_alias("unique-count")
                 .num_args(1)
                 .action(ArgAction::Append)
                 .help("Count the number of unique values"),
@@ -184,6 +187,47 @@ pub fn make_subcommand() -> Command {
                 .num_args(1)
                 .action(ArgAction::Append)
                 .help("Pick a random value from fields"),
+        )
+        .arg(
+            Arg::new("values-delimiter")
+                .long("values-delimiter")
+                .short('v')
+                .num_args(1)
+                .help("Delimiter for --unique and --collapse (default: ,)"),
+        )
+        .arg(
+            Arg::new("float-precision")
+                .long("float-precision")
+                .short('p')
+                .num_args(1)
+                .help("Precision for floating point numbers (default: 4)"),
+        )
+        .arg(
+            Arg::new("mode-count")
+                .long("mode-count")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Count of the most frequent value"),
+        )
+        .arg(
+            Arg::new("missing-count")
+                .long("missing-count")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Number of missing (empty) fields"),
+        )
+        .arg(
+            Arg::new("not-missing-count")
+                .long("not-missing-count")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Number of filled (non-empty) fields"),
+        )
+        .arg(
+            Arg::new("replace-missing")
+                .long("replace-missing")
+                .num_args(1)
+                .help("Replace missing values (nan) with a string"),
         )
         .arg(
             Arg::new("infiles")
@@ -302,6 +346,36 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             });
         }
     }
+    if let Some(indices) = matches.indices_of("mode-count") {
+        for (i, val) in indices.zip(matches.get_many::<String>("mode-count").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::ModeCount,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("missing-count") {
+        for (i, val) in indices.zip(matches.get_many::<String>("missing-count").unwrap())
+        {
+            op_configs.push(OpConfig {
+                kind: OpKind::MissingCount,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("not-missing-count") {
+        for (i, val) in
+            indices.zip(matches.get_many::<String>("not-missing-count").unwrap())
+        {
+            op_configs.push(OpConfig {
+                kind: OpKind::NotMissingCount,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
     if let Some(indices) = matches.indices_of("mode") {
         for (i, val) in indices.zip(matches.get_many::<String>("mode").unwrap()) {
             op_configs.push(OpConfig {
@@ -413,6 +487,18 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
     op_configs.sort_by_key(|c| c.arg_index);
 
+    let mut config = StatsConfig::default();
+    if let Some(d) = matches.get_one::<String>("values-delimiter") {
+        if let Some(c) = d.chars().next() {
+            config.delimiter = c;
+        }
+    }
+    if let Some(p) = matches.get_one::<String>("float-precision") {
+        if let Ok(v) = p.parse::<usize>() {
+            config.precision = Some(v);
+        }
+    }
+
     let infiles: Vec<String> = match matches.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
         None => vec!["stdin".to_string()],
@@ -420,6 +506,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
     let header_mode = matches.get_flag("header");
     let group_by_spec = matches.get_one::<String>("group-by").cloned();
+    let replace_missing = matches.get_one::<String>("replace-missing").cloned();
 
     let mut processor: Option<StatsProcessor> = None;
     let mut aggregator: Option<Aggregator> = None;
@@ -480,6 +567,9 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                         OpKind::Unique => "_unique",
                         OpKind::Collapse => "_collapse",
                         OpKind::Rand => "_rand",
+                        OpKind::ModeCount => "_mode_count",
+                        OpKind::MissingCount => "_missing_count",
+                        OpKind::NotMissingCount => "_not_missing_count",
                         OpKind::Count => "",
                     };
 
@@ -531,7 +621,11 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         }
         final_headers.extend(output_headers);
 
-        Ok((StatsProcessor::new(ops), extractor, final_headers))
+        Ok((
+            StatsProcessor::new(ops, config.clone()),
+            extractor,
+            final_headers,
+        ))
     };
 
     for input in crate::libs::io::raw_input_sources(&infiles) {
@@ -622,6 +716,15 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 print!("{}", String::from_utf8_lossy(key));
 
                 let values = proc.format_results(agg);
+                let values = if let Some(replacement) = &replace_missing {
+                    values
+                        .into_iter()
+                        .map(|v| if v == "nan" { replacement.clone() } else { v })
+                        .collect()
+                } else {
+                    values
+                };
+
                 if !values.is_empty() {
                     print!("\t{}", values.join("\t"));
                 }
@@ -630,6 +733,14 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         } else {
             if let Some(agg) = &aggregator {
                 let values = proc.format_results(agg);
+                let values = if let Some(replacement) = &replace_missing {
+                    values
+                        .into_iter()
+                        .map(|v| if v == "nan" { replacement.clone() } else { v })
+                        .collect()
+                } else {
+                    values
+                };
                 println!("{}", values.join("\t"));
             }
         }

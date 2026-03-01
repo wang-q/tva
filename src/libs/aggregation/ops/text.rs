@@ -37,6 +37,7 @@ impl Calculator for Last {
 pub struct Collapse {
     pub field_idx: usize,
     pub string_values_slot: usize,
+    pub delimiter: String,
 }
 
 impl Calculator for Collapse {
@@ -45,7 +46,7 @@ impl Calculator for Collapse {
     }
 
     fn format(&self, agg: &Aggregator) -> String {
-        agg.string_values[self.string_values_slot].join(",")
+        agg.string_values[self.string_values_slot].join(&self.delimiter)
     }
 }
 

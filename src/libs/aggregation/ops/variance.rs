@@ -1,6 +1,7 @@
 use crate::libs::aggregation::math;
 use crate::libs::aggregation::ops::parse_float;
 use crate::libs::aggregation::{Aggregator, Calculator};
+use crate::libs::fmt::format_float;
 use crate::libs::tsv::record::Row;
 
 pub struct Variance {
@@ -8,6 +9,7 @@ pub struct Variance {
     pub sum_slot: usize,
     pub sum_sq_slot: usize,
     pub count_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for Variance {
@@ -24,11 +26,7 @@ impl Calculator for Variance {
         let sum = agg.sums[self.sum_slot];
         let sum_sq = agg.sum_sqs[self.sum_sq_slot];
         let res = math::variance(sum_sq, sum, count);
-        if res.is_nan() {
-            "nan".to_string()
-        } else {
-            res.to_string()
-        }
+        format_float(res, self.precision)
     }
 }
 
@@ -37,6 +35,7 @@ pub struct Stdev {
     pub sum_slot: usize,
     pub sum_sq_slot: usize,
     pub count_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for Stdev {
@@ -53,11 +52,7 @@ impl Calculator for Stdev {
         let sum = agg.sums[self.sum_slot];
         let sum_sq = agg.sum_sqs[self.sum_sq_slot];
         let res = math::stdev(sum_sq, sum, count);
-        if res.is_nan() {
-            "nan".to_string()
-        } else {
-            res.to_string()
-        }
+        format_float(res, self.precision)
     }
 }
 
@@ -66,6 +61,7 @@ pub struct CV {
     pub sum_slot: usize,
     pub sum_sq_slot: usize,
     pub count_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for CV {
@@ -82,10 +78,6 @@ impl Calculator for CV {
         let sum = agg.sums[self.sum_slot];
         let sum_sq = agg.sum_sqs[self.sum_sq_slot];
         let res = math::cv(sum_sq, sum, count);
-        if res.is_nan() {
-            "nan".to_string()
-        } else {
-            res.to_string()
-        }
+        format_float(res, self.precision)
     }
 }

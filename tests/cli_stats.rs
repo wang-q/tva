@@ -268,3 +268,76 @@ fn stats_rand() {
     let val = lines[1];
     assert!(val == "100" || val == "200");
 }
+
+const INPUT_MISSING: &str = "A\t10
+A\t
+B\t20
+B\t
+";
+
+const INPUT_ALL_MISSING: &str = "A\t
+A\t
+";
+
+#[test]
+fn stats_replace_missing() {
+    // Mean of all missing values is nan.
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--mean", "2", "--replace-missing", "0.0"])
+        .stdin(INPUT_ALL_MISSING)
+        .run();
+
+    assert_eq!(stdout.trim(), "0.0");
+
+    // Default behavior (nan)
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--mean", "2"])
+        .stdin(INPUT_ALL_MISSING)
+        .run();
+
+    assert_eq!(stdout.trim(), "nan");
+}
+
+#[test]
+fn stats_missing_count_ops() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--missing-count",
+            "2",
+            "--not-missing-count",
+            "2",
+            "--count",
+        ])
+        .stdin(INPUT_MISSING)
+        .run();
+
+    // Total rows: 4.
+    // Col 2: "10", "", "20", "".
+    // Missing: 2. Not Missing: 2. Count: 4.
+    // Note: 'count' (OpKind::Count) is currently forced to be the first column by stats.rs logic (arg_index: 0).
+    assert_eq!(stdout.trim(), "4\t2\t2");
+}
+
+#[test]
+fn stats_mode_count() {
+    let input = "A\nA\nB";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--mode-count", "1", "--mode", "1"])
+        .stdin(input)
+        .run();
+
+    // Mode: A. Count: 2.
+    assert_eq!(stdout.trim(), "2\tA");
+}
+
+#[test]
+fn stats_unique_count_alias() {
+    let input = "A\nA\nB";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--unique-count", "1"]) // Should work same as --nunique
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout.trim(), "2");
+}

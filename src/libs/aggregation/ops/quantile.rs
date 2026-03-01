@@ -1,11 +1,13 @@
 use crate::libs::aggregation::math;
 use crate::libs::aggregation::ops::parse_float;
 use crate::libs::aggregation::{Aggregator, Calculator};
+use crate::libs::fmt::format_float;
 use crate::libs::tsv::record::Row;
 
 pub struct Median {
     pub field_idx: usize,
     pub values_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for Median {
@@ -21,11 +23,7 @@ impl Calculator for Median {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let res = math::quantile(&sorted_vals, 0.5);
-            if res.is_nan() {
-                "nan".to_string()
-            } else {
-                res.to_string()
-            }
+            format_float(res, self.precision)
         } else {
             "nan".to_string()
         }
@@ -35,6 +33,7 @@ impl Calculator for Median {
 pub struct Q1 {
     pub field_idx: usize,
     pub values_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for Q1 {
@@ -50,11 +49,7 @@ impl Calculator for Q1 {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let res = math::quantile(&sorted_vals, 0.25);
-            if res.is_nan() {
-                "nan".to_string()
-            } else {
-                res.to_string()
-            }
+            format_float(res, self.precision)
         } else {
             "nan".to_string()
         }
@@ -64,6 +59,7 @@ impl Calculator for Q1 {
 pub struct Q3 {
     pub field_idx: usize,
     pub values_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for Q3 {
@@ -79,11 +75,7 @@ impl Calculator for Q3 {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let res = math::quantile(&sorted_vals, 0.75);
-            if res.is_nan() {
-                "nan".to_string()
-            } else {
-                res.to_string()
-            }
+            format_float(res, self.precision)
         } else {
             "nan".to_string()
         }
@@ -93,6 +85,7 @@ impl Calculator for Q3 {
 pub struct IQR {
     pub field_idx: usize,
     pub values_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for IQR {
@@ -110,11 +103,7 @@ impl Calculator for IQR {
             let q1 = math::quantile(&sorted_vals, 0.25);
             let q3 = math::quantile(&sorted_vals, 0.75);
             let res = q3 - q1;
-            if res.is_nan() {
-                "nan".to_string()
-            } else {
-                res.to_string()
-            }
+            format_float(res, self.precision)
         } else {
             "nan".to_string()
         }
@@ -124,6 +113,7 @@ impl Calculator for IQR {
 pub struct Mad {
     pub field_idx: usize,
     pub values_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for Mad {
@@ -139,11 +129,7 @@ impl Calculator for Mad {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let res = math::mad(&sorted_vals);
-            if res.is_nan() {
-                "nan".to_string()
-            } else {
-                res.to_string()
-            }
+            format_float(res, self.precision)
         } else {
             "nan".to_string()
         }

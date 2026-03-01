@@ -1,4 +1,4 @@
-use super::{OpKind, Operation, StatsProcessor};
+use super::{OpKind, Operation, StatsConfig, StatsProcessor};
 use crate::libs::tsv::record::Row;
 
 // Helper for testing Row trait
@@ -21,7 +21,7 @@ fn test_mean_nan() {
         kind: OpKind::Mean,
         field_idx: Some(0),
     }];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let agg = processor.create_aggregator();
     // Mean needs count > 0 to not be nan
     let results = processor.format_results(&agg);
@@ -34,7 +34,7 @@ fn test_mad_nan_no_entry() {
         kind: OpKind::Mad,
         field_idx: Some(0),
     }];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let agg = processor.create_aggregator();
     let results = processor.format_results(&agg);
     assert_eq!(results[0], "nan");
@@ -46,7 +46,7 @@ fn test_stdev_nan() {
         kind: OpKind::Stdev,
         field_idx: Some(0),
     }];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
     // Stdev requires count > 1
     // Manually hack state
@@ -73,7 +73,7 @@ fn test_min_max_nan() {
             field_idx: Some(0),
         },
     ];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let agg = processor.create_aggregator();
     let results = processor.format_results(&agg);
     assert_eq!(results[0], "nan");
@@ -104,7 +104,7 @@ fn test_basic_stats() {
             field_idx: Some(0),
         },
     ];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: 10, 20, 30
@@ -148,7 +148,7 @@ fn test_variance_stdev_cv() {
             field_idx: Some(0),
         },
     ];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: 2, 4, 4, 4, 5, 5, 7, 9
@@ -194,7 +194,7 @@ fn test_quantiles() {
             field_idx: Some(0),
         },
     ];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: 1, 2, 3, 4, 5
@@ -228,7 +228,7 @@ fn test_geomean_harmmean() {
             field_idx: Some(0),
         },
     ];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: 2, 8
@@ -263,7 +263,7 @@ fn test_mode_nunique() {
             field_idx: Some(0),
         },
     ];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: A, A, B
@@ -288,7 +288,7 @@ fn test_mad_basic() {
         kind: OpKind::Mad,
         field_idx: Some(0),
     }];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: 1, 2, 3, 4, 5
@@ -315,7 +315,7 @@ fn test_mad_even() {
         kind: OpKind::Mad,
         field_idx: Some(0),
     }];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: 1, 2, 3, 4
@@ -342,7 +342,7 @@ fn test_mad_constant() {
         kind: OpKind::Mad,
         field_idx: Some(0),
     }];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: 5, 5, 5
@@ -376,7 +376,7 @@ fn test_first_last_range() {
             field_idx: Some(0),
         },
     ];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: 10, 5, 20
@@ -406,7 +406,7 @@ fn test_collapse_rand() {
             field_idx: Some(0),
         },
     ];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: A, B, C
@@ -439,7 +439,7 @@ fn test_empty_input() {
             field_idx: Some(0),
         },
     ];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let agg = processor.create_aggregator();
 
     let results = processor.format_results(&agg);
@@ -464,7 +464,7 @@ fn test_single_value_stats() {
             field_idx: Some(0),
         },
     ];
-    let processor = StatsProcessor::new(ops);
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
     let mut agg = processor.create_aggregator();
 
     // Data: 5

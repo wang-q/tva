@@ -17,7 +17,10 @@ impl Default for Cell {
 impl Cell {
     pub fn new(op: OpKind) -> Self {
         match op {
-            OpKind::Count | OpKind::Sum => Cell::Value(0.0),
+            OpKind::Count
+            | OpKind::Sum
+            | OpKind::MissingCount
+            | OpKind::NotMissingCount => Cell::Value(0.0),
             OpKind::Min => Cell::Value(f64::INFINITY),
             OpKind::Max => Cell::Value(f64::NEG_INFINITY),
             OpKind::Mean => Cell::Values(vec![0.0, 0.0]), // [sum, count]
@@ -33,6 +36,7 @@ impl Cell {
             OpKind::First
             | OpKind::Last
             | OpKind::Mode
+            | OpKind::ModeCount
             | OpKind::Unique
             | OpKind::NUnique
             | OpKind::Collapse
@@ -54,6 +58,24 @@ impl Cell {
                     *count += 1.0;
                 } else {
                     *self = Cell::Value(1.0);
+                }
+            }
+            OpKind::MissingCount => {
+                if val_str.is_empty() {
+                    if let Cell::Value(count) = self {
+                        *count += 1.0;
+                    } else {
+                        *self = Cell::Value(1.0);
+                    }
+                }
+            }
+            OpKind::NotMissingCount => {
+                if !val_str.is_empty() {
+                    if let Cell::Value(count) = self {
+                        *count += 1.0;
+                    } else {
+                        *self = Cell::Value(1.0);
+                    }
                 }
             }
             OpKind::Sum => {
@@ -182,6 +204,7 @@ impl Cell {
                 }
             }
             OpKind::Mode
+            | OpKind::ModeCount
             | OpKind::Unique
             | OpKind::NUnique
             | OpKind::Collapse
@@ -325,6 +348,20 @@ impl Cell {
                         count_vec
                             .sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
                         count_vec[0].0.to_string()
+                    }
+                }
+                OpKind::ModeCount => {
+                    if vals.is_empty() {
+                        "0".to_string()
+                    } else {
+                        let mut counts = std::collections::HashMap::new();
+                        for v in vals {
+                            *counts.entry(v).or_insert(0) += 1;
+                        }
+                        let mut count_vec: Vec<_> = counts.iter().collect();
+                        count_vec
+                            .sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+                        count_vec[0].1.to_string()
                     }
                 }
                 OpKind::Collapse => vals.join(","),

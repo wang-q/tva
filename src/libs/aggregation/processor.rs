@@ -1,7 +1,7 @@
 use super::aggregator::Aggregator;
 use super::ops::*;
 use super::traits::Calculator;
-use super::{OpKind, Operation};
+use super::{OpKind, Operation, StatsConfig};
 use crate::libs::tsv::record::Row;
 use std::collections::HashMap;
 
@@ -24,7 +24,7 @@ pub struct StatsProcessor {
 }
 
 impl StatsProcessor {
-    pub fn new(ops: Vec<Operation>) -> Self {
+    pub fn new(ops: Vec<Operation>, config: StatsConfig) -> Self {
         let mut calculators: Vec<Box<dyn Calculator>> = Vec::new();
 
         // Maps from (field_idx, op_kind_discriminant) to slot_idx
@@ -83,6 +83,7 @@ impl StatsProcessor {
                         calculators.push(Box::new(basic::Sum {
                             field_idx: idx,
                             sum_slot: slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -93,6 +94,7 @@ impl StatsProcessor {
                         calculators.push(Box::new(basic::Min {
                             field_idx: idx,
                             min_slot: slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -103,6 +105,7 @@ impl StatsProcessor {
                         calculators.push(Box::new(basic::Max {
                             field_idx: idx,
                             max_slot: slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -116,6 +119,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             min_slot,
                             max_slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -129,6 +133,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             sum_slot,
                             count_slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -142,6 +147,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             sum_log_slot,
                             count_slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -155,6 +161,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             sum_inv_slot,
                             count_slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -171,6 +178,7 @@ impl StatsProcessor {
                             sum_slot,
                             sum_sq_slot,
                             count_slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -187,6 +195,7 @@ impl StatsProcessor {
                             sum_slot,
                             sum_sq_slot,
                             count_slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -203,6 +212,7 @@ impl StatsProcessor {
                             sum_slot,
                             sum_sq_slot,
                             count_slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -213,6 +223,7 @@ impl StatsProcessor {
                         calculators.push(Box::new(quantile::Median {
                             field_idx: idx,
                             values_slot: slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -223,6 +234,7 @@ impl StatsProcessor {
                         calculators.push(Box::new(quantile::Q1 {
                             field_idx: idx,
                             values_slot: slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -233,6 +245,7 @@ impl StatsProcessor {
                         calculators.push(Box::new(quantile::Q3 {
                             field_idx: idx,
                             values_slot: slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -243,6 +256,7 @@ impl StatsProcessor {
                         calculators.push(Box::new(quantile::IQR {
                             field_idx: idx,
                             values_slot: slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -253,6 +267,7 @@ impl StatsProcessor {
                         calculators.push(Box::new(quantile::Mad {
                             field_idx: idx,
                             values_slot: slot,
+                            precision: config.precision,
                         }));
                     }
                 }
@@ -303,6 +318,7 @@ impl StatsProcessor {
                         calculators.push(Box::new(set::Unique {
                             field_idx: idx,
                             value_counts_slot: slot,
+                            delimiter: config.delimiter.to_string(),
                         }));
                     }
                 }
@@ -313,6 +329,7 @@ impl StatsProcessor {
                         calculators.push(Box::new(text::Collapse {
                             field_idx: idx,
                             string_values_slot: slot,
+                            delimiter: config.delimiter.to_string(),
                         }));
                     }
                 }
@@ -323,6 +340,36 @@ impl StatsProcessor {
                         calculators.push(Box::new(text::Rand {
                             field_idx: idx,
                             string_values_slot: slot,
+                        }));
+                    }
+                }
+                OpKind::ModeCount => {
+                    if let Some(idx) = op.field_idx {
+                        let slot = num_value_counts;
+                        num_value_counts += 1;
+                        calculators.push(Box::new(set::ModeCount {
+                            field_idx: idx,
+                            value_counts_slot: slot,
+                        }));
+                    }
+                }
+                OpKind::MissingCount => {
+                    if let Some(idx) = op.field_idx {
+                        let slot = num_counts;
+                        num_counts += 1;
+                        calculators.push(Box::new(basic::MissingCount {
+                            field_idx: idx,
+                            count_slot: slot,
+                        }));
+                    }
+                }
+                OpKind::NotMissingCount => {
+                    if let Some(idx) = op.field_idx {
+                        let slot = num_counts;
+                        num_counts += 1;
+                        calculators.push(Box::new(basic::NotMissingCount {
+                            field_idx: idx,
+                            count_slot: slot,
                         }));
                     }
                 }

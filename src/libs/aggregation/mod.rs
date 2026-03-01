@@ -63,12 +63,32 @@ pub enum OpKind {
     Unique,
     Collapse,
     Rand,
+    ModeCount,
+    MissingCount,
+    NotMissingCount,
 }
 
 #[derive(Debug, Clone)]
 pub struct Operation {
     pub kind: OpKind,
     pub field_idx: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StatsConfig {
+    pub delimiter: char, // For outputting lists (Unique, Collapse)
+    pub precision: Option<usize>, // For float formatting
+    pub missing_val: Option<String>, // For replacing missing values (not fully implemented yet)
+}
+
+impl Default for StatsConfig {
+    fn default() -> Self {
+        Self {
+            delimiter: ',',
+            precision: None,
+            missing_val: None,
+        }
+    }
 }
 
 // Re-export core types for convenience

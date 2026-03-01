@@ -45,9 +45,35 @@ impl Calculator for Mode {
     }
 }
 
+pub struct ModeCount {
+    pub field_idx: usize,
+    pub value_counts_slot: usize,
+}
+
+impl Calculator for ModeCount {
+    fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
+        let val = get_str(row, self.field_idx);
+        *agg.value_counts[self.value_counts_slot]
+            .entry(val)
+            .or_insert(0) += 1;
+    }
+
+    fn format(&self, agg: &Aggregator) -> String {
+        let counts = &agg.value_counts[self.value_counts_slot];
+        if counts.is_empty() {
+            "0".to_string()
+        } else {
+            let mut count_vec: Vec<(&String, &usize)> = counts.iter().collect();
+            count_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+            count_vec[0].1.to_string()
+        }
+    }
+}
+
 pub struct Unique {
     pub field_idx: usize,
     pub value_counts_slot: usize,
+    pub delimiter: String,
 }
 
 impl Calculator for Unique {
@@ -68,7 +94,7 @@ impl Calculator for Unique {
             keys.into_iter()
                 .map(|s| s.as_str())
                 .collect::<Vec<&str>>()
-                .join(",")
+                .join(&self.delimiter)
         }
     }
 }

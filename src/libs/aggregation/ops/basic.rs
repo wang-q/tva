@@ -1,6 +1,7 @@
 use crate::libs::aggregation::math;
 use crate::libs::aggregation::ops::parse_float;
 use crate::libs::aggregation::{Aggregator, Calculator};
+use crate::libs::fmt::format_float;
 use crate::libs::tsv::record::Row;
 
 pub struct Count;
@@ -10,14 +11,15 @@ impl Calculator for Count {
         agg.count += 1;
     }
 
-    fn format(&self, agg: &Aggregator) -> String {
-        agg.count.to_string()
+    fn format(&self, _agg: &Aggregator) -> String {
+        _agg.count.to_string()
     }
 }
 
 pub struct Sum {
     pub field_idx: usize,
     pub sum_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for Sum {
@@ -28,13 +30,14 @@ impl Calculator for Sum {
     }
 
     fn format(&self, agg: &Aggregator) -> String {
-        agg.sums[self.sum_slot].to_string()
+        format_float(agg.sums[self.sum_slot], self.precision)
     }
 }
 
 pub struct Min {
     pub field_idx: usize,
     pub min_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for Min {
@@ -51,7 +54,7 @@ impl Calculator for Min {
         if val == f64::INFINITY {
             "nan".to_string()
         } else {
-            val.to_string()
+            format_float(val, self.precision)
         }
     }
 }
@@ -59,6 +62,7 @@ impl Calculator for Min {
 pub struct Max {
     pub field_idx: usize,
     pub max_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for Max {
@@ -75,7 +79,7 @@ impl Calculator for Max {
         if val == f64::NEG_INFINITY {
             "nan".to_string()
         } else {
-            val.to_string()
+            format_float(val, self.precision)
         }
     }
 }
@@ -84,6 +88,7 @@ pub struct Range {
     pub field_idx: usize,
     pub min_slot: usize,
     pub max_slot: usize,
+    pub precision: Option<usize>,
 }
 
 impl Calculator for Range {
@@ -102,10 +107,48 @@ impl Calculator for Range {
         let min = agg.mins[self.min_slot];
         let max = agg.maxs[self.max_slot];
         let res = math::range(min, max);
-        if res.is_nan() {
-            "nan".to_string()
-        } else {
-            res.to_string()
+        format_float(res, self.precision)
+    }
+}
+
+pub struct MissingCount {
+    pub field_idx: usize,
+    pub count_slot: usize,
+}
+
+impl Calculator for MissingCount {
+    fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
+        let is_missing = match row.get_bytes(self.field_idx + 1) {
+            None => true,
+            Some(bytes) => bytes.is_empty(),
+        };
+        if is_missing {
+            agg.field_counts[self.count_slot] += 1;
         }
+    }
+
+    fn format(&self, agg: &Aggregator) -> String {
+        agg.field_counts[self.count_slot].to_string()
+    }
+}
+
+pub struct NotMissingCount {
+    pub field_idx: usize,
+    pub count_slot: usize,
+}
+
+impl Calculator for NotMissingCount {
+    fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
+        let is_missing = match row.get_bytes(self.field_idx + 1) {
+            None => true,
+            Some(bytes) => bytes.is_empty(),
+        };
+        if !is_missing {
+            agg.field_counts[self.count_slot] += 1;
+        }
+    }
+
+    fn format(&self, agg: &Aggregator) -> String {
+        agg.field_counts[self.count_slot].to_string()
     }
 }
