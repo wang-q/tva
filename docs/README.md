@@ -4,7 +4,7 @@ Tab-separated Values Assistant.
 Fast, reliable TSV processing toolkit in Rust.
 
 [![Build](https://github.com/wang-q/tva/actions/workflows/build.yml/badge.svg)](https://github.com/wang-q/tva/actions)
-[![codecov](https://codecov.io/gh/wang-q/tva/graph/badge.svg?token=c76YHsQnW7)](https://codecov.io/gh/wang-q/tva)
+[![codecov](https://img.shields.io/codecov/c/github/wang-q/tva/master)](https://app.codecov.io/gh/wang-q/tva/tree/master)
 [![license](https://img.shields.io/github/license/wang-q/tva)](https://github.com/wang-q/tva)
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://wang-q.github.io/tva/)
 
@@ -39,7 +39,7 @@ See [Design Documentation](design.md) for details.
 
 ## Installation
 
-Current release: 0.1.0
+Current release: 0.2.0
 
 ```bash
 # Clone the repository and install via cargo
@@ -97,13 +97,6 @@ Alternatively, you can download individual files from the [docs/data](https://gi
 - **`longer`**: Reshape wide to long (unpivot). Requires a header row.
 - **`wider`**: Reshape long to wide (pivot). Supports aggregation via `--op` (sum, count, etc.).
 
-**Comparison: `stats` vs `wider`**
-
-| Feature | `stats` (Group By) | `wider` (Pivot) |
-| :--- | :--- | :--- |
-| **Goal** | Summarize to rows | Reshape to columns |
-| **Output** | Long / Tall | Wide / Matrix |
-
 ### [Combining & Splitting](combining.md)
 
 - **`join`**: Join two files based on common keys (inner, left, outer, anti).
@@ -112,8 +105,9 @@ Alternatively, you can download individual files from the [docs/data](https://gi
 
 ### [Formatting & Utilities](utilities.md)
 
-- **`from`**: Convert other formats to TSV (csv, xlsx).
-- **`to`**: Convert TSV to other formats (csv, xlsx).
+- **`from`**: Convert other formats to TSV (`csv`, `xlsx`).
+- **`to`**: Convert TSV to other formats (`csv`, `xlsx`).
+- **`blank`**: Replace consecutive identical values in selected columns with empty strings (sparsify).
 - **`check`**: Validate TSV file structure (column counts, encoding).
 - **`md`**: Convert TSV to Markdown table for display.
 - **`nl`**: Add line numbers to rows.
