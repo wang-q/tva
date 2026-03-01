@@ -4,7 +4,7 @@ Tab-separated Values Assistant.
 Fast, reliable TSV processing toolkit in Rust.
 
 [![Build](https://github.com/wang-q/tva/actions/workflows/build.yml/badge.svg)](https://github.com/wang-q/tva/actions)
-[![codecov](https://img.shields.io/codecov/c/github/wang-q/tva/master)](https://codecov.io/gh/wang-q/tva)
+[![codecov](https://img.shields.io/codecov/c/github/wang-q/tva/master)](https://app.codecov.io/gh/wang-q/tva/tree/master)
 [![license](https://img.shields.io/github/license/wang-q/tva)](https://github.com/wang-q/tva)
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://wang-q.github.io/tva/)
 
