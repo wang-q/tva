@@ -30,7 +30,6 @@
 //! ```
 
 pub mod aggregator;
-pub mod cell;
 pub mod math;
 pub mod ops;
 pub mod processor;
@@ -74,6 +73,5 @@ pub struct Operation {
 
 // Re-export core types for convenience
 pub use aggregator::Aggregator;
-pub use cell::Cell;
 pub use processor::StatsProcessor;
 pub use traits::Calculator;

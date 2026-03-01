@@ -1,4 +1,5 @@
 pub mod aggregation;
+pub mod cell;
 pub mod filter;
 pub mod io;
 pub mod key;

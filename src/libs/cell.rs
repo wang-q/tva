@@ -1,5 +1,4 @@
-use super::OpKind;
-use crate::libs::aggregation::math;
+use crate::libs::aggregation::{math, OpKind};
 
 #[derive(Debug, Clone)]
 pub enum Cell {
