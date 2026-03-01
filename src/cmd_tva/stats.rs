@@ -167,7 +167,6 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::Append)
                 .help("Calculate range (max-min) of fields"),
         )
-
         .arg(
             Arg::new("quantile")
                 .long("quantile")
@@ -480,11 +479,16 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             }
             let fields_spec = parts[0];
             let probs_spec = parts[1];
-            
+
             for p_str in probs_spec.split(',') {
-                let p = p_str.parse::<f64>().map_err(|e| anyhow::anyhow!("Invalid probability {}: {}", p_str, e))?;
+                let p = p_str.parse::<f64>().map_err(|e| {
+                    anyhow::anyhow!("Invalid probability {}: {}", p_str, e)
+                })?;
                 if p < 0.0 || p > 1.0 {
-                    return Err(anyhow::anyhow!("Probability must be between 0 and 1: {}", p));
+                    return Err(anyhow::anyhow!(
+                        "Probability must be between 0 and 1: {}",
+                        p
+                    ));
                 }
                 op_configs.push(OpConfig {
                     kind: OpKind::Quantile(p),
@@ -504,9 +508,10 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             });
         }
     }
-    
+
     if let Some(indices) = matches.indices_of("unique-values") {
-        for (i, val) in indices.zip(matches.get_many::<String>("unique-values").unwrap()) {
+        for (i, val) in indices.zip(matches.get_many::<String>("unique-values").unwrap())
+        {
             op_configs.push(OpConfig {
                 kind: OpKind::Unique,
                 spec: Some(val.clone()),
@@ -514,7 +519,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             });
         }
     }
-    
+
     if let Some(indices) = matches.indices_of("rand") {
         for (i, val) in indices.zip(matches.get_many::<String>("rand").unwrap()) {
             op_configs.push(OpConfig {
@@ -580,7 +585,8 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     kind: OpKind::Count,
                     field_idx: None,
                 });
-                output_headers.push(count_header.clone().unwrap_or_else(|| "count".to_string()));
+                output_headers
+                    .push(count_header.clone().unwrap_or_else(|| "count".to_string()));
             } else if let Some(spec) = &config.spec {
                 let indices =
                     fields::parse_field_list_with_header(spec, header_opt, '\t')

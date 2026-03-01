@@ -286,7 +286,7 @@ fn stats_replace_missing() {
         .args(&["stats", "--mean", "2", "--replace-missing", "0.0"])
         .stdin(INPUT_ALL_MISSING)
         .run();
-    
+
     assert_eq!(stdout.trim(), "0.0");
 
     // Default behavior (nan)
@@ -294,7 +294,7 @@ fn stats_replace_missing() {
         .args(&["stats", "--mean", "2"])
         .stdin(INPUT_ALL_MISSING)
         .run();
-    
+
     assert_eq!(stdout.trim(), "nan");
 }
 
@@ -355,11 +355,11 @@ B\t50
         .args(&["stats", "--quantile", "2:0.5,0.25,0.75"])
         .stdin(input)
         .run();
-    
+
     if !stderr.is_empty() {
         println!("STDERR: {}", stderr);
     }
-    
+
     // Data: 10, 20, 30, 40, 50. Sorted: 10, 20, 30, 40, 50.
     // 0.5 -> 30
     // 0.25 -> 20
@@ -374,7 +374,7 @@ fn stats_values_alias() {
         .args(&["stats", "--values", "1"]) // Alias for --collapse
         .stdin(input)
         .run();
-    
+
     assert_eq!(stdout.trim(), "A,B");
 }
 
@@ -385,7 +385,7 @@ fn stats_unique_values_alias() {
         .args(&["stats", "--unique-values", "1"]) // Alias for --unique
         .stdin(input)
         .run();
-    
+
     assert_eq!(stdout.trim(), "A,B");
 }
 
@@ -395,7 +395,7 @@ fn stats_count_header() {
         .args(&["stats", "--header", "--count", "--count-header", "my_count"])
         .stdin("col1\nA\n")
         .run();
-    
+
     assert_eq!(stdout, "my_count\n1\n");
 }
 
@@ -406,7 +406,7 @@ fn stats_count_header_implicit() {
         .args(&["stats", "--header", "--count-header", "my_count"])
         .stdin("col1\nA\n")
         .run();
-    
+
     assert_eq!(stdout, "my_count\n1\n");
 }
 
@@ -423,6 +423,6 @@ B\t50
         .args(&["stats", "--write-header", "--sum", "2"])
         .stdin(input)
         .run();
-    
+
     assert_eq!(stdout, "field2_sum\n150\n");
 }

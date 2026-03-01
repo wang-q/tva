@@ -30,9 +30,12 @@ impl Cell {
                 Cell::Values(vec![0.0, 0.0, 0.0])
             } // [sum, sum_sq, count]
             OpKind::Range => Cell::Values(vec![f64::INFINITY, f64::NEG_INFINITY]), // [min, max]
-            OpKind::Median | OpKind::Mad | OpKind::Q1 | OpKind::Q3 | OpKind::IQR | OpKind::Quantile(_) => {
-                Cell::Values(Vec::new())
-            }
+            OpKind::Median
+            | OpKind::Mad
+            | OpKind::Q1
+            | OpKind::Q3
+            | OpKind::IQR
+            | OpKind::Quantile(_) => Cell::Values(Vec::new()),
             OpKind::First
             | OpKind::Last
             | OpKind::Mode
@@ -168,7 +171,12 @@ impl Cell {
                     }
                 }
             }
-            OpKind::Median | OpKind::Mad | OpKind::Q1 | OpKind::Q3 | OpKind::IQR | OpKind::Quantile(_) => {
+            OpKind::Median
+            | OpKind::Mad
+            | OpKind::Q1
+            | OpKind::Q3
+            | OpKind::IQR
+            | OpKind::Quantile(_) => {
                 if let Some(v) = val {
                     if let Cell::Values(vals) = self {
                         vals.push(v);
