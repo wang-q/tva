@@ -10,11 +10,12 @@ pub struct Variance {
     pub sum_sq_slot: usize,
     pub count_slot: usize,
     pub precision: Option<usize>,
+    pub missing_val: Option<f64>,
 }
 
 impl Calculator for Variance {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
             agg.sums[self.sum_slot] += val;
             agg.sum_sqs[self.sum_sq_slot] += val * val;
             agg.field_counts[self.count_slot] += 1;
@@ -36,11 +37,12 @@ pub struct Stdev {
     pub sum_sq_slot: usize,
     pub count_slot: usize,
     pub precision: Option<usize>,
+    pub missing_val: Option<f64>,
 }
 
 impl Calculator for Stdev {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
             agg.sums[self.sum_slot] += val;
             agg.sum_sqs[self.sum_sq_slot] += val * val;
             agg.field_counts[self.count_slot] += 1;
@@ -62,11 +64,12 @@ pub struct CV {
     pub sum_sq_slot: usize,
     pub count_slot: usize,
     pub precision: Option<usize>,
+    pub missing_val: Option<f64>,
 }
 
 impl Calculator for CV {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
             agg.sums[self.sum_slot] += val;
             agg.sum_sqs[self.sum_sq_slot] += val * val;
             agg.field_counts[self.count_slot] += 1;

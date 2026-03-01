@@ -10,9 +10,12 @@ use crate::libs::tsv::record::Row;
 
 /// Helper to parse a float from a row at a given index
 #[inline]
-pub(crate) fn parse_float(row: &dyn Row, idx: usize) -> Option<f64> {
-    let bytes = row.get_bytes(idx + 1)?;
-    fast_parse_f64(bytes)
+pub(crate) fn parse_float(row: &dyn Row, idx: usize, default: Option<f64>) -> Option<f64> {
+    match row.get_bytes(idx + 1) {
+        None => default,
+        Some(bytes) if bytes.is_empty() => default,
+        Some(bytes) => fast_parse_f64(bytes),
+    }
 }
 
 /// Helper to get a string from a row at a given index

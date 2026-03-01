@@ -84,6 +84,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             sum_slot: slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -95,6 +96,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             min_slot: slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -106,6 +108,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             max_slot: slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -120,6 +123,7 @@ impl StatsProcessor {
                             min_slot,
                             max_slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -134,6 +138,7 @@ impl StatsProcessor {
                             sum_slot,
                             count_slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -148,6 +153,7 @@ impl StatsProcessor {
                             sum_log_slot,
                             count_slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -162,6 +168,7 @@ impl StatsProcessor {
                             sum_inv_slot,
                             count_slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -179,6 +186,7 @@ impl StatsProcessor {
                             sum_sq_slot,
                             count_slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -196,6 +204,7 @@ impl StatsProcessor {
                             sum_sq_slot,
                             count_slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -213,6 +222,7 @@ impl StatsProcessor {
                             sum_sq_slot,
                             count_slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -224,6 +234,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             values_slot: slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -235,6 +246,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             values_slot: slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -246,6 +258,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             values_slot: slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -257,6 +270,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             values_slot: slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -268,6 +282,7 @@ impl StatsProcessor {
                             field_idx: idx,
                             values_slot: slot,
                             precision: config.precision,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }
@@ -382,6 +397,7 @@ impl StatsProcessor {
                             values_slot: slot,
                             precision: config.precision,
                             probability: p,
+                            missing_val: config.missing_val_f64,
                         }));
                     }
                 }

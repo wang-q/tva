@@ -79,7 +79,8 @@ pub struct Operation {
 pub struct StatsConfig {
     pub delimiter: char, // For outputting lists (Unique, Collapse)
     pub precision: Option<usize>, // For float formatting
-    pub missing_val: Option<String>, // For replacing missing values (not fully implemented yet)
+    pub missing_val: Option<String>, // For replacing missing values (output formatting)
+    pub missing_val_f64: Option<f64>, // For replacing missing values in calculations
 }
 
 impl Default for StatsConfig {
@@ -88,6 +89,7 @@ impl Default for StatsConfig {
             delimiter: ',',
             precision: None,
             missing_val: None,
+            missing_val_f64: None,
         }
     }
 }

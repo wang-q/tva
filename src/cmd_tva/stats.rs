@@ -76,6 +76,13 @@ pub fn make_subcommand() -> Command {
                 .help("Calculate standard deviation of fields"),
         )
         .arg(
+            Arg::new("var")
+                .long("var")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate variance (alias for --variance)"),
+        )
+        .arg(
             Arg::new("variance")
                 .long("variance")
                 .num_args(1)
@@ -88,6 +95,13 @@ pub fn make_subcommand() -> Command {
                 .num_args(1)
                 .action(ArgAction::Append)
                 .help("Calculate median absolute deviation of fields"),
+        )
+        .arg(
+            Arg::new("retain")
+                .long("retain")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Retain one copy of the field (alias for --first)"),
         )
         .arg(
             Arg::new("first")
@@ -323,6 +337,15 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             });
         }
     }
+    if let Some(indices) = matches.indices_of("var") {
+        for (i, val) in indices.zip(matches.get_many::<String>("var").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::Variance,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
     if let Some(indices) = matches.indices_of("variance") {
         for (i, val) in indices.zip(matches.get_many::<String>("variance").unwrap()) {
             op_configs.push(OpConfig {
@@ -336,6 +359,15 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         for (i, val) in indices.zip(matches.get_many::<String>("mad").unwrap()) {
             op_configs.push(OpConfig {
                 kind: OpKind::Mad,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    if let Some(indices) = matches.indices_of("retain") {
+        for (i, val) in indices.zip(matches.get_many::<String>("retain").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::First,
                 spec: Some(val.clone()),
                 arg_index: i,
             });
@@ -472,13 +504,19 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     }
     if let Some(indices) = matches.indices_of("quantile") {
         for (i, val) in indices.zip(matches.get_many::<String>("quantile").unwrap()) {
-            // val format: "fields:probs" e.g. "1,2:0.5,0.9"
+            // val format: "fields:probs[:header]" e.g. "1,2:0.5,0.9:MyQ"
             let parts: Vec<&str> = val.split(':').collect();
             if parts.len() < 2 {
                 return Err(anyhow::anyhow!("Invalid quantile syntax: {}", val));
             }
             let fields_spec = parts[0];
             let probs_spec = parts[1];
+
+            let constructed_spec = if parts.len() > 2 {
+                format!("{}:{}", fields_spec, parts[2])
+            } else {
+                fields_spec.to_string()
+            };
 
             for p_str in probs_spec.split(',') {
                 let p = p_str.parse::<f64>().map_err(|e| {
@@ -492,7 +530,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 }
                 op_configs.push(OpConfig {
                     kind: OpKind::Quantile(p),
-                    spec: Some(fields_spec.to_string()),
+                    spec: Some(constructed_spec.clone()),
                     arg_index: i,
                 });
             }
@@ -542,6 +580,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     op_configs.sort_by_key(|c| c.arg_index);
 
     let mut config = StatsConfig::default();
+    if let Some(p) = matches.get_one::<String>("replace-missing") {
+        config.missing_val = Some(p.clone());
+        if let Ok(v) = p.parse::<f64>() {
+            config.missing_val_f64 = Some(v);
+        }
+    }
     if let Some(d) = matches.get_one::<String>("values-delimiter") {
         if let Some(c) = d.chars().next() {
             config.delimiter = c;
@@ -588,14 +632,49 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 output_headers
                     .push(count_header.clone().unwrap_or_else(|| "count".to_string()));
             } else if let Some(spec) = &config.spec {
+                // Check if there is a custom header override (suffix ":header")
+                let (field_spec, custom_header_override) = if let Some(idx) = spec.rfind(':') {
+                    // Check if the part after ':' is likely a probability (e.g. for quantile 1:0.5)
+                    // Quantile configs are created earlier, and their spec is "fields_spec" (e.g. "1,2").
+                    // But if the user typed --quantile 1:0.5:Header, the first split (in argument parsing loop)
+                    // would have split at the first ':', giving fields="1" and probs="0.5:Header".
+                    // Then probs parsing would fail.
+                    // So for quantile, we might need to handle headers differently or disallow them in the same arg.
+                    // tsv-summarize supports --quantile 1:0.5:Header.
+                    // My current quantile parsing loop splits by ':' (limit 2? no).
+                    // Let's re-examine quantile parsing loop.
+                    
+                    // But here, 'spec' is the field list string.
+                    // For quantile, I set spec = fields_spec.
+                    // If fields_spec contained a header, it would have been split out earlier?
+                    // No, quantile parsing loop:
+                    // let parts: Vec<&str> = val.split(':').collect();
+                    // fields_spec = parts[0]; probs_spec = parts[1];
+                    // If val="1:0.5:Header", parts=["1", "0.5", "Header"].
+                    // My current logic takes parts[0] and parts[1]. Ignores parts[2]?
+                    // No, I check parts.len() < 2. I don't check > 2.
+                    // So for quantile, spec is just parts[0] ("1").
+                    // So this block handles non-quantile ops where spec comes directly from arg.
+                    // e.g. --sum 1:Header -> spec="1:Header".
+                    
+                    let suffix = &spec[idx+1..];
+                    if suffix.is_empty() {
+                         (spec.as_str(), None)
+                    } else {
+                         (&spec[..idx], Some(suffix.to_string()))
+                    }
+                } else {
+                    (spec.as_str(), None)
+                };
+
                 let indices =
-                    fields::parse_field_list_with_header(spec, header_opt, '\t')
+                    fields::parse_field_list_with_header(field_spec, header_opt, '\t')
                         .map_err(|e| {
                             anyhow::anyhow!("Error parsing field list: {}", e)
                         })?;
 
-                for idx in indices {
-                    let field_idx = idx - 1;
+                for idx in &indices {
+                    let field_idx = *idx - 1;
                     ops.push(Operation {
                         kind: config.kind.clone(),
                         field_idx: Some(field_idx),
@@ -631,7 +710,13 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                         OpKind::Count => "".to_string(),
                     };
 
-                    let name = if let Some(h) = header_opt {
+                    let name = if let Some(custom) = &custom_header_override {
+                        if indices.len() == 1 {
+                            custom.clone()
+                        } else {
+                            format!("{}_{}", custom, idx)
+                        }
+                    } else if let Some(h) = header_opt {
                         if field_idx < h.fields.len() {
                             format!("{}{}", h.fields[field_idx], suffix)
                         } else {

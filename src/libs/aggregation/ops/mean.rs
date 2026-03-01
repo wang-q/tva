@@ -9,11 +9,12 @@ pub struct Mean {
     pub sum_slot: usize,
     pub count_slot: usize,
     pub precision: Option<usize>,
+    pub missing_val: Option<f64>,
 }
 
 impl Calculator for Mean {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
             agg.sums[self.sum_slot] += val;
             agg.field_counts[self.count_slot] += 1;
         }
@@ -32,11 +33,12 @@ pub struct GeoMean {
     pub sum_log_slot: usize,
     pub count_slot: usize,
     pub precision: Option<usize>,
+    pub missing_val: Option<f64>,
 }
 
 impl Calculator for GeoMean {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
             if val > 0.0 {
                 agg.sum_logs[self.sum_log_slot] += val.ln();
                 agg.field_counts[self.count_slot] += 1;
@@ -57,11 +59,12 @@ pub struct HarmMean {
     pub sum_inv_slot: usize,
     pub count_slot: usize,
     pub precision: Option<usize>,
+    pub missing_val: Option<f64>,
 }
 
 impl Calculator for HarmMean {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
             if val != 0.0 {
                 agg.sum_invs[self.sum_inv_slot] += 1.0 / val;
                 agg.field_counts[self.count_slot] += 1;
