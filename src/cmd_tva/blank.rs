@@ -1,6 +1,7 @@
 use crate::libs::tsv::fields::{parse_field_list_with_header_preserve_order, Header};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::TsvRecord;
+use crate::libs::tsv::split::TsvSplitter;
 use clap::*;
 use std::collections::HashMap;
 use std::io::Write;
@@ -39,6 +40,12 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::SetTrue),
         )
         .arg(
+            Arg::new("line-buffered")
+                .long("line-buffered")
+                .action(ArgAction::SetTrue)
+                .help("Enable line-buffered output (flush after each line)"),
+        )
+        .arg(
             Arg::new("outfile")
                 .short('o')
                 .long("outfile")
@@ -61,6 +68,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let outfile = args.get_one::<String>("outfile").unwrap();
     let ignore_case = args.get_flag("ignore-case");
     let has_header = args.get_flag("header");
+    let line_buffered = args.get_flag("line-buffered");
 
     // Parse field configurations
     let field_specs: Vec<String> = args
@@ -86,7 +94,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     // State tracking: store previous values for selected columns
     // We only need to store previous values for the columns we are blanking
-    let mut previous_values: HashMap<usize, String> = HashMap::new();
+    let mut previous_values: HashMap<usize, Vec<u8>> = HashMap::new();
     let mut header_written = false;
 
     for input in crate::libs::io::raw_input_sources(&infiles) {
@@ -123,6 +131,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if !header_written {
                 writer.write_all(header_record.as_line())?;
                 writer.write_all(b"\n")?;
+                if line_buffered {
+                    writer.flush()?;
+                }
                 header_written = true;
             }
 
@@ -131,8 +142,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
 
         // Map column indices to their replacement values
-        // Using HashMap<usize, String> where key is 0-based column index
-        let mut col_replacements: HashMap<usize, String> = HashMap::new();
+        // Using HashMap<usize, Vec<u8>> where key is 0-based column index
+        let mut col_replacements: HashMap<usize, Vec<u8>> = HashMap::new();
 
         for config in &field_configs {
             // Parse the selector using tsv::fields logic
@@ -146,60 +157,48 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             for idx in indices {
                 // idx is 1-based, convert to 0-based
-                col_replacements.insert(idx - 1, config.replacement.clone());
+                col_replacements.insert(idx - 1, config.replacement.as_bytes().to_vec());
             }
         }
 
         reader.for_each_record(|record| {
-            let mut current_col = 0;
-            let mut last_pos = 0;
-            let mut iter = memchr::memchr_iter(b'\t', record);
-
-            loop {
-                let (end_pos, is_last) = match iter.next() {
-                    Some(pos) => (pos, false),
-                    None => (record.len(), true),
-                };
-
-                if current_col > 0 {
+            let mut first = true;
+            for (current_col, cell_bytes) in TsvSplitter::new(record, b'\t').enumerate()
+            {
+                if !first {
                     writer.write_all(b"\t")?;
                 }
-
-                let cell_bytes = &record[last_pos..end_pos];
-                let cell_str = std::str::from_utf8(cell_bytes).unwrap_or("");
+                first = false;
 
                 if let Some(replacement) = col_replacements.get(&current_col) {
                     // This column is subject to blanking
                     let should_blank =
                         if let Some(prev_val) = previous_values.get(&current_col) {
                             if ignore_case {
-                                prev_val.eq_ignore_ascii_case(cell_str)
+                                prev_val.eq_ignore_ascii_case(cell_bytes)
                             } else {
-                                prev_val == cell_str
+                                prev_val.as_slice() == cell_bytes
                             }
                         } else {
                             false // First row of data, never blank
                         };
 
                     if should_blank {
-                        writer.write_all(replacement.as_bytes())?;
+                        writer.write_all(replacement)?;
                     } else {
                         writer.write_all(cell_bytes)?;
                         // Update previous value
-                        previous_values.insert(current_col, cell_str.to_string());
+                        previous_values.insert(current_col, cell_bytes.to_vec());
                     }
                 } else {
                     // Not a blanking column, just write through
                     writer.write_all(cell_bytes)?;
                 }
-
-                if is_last {
-                    break;
-                }
-                last_pos = end_pos + 1;
-                current_col += 1;
             }
             writer.write_all(b"\n")?;
+            if line_buffered {
+                writer.flush()?;
+            }
             Ok(())
         })?;
     }

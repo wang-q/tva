@@ -29,6 +29,27 @@ a\tb\tc
 }
 
 #[test]
+fn blank_line_buffered() {
+    let input = "
+a\tb\tc
+1\tx\t10
+1\ty\t20
+";
+    let expected = "
+a\tb\tc
+1\tx\t10
+\ty\t20
+";
+    // Just verifying that the flag is accepted and output is correct
+    let (result, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["blank", "--header", "--field", "1", "--line-buffered"])
+        .run();
+
+    assert_eq!(result.trim(), expected.trim());
+}
+
+#[test]
 fn blank_from_file() {
     let expected = "
 a\tb\tc
