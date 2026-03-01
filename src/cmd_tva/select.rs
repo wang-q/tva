@@ -27,6 +27,14 @@ pub fn make_subcommand() -> Command {
                 .help("Field list to drop from the output"),
         )
         .arg(
+            Arg::new("rest")
+                .long("rest")
+                .short('r')
+                .value_parser(["first", "last", "none"])
+                .num_args(1)
+                .help("Output location for fields not included in --fields"),
+        )
+        .arg(
             Arg::new("header")
                 .long("header")
                 .short('H')
@@ -75,8 +83,22 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         arg_error("one of --fields/-f or --exclude/-e is required");
     }
 
+    let rest_arg = args.get_one::<String>("rest").map(|s| s.as_str());
+    let mut rest_mode = match rest_arg {
+        Some("first") => select::RestMode::First,
+        Some("last") => select::RestMode::Last,
+        Some("none") => select::RestMode::None,
+        _ => select::RestMode::None,
+    };
+
     if fields_spec.is_some() && exclude_spec.is_some() {
-        arg_error("--fields/-f and --exclude/-e cannot be used together");
+        if rest_arg.is_none() {
+            rest_mode = select::RestMode::Last;
+        }
+    } else if fields_spec.is_none() && exclude_spec.is_some() {
+        if rest_arg.is_none() {
+            rest_mode = select::RestMode::First;
+        }
     }
 
     let has_header = args.get_flag("header");
@@ -125,7 +147,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             )
                             .map_err(map_io_err)?,
                         );
-                    } else if let Some(ref spec) = exclude_spec {
+                    }
+                    if let Some(ref spec) = exclude_spec {
                         let indices =
                             crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
                                 spec,
@@ -137,31 +160,29 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         exclude_set = Some(indices.into_iter().collect());
                     }
 
-                    if let Some(ref idxs) = field_indices {
-                        write_selected_fields(
-                            &mut writer,
-                            &header.fields,
-                            idxs,
-                            delimiter,
-                        )
-                        .map_err(map_io_err)?;
-                    } else if let Some(ref ex_set) = exclude_set {
-                        let total = header.fields.len();
-                        let mut idxs: Vec<usize> = Vec::new();
-                        for i in 1..=total {
-                            if !ex_set.contains(&i) {
-                                idxs.push(i);
+                    if let (Some(ref f), Some(ref e)) = (&field_indices, &exclude_set) {
+                        for idx in f {
+                            if e.contains(idx) {
+                                arg_error(&format!(
+                                    "Field {} is both selected and excluded",
+                                    idx
+                                ));
                             }
                         }
-                        write_selected_fields(
-                            &mut writer,
-                            &header.fields,
-                            &idxs,
-                            delimiter,
-                        )
-                        .map_err(map_io_err)?;
-                        exclude_set = Some(ex_set.clone());
                     }
+
+                    let empty_vec = Vec::new();
+                    let f_indices = field_indices.as_ref().unwrap_or(&empty_vec);
+
+                    select::write_with_rest(
+                        &mut writer,
+                        &header_bytes,
+                        delim_byte,
+                        f_indices,
+                        exclude_set.as_ref(),
+                        rest_mode,
+                    )
+                    .map_err(map_io_err)?;
 
                     header_written = true;
                 }
@@ -195,68 +216,54 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
+        if let (Some(ref f), Some(ref e)) = (&field_indices, &exclude_set) {
+            for idx in f {
+                if e.contains(idx) {
+                    arg_error(&format!("Field {} is both selected and excluded", idx));
+                }
+            }
+        }
+
         tsv_reader.for_each_record(|line_bytes| {
             if line_bytes.is_empty() {
                 return Ok(());
             }
 
-            if let Some(ref idxs) = field_indices {
-                if select_plan.is_none() {
-                    select_plan = Some(SelectPlan::new(idxs));
-                }
-                select::write_selected_from_bytes(
-                    &mut writer,
-                    line_bytes,
-                    delim_byte,
-                    select_plan.as_ref().unwrap(),
-                    &mut output_ranges,
-                )?;
-            } else if let Some(ref ex_set) = exclude_set {
-                select::write_excluding_from_bytes(
-                    &mut writer,
-                    line_bytes,
-                    delim_byte,
-                    ex_set,
-                )?;
-            } else {
-                let mut first = true;
-                let splitter = crate::libs::tsv::split::TsvSplitter::new(
-                    line_bytes,
-                    delimiter as u8,
-                );
-
-                for field in splitter {
-                    if !first {
-                        writer.write_all(delimiter.to_string().as_bytes())?;
+            if rest_mode == select::RestMode::None && exclude_set.is_none() {
+                if let Some(ref idxs) = field_indices {
+                    if select_plan.is_none() {
+                        select_plan = Some(SelectPlan::new(idxs));
                     }
-                    writer.write_all(field)?;
-                    first = false;
+                    select::write_selected_from_bytes(
+                        &mut writer,
+                        line_bytes,
+                        delim_byte,
+                        select_plan.as_ref().unwrap(),
+                        &mut output_ranges,
+                    )?;
+                } else {
+                    // Should not happen if one of -f or -e required
+                    // But if -f not present, and -e not present, we error early.
+                    // But here we are inside loop.
+                    // If -e not present, and rest_mode None, implies -f present.
                 }
-                writer.write_all(b"\n")?;
+            } else {
+                // Use generic write_with_rest
+                let empty_vec = Vec::new();
+                let f_indices = field_indices.as_ref().unwrap_or(&empty_vec);
+
+                select::write_with_rest(
+                    &mut writer,
+                    line_bytes,
+                    delim_byte,
+                    f_indices,
+                    exclude_set.as_ref(),
+                    rest_mode,
+                )?;
             }
             Ok(())
         })?;
     }
 
-    Ok(())
-}
-
-fn write_selected_fields(
-    writer: &mut dyn std::io::Write,
-    fields: &[String],
-    indices: &[usize],
-    delimiter: char,
-) -> anyhow::Result<()> {
-    let mut first = true;
-    for idx in indices {
-        if let Some(field) = fields.get(idx - 1) {
-            if !first {
-                writer.write_all(delimiter.to_string().as_bytes())?;
-            }
-            writer.write_all(field.as_bytes())?;
-            first = false;
-        }
-    }
-    writer.write_all(b"\n")?;
     Ok(())
 }

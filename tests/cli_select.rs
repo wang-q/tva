@@ -273,8 +273,8 @@ fn select_requires_fields_or_exclude() {
 }
 
 #[test]
-fn select_cannot_use_fields_and_exclude_together() {
-    let (_, stderr) = TvaCmd::new()
+fn select_fields_and_exclude_together() {
+    let (stdout, _) = TvaCmd::new()
         .args(&[
             "select",
             "-f",
@@ -283,9 +283,12 @@ fn select_cannot_use_fields_and_exclude_together() {
             "2",
             "tests/data/select/input1.tsv",
         ])
-        .run_fail();
+        .run();
 
-    assert!(stderr.contains("--fields/-f and --exclude/-e cannot be used together"));
+    assert_eq!(
+        stdout,
+        "f1\tf3\tf4\n1\tUUU\t101\n\tCCC\t5734\n3\tSSS\t 7\n4\tf4-empty\n5\t\t1367\n6\t\tf23-empty\n7\t \tf23-space\n8\tZ\t1931\n"
+    );
 }
 
 #[test]
@@ -327,7 +330,7 @@ fn select_error_unknown_field_name_with_header_fields() {
         ])
         .run_fail();
 
-    assert!(stderr.contains("unknown field name `no_such_field`"));
+    assert!(stderr.contains("Field not found in file header: 'no_such_field'"));
 }
 
 #[test]
@@ -342,17 +345,17 @@ fn select_error_unknown_field_name_with_header_exclude() {
         ])
         .run_fail();
 
-    assert!(stderr.contains("unknown field name `no_such_field`"));
+    assert!(stderr.contains("Field not found in file header: 'no_such_field'"));
 }
 
 #[test]
-fn select_fields_exclude_conflict() {
-    let (_, stderr) = TvaCmd::new()
+fn select_fields_exclude_conflict_resolved() {
+    let (stdout, _) = TvaCmd::new()
         .args(&["select", "--fields", "1", "--exclude", "2"])
         .stdin("a\tb\n")
-        .run_fail();
+        .run();
 
-    assert!(stderr.contains("--fields/-f and --exclude/-e cannot be used together"));
+    assert_eq!(stdout, "a\n");
 }
 
 #[test]
@@ -413,4 +416,272 @@ fn select_exclude_by_name_with_header() {
         .run();
 
     assert!(stdout.contains("h1\th3\nv1\tv3"));
+}
+
+#[test]
+fn select_rest_first() {
+    let input = "a	b	c
+1	2	3
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-f", "2", "--rest", "first"])
+        .stdin(input)
+        .run();
+    // Rest: 1, 3. Selected: 2.
+    // Order: 1, 3, 2
+    assert_eq!(
+        stdout,
+        "a	c	b
+1	3	2
+"
+    );
+}
+
+#[test]
+fn select_rest_last() {
+    let input = "a	b	c
+1	2	3
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-f", "2", "--rest", "last"])
+        .stdin(input)
+        .run();
+    // Selected: 2. Rest: 1, 3.
+    // Order: 2, 1, 3
+    assert_eq!(
+        stdout,
+        "b	a	c
+2	1	3
+"
+    );
+}
+
+#[test]
+fn select_fields_and_exclude() {
+    let input = "a	b	c	d
+1	2	3	4
+";
+    // -f 2 -e 3. Implies rest last.
+    // Selected: 2. Excluded: 3.
+    // Rest: 1, 4.
+    // Order: 2, 1, 4.
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-f", "2", "-e", "3"])
+        .stdin(input)
+        .run();
+    assert_eq!(
+        stdout,
+        "b	a	d
+2	1	4
+"
+    );
+}
+
+#[test]
+fn select_fields_and_exclude_rest_first() {
+    let input = "a	b	c	d
+1	2	3	4
+";
+    // -f 2 -e 3 --rest first.
+    // Selected: 2. Excluded: 3.
+    // Rest: 1, 4.
+    // Order: 1, 4, 2.
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-f", "2", "-e", "3", "--rest", "first"])
+        .stdin(input)
+        .run();
+    assert_eq!(
+        stdout,
+        "a	d	b
+1	4	2
+"
+    );
+}
+
+#[test]
+fn select_overlap_error() {
+    let input = "a	b
+";
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "-f", "1", "-e", "1"])
+        .stdin(input)
+        .run_fail();
+    assert!(stderr.contains("Field 1 is both selected and excluded"));
+}
+
+#[test]
+fn select_exclude_only_implies_rest() {
+    let input = "a	b	c
+1	2	3
+";
+    // -e 2. Implies output all except 2.
+    // Output: 1, 3.
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-e", "2"])
+        .stdin(input)
+        .run();
+    assert_eq!(
+        stdout,
+        "a	c
+1	3
+"
+    );
+}
+
+#[test]
+fn select_rest_with_header_parsing() {
+    let input = "col1	col2	col3
+1	2	3
+";
+    // -H -f col2 --rest last
+    // Selected: col2 (2). Rest: 1, 3.
+    // Order: 2, 1, 3.
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-H", "-f", "col2", "--rest", "last"])
+        .stdin(input)
+        .run();
+    assert_eq!(
+        stdout,
+        "col2	col1	col3
+2	1	3
+"
+    );
+}
+
+#[test]
+fn select_repeated_fields() {
+    let input = "a	b	c
+1	2	3
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-f", "1,2,1"])
+        .stdin(input)
+        .run();
+    assert_eq!(
+        stdout,
+        "a	b	a
+1	2	1
+"
+    );
+}
+
+#[test]
+fn select_repeated_fields_with_range() {
+    let input = "a	b	c
+1	2	3
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-f", "1-3,3-1"])
+        .stdin(input)
+        .run();
+    assert_eq!(
+        stdout,
+        "a	b	c	c	b	a
+1	2	3	3	2	1
+"
+    );
+}
+
+#[test]
+fn select_rest_none_explicit() {
+    let input = "a	b	c
+1	2	3
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-f", "1", "--rest", "none"])
+        .stdin(input)
+        .run();
+    assert_eq!(
+        stdout,
+        "a
+1
+"
+    );
+}
+
+#[test]
+fn select_exclude_overlap_error() {
+    let input = "a	b
+";
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "-f", "1", "-e", "1"])
+        .stdin(input)
+        .run_fail();
+    assert!(stderr.contains("Field 1 is both selected and excluded"));
+}
+
+#[test]
+fn select_error_incomplete_range_start() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "-f", "-2"])
+        .stdin(
+            "a	b
+",
+        )
+        .run_fail();
+    // clap treats -2 as a flag or number, here we want to ensure it fails gracefully or as arg error
+    // Actually -f -2 might be parsed as flag -f with value -2 if allow_hyphen_values is on, or error.
+    // Let's check "2-"
+    assert!(stderr.contains("unexpected argument") || stderr.contains("value"));
+}
+
+#[test]
+fn select_error_incomplete_range_end() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "-f", "2-"])
+        .stdin(
+            "a	b
+",
+        )
+        .run_fail();
+    assert!(stderr.contains("Incomplete ranges are not supported"));
+}
+
+#[test]
+fn select_not_enough_fields_error() {
+    let input = "a	b
+1
+";
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "-f", "1,2"])
+        .stdin(input)
+        .run_fail();
+    // tsv-select errors when a line is too short for -f
+    assert!(stderr.contains("Not enough fields"));
+}
+
+#[test]
+fn select_exclude_max_field_limit() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "-e", "1048577"])
+        .stdin(
+            "a
+",
+        )
+        .run_fail();
+    assert!(stderr.contains("Maximum allowed '--e|exclude' field number is 1048576"));
+}
+
+#[test]
+fn select_header_no_such_field() {
+    let input = "h1	h2
+1	2
+";
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "-H", "-f", "h3"])
+        .stdin(input)
+        .run_fail();
+    assert!(stderr.contains("Field not found in file header: 'h3'"));
+}
+
+#[test]
+fn select_header_range_second_missing() {
+    let input = "h1	h2
+1	2
+";
+    let (_, stderr) = TvaCmd::new()
+        .args(&["select", "-H", "-f", "h1-h3"])
+        .stdin(input)
+        .run_fail();
+    assert!(stderr.contains("Second field in range not found"));
 }

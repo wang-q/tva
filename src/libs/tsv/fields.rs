@@ -72,74 +72,171 @@ pub fn parse_numeric_field_list(spec: &str) -> Result<Vec<usize>, String> {
     Ok(ints.iter().map(|e| *e as usize).collect())
 }
 
+pub fn parse_numeric_field_list_preserve_order(
+    spec: &str,
+) -> Result<Vec<usize>, String> {
+    if spec.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut ints: Vec<i32> = Vec::new();
+    for part in tokenize_field_spec(spec) {
+        let part = part.trim().to_string();
+        if part.is_empty() {
+            return Err(format!("empty field list element in `{}`", spec));
+        }
+
+        // Handle reverse ranges like "6-4" by swapping them to "4-6" for expansion,
+        // but we might want to support "6,5,4".
+        // Current IntSpan doesn't support order preserving or reverse ranges directly.
+        // If it's a range "start-end":
+        if let Some((s, e)) = part.split_once('-') {
+            if let (Ok(start), Ok(end)) = (s.parse::<i32>(), e.parse::<i32>()) {
+                if start <= 0 || end <= 0 {
+                    return Err(format!("field index must be >= 1 in `{}`", spec));
+                }
+                if start <= end {
+                    for i in start..=end {
+                        ints.push(i);
+                    }
+                } else {
+                    // Reverse range
+                    let mut i = start;
+                    while i >= end {
+                        ints.push(i);
+                        i -= 1;
+                    }
+                }
+                continue;
+            }
+        }
+
+        // Single number?
+        if let Ok(n) = part.parse::<i32>() {
+            if n <= 0 {
+                return Err(format!("field index must be >= 1 in `{}`", spec));
+            }
+            if n > 1048576 {
+                // tsv-select limit check
+                return Err(format!(
+                    "Maximum allowed '--e|exclude' field number is 1048576."
+                ));
+            }
+            ints.push(n);
+            continue;
+        }
+
+        return Err(format!("invalid numeric field spec: `{}`", part));
+    }
+
+    Ok(ints.iter().map(|e| *e as usize).collect())
+}
+
 pub fn fields_to_idx(spec: &str) -> Vec<usize> {
     parse_numeric_field_list(spec).unwrap()
 }
 
-fn tokenize_field_spec(spec: &str) -> Vec<String> {
+pub fn tokenize_field_spec(spec: &str) -> Vec<String> {
+    // Split by comma, but respect escaped commas
     let mut tokens = Vec::new();
     let mut current = String::new();
-    let mut chars = spec.chars().peekable();
+    let mut escaped = false;
 
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            if let Some(next) = chars.next() {
-                current.push('\\');
-                current.push(next);
-            } else {
-                current.push('\\');
-            }
+    for c in spec.chars() {
+        if escaped {
+            current.push(c);
+            escaped = false;
+        } else if c == '\\' {
+            current.push(c);
+            escaped = true;
         } else if c == ',' {
-            tokens.push(current.clone());
-            current.clear();
+            tokens.push(current);
+            current = String::new();
         } else {
             current.push(c);
         }
     }
-
+    // Always push last token, even if empty?
+    // "1," -> ["1", ""]
+    // tsv-select "1," error: "empty field list element"
     tokens.push(current);
     tokens
 }
 
 fn split_name_range_token(token: &str) -> Option<(String, String)> {
-    let mut start = String::new();
-    let mut end = String::new();
-    let mut in_end = false;
-    let mut chars = token.chars().peekable();
-
-    while let Some(c) = chars.next() {
+    let mut split_idx = None;
+    let mut escaped = false;
+    for (i, c) in token.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
         if c == '\\' {
-            if let Some(next) = chars.next() {
-                if in_end {
-                    end.push(next);
-                } else {
-                    start.push(next);
-                }
-            } else if in_end {
-                end.push('\\');
-            } else {
-                start.push('\\');
-            }
-        } else if c == '-' && !in_end {
-            in_end = true;
-        } else if in_end {
-            end.push(c);
-        } else {
-            start.push(c);
+            escaped = true;
+            continue;
+        }
+        if c == '-' {
+            split_idx = Some(i);
+            break;
         }
     }
 
-    if !in_end {
-        return None;
-    }
+    if let Some(idx) = split_idx {
+        // Correctly handle escaped characters in the parts?
+        // unescape_name_pattern handles escaping.
+        // But we return raw strings here.
+        // Wait, split_name_range_token is used by parse_field_list...
+        // which then calls header.get_index(&start_str).
+        // Header lookup expects UNESCAPED name?
+        // No, header fields are raw strings.
+        // But user input has escapes.
+        // e.g. "field\-1". Input "field\-1".
+        // split loop sees '\', escapes '-', continues. No split.
+        // Returns None.
+        // parse_field_list treats as single name.
+        // Calls unescape_name_pattern("field\-1") -> "field-1".
+        // Looks up "field-1". Correct.
 
-    let start_trimmed = start.trim();
-    let end_trimmed = end.trim();
-    if start_trimmed.is_empty() || end_trimmed.is_empty() {
-        return None;
-    }
+        // "field1-field2".
+        // split loop sees '-'. Split at 6.
+        // Returns ("field1", "field2").
+        // parse_field_list parses "field1".
+        // If not numeric, calls header.get_index("field1").
+        // header.get_index expects raw name.
+        // Does "field1" need unescaping?
+        // If it was "field\:1-field2".
+        // Input "field\:1-field2".
+        // Split at '-'. start="field\:1".
+        // header.get_index("field\:1")? No, header has "field:1".
+        // So we MUST unescape the parts too!
+        // But parse_field_list does NOT unescape start_str/end_str before lookup?
+        // Let's check parse_field_list.
+        /*
+            header.get_index(&start_str)
+        */
+        // It uses start_str directly.
+        // So split_name_range_token must return UNESCAPED parts?
+        // Or parse_field_list should unescape?
+        // tsv-select logic:
+        // "field\:1-field2" -> range from "field:1" to "field2".
 
-    Some((start_trimmed.to_string(), end_trimmed.to_string()))
+        // If I change split_name_range_token to return raw slices,
+        // I need to update parse_field_list to unescape them.
+
+        let start = token[..idx].to_string();
+        let end = token[idx + 1..].to_string();
+
+        // I should unescape them here?
+        // unescape_name_pattern returns (String, bool).
+        // Let's use unescape_name_pattern in parse_field_list.
+
+        if start.is_empty() || end.is_empty() {
+            return None;
+        }
+        Some((start, end))
+    } else {
+        None
+    }
 }
 
 fn name_matches_pattern(name: &str, pattern: &str) -> bool {
@@ -301,89 +398,198 @@ pub fn parse_field_list_with_header_preserve_order(
     header: Option<&Header>,
     _delimiter: char,
 ) -> Result<Vec<usize>, String> {
-    let trimmed = spec.trim();
-    if trimmed.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let mut indices: Vec<usize> = Vec::new();
-
-    for part in tokenize_field_spec(trimmed) {
-        let token = part.trim();
-        if token.is_empty() {
-            return Err(format!("empty field list element in `{}`", spec));
-        }
-
-        let is_numeric_like = !token.starts_with('\\')
-            && token.chars().all(|c| c.is_ascii_digit() || c == '-');
-
-        if is_numeric_like {
-            // Handle reverse ranges like "6-4" by swapping them to "4-6"
-            let mut token_str = token.to_string();
-            if let Some((s, e)) = token_str.split_once('-') {
-                if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
-                    if start > end {
-                        token_str = format!("{}-{}", end, start);
-                    }
-                }
+    if header.is_none() {
+        // If header is missing, we can only parse numeric indices.
+        // If there are non-numeric tokens, we should error out with "requires header" or similar.
+        // parse_numeric_field_list_preserve_order already handles numeric parsing.
+        // But if it encounters non-numeric, it returns "invalid numeric field spec".
+        // We need to catch that and see if it looks like a name.
+        // Or better: iterate tokens here.
+        let mut indices = Vec::new();
+        for token in tokenize_field_spec(spec) {
+            if token.is_empty() {
+                return Err(format!("empty field list element in `{}`", spec));
             }
-
-            let intspan = IntSpan::from(&token_str);
-            for e in intspan.elements() {
-                if e <= 0 {
+            if let Ok(idx) = token.parse::<usize>() {
+                if idx == 0 {
                     return Err(format!("field index must be >= 1 in `{}`", spec));
                 }
-                indices.push(e as usize);
-            }
-        } else {
-            match header {
-                Some(h) => {
-                    let (pattern, has_unescaped_star) = unescape_name_pattern(token);
-                    if has_unescaped_star {
-                        let mut matched = false;
-                        for (idx0, name) in h.fields.iter().enumerate() {
-                            if name_matches_pattern(name, &pattern) {
-                                indices.push(idx0 + 1);
-                                matched = true;
-                            }
-                        }
-                        if !matched {
-                            return Err(format!(
-                                "unknown field name `{}` in `{}`",
-                                token, spec
-                            ));
-                        }
-                    } else if let Some((start_name, end_name)) =
-                        split_name_range_token(token)
-                    {
-                        let start_idx0 = h.get_index(&start_name).ok_or_else(|| {
-                            format!("unknown field name `{}` in `{}`", start_name, spec)
-                        })?;
-                        let end_idx0 = h.get_index(&end_name).ok_or_else(|| {
-                            format!("unknown field name `{}` in `{}`", end_name, spec)
-                        })?;
-                        let (lo, hi) = if start_idx0 <= end_idx0 {
-                            (start_idx0, end_idx0)
-                        } else {
-                            (end_idx0, start_idx0)
-                        };
-                        for idx0 in lo..=hi {
-                            indices.push(idx0 + 1);
-                        }
-                    } else if let Some(idx0) = h.get_index(&pattern) {
-                        indices.push(idx0 + 1);
-                    } else {
-                        return Err(format!(
-                            "unknown field name `{}` in `{}`",
-                            token, spec
-                        ));
-                    }
+                if idx > 1048576 {
+                    return Err(format!(
+                        "Maximum allowed '--e|exclude' field number is 1048576."
+                    ));
                 }
-                None => {
+                indices.push(idx);
+            } else if let Some((start_str, end_str)) = split_name_range_token(&token) {
+                // Range logic for numeric ranges (e.g. 1-3) is handled here too?
+                // split_name_range_token splits on '-'.
+                // "1-3" -> start="1", end="3".
+                if let (Ok(start), Ok(end)) =
+                    (start_str.parse::<usize>(), end_str.parse::<usize>())
+                {
+                    if start == 0 || end == 0 {
+                        return Err(format!("field index must be >= 1 in `{}`", spec));
+                    }
+                    if start <= end {
+                        for i in start..=end {
+                            indices.push(i);
+                        }
+                    } else {
+                        let mut i = start;
+                        while i >= end {
+                            indices.push(i);
+                            i -= 1;
+                        }
+                    }
+                } else {
                     return Err(format!(
                         "field name `{}` requires header in `{}`",
                         token, spec
                     ));
+                }
+            } else if token.ends_with('-') {
+                return Err(format!(
+                    "Incomplete ranges are not supported: '{}'.",
+                    token
+                ));
+            } else if token.starts_with('-') {
+                // Might be negative number or range starting with empty?
+                // tsv-select: "Field numbers must be greater than zero" or "Incomplete ranges"
+                // If token is like "-2", parse::<usize> fails.
+                // split_name_range_token("-2") -> start="", end="2". Returns None.
+                // So we fall here.
+                // Check if it is a number.
+                if let Ok(_) = token.parse::<isize>() {
+                    return Err(format!("field index must be >= 1 in `{}`", spec));
+                }
+                return Err(format!(
+                    "field name `{}` requires header in `{}`",
+                    token, spec
+                ));
+            } else {
+                return Err(format!(
+                    "field name `{}` requires header in `{}`",
+                    token, spec
+                ));
+            }
+        }
+        return Ok(indices);
+    }
+    let header = header.unwrap();
+    let mut indices = Vec::new();
+
+    for token in tokenize_field_spec(spec) {
+        // If token contains escaped chars, they are part of the name (unless header is present and we are matching)
+        // Actually tokenize_field_spec handles splitting by ',' but doesn't unescape.
+        // Wait, tokenize_field_spec respects escaped commas?
+        // Let's assume yes.
+
+        // Try parsing as usize first (simple index)
+        if let Ok(idx) = token.parse::<usize>() {
+            if idx == 0 {
+                return Err(format!("field index must be >= 1 in `{}`", spec));
+            }
+            if idx > 1048576 {
+                return Err(format!(
+                    "Maximum allowed '--e|exclude' field number is 1048576."
+                ));
+            }
+            indices.push(idx);
+        } else if let Some((start_str, end_str)) = split_name_range_token(&token) {
+            // Range logic
+            // We need to unescape range parts because split_name_range_token returns raw parts
+            // But if they are numeric, unescape doesn't change them (usually).
+            // But "field\:1" needs unescaping.
+
+            let (start_unescaped, _) = unescape_name_pattern(&start_str);
+            let (end_unescaped, _) = unescape_name_pattern(&end_str);
+
+            let start_idx = if let Ok(idx) = start_unescaped.parse::<usize>() {
+                if idx == 0 {
+                    return Err(format!("field index must be >= 1 in `{}`", spec));
+                }
+                idx
+            } else {
+                header.get_index(&start_unescaped).map(|i| i + 1).ok_or_else(|| {
+                    format!("First field in range not found in file header. Range: '{}'. Not specifying a range? Backslash escape any hyphens in the field name.", token)
+                })?
+            };
+
+            let end_idx = if let Ok(idx) = end_unescaped.parse::<usize>() {
+                if idx == 0 {
+                    return Err(format!("field index must be >= 1 in `{}`", spec));
+                }
+                idx
+            } else {
+                // Check if end_str matches multiple fields (wildcard)
+                // If wildcard, it's ambiguous for range end unless it matches exactly one.
+                // tsv-select: "Second field in range matches multiple header fields"
+                // Simplified: exact match only for now, or simple expansion.
+                // Actually tsv-select allows expansion.
+                // For now, assume exact match or fail.
+                header.get_index(&end_unescaped).map(|i| i + 1).ok_or_else(|| {
+                    format!("Second field in range not found in file header. Range: '{}'. Not specifying a range? Backslash escape any hyphens in the field name.", token)
+                })?
+            };
+
+            if start_idx <= end_idx {
+                for i in start_idx..=end_idx {
+                    indices.push(i);
+                }
+            } else {
+                let mut i = start_idx;
+                while i >= end_idx {
+                    indices.push(i);
+                    i -= 1;
+                }
+            }
+        } else if token.ends_with('-') {
+            return Err(format!("Incomplete ranges are not supported: '{}'.", token));
+        } else {
+            // Name or Wildcard
+            let (pattern, has_wildcard) = unescape_name_pattern(&token);
+            match header.get_index(&pattern) {
+                Some(idx) => {
+                    indices.push(idx + 1);
+                }
+                None => {
+                    if has_wildcard {
+                        let mut found = false;
+                        for (i, field) in header.fields.iter().enumerate() {
+                            if name_matches_pattern(field, &pattern) {
+                                indices.push(i + 1);
+                                found = true;
+                            }
+                        }
+                        if !found {
+                            return Err(format!(
+                                "Field not found in file header: '{}'",
+                                token
+                            ));
+                        }
+                    } else {
+                        // Check if it looks like a number <= 0
+                        if let Ok(_) = token.parse::<isize>() {
+                            return Err(format!(
+                                "field name `{}` requires header in `{}`",
+                                token, spec
+                            ));
+                        }
+
+                        // Handle special case for incomplete ranges starting with -
+                        if token.starts_with('-') {
+                            return Err(format!(
+                                "Incomplete ranges are not supported: '{}'.",
+                                token
+                            ));
+                        }
+
+                        // If not found, report Field not found in file header
+                        return Err(format!(
+                            "Field not found in file header: '{}'",
+                            token
+                        ));
+                    }
                 }
             }
         }
@@ -618,9 +824,9 @@ mod tests {
     #[test]
     fn test_split_name_range_token_trailing_backslash_in_start() {
         // "start\\-end" -> The dash is not escaped (it is preceded by escaped backslash),
-        // so it splits into "start\" and "end".
+        // so it splits into "start\\" and "end".
         let res = split_name_range_token(r"start\\-end");
-        assert_eq!(res, Some((r"start\".to_string(), "end".to_string())));
+        assert_eq!(res, Some((r"start\\".to_string(), "end".to_string())));
     }
 
     #[test]

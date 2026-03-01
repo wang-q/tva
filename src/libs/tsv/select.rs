@@ -109,24 +109,27 @@ pub fn write_selected_from_bytes(
     plan: &SelectPlan,
     output_ranges: &mut Vec<Range<usize>>,
 ) -> io::Result<()> {
-    if let Err(missing_idx) = plan.extract_ranges(line, delimiter, output_ranges) {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Field index {} out of range", missing_idx),
-        ));
-    }
-    let output_len = plan.output_len;
-
-    if output_len > 0 {
-        let r0 = &output_ranges[0];
-        writer.write_all(&line[r0.clone()])?;
-        for r in output_ranges.iter().take(output_len).skip(1) {
-            writer.write_all(&[delimiter])?;
-            writer.write_all(&line[r.clone()])?;
+    match plan.extract_ranges(line, delimiter, output_ranges) {
+        Ok(_) => {
+            let mut first = true;
+            for range in output_ranges.iter() {
+                if !first {
+                    writer.write_all(&[delimiter])?;
+                }
+                writer.write_all(&line[range.clone()])?;
+                first = false;
+            }
+            writer.write_all(b"\n")?;
+            Ok(())
         }
+        Err(missing_idx) => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "Not enough fields in line. Field index {} out of range",
+                missing_idx
+            ),
+        )),
     }
-    writer.write_all(b"\n")?;
-    Ok(())
 }
 
 pub fn write_excluding_from_bytes(
@@ -160,6 +163,92 @@ pub fn write_excluding_from_bytes(
 
         last_pos = end_pos + 1;
         current_col_idx += 1;
+    }
+
+    writer.write_all(b"\n")?;
+    Ok(())
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum RestMode {
+    None,
+    First,
+    Last,
+}
+
+pub fn write_with_rest(
+    writer: &mut dyn Write,
+    line: &[u8],
+    delimiter: u8,
+    selected_indices: &[usize], // Explicitly selected fields
+    excluded_set: Option<&HashSet<usize>>, // Fields to exclude from rest
+    rest_mode: RestMode,
+) -> io::Result<()> {
+    // 1. Split line into fields (ranges) to allow random access and iteration
+    let mut ranges: Vec<Range<usize>> = Vec::with_capacity(32);
+    let mut iter = memchr::memchr_iter(delimiter, line);
+    let mut start = 0;
+    while let Some(end) = iter.next() {
+        ranges.push(start..end);
+        start = end + 1;
+    }
+    ranges.push(start..line.len());
+
+    let total_fields = ranges.len();
+    let mut first_output = true;
+
+    let mut write_range = |range: &Range<usize>| -> io::Result<()> {
+        if !first_output {
+            writer.write_all(&[delimiter])?;
+        }
+        writer.write_all(&line[range.clone()])?;
+        first_output = false;
+        Ok(())
+    };
+
+    // selected_set for fast lookup of what is "selected" (so we don't output it in rest)
+    let selected_set: HashSet<usize> = selected_indices.iter().cloned().collect();
+
+    let is_rest = |idx: usize| -> bool {
+        if selected_set.contains(&idx) {
+            return false;
+        }
+        if let Some(ex) = excluded_set {
+            if ex.contains(&idx) {
+                return false;
+            }
+        }
+        true
+    };
+
+    if rest_mode == RestMode::First {
+        for i in 1..=total_fields {
+            if is_rest(i) {
+                write_range(&ranges[i - 1])?;
+            }
+        }
+    }
+
+    for &idx in selected_indices {
+        if idx >= 1 && idx <= total_fields {
+            write_range(&ranges[idx - 1])?;
+        } else {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "Not enough fields in line. Field index {} out of range",
+                    idx
+                ),
+            ));
+        }
+    }
+
+    if rest_mode == RestMode::Last {
+        for i in 1..=total_fields {
+            if is_rest(i) {
+                write_range(&ranges[i - 1])?;
+            }
+        }
     }
 
     writer.write_all(b"\n")?;

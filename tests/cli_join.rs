@@ -1245,7 +1245,7 @@ fn join_error_invalid_header_name_append_fields() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: unknown field name `no_field_6`"),
+        stderr.contains("Field not found in file header: 'no_field_6'"),
         "stderr was: {}",
         stderr
     );
