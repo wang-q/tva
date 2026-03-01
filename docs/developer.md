@@ -464,69 +464,26 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 
 本节详细规划如何将 R 语言 `tidyr` 包的核心数据清洗功能移植到 `tva`，重点关注如何在保持流式处理优势的同时实现这些功能。
 
-### 1. `fill` (缺失值填充)
+### 1. `unpack` & `pack` (拆分与合并)
 
-`tidyr::fill(data, ..., .direction = c("down", "up", "downup", "updown"))` 用于填充缺失值。
-
-*   **功能目标**:
-    *   **Down (LOCF)**: 向下填充（Last Observation Carried Forward）。这是流式处理最友好的模式。
-        *   *注*: 这与现有的 `tva blank` 命令互为逆操作（`blank` 将重复值置空，`fill` 将空值填充为上一个值）。
-    *   **Up (NOCB)**: 向上填充（Next Observation Carried Backward）。
-    *   **Const**: 使用常量填充（`replace_na`）。
-
-*   **实现策略**:
-    *   **架构借鉴**: `tva fill` 的实现应高度参考 `src/cmd_tva/blank.rs`。
-        *   **状态管理**: 两者都需要维护一个 `HashMap<usize, String>` (列索引 -> 缓存值)。`blank` 缓存的是"上一行的值"以检测重复；`fill` 缓存的是"上一个非空值"以进行填充。
-        *   **CLI**: 复用 `-f/--field` 解析逻辑（支持 Header 选择）。
-        *   **逻辑反转**: `blank` 是 `if current == prev { write(empty) }`；`fill` 是 `if current is empty { write(prev) } else { update(prev) }`。
-    *   **流式 Down**: 维护一个 `Vec<Option<Vec<u8>>>` 状态，记录每列上一个非空值。每读取一行，如果指定列为空，则用缓存值替换；如果不为空，则更新缓存。内存占用 O(Cols)。
-    *   **流式 Up**: 无法在单遍流中实现。
-        *   *方案 A*: 仅支持 `down`。
-        *   *方案 B*: 全量加载（内存受限）。
-        *   *方案 C*: 双遍扫描（第一遍记录填充值，第二遍输出），或者反向读取（利用 `tac` 逻辑）。鉴于 `tva` 定位，建议初期仅支持 `down` 和 `const`，`up` 可以通过 `tva reverse | tva fill --down | tva reverse` 组合实现。
-
-*   **API 设计**:
-    ```bash
-    tva fill -c 1,3 --down          # Fill col 1 and 3 downwards
-    tva fill -c 2 -v "0"            # Fill col 2 with constant "0"
-    tva fill -c 2 -v "empty" --na "" # Custom NA definition
-    ```
-
-### 2. `separate` & `unite` (拆分与合并)
-
-*   **`separate` (Split Column)**:
+*   **`unpack` (Split Column)**:
+    *   **对应**: `tidyr::separate`
     *   **逻辑**: 将一列按分隔符或正则拆分为多列。
     *   **流式实现**: 读取一行 -> 找到目标列 -> split -> 插入新列 -> 输出。完全流式。
     *   **难点**: 拆分后的列数不一致怎么办？`tidyr` 提供了 `extra = "warn" | "drop" | "merge"`。`tva` 应默认 `error` 或 `warn`，支持 `fill` (填充右侧) 或 `drop` (截断)。
 
-*   **`unite` (Merge Columns)**:
+*   **`pack` (Merge Columns)**:
+    *   **对应**: `tidyr::unite`
     *   **逻辑**: 将多列合并为一列。
     *   **流式实现**: 读取一行 -> 提取目标列 -> join -> 替换/追加 -> 输出。完全流式。
 
 *   **API 设计**:
     ```bash
-    tva separate -c 2 --sep "," --names "A,B,C"  # Split col 2 into A, B, C
-    tva unite -c 1-3 --sep "-" --name "ID"       # Merge col 1-3 into ID
+    tva unpack -f 2 --sep "," --into "A,B,C"   # Split col 2 into A, B, C
+    tva pack -f 1-3 --sep "-" --into "ID"       # Merge col 1-3 into ID
     ```
 
-### 3. `pivot_longer` (宽变长)
-
-`tva` 已有 `wider`，缺少 `longer`。
-
-*   **逻辑**: 将多个列名转换为 "name" 列，将对应的值转换为 "value" 列。
-*   **流式实现**:
-    *   读取一行。
-    *   保留 ID 列（不参与透视的列）。
-    *   遍历透视列（`cols`），对每个列生成一行输出：`[ID_cols, col_name, col_value]`。
-    *   行数膨胀系数 = N_pivot_cols。
-*   **内存**: O(1)。非常适合流式处理。
-
-*   **API 设计**:
-    ```bash
-    tva longer -c 5-10 --names-to "Year" --values-to "Count"
-    ```
-
-### 4. `complete` & `expand` (补全组合)
+### 2. `complete` & `expand` (补全组合)
 
 这是一个典型的 "非流式" 操作，因为它需要知道所有唯一值的集合。
 
