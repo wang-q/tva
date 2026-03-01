@@ -13,6 +13,8 @@ Data reshaping involves changing the structure of a dataset without necessarily 
     *   **`fill`**: Fills missing values with previous non-missing values (LOCF) or constants.
     *   **`blank`**: The inverse of `fill`; replaces repeated values with empty strings (sparsify).
 
+![Reshape Diagram](images/reshape_diagram.svg)
+
 ## `longer` (Wide to Long)
 
 The `longer` command is designed to reshape "wide" data into a "long" format. "Wide" data often has column names that are actually values of a variable. For example, a table might have columns like `2020`, `2021`, `2022` representing years. `longer` gathers these columns into a pair of key-value columns (e.g., `year` and `population`), making the data "longer" (more rows, fewer columns) and easier to analyze.
