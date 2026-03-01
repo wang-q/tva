@@ -250,7 +250,7 @@ fn process_file(
 
     // Process rows
     tsv_reader
-        .for_each_row(|row| {
+        .for_each_row(b'\t', |row| {
             // Extract ID key
             let mut key = Vec::new();
             for (k_i, &idx) in state.id_indices.iter().enumerate() {

@@ -14,10 +14,23 @@ pub(crate) fn parse_float(
     row: &dyn Row,
     idx: usize,
     default: Option<f64>,
+    exclude_missing: bool,
 ) -> Option<f64> {
     match row.get_bytes(idx + 1) {
-        None => default,
-        Some(bytes) if bytes.is_empty() => default,
+        None => {
+            if exclude_missing {
+                None
+            } else {
+                default
+            }
+        }
+        Some(bytes) if bytes.is_empty() => {
+            if exclude_missing {
+                None
+            } else {
+                default
+            }
+        }
         Some(bytes) => fast_parse_f64(bytes),
     }
 }

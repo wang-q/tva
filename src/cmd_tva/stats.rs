@@ -27,8 +27,14 @@ pub fn make_subcommand() -> Command {
                 .help("Fields to group by"),
         )
         .arg(
+            Arg::new("delimiter")
+                .long("delimiter")
+                .short('d')
+                .num_args(1)
+                .help("Field delimiter (default: TAB)"),
+        )
+        .arg(
             Arg::new("count")
-                .long("count")
                 .short('c')
                 .action(ArgAction::SetTrue)
                 .help("Count the number of rows"),
@@ -246,6 +252,13 @@ pub fn make_subcommand() -> Command {
                 .num_args(1)
                 .action(ArgAction::Append)
                 .help("Number of filled (non-empty) fields"),
+        )
+        .arg(
+            Arg::new("exclude-missing")
+                .long("exclude-missing")
+                .short('x')
+                .action(ArgAction::SetTrue)
+                .help("Exclude missing (empty) fields from calculations"),
         )
         .arg(
             Arg::new("replace-missing")
@@ -566,6 +579,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             config.precision = Some(v);
         }
     }
+    config.exclude_missing = matches.get_flag("exclude-missing");
 
     let infiles: Vec<String> = match matches.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
@@ -577,6 +591,16 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     let group_by_spec = matches.get_one::<String>("group-by").cloned();
     let replace_missing = matches.get_one::<String>("replace-missing").cloned();
     let count_header = matches.get_one::<String>("count-header").cloned();
+
+    let delimiter = if let Some(d) = matches.get_one::<String>("delimiter") {
+        if let Some(c) = d.chars().next() {
+            c as u8
+        } else {
+            b'\t'
+        }
+    } else {
+        b'\t'
+    };
 
     let mut processor: Option<StatsProcessor> = None;
     let mut aggregator: Option<Aggregator> = None;
@@ -639,7 +663,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     };
 
                 let indices = fields::parse_field_list_with_header(
-                    field_spec, header_opt, '\t',
+                    field_spec, header_opt, delimiter as char,
                 )
                 .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
 
@@ -701,7 +725,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         }
 
         let extractor = if let Some(spec) = &group_by_spec {
-            let idxs = fields::parse_field_list_with_header(spec, header_opt, '\t')
+            let idxs = fields::parse_field_list_with_header(spec, header_opt, delimiter as char)
                 .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?;
             // .into_iter()
             // .map(|i| i - 1) // KeyExtractor now takes 1-based indices!
@@ -749,7 +773,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             if processor.is_none() {
                 if let Some(header_bytes) = header_bytes_opt {
                     let line = String::from_utf8_lossy(&header_bytes);
-                    let header = fields::Header::from_line(&line, '\t');
+                    let header = fields::Header::from_line(&line, delimiter as char);
 
                     let (proc, extractor, headers) = setup_processor(Some(&header))?;
                     processor = Some(proc);
@@ -797,12 +821,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
         if let Some(proc) = &processor {
             reader
-                .for_each_row(|row| {
+                .for_each_row(delimiter, |row| {
                     if use_grouping {
                         let key_res = group_extractor
                             .as_mut()
                             .unwrap()
-                            .extract_from_row(row, b'\t');
+                            .extract_from_row(row, delimiter);
                         let key = match key_res {
                             Ok(k) => k.into_owned(),
                             Err(_) => KeyBuffer::new(),

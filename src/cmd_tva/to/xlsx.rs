@@ -175,7 +175,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let has_header = args.get_flag("header");
 
     tsv_reader
-        .for_each_row(|row| {
+        .for_each_row(b'\t', |row| {
             let format = if row_cursor == 0 && has_header {
                 &header_format
             } else {

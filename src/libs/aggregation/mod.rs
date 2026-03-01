@@ -81,6 +81,7 @@ pub struct StatsConfig {
     pub precision: Option<usize>, // For float formatting
     pub missing_val: Option<String>, // For replacing missing values (output formatting)
     pub missing_val_f64: Option<f64>, // For replacing missing values in calculations
+    pub exclude_missing: bool, // Exclude missing (empty) fields from calculations
 }
 
 impl Default for StatsConfig {
@@ -90,6 +91,7 @@ impl Default for StatsConfig {
             precision: None,
             missing_val: None,
             missing_val_f64: None,
+            exclude_missing: false,
         }
     }
 }

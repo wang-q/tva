@@ -85,6 +85,7 @@ impl StatsProcessor {
                             sum_slot: slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -97,6 +98,7 @@ impl StatsProcessor {
                             min_slot: slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -109,6 +111,7 @@ impl StatsProcessor {
                             max_slot: slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -124,6 +127,7 @@ impl StatsProcessor {
                             max_slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -139,6 +143,7 @@ impl StatsProcessor {
                             count_slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -154,6 +159,7 @@ impl StatsProcessor {
                             count_slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -169,6 +175,7 @@ impl StatsProcessor {
                             count_slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -187,6 +194,7 @@ impl StatsProcessor {
                             count_slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -205,6 +213,7 @@ impl StatsProcessor {
                             count_slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -223,6 +232,7 @@ impl StatsProcessor {
                             count_slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -235,6 +245,7 @@ impl StatsProcessor {
                             values_slot: slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -247,6 +258,7 @@ impl StatsProcessor {
                             values_slot: slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -259,6 +271,7 @@ impl StatsProcessor {
                             values_slot: slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -271,6 +284,7 @@ impl StatsProcessor {
                             values_slot: slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -283,6 +297,7 @@ impl StatsProcessor {
                             values_slot: slot,
                             precision: config.precision,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }
@@ -398,6 +413,7 @@ impl StatsProcessor {
                             precision: config.precision,
                             probability: p,
                             missing_val: config.missing_val_f64,
+                            exclude_missing: config.exclude_missing,
                         }));
                     }
                 }

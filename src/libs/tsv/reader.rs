@@ -153,7 +153,9 @@ impl<R: Read> TsvReader<R> {
     ///
     /// This is a convenience wrapper around `for_each_record` that constructs a `TsvRow`
     /// for each record.
-    pub fn for_each_row<F>(&mut self, mut func: F) -> io::Result<()>
+    ///
+    /// The delimiter parameter specifies the field separator (default is TAB).
+    pub fn for_each_row<F>(&mut self, delimiter: u8, mut func: F) -> io::Result<()>
     where
         F: FnMut(&TsvRow) -> io::Result<()>,
     {
@@ -161,7 +163,7 @@ impl<R: Read> TsvReader<R> {
         self.for_each_record(|record| {
             ends.clear();
             // Pre-calculate field delimiters for the row
-            for pos in memchr::memchr_iter(b'\t', record) {
+            for pos in memchr::memchr_iter(delimiter, record) {
                 ends.push(pos);
             }
             let row = TsvRow {

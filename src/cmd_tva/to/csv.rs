@@ -55,7 +55,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .from_writer(writer);
 
     tsv_reader
-        .for_each_row(|row| {
+        .for_each_row(b'\t', |row| {
             // Iterate through fields (1-based index in Row trait)
             // Row trait has no iterator, but we can access `row.ends` in TsvRow.
             // Or simply implement an iterator for TsvRow or access underlying slice via get_bytes

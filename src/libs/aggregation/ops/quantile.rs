@@ -10,11 +10,12 @@ pub struct Quantile {
     pub precision: Option<usize>,
     pub probability: f64,
     pub missing_val: Option<f64>,
+    pub exclude_missing: bool,
 }
 
 impl Calculator for Quantile {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val, self.exclude_missing) {
             agg.values[self.values_slot].push(val);
         }
     }
@@ -37,11 +38,12 @@ pub struct Median {
     pub values_slot: usize,
     pub precision: Option<usize>,
     pub missing_val: Option<f64>,
+    pub exclude_missing: bool,
 }
 
 impl Calculator for Median {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val, self.exclude_missing) {
             agg.values[self.values_slot].push(val);
         }
     }
@@ -64,11 +66,12 @@ pub struct Q1 {
     pub values_slot: usize,
     pub precision: Option<usize>,
     pub missing_val: Option<f64>,
+    pub exclude_missing: bool,
 }
 
 impl Calculator for Q1 {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val, self.exclude_missing) {
             agg.values[self.values_slot].push(val);
         }
     }
@@ -91,11 +94,12 @@ pub struct Q3 {
     pub values_slot: usize,
     pub precision: Option<usize>,
     pub missing_val: Option<f64>,
+    pub exclude_missing: bool,
 }
 
 impl Calculator for Q3 {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val, self.exclude_missing) {
             agg.values[self.values_slot].push(val);
         }
     }
@@ -118,11 +122,12 @@ pub struct IQR {
     pub values_slot: usize,
     pub precision: Option<usize>,
     pub missing_val: Option<f64>,
+    pub exclude_missing: bool,
 }
 
 impl Calculator for IQR {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val, self.exclude_missing) {
             agg.values[self.values_slot].push(val);
         }
     }
@@ -147,11 +152,12 @@ pub struct Mad {
     pub values_slot: usize,
     pub precision: Option<usize>,
     pub missing_val: Option<f64>,
+    pub exclude_missing: bool,
 }
 
 impl Calculator for Mad {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx, self.missing_val) {
+        if let Some(val) = parse_float(row, self.field_idx, self.missing_val, self.exclude_missing) {
             agg.values[self.values_slot].push(val);
         }
     }
