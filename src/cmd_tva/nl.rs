@@ -87,12 +87,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let header_bytes = header_string.as_bytes();
 
     for infile in &infiles {
-        let is_stdin = infile == "stdin" || infile == "-";
-
-        if !is_stdin && !crate::libs::io::has_nonempty_line(infile)? {
-            continue;
-        }
-
         let mut reader = crate::libs::tsv::reader::TsvReader::new(
             crate::libs::io::raw_reader(infile),
         );
@@ -111,10 +105,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     header_written = true;
                 }
             } else {
-                // To avoid allocation, we can use itoa or similar, but for now format! is okay or number buffer
-                // But let's stick to simple write!/to_string for the number part as it's small.
-                // Or use ryu/itoa crate if we really want to avoid allocation, but line_num.to_string() is small.
-                writer.write_all(line_num.to_string().as_bytes())?;
+                write!(writer, "{}", line_num)?;
                 writer.write_all(delimiter_bytes)?;
                 writer.write_all(line)?;
                 writer.write_all(b"\n")?;

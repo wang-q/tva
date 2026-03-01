@@ -62,6 +62,16 @@ fn nl_basic_from_gold() {
 }
 
 #[test]
+fn nl_only_newlines() {
+    let input = "\n\n\n";
+    let (stdout, _) = TvaCmd::new().args(&["nl"]).stdin(input).run();
+
+    // Should number the empty lines
+    let expected = "1\t\n2\t\n3\t\n";
+    assert_eq!(stdout, expected);
+}
+
+#[test]
 fn nl_start_number_from_gold() {
     let expected = expected_block("--start-number 10 input1.txt");
 
