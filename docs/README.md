@@ -5,6 +5,7 @@ Fast, reliable TSV processing toolkit in Rust.
 
 [![Build](https://github.com/wang-q/tva/actions/workflows/build.yml/badge.svg)](https://github.com/wang-q/tva/actions)
 [![codecov](https://img.shields.io/codecov/c/github/wang-q/tva/master)](https://app.codecov.io/gh/wang-q/tva/tree/master)
+[![Crates.io](https://img.shields.io/crates/v/tva.svg)](https://crates.io/crates/tva)
 [![license](https://img.shields.io/github/license/wang-q/tva)](https://github.com/wang-q/tva)
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://wang-q.github.io/tva/)
 
@@ -39,7 +40,7 @@ See [Design Documentation](design.md) for details.
 
 ## Installation
 
-Current release: 0.2.0
+Current release: 0.2.1
 
 ```bash
 # Clone the repository and install via cargo
@@ -121,4 +122,3 @@ Qiang Wang <wang-q@outlook.com>
 
 MIT.
 Copyright by Qiang Wang.
-
