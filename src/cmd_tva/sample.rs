@@ -191,7 +191,7 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
         arg_error("--weight-field/-w cannot be used with --replace/-r");
     }
 
-    if key_fields.is_some() && prob_opt.is_none() {
+    if key_fields.is_some() && prob_opt.is_none() && !gen_random_inorder {
         arg_error("--key-fields/-k requires --prob/-p");
     }
 
@@ -212,7 +212,6 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
             || num_opt > 0
             || replace
             || weight_field.is_some()
-            || key_fields.is_some()
             || inorder)
     {
         arg_error("--gen-random-inorder cannot be combined with sampling options");
@@ -332,6 +331,14 @@ fn run_gen_random_inorder<W: Write>(
     let mut header_line: Option<Vec<u8>> = None;
     let mut header_written = false;
 
+    // For distinct sampling
+    let mut key_field_indices: Vec<usize> = Vec::new();
+    let mut distinct_random_values: AHashMap<Vec<u8>, f64> = AHashMap::new();
+    let mut key_buffer: Vec<u8> = Vec::new();
+    let mut initialized = false;
+
+    let distinct_key_spec = config.key_fields.as_deref();
+
     for input in crate::libs::io::raw_input_sources(&config.infiles) {
         let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_record = true;
@@ -355,6 +362,34 @@ fn run_gen_random_inorder<W: Write>(
                 is_first_record = false;
                 if header_line.is_none() {
                     header_line = Some(record.to_vec());
+
+                    if !initialized && distinct_key_spec.is_some() {
+                        use crate::libs::tsv::fields::{
+                            parse_field_list_with_header, Header,
+                        };
+                        let record_str = std::str::from_utf8(record).map_err(|e| {
+                            std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                format!("{}", e),
+                            )
+                        })?;
+                        let header = Header::from_line(record_str, '\t');
+                        let spec = distinct_key_spec.unwrap();
+                        let indices = if spec == "0" {
+                            Vec::new()
+                        } else {
+                            parse_field_list_with_header(spec, Some(&header), '\t')
+                                .map_err(|e| {
+                                    std::io::Error::new(
+                                        std::io::ErrorKind::InvalidInput,
+                                        format!("{}", e),
+                                    )
+                                })?
+                        };
+                        key_field_indices = indices;
+                        initialized = true;
+                    }
+
                     // Write header immediately
                     writer.write_all(config.random_value_header.as_bytes())?;
                     writer.write_all(b"\t")?;
@@ -365,8 +400,72 @@ fn run_gen_random_inorder<W: Write>(
                 return Ok(());
             }
 
+            // Init if no header
+            if !initialized && distinct_key_spec.is_some() {
+                use crate::libs::tsv::fields::parse_field_list_with_header;
+                let spec = distinct_key_spec.unwrap();
+                let indices = if spec == "0" {
+                    Vec::new()
+                } else {
+                    parse_field_list_with_header(spec, None, '\t').map_err(|e| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            format!("{}", e),
+                        )
+                    })?
+                };
+                key_field_indices = indices;
+                initialized = true;
+            }
+
             // Not header or no header mode
-            let r = rng.next() as f64 * crate::libs::sampling::INV_U64_MAX_PLUS_1;
+            let r = if distinct_key_spec.is_some() {
+                key_buffer.clear();
+                if key_field_indices.is_empty() {
+                    key_buffer.extend_from_slice(record);
+                } else {
+                    let mut tab_iter = memchr::memchr_iter(b'\t', record);
+                    let mut last_pos = 0;
+                    let mut field_idx = 1;
+                    let mut next_tab = tab_iter.next();
+
+                    for (i, &target_idx) in key_field_indices.iter().enumerate() {
+                        if i > 0 {
+                            key_buffer.push(0x1f);
+                        }
+                        while field_idx < target_idx {
+                            if let Some(pos) = next_tab {
+                                last_pos = pos + 1;
+                                next_tab = tab_iter.next();
+                                field_idx += 1;
+                            } else {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidInput,
+                                    format!(
+                                        "key field index {} out of range",
+                                        target_idx
+                                    ),
+                                )
+                                .into());
+                            }
+                        }
+                        let end = next_tab.unwrap_or(record.len());
+                        key_buffer.extend_from_slice(&record[last_pos..end]);
+                    }
+                }
+
+                if let Some(&val) = distinct_random_values.get(&key_buffer) {
+                    val
+                } else {
+                    let val =
+                        rng.next() as f64 * crate::libs::sampling::INV_U64_MAX_PLUS_1;
+                    distinct_random_values.insert(key_buffer.clone(), val);
+                    val
+                }
+            } else {
+                rng.next() as f64 * crate::libs::sampling::INV_U64_MAX_PLUS_1
+            };
+
             let mut buffer = ryu::Buffer::new();
             let printed = buffer.format(r);
             writer.write_all(printed.as_bytes())?;
@@ -439,8 +538,13 @@ fn run_standard_sampling<W: Write>(
             rows: Vec::new(),
         })
     } else if let Some(ref _weight_spec) = weight_field {
+        let k = if num_opt == 0 {
+            usize::MAX
+        } else {
+            num_opt as usize
+        };
         SamplerEnum::Weighted(WeightedReservoirSampler {
-            k: num_opt as usize,
+            k,
             weight_field_idx: 0, // To be filled
             heap: std::collections::BinaryHeap::new(),
         })
