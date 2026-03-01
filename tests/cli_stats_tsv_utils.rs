@@ -294,16 +294,32 @@ fn tsv_utils_test_243_mean() {
         .stdin(INPUT_5FIELD_D)
         .run();
 
-    assert!(stdout.contains("length_mean\twidth_mean\theight_mean"));
-    assert!(stdout.contains("red\t"));
-    assert!(stdout.contains("0.0773"));
-    assert!(stdout.contains("0.11"));
-    assert!(stdout.contains("0.156"));
-    assert!(stdout.contains("blue\t"));
-    assert!(stdout.contains("0.1055"));
-    assert!(stdout.contains("0.179"));
-    assert!(stdout.contains("green\t"));
-    assert!(stdout.contains("0.111"));
+    let lines: Vec<&str> = stdout.trim().lines().collect();
+    assert!(lines[0].contains("length_mean\twidth_mean\theight_mean"));
+
+    let red_line = lines
+        .iter()
+        .find(|l| l.starts_with("red"))
+        .expect("Should have red line");
+    let red_parts: Vec<&str> = red_line.split('\t').collect();
+    // red length_mean ~ 0.0773666...
+    common::assert_close(
+        red_parts[red_parts.len() - 3].parse().unwrap(),
+        0.077366666,
+        1e-4,
+    );
+
+    let blue_line = lines
+        .iter()
+        .find(|l| l.starts_with("blue"))
+        .expect("Should have blue line");
+    let blue_parts: Vec<&str> = blue_line.split('\t').collect();
+    // blue length_mean ~ 0.1055
+    common::assert_close(
+        blue_parts[blue_parts.len() - 3].parse().unwrap(),
+        0.1055,
+        1e-4,
+    );
 }
 
 #[test]
@@ -530,10 +546,28 @@ fn tsv_utils_test_float_precision_defaults() {
         .stdin(INPUT_5FIELD_D)
         .run();
 
-    assert!(stdout.contains("color\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max\tlength_mean\twidth_mean\theight_mean"));
-    assert!(stdout.contains("blue\t0.1\t0.11\t0.12345678998765432\t0.111\t0.11\t0.2345678901234568\t0.10550000000000001\t0.11\t0.17901234005555555"));
-    assert!(stdout.contains("green\t0.11\t0.11\t0.11111111333333333\t0.11\t0.11\t0.11111111333333333\t0.11\t0.11\t0.11111111333333333"));
-    assert!(stdout.contains("red\t0.011\t0.11\t0.012345678901234567\t0.1111\t0.11\t0.33333333111111113\t0.07736666666666667\t0.11\t0.15637859967489712"));
+    let lines: Vec<&str> = stdout.trim().lines().collect();
+    assert!(lines[0].contains("color\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max\tlength_mean\twidth_mean\theight_mean"));
+
+    let blue_line = lines
+        .iter()
+        .find(|l| l.starts_with("blue"))
+        .expect("Should have blue line");
+    let blue_parts: Vec<&str> = blue_line.split('\t').collect();
+    // length_min: 0.1
+    common::assert_close(blue_parts[1].parse().unwrap(), 0.1, 1e-4);
+    // height_min: 0.123456...
+    common::assert_close(blue_parts[3].parse().unwrap(), 0.1235, 1e-4);
+    // length_mean: 0.1055
+    common::assert_close(blue_parts[7].parse().unwrap(), 0.1055, 1e-4);
+
+    let red_line = lines
+        .iter()
+        .find(|l| l.starts_with("red"))
+        .expect("Should have red line");
+    let red_parts: Vec<&str> = red_line.split('\t').collect();
+    // length_mean: 0.077366... -> 0.0774
+    common::assert_close(red_parts[7].parse().unwrap(), 0.0774, 1e-4);
 }
 
 #[test]

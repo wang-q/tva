@@ -31,7 +31,8 @@ pub fn make_subcommand() -> Command {
                 .long("delimiter")
                 .short('d')
                 .num_args(1)
-                .help("Field delimiter (default: TAB)"),
+                .default_value("\t")
+                .help("Field delimiter"),
         )
         .arg(
             Arg::new("count")
@@ -189,7 +190,7 @@ pub fn make_subcommand() -> Command {
                 .visible_alias("collapse")
                 .num_args(1)
                 .action(ArgAction::Append)
-                .help("List all values of fields (comma separated)"),
+                .help("List all values of fields (separated by --values-delimiter)"),
         )
         .arg(
             Arg::new("unique-values")
@@ -197,7 +198,7 @@ pub fn make_subcommand() -> Command {
                 .visible_alias("unique")
                 .num_args(1)
                 .action(ArgAction::Append)
-                .help("List unique values of fields (comma separated)"),
+                .help("List unique values of fields (separated by --values-delimiter)"),
         )
         .arg(
             Arg::new("write-header")
@@ -224,14 +225,16 @@ pub fn make_subcommand() -> Command {
                 .long("values-delimiter")
                 .short('v')
                 .num_args(1)
-                .help("Delimiter for --unique and --collapse (default: ,)"),
+                .default_value(",")
+                .help("Delimiter for --unique and --collapse"),
         )
         .arg(
             Arg::new("float-precision")
                 .long("float-precision")
                 .short('p')
                 .num_args(1)
-                .help("Precision for floating point numbers (default: 4)"),
+                .default_value("4")
+                .help("Precision for floating point numbers"),
         )
         .arg(
             Arg::new("mode-count")
@@ -264,6 +267,7 @@ pub fn make_subcommand() -> Command {
         .arg(
             Arg::new("replace-missing")
                 .long("replace-missing")
+                .short('r')
                 .num_args(1)
                 .help("Replace missing values (nan) with a string"),
         )

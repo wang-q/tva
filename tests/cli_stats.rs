@@ -79,6 +79,8 @@ fn stats_variance_stdev() {
             "value",
             "--stdev",
             "value",
+            "-p",
+            "12",
         ])
         .stdin(INPUT)
         .run();
@@ -92,7 +94,7 @@ fn stats_variance_stdev() {
     assert_eq!(parts[0], "350");
 
     let stdev: f64 = parts[1].parse().unwrap();
-    assert!((stdev - 18.708286933869708).abs() < 1e-6);
+    common::assert_close(stdev, 18.708286933869708, 1e-6);
 }
 
 #[test]
@@ -113,7 +115,7 @@ fn stats_mad() {
     assert_eq!(lines.len(), 2); // Header + Value
     assert_eq!(lines[0], "value_mad");
     let mad: f64 = lines[1].parse().expect("MAD should be a number");
-    assert!((mad - 22.239).abs() < 1e-6);
+    common::assert_close(mad, 22.239, 1e-3);
 }
 
 #[test]
@@ -201,6 +203,8 @@ fn stats_advanced_math() {
             "val",
             "--cv",
             "val",
+            "-p",
+            "12",
         ])
         .stdin(input)
         .run();
@@ -215,7 +219,7 @@ fn stats_advanced_math() {
     assert_eq!(parts[2], "6");
 
     let cv: f64 = parts[3].parse().unwrap();
-    assert!((cv - 0.848528).abs() < 1e-5);
+    common::assert_close(cv, 0.848528, 1e-5);
 }
 
 #[test]

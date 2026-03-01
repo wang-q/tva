@@ -58,3 +58,15 @@ impl TvaCmd {
         (stdout, stderr)
     }
 }
+
+pub fn assert_close(actual: f64, expected: f64, epsilon: f64) {
+    if (actual - expected).abs() > epsilon {
+        panic!(
+            "Assertion failed: {} is not close to {} (epsilon: {}, diff: {})",
+            actual,
+            expected,
+            epsilon,
+            (actual - expected).abs()
+        );
+    }
+}
