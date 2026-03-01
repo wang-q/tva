@@ -8,7 +8,7 @@ use crate::libs::filter::{
 };
 
 pub fn make_subcommand() -> Command {
-    Command::new("filter")
+    let mut cmd = Command::new("filter")
         .about("Filters TSV rows by field-based tests")
         .after_help(include_str!("../../docs/help/filter.md"))
         .arg(
@@ -58,403 +58,6 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("Enable line-buffered output (flush after each line)"),
         )
-        // Empty / blank tests
-        .arg(
-            Arg::new("empty")
-                .long("empty")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("True if the field is empty (no characters)"),
-        )
-        .arg(
-            Arg::new("not-empty")
-                .long("not-empty")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("True if the field is not empty"),
-        )
-        .arg(
-            Arg::new("blank")
-                .long("blank")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("True if the field is empty or all whitespace"),
-        )
-        .arg(
-            Arg::new("not-blank")
-                .long("not-blank")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("True if the field contains a non-whitespace character"),
-        )
-        // Numeric comparisons
-        .arg(
-            Arg::new("gt")
-                .long("gt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Numeric comparison: FIELD > NUM"),
-        )
-        .arg(
-            Arg::new("ge")
-                .long("ge")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Numeric comparison: FIELD >= NUM"),
-        )
-        .arg(
-            Arg::new("lt")
-                .long("lt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Numeric comparison: FIELD < NUM"),
-        )
-        .arg(
-            Arg::new("le")
-                .long("le")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Numeric comparison: FIELD <= NUM"),
-        )
-        .arg(
-            Arg::new("eq")
-                .long("eq")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Numeric comparison: FIELD == NUM"),
-        )
-        .arg(
-            Arg::new("ne")
-                .long("ne")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Numeric comparison: FIELD != NUM"),
-        )
-        // String comparisons
-        .arg(
-            Arg::new("str-gt")
-                .long("str-gt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("String comparison: FIELD > STR"),
-        )
-        .arg(
-            Arg::new("str-ge")
-                .long("str-ge")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("String comparison: FIELD >= STR"),
-        )
-        .arg(
-            Arg::new("str-lt")
-                .long("str-lt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("String comparison: FIELD < STR"),
-        )
-        .arg(
-            Arg::new("str-le")
-                .long("str-le")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("String comparison: FIELD <= STR"),
-        )
-        .arg(
-            Arg::new("str-eq")
-                .long("str-eq")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("String comparison: FIELD == STR"),
-        )
-        .arg(
-            Arg::new("str-ne")
-                .long("str-ne")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("String comparison: FIELD != STR"),
-        )
-        .arg(
-            Arg::new("istr-eq")
-                .long("istr-eq")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Case-insensitive string comparison: FIELD == STR"),
-        )
-        .arg(
-            Arg::new("istr-ne")
-                .long("istr-ne")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Case-insensitive string comparison: FIELD != STR"),
-        )
-        .arg(
-            Arg::new("str-in-fld")
-                .long("str-in-fld")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Substring test: FIELD contains STR"),
-        )
-        .arg(
-            Arg::new("str-not-in-fld")
-                .long("str-not-in-fld")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Substring test: FIELD does not contain STR"),
-        )
-        .arg(
-            Arg::new("istr-in-fld")
-                .long("istr-in-fld")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Case-insensitive substring test: FIELD contains STR"),
-        )
-        .arg(
-            Arg::new("istr-not-in-fld")
-                .long("istr-not-in-fld")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Case-insensitive substring test: FIELD does not contain STR"),
-        )
-        // Regex tests
-        .arg(
-            Arg::new("regex")
-                .long("regex")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Regular expression test: FIELD matches REGEX"),
-        )
-        .arg(
-            Arg::new("iregex")
-                .long("iregex")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Case-insensitive regular expression test: FIELD matches REGEX"),
-        )
-        .arg(
-            Arg::new("not-regex")
-                .long("not-regex")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Regular expression test: FIELD does not match REGEX"),
-        )
-        .arg(
-            Arg::new("not-iregex")
-                .long("not-iregex")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Case-insensitive regular expression test: FIELD does not match REGEX"),
-        )
-        // Length tests
-        .arg(
-            Arg::new("char-len-gt")
-                .long("char-len-gt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Character length comparison: FIELD length > NUM"),
-        )
-        .arg(
-            Arg::new("char-len-ge")
-                .long("char-len-ge")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Character length comparison: FIELD length >= NUM"),
-        )
-        .arg(
-            Arg::new("char-len-lt")
-                .long("char-len-lt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Character length comparison: FIELD length < NUM"),
-        )
-        .arg(
-            Arg::new("char-len-le")
-                .long("char-len-le")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Character length comparison: FIELD length <= NUM"),
-        )
-        .arg(
-            Arg::new("char-len-eq")
-                .long("char-len-eq")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Character length comparison: FIELD length == NUM"),
-        )
-        .arg(
-            Arg::new("char-len-ne")
-                .long("char-len-ne")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Character length comparison: FIELD length != NUM"),
-        )
-        .arg(
-            Arg::new("byte-len-gt")
-                .long("byte-len-gt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Byte length comparison: FIELD length > NUM"),
-        )
-        .arg(
-            Arg::new("byte-len-ge")
-                .long("byte-len-ge")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Byte length comparison: FIELD length >= NUM"),
-        )
-        .arg(
-            Arg::new("byte-len-lt")
-                .long("byte-len-lt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Byte length comparison: FIELD length < NUM"),
-        )
-        .arg(
-            Arg::new("byte-len-le")
-                .long("byte-len-le")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Byte length comparison: FIELD length <= NUM"),
-        )
-        .arg(
-            Arg::new("byte-len-eq")
-                .long("byte-len-eq")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Byte length comparison: FIELD length == NUM"),
-        )
-        .arg(
-            Arg::new("byte-len-ne")
-                .long("byte-len-ne")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Byte length comparison: FIELD length != NUM"),
-        )
-        .arg(
-            Arg::new("is-numeric")
-                .long("is-numeric")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("True if FIELD can be parsed as a number"),
-        )
-        .arg(
-            Arg::new("is-finite")
-                .long("is-finite")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("True if FIELD is numeric and finite"),
-        )
-        .arg(
-            Arg::new("is-nan")
-                .long("is-nan")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("True if FIELD is NaN"),
-        )
-        .arg(
-            Arg::new("is-infinity")
-                .long("is-infinity")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("True if FIELD is positive or negative infinity"),
-        )
-        .arg(
-            Arg::new("ff-eq")
-                .long("ff-eq")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field numeric comparison: FIELD1 == FIELD2"),
-        )
-        .arg(
-            Arg::new("ff-ne")
-                .long("ff-ne")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field numeric comparison: FIELD1 != FIELD2"),
-        )
-        .arg(
-            Arg::new("ff-lt")
-                .long("ff-lt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field numeric comparison: FIELD1 < FIELD2"),
-        )
-        .arg(
-            Arg::new("ff-le")
-                .long("ff-le")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field numeric comparison: FIELD1 <= FIELD2"),
-        )
-        .arg(
-            Arg::new("ff-gt")
-                .long("ff-gt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field numeric comparison: FIELD1 > FIELD2"),
-        )
-        .arg(
-            Arg::new("ff-ge")
-                .long("ff-ge")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field numeric comparison: FIELD1 >= FIELD2"),
-        )
-        .arg(
-            Arg::new("ff-str-eq")
-                .long("ff-str-eq")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field string comparison: FIELD1 == FIELD2"),
-        )
-        .arg(
-            Arg::new("ff-str-ne")
-                .long("ff-str-ne")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field string comparison: FIELD1 != FIELD2"),
-        )
-        .arg(
-            Arg::new("ff-istr-eq")
-                .long("ff-istr-eq")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field case-insensitive string comparison: FIELD1 == FIELD2"),
-        )
-        .arg(
-            Arg::new("ff-istr-ne")
-                .long("ff-istr-ne")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field case-insensitive string comparison: FIELD1 != FIELD2"),
-        )
-        .arg(
-            Arg::new("ff-absdiff-le")
-                .long("ff-absdiff-le")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field absolute difference: FIELD1:FIELD2 <= NUM"),
-        )
-        .arg(
-            Arg::new("ff-absdiff-gt")
-                .long("ff-absdiff-gt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field absolute difference: FIELD1:FIELD2 > NUM"),
-        )
-        .arg(
-            Arg::new("ff-reldiff-le")
-                .long("ff-reldiff-le")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field relative difference: FIELD1:FIELD2 <= NUM"),
-        )
-        .arg(
-            Arg::new("ff-reldiff-gt")
-                .long("ff-reldiff-gt")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Field-to-field relative difference: FIELD1:FIELD2 > NUM"),
-        )
         .arg(
             Arg::new("label")
                 .long("label")
@@ -466,7 +69,97 @@ pub fn make_subcommand() -> Command {
                 .long("label-values")
                 .num_args(1)
                 .help("Pass/No-pass values for --label, format PASS:FAIL (default 1:0)"),
-        )
+        );
+
+    macro_rules! arg_test {
+        ($name:expr, $help:expr) => {
+            cmd = cmd.arg(
+                Arg::new($name)
+                    .long($name)
+                    .num_args(1)
+                    .action(ArgAction::Append)
+                    .help($help),
+            );
+        };
+    }
+
+    // Empty / blank tests
+    arg_test!("empty", "True if the field is empty (no characters)");
+    arg_test!("not-empty", "True if the field is not empty");
+    arg_test!("blank", "True if the field is empty or all whitespace");
+    arg_test!("not-blank", "True if the field contains a non-whitespace character");
+
+    // Numeric comparisons
+    arg_test!("gt", "Numeric comparison: FIELD > NUM");
+    arg_test!("ge", "Numeric comparison: FIELD >= NUM");
+    arg_test!("lt", "Numeric comparison: FIELD < NUM");
+    arg_test!("le", "Numeric comparison: FIELD <= NUM");
+    arg_test!("eq", "Numeric comparison: FIELD == NUM");
+    arg_test!("ne", "Numeric comparison: FIELD != NUM");
+
+    // String comparisons
+    arg_test!("str-gt", "String comparison: FIELD > STR");
+    arg_test!("str-ge", "String comparison: FIELD >= STR");
+    arg_test!("str-lt", "String comparison: FIELD < STR");
+    arg_test!("str-le", "String comparison: FIELD <= STR");
+    arg_test!("str-eq", "String comparison: FIELD == STR");
+    arg_test!("str-ne", "String comparison: FIELD != STR");
+    arg_test!("istr-eq", "Case-insensitive string comparison: FIELD == STR");
+    arg_test!("istr-ne", "Case-insensitive string comparison: FIELD != STR");
+
+    // Substring tests
+    arg_test!("str-in-fld", "Substring test: FIELD contains STR");
+    arg_test!("str-not-in-fld", "Substring test: FIELD does not contain STR");
+    arg_test!("istr-in-fld", "Case-insensitive substring test: FIELD contains STR");
+    arg_test!("istr-not-in-fld", "Case-insensitive substring test: FIELD does not contain STR");
+
+    // Regex tests
+    arg_test!("regex", "Regular expression test: FIELD matches REGEX");
+    arg_test!("iregex", "Case-insensitive regular expression test: FIELD matches REGEX");
+    arg_test!("not-regex", "Regular expression test: FIELD does not match REGEX");
+    arg_test!("not-iregex", "Case-insensitive regular expression test: FIELD does not match REGEX");
+
+    // Length tests
+    arg_test!("char-len-gt", "Character length comparison: FIELD length > NUM");
+    arg_test!("char-len-ge", "Character length comparison: FIELD length >= NUM");
+    arg_test!("char-len-lt", "Character length comparison: FIELD length < NUM");
+    arg_test!("char-len-le", "Character length comparison: FIELD length <= NUM");
+    arg_test!("char-len-eq", "Character length comparison: FIELD length == NUM");
+    arg_test!("char-len-ne", "Character length comparison: FIELD length != NUM");
+
+    arg_test!("byte-len-gt", "Byte length comparison: FIELD length > NUM");
+    arg_test!("byte-len-ge", "Byte length comparison: FIELD length >= NUM");
+    arg_test!("byte-len-lt", "Byte length comparison: FIELD length < NUM");
+    arg_test!("byte-len-le", "Byte length comparison: FIELD length <= NUM");
+    arg_test!("byte-len-eq", "Byte length comparison: FIELD length == NUM");
+    arg_test!("byte-len-ne", "Byte length comparison: FIELD length != NUM");
+
+    // Numeric properties
+    arg_test!("is-numeric", "True if FIELD can be parsed as a number");
+    arg_test!("is-finite", "True if FIELD is numeric and finite");
+    arg_test!("is-nan", "True if FIELD is NaN");
+    arg_test!("is-infinity", "True if FIELD is positive or negative infinity");
+
+    // Field-Field comparisons
+    arg_test!("ff-eq", "Field-to-field numeric comparison: FIELD1 == FIELD2");
+    arg_test!("ff-ne", "Field-to-field numeric comparison: FIELD1 != FIELD2");
+    arg_test!("ff-lt", "Field-to-field numeric comparison: FIELD1 < FIELD2");
+    arg_test!("ff-le", "Field-to-field numeric comparison: FIELD1 <= FIELD2");
+    arg_test!("ff-gt", "Field-to-field numeric comparison: FIELD1 > FIELD2");
+    arg_test!("ff-ge", "Field-to-field numeric comparison: FIELD1 >= FIELD2");
+
+    arg_test!("ff-str-eq", "Field-to-field string comparison: FIELD1 == FIELD2");
+    arg_test!("ff-str-ne", "Field-to-field string comparison: FIELD1 != FIELD2");
+    arg_test!("ff-istr-eq", "Field-to-field case-insensitive string comparison: FIELD1 == FIELD2");
+    arg_test!("ff-istr-ne", "Field-to-field case-insensitive string comparison: FIELD1 != FIELD2");
+
+    arg_test!("ff-absdiff-le", "Field-to-field absolute difference: FIELD1:FIELD2 <= NUM");
+    arg_test!("ff-absdiff-gt", "Field-to-field absolute difference: FIELD1:FIELD2 > NUM");
+
+    arg_test!("ff-reldiff-le", "Field-to-field relative difference: FIELD1:FIELD2 <= NUM");
+    arg_test!("ff-reldiff-gt", "Field-to-field relative difference: FIELD1:FIELD2 > NUM");
+
+    cmd
 }
 
 fn arg_error(msg: &str) -> ! {
@@ -514,618 +207,148 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         ));
     }
 
-    let empty_specs: Vec<String> = args
-        .get_many::<String>("empty")
-        .map(|v| v.cloned().collect())
-        .unwrap_or_default();
-    let not_empty_specs: Vec<String> = args
-        .get_many::<String>("not-empty")
-        .map(|v| v.cloned().collect())
-        .unwrap_or_default();
-    let blank_specs: Vec<String> = args
-        .get_many::<String>("blank")
-        .map(|v| v.cloned().collect())
-        .unwrap_or_default();
-    let not_blank_specs: Vec<String> = args
-        .get_many::<String>("not-blank")
-        .map(|v| v.cloned().collect())
-        .unwrap_or_default();
+    // Helper macro for simple string lists
+    macro_rules! collect_simple {
+        ($name:expr) => {
+            args.get_many::<String>($name)
+                .map(|v| v.cloned().collect())
+                .unwrap_or_default()
+        };
+    }
 
-    let numeric_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("gt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingNumeric {
-                spec,
-                op: NumericOp::Gt,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ge")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingNumeric {
-                spec,
-                op: NumericOp::Ge,
-            });
-        }
-        for spec in args
-            .get_many::<String>("lt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingNumeric {
-                spec,
-                op: NumericOp::Lt,
-            });
-        }
-        for spec in args
-            .get_many::<String>("le")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingNumeric {
-                spec,
-                op: NumericOp::Le,
-            });
-        }
-        for spec in args
-            .get_many::<String>("eq")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingNumeric {
-                spec,
-                op: NumericOp::Eq,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ne")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingNumeric {
-                spec,
-                op: NumericOp::Ne,
-            });
-        }
-        v
-    };
+    let empty_specs: Vec<String> = collect_simple!("empty");
+    let not_empty_specs: Vec<String> = collect_simple!("not-empty");
+    let blank_specs: Vec<String> = collect_simple!("blank");
+    let not_blank_specs: Vec<String> = collect_simple!("not-blank");
 
-    let str_cmp_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("str-gt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingStrCmp {
-                spec,
-                op: NumericOp::Gt,
-            });
-        }
-        for spec in args
-            .get_many::<String>("str-ge")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingStrCmp {
-                spec,
-                op: NumericOp::Ge,
-            });
-        }
-        for spec in args
-            .get_many::<String>("str-lt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingStrCmp {
-                spec,
-                op: NumericOp::Lt,
-            });
-        }
-        for spec in args
-            .get_many::<String>("str-le")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingStrCmp {
-                spec,
-                op: NumericOp::Le,
-            });
-        }
-        v
-    };
+    // Helper macro for typed specs with an operator/property field
+    macro_rules! collect_typed {
+        ($type:ident, $field:ident, $(($name:expr, $val:expr)),* ) => {
+            {
+                let mut v = Vec::new();
+                $(
+                    if let Some(values) = args.get_many::<String>($name) {
+                        for spec in values {
+                            v.push($type {
+                                spec: spec.clone(),
+                                $field: $val,
+                            });
+                        }
+                    }
+                )*
+                v
+            }
+        };
+    }
 
-    let str_eq_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("str-eq")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingStrEq {
-                spec,
-                case_insensitive: false,
-                negated: false,
-            });
-        }
-        for spec in args
-            .get_many::<String>("str-ne")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingStrEq {
-                spec,
-                case_insensitive: false,
-                negated: true,
-            });
-        }
-        for spec in args
-            .get_many::<String>("istr-eq")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingStrEq {
-                spec,
-                case_insensitive: true,
-                negated: false,
-            });
-        }
-        for spec in args
-            .get_many::<String>("istr-ne")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingStrEq {
-                spec,
-                case_insensitive: true,
-                negated: true,
-            });
-        }
-        v
-    };
+    // Helper macro for specs with case_insensitive and negated flags
+    macro_rules! collect_flags {
+        ($type:ident, $(($name:expr, $case:expr, $neg:expr)),* ) => {
+            {
+                let mut v = Vec::new();
+                $(
+                    if let Some(values) = args.get_many::<String>($name) {
+                        for spec in values {
+                            v.push($type {
+                                spec: spec.clone(),
+                                case_insensitive: $case,
+                                negated: $neg,
+                            });
+                        }
+                    }
+                )*
+                v
+            }
+        };
+    }
 
-    let substr_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("str-in-fld")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingSubstr {
-                spec,
-                case_insensitive: false,
-                negated: false,
-            });
-        }
-        for spec in args
-            .get_many::<String>("str-not-in-fld")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingSubstr {
-                spec,
-                case_insensitive: false,
-                negated: true,
-            });
-        }
-        for spec in args
-            .get_many::<String>("istr-in-fld")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingSubstr {
-                spec,
-                case_insensitive: true,
-                negated: false,
-            });
-        }
-        for spec in args
-            .get_many::<String>("istr-not-in-fld")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingSubstr {
-                spec,
-                case_insensitive: true,
-                negated: true,
-            });
-        }
-        v
-    };
+    let numeric_specs = collect_typed!(PendingNumeric, op,
+        ("gt", NumericOp::Gt),
+        ("ge", NumericOp::Ge),
+        ("lt", NumericOp::Lt),
+        ("le", NumericOp::Le),
+        ("eq", NumericOp::Eq),
+        ("ne", NumericOp::Ne)
+    );
 
-    let regex_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("regex")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingRegex {
-                spec,
-                case_insensitive: false,
-                negated: false,
-            });
-        }
-        for spec in args
-            .get_many::<String>("iregex")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingRegex {
-                spec,
-                case_insensitive: true,
-                negated: false,
-            });
-        }
-        for spec in args
-            .get_many::<String>("not-regex")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingRegex {
-                spec,
-                case_insensitive: false,
-                negated: true,
-            });
-        }
-        for spec in args
-            .get_many::<String>("not-iregex")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingRegex {
-                spec,
-                case_insensitive: true,
-                negated: true,
-            });
-        }
-        v
-    };
+    let str_cmp_specs = collect_typed!(PendingStrCmp, op,
+        ("str-gt", NumericOp::Gt),
+        ("str-ge", NumericOp::Ge),
+        ("str-lt", NumericOp::Lt),
+        ("str-le", NumericOp::Le)
+    );
 
-    let numeric_prop_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("is-numeric")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingNumericProp {
-                spec,
-                prop: NumericProp::IsNumeric,
-            });
-        }
-        for spec in args
-            .get_many::<String>("is-finite")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingNumericProp {
-                spec,
-                prop: NumericProp::IsFinite,
-            });
-        }
-        for spec in args
-            .get_many::<String>("is-nan")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingNumericProp {
-                spec,
-                prop: NumericProp::IsNaN,
-            });
-        }
-        for spec in args
-            .get_many::<String>("is-infinity")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingNumericProp {
-                spec,
-                prop: NumericProp::IsInfinity,
-            });
-        }
-        v
-    };
+    let str_eq_specs = collect_flags!(PendingStrEq,
+        ("str-eq", false, false),
+        ("str-ne", false, true),
+        ("istr-eq", true, false),
+        ("istr-ne", true, true)
+    );
 
-    let ff_numeric_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("ff-eq")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldNumeric {
-                spec,
-                op: NumericOp::Eq,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ff-ne")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldNumeric {
-                spec,
-                op: NumericOp::Ne,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ff-lt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldNumeric {
-                spec,
-                op: NumericOp::Lt,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ff-le")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldNumeric {
-                spec,
-                op: NumericOp::Le,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ff-gt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldNumeric {
-                spec,
-                op: NumericOp::Gt,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ff-ge")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldNumeric {
-                spec,
-                op: NumericOp::Ge,
-            });
-        }
-        v
-    };
+    let substr_specs = collect_flags!(PendingSubstr,
+        ("str-in-fld", false, false),
+        ("str-not-in-fld", false, true),
+        ("istr-in-fld", true, false),
+        ("istr-not-in-fld", true, true)
+    );
 
-    let ff_str_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("ff-str-eq")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldStr {
-                spec,
-                case_insensitive: false,
-                negated: false,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ff-str-ne")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldStr {
-                spec,
-                case_insensitive: false,
-                negated: true,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ff-istr-eq")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldStr {
-                spec,
-                case_insensitive: true,
-                negated: false,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ff-istr-ne")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldStr {
-                spec,
-                case_insensitive: true,
-                negated: true,
-            });
-        }
-        v
-    };
+    let regex_specs = collect_flags!(PendingRegex,
+        ("regex", false, false),
+        ("iregex", true, false),
+        ("not-regex", false, true),
+        ("not-iregex", true, true)
+    );
 
-    let ff_absdiff_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("ff-absdiff-le")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldAbsDiff {
-                spec,
-                op: NumericOp::Le,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ff-absdiff-gt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldAbsDiff {
-                spec,
-                op: NumericOp::Gt,
-            });
-        }
-        v
-    };
+    let numeric_prop_specs = collect_typed!(PendingNumericProp, prop,
+        ("is-numeric", NumericProp::IsNumeric),
+        ("is-finite", NumericProp::IsFinite),
+        ("is-nan", NumericProp::IsNaN),
+        ("is-infinity", NumericProp::IsInfinity)
+    );
 
-    let ff_reldiff_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("ff-reldiff-le")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldRelDiff {
-                spec,
-                op: NumericOp::Le,
-            });
-        }
-        for spec in args
-            .get_many::<String>("ff-reldiff-gt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingFieldFieldRelDiff {
-                spec,
-                op: NumericOp::Gt,
-            });
-        }
-        v
-    };
+    let ff_numeric_specs = collect_typed!(PendingFieldFieldNumeric, op,
+        ("ff-eq", NumericOp::Eq),
+        ("ff-ne", NumericOp::Ne),
+        ("ff-lt", NumericOp::Lt),
+        ("ff-le", NumericOp::Le),
+        ("ff-gt", NumericOp::Gt),
+        ("ff-ge", NumericOp::Ge)
+    );
 
-    let char_len_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("char-len-gt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingCharLen {
-                spec,
-                op: NumericOp::Gt,
-            });
-        }
-        for spec in args
-            .get_many::<String>("char-len-ge")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingCharLen {
-                spec,
-                op: NumericOp::Ge,
-            });
-        }
-        for spec in args
-            .get_many::<String>("char-len-lt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingCharLen {
-                spec,
-                op: NumericOp::Lt,
-            });
-        }
-        for spec in args
-            .get_many::<String>("char-len-le")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingCharLen {
-                spec,
-                op: NumericOp::Le,
-            });
-        }
-        for spec in args
-            .get_many::<String>("char-len-eq")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingCharLen {
-                spec,
-                op: NumericOp::Eq,
-            });
-        }
-        for spec in args
-            .get_many::<String>("char-len-ne")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingCharLen {
-                spec,
-                op: NumericOp::Ne,
-            });
-        }
-        v
-    };
+    let ff_str_specs = collect_flags!(PendingFieldFieldStr,
+        ("ff-str-eq", false, false),
+        ("ff-str-ne", false, true),
+        ("ff-istr-eq", true, false),
+        ("ff-istr-ne", true, true)
+    );
 
-    let byte_len_specs = {
-        let mut v = Vec::new();
-        for spec in args
-            .get_many::<String>("byte-len-gt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingByteLen {
-                spec,
-                op: NumericOp::Gt,
-            });
-        }
-        for spec in args
-            .get_many::<String>("byte-len-ge")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingByteLen {
-                spec,
-                op: NumericOp::Ge,
-            });
-        }
-        for spec in args
-            .get_many::<String>("byte-len-lt")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingByteLen {
-                spec,
-                op: NumericOp::Lt,
-            });
-        }
-        for spec in args
-            .get_many::<String>("byte-len-le")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingByteLen {
-                spec,
-                op: NumericOp::Le,
-            });
-        }
-        for spec in args
-            .get_many::<String>("byte-len-eq")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingByteLen {
-                spec,
-                op: NumericOp::Eq,
-            });
-        }
-        for spec in args
-            .get_many::<String>("byte-len-ne")
-            .map(|v| v.cloned().collect::<Vec<_>>())
-            .unwrap_or_default()
-        {
-            v.push(PendingByteLen {
-                spec,
-                op: NumericOp::Ne,
-            });
-        }
-        v
-    };
+    let ff_absdiff_specs = collect_typed!(PendingFieldFieldAbsDiff, op,
+        ("ff-absdiff-le", NumericOp::Le),
+        ("ff-absdiff-gt", NumericOp::Gt)
+    );
+
+    let ff_reldiff_specs = collect_typed!(PendingFieldFieldRelDiff, op,
+        ("ff-reldiff-le", NumericOp::Le),
+        ("ff-reldiff-gt", NumericOp::Gt)
+    );
+
+    let char_len_specs = collect_typed!(PendingCharLen, op,
+        ("char-len-gt", NumericOp::Gt),
+        ("char-len-ge", NumericOp::Ge),
+        ("char-len-lt", NumericOp::Lt),
+        ("char-len-le", NumericOp::Le),
+        ("char-len-eq", NumericOp::Eq),
+        ("char-len-ne", NumericOp::Ne)
+    );
+
+    let byte_len_specs = collect_typed!(PendingByteLen, op,
+        ("byte-len-gt", NumericOp::Gt),
+        ("byte-len-ge", NumericOp::Ge),
+        ("byte-len-lt", NumericOp::Lt),
+        ("byte-len-le", NumericOp::Le),
+        ("byte-len-eq", NumericOp::Eq),
+        ("byte-len-ne", NumericOp::Ne)
+    );
 
     let config = FilterConfig {
         delimiter,
