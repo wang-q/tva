@@ -2,8 +2,6 @@
 
 ## Unreleased - ReleaseDate
 
-## 0.3.0 - 2026-03-02
-
 ### Added
 
 #### Data Manipulation
@@ -13,17 +11,13 @@
 - **`filter`**: Introduced a modular filter engine supporting complex field-based row filtering logic.
 
 #### Statistics & Aggregation
-- **`stats`**: Major overhaul and feature expansion.
+- **`stats`**:
     - Added **Quantile** aggregation support.
     - Added **MAD** (Median Absolute Deviation) calculation.
     - Added `--delimiter` option to specify output delimiter.
     - Added `--exclude-missing` flag to ignore missing values in calculations.
     - Added support for custom output headers and missing value replacement.
     - Improved formatting options for numeric outputs.
-
-#### Input/Output & Formats
-- **`from-csv`**: Added options for custom quote character (`--quote`) and replacement string (`--replace`) for handling malformed CSVs.
-- **`nl`**: Added `--line-buffered` flag to flush output immediately after each line, useful for streaming pipelines.
 
 ### Changed
 
@@ -38,7 +32,6 @@
 
 #### Refactoring
 - **Modularization**: Extensive refactoring of `stats`, `sampling`, and `filter` modules to improve code organization and maintainability.
-- **`libs` Structure**: Moved key utilities into a dedicated `libs` directory structure.
 
 #### Documentation
 - **Reshape Diagram**: Added a visual diagram to `docs/reshape.md` illustrating `longer`, `wider`, `fill`, and `blank` operations.
