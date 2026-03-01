@@ -9,7 +9,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 use indexmap::IndexMap;
 
 pub fn make_subcommand() -> Command {
-    Command::new("stats")
+    let mut cmd = Command::new("stats")
         .about("Calculates summary statistics (like tsv-summarize)")
         .after_help(include_str!("../../docs/help/stats.md"))
         .arg(
@@ -40,166 +40,67 @@ pub fn make_subcommand() -> Command {
                 .short('c')
                 .action(ArgAction::SetTrue)
                 .help("Count the number of rows"),
-        )
-        .arg(
-            Arg::new("sum")
-                .long("sum")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate sum of fields"),
-        )
-        .arg(
-            Arg::new("mean")
-                .long("mean")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate mean of fields"),
-        )
-        .arg(
-            Arg::new("min")
-                .long("min")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate min of fields"),
-        )
-        .arg(
-            Arg::new("max")
-                .long("max")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate max of fields"),
-        )
-        .arg(
-            Arg::new("median")
-                .long("median")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate median of fields"),
-        )
-        .arg(
-            Arg::new("stdev")
-                .long("stdev")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate standard deviation of fields"),
-        )
-        .arg(
-            Arg::new("variance")
-                .long("variance")
-                .visible_alias("var")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate variance of fields"),
-        )
-        .arg(
-            Arg::new("mad")
-                .long("mad")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate median absolute deviation of fields"),
-        )
-        .arg(
-            Arg::new("first")
-                .long("first")
-                .visible_alias("retain")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Get the first value of fields"),
-        )
-        .arg(
-            Arg::new("last")
-                .long("last")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Get the last value of fields"),
-        )
-        .arg(
-            Arg::new("nunique")
-                .long("nunique")
-                .visible_alias("unique-count")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Count the number of unique values"),
-        )
-        .arg(
-            Arg::new("mode")
-                .long("mode")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Get the most frequent value (mode)"),
-        )
-        .arg(
-            Arg::new("geomean")
-                .long("geomean")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate geometric mean of fields"),
-        )
-        .arg(
-            Arg::new("harmmean")
-                .long("harmmean")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate harmonic mean of fields"),
-        )
-        .arg(
-            Arg::new("q1")
-                .long("q1")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate 1st quartile (25th percentile) of fields"),
-        )
-        .arg(
-            Arg::new("q3")
-                .long("q3")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate 3rd quartile (75th percentile) of fields"),
-        )
-        .arg(
-            Arg::new("iqr")
-                .long("iqr")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate interquartile range (Q3-Q1) of fields"),
-        )
-        .arg(
-            Arg::new("cv")
-                .long("cv")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate coefficient of variation (stdev/mean) of fields"),
-        )
-        .arg(
-            Arg::new("range")
-                .long("range")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate range (max-min) of fields"),
-        )
-        .arg(
-            Arg::new("quantile")
-                .long("quantile")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate quantiles (e.g. field:0.25,0.75)"),
-        )
-        .arg(
-            Arg::new("values")
-                .long("values")
-                .visible_alias("collapse")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("List all values of fields (separated by --values-delimiter)"),
-        )
-        .arg(
-            Arg::new("unique-values")
-                .long("unique-values")
-                .visible_alias("unique")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("List unique values of fields (separated by --values-delimiter)"),
-        )
+        );
+    macro_rules! add_op_arg {
+        ($cmd:ident, $name:expr, $help:expr) => {
+            $cmd = $cmd.arg(
+                Arg::new($name)
+                    .long($name)
+                    .num_args(1)
+                    .action(ArgAction::Append)
+                    .help($help),
+            );
+        };
+        ($cmd:ident, $name:expr, $alias:expr, $help:expr) => {
+            $cmd = $cmd.arg(
+                Arg::new($name)
+                    .long($name)
+                    .visible_alias($alias)
+                    .num_args(1)
+                    .action(ArgAction::Append)
+                    .help($help),
+            );
+        };
+    }
+
+    add_op_arg!(cmd, "sum", "Calculate sum of fields");
+    add_op_arg!(cmd, "mean", "Calculate mean of fields");
+    add_op_arg!(cmd, "min", "Calculate min of fields");
+    add_op_arg!(cmd, "max", "Calculate max of fields");
+    add_op_arg!(cmd, "median", "Calculate median of fields");
+    add_op_arg!(cmd, "stdev", "Calculate standard deviation of fields");
+    add_op_arg!(cmd, "variance", "var", "Calculate variance of fields");
+    add_op_arg!(cmd, "mad", "Calculate median absolute deviation of fields");
+    add_op_arg!(cmd, "first", "retain", "Get the first value of fields");
+    add_op_arg!(cmd, "last", "Get the last value of fields");
+    add_op_arg!(cmd, "nunique", "unique-count", "Count the number of unique values");
+    add_op_arg!(cmd, "mode", "Get the most frequent value (mode)");
+    add_op_arg!(cmd, "geomean", "Calculate geometric mean of fields");
+    add_op_arg!(cmd, "harmmean", "Calculate harmonic mean of fields");
+    add_op_arg!(cmd, "q1", "Calculate 1st quartile (25th percentile) of fields");
+    add_op_arg!(cmd, "q3", "Calculate 3rd quartile (75th percentile) of fields");
+    add_op_arg!(cmd, "iqr", "Calculate interquartile range (Q3-Q1) of fields");
+    add_op_arg!(cmd, "cv", "Calculate coefficient of variation (stdev/mean) of fields");
+    add_op_arg!(cmd, "range", "Calculate range (max-min) of fields");
+    add_op_arg!(cmd, "quantile", "Calculate quantiles (e.g. field:0.25,0.75)");
+    add_op_arg!(
+        cmd,
+        "values",
+        "collapse",
+        "List all values of fields (separated by --values-delimiter)"
+    );
+    add_op_arg!(
+        cmd,
+        "unique-values",
+        "unique",
+        "List unique values of fields (separated by --values-delimiter)"
+    );
+    add_op_arg!(cmd, "rand", "Pick a random value from fields");
+    add_op_arg!(cmd, "mode-count", "Count of the most frequent value");
+    add_op_arg!(cmd, "missing-count", "Number of missing (empty) fields");
+    add_op_arg!(cmd, "not-missing-count", "Number of filled (non-empty) fields");
+
+    cmd = cmd
         .arg(
             Arg::new("write-header")
                 .long("write-header")
@@ -212,13 +113,6 @@ pub fn make_subcommand() -> Command {
                 .long("count-header")
                 .num_args(1)
                 .help("Use STR as the header for count"),
-        )
-        .arg(
-            Arg::new("rand")
-                .long("rand")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Pick a random value from fields"),
         )
         .arg(
             Arg::new("values-delimiter")
@@ -235,27 +129,6 @@ pub fn make_subcommand() -> Command {
                 .num_args(1)
                 .default_value("4")
                 .help("Precision for floating point numbers"),
-        )
-        .arg(
-            Arg::new("mode-count")
-                .long("mode-count")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Count of the most frequent value"),
-        )
-        .arg(
-            Arg::new("missing-count")
-                .long("missing-count")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Number of missing (empty) fields"),
-        )
-        .arg(
-            Arg::new("not-missing-count")
-                .long("not-missing-count")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Number of filled (non-empty) fields"),
         )
         .arg(
             Arg::new("exclude-missing")
@@ -276,7 +149,9 @@ pub fn make_subcommand() -> Command {
                 .num_args(0..)
                 .index(1)
                 .help("Input TSV file(s) to process (default: stdin)"),
-        )
+        );
+
+    cmd
 }
 
 struct OpConfig {
@@ -312,208 +187,47 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
     let mut op_configs = Vec::new();
 
+    macro_rules! parse_op {
+        ($name:expr, $kind:expr) => {
+            if let Some(indices) = matches.indices_of($name) {
+                for (i, val) in indices.zip(matches.get_many::<String>($name).unwrap()) {
+                    op_configs.push(OpConfig {
+                        kind: $kind,
+                        spec: Some(val.clone()),
+                        arg_index: i,
+                    });
+                }
+            }
+        };
+    }
+
     // Collect operations
-    if let Some(indices) = matches.indices_of("sum") {
-        for (i, val) in indices.zip(matches.get_many::<String>("sum").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Sum,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("mean") {
-        for (i, val) in indices.zip(matches.get_many::<String>("mean").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Mean,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("min") {
-        for (i, val) in indices.zip(matches.get_many::<String>("min").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Min,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("max") {
-        for (i, val) in indices.zip(matches.get_many::<String>("max").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Max,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("median") {
-        for (i, val) in indices.zip(matches.get_many::<String>("median").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Median,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("stdev") {
-        for (i, val) in indices.zip(matches.get_many::<String>("stdev").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Stdev,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("variance") {
-        for (i, val) in indices.zip(matches.get_many::<String>("variance").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Variance,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("mad") {
-        for (i, val) in indices.zip(matches.get_many::<String>("mad").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Mad,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("first") {
-        for (i, val) in indices.zip(matches.get_many::<String>("first").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::First,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("last") {
-        for (i, val) in indices.zip(matches.get_many::<String>("last").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Last,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("nunique") {
-        for (i, val) in indices.zip(matches.get_many::<String>("nunique").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::NUnique,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("mode-count") {
-        for (i, val) in indices.zip(matches.get_many::<String>("mode-count").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::ModeCount,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("missing-count") {
-        for (i, val) in indices.zip(matches.get_many::<String>("missing-count").unwrap())
-        {
-            op_configs.push(OpConfig {
-                kind: OpKind::MissingCount,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("not-missing-count") {
-        for (i, val) in
-            indices.zip(matches.get_many::<String>("not-missing-count").unwrap())
-        {
-            op_configs.push(OpConfig {
-                kind: OpKind::NotMissingCount,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("mode") {
-        for (i, val) in indices.zip(matches.get_many::<String>("mode").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Mode,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("geomean") {
-        for (i, val) in indices.zip(matches.get_many::<String>("geomean").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::GeoMean,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("harmmean") {
-        for (i, val) in indices.zip(matches.get_many::<String>("harmmean").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::HarmMean,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("q1") {
-        for (i, val) in indices.zip(matches.get_many::<String>("q1").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Q1,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("q3") {
-        for (i, val) in indices.zip(matches.get_many::<String>("q3").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Q3,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("iqr") {
-        for (i, val) in indices.zip(matches.get_many::<String>("iqr").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::IQR,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("cv") {
-        for (i, val) in indices.zip(matches.get_many::<String>("cv").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::CV,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("range") {
-        for (i, val) in indices.zip(matches.get_many::<String>("range").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Range,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
+    parse_op!("sum", OpKind::Sum);
+    parse_op!("mean", OpKind::Mean);
+    parse_op!("min", OpKind::Min);
+    parse_op!("max", OpKind::Max);
+    parse_op!("median", OpKind::Median);
+    parse_op!("stdev", OpKind::Stdev);
+    parse_op!("variance", OpKind::Variance);
+    parse_op!("mad", OpKind::Mad);
+    parse_op!("first", OpKind::First);
+    parse_op!("last", OpKind::Last);
+    parse_op!("nunique", OpKind::NUnique);
+    parse_op!("mode", OpKind::Mode);
+    parse_op!("mode-count", OpKind::ModeCount);
+    parse_op!("missing-count", OpKind::MissingCount);
+    parse_op!("not-missing-count", OpKind::NotMissingCount);
+    parse_op!("geomean", OpKind::GeoMean);
+    parse_op!("harmmean", OpKind::HarmMean);
+    parse_op!("q1", OpKind::Q1);
+    parse_op!("q3", OpKind::Q3);
+    parse_op!("iqr", OpKind::IQR);
+    parse_op!("cv", OpKind::CV);
+    parse_op!("range", OpKind::Range);
+    parse_op!("values", OpKind::Collapse);
+    parse_op!("unique-values", OpKind::Unique);
+    parse_op!("rand", OpKind::Rand);
+
     if let Some(indices) = matches.indices_of("quantile") {
         for (i, val) in indices.zip(matches.get_many::<String>("quantile").unwrap()) {
             // val format: "fields:probs[:header]" e.g. "1,2:0.5,0.9:MyQ"
@@ -546,37 +260,6 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     arg_index: i,
                 });
             }
-        }
-    }
-
-    if let Some(indices) = matches.indices_of("values") {
-        for (i, val) in indices.zip(matches.get_many::<String>("values").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Collapse,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-
-    if let Some(indices) = matches.indices_of("unique-values") {
-        for (i, val) in indices.zip(matches.get_many::<String>("unique-values").unwrap())
-        {
-            op_configs.push(OpConfig {
-                kind: OpKind::Unique,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-
-    if let Some(indices) = matches.indices_of("rand") {
-        for (i, val) in indices.zip(matches.get_many::<String>("rand").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Rand,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
         }
     }
 
