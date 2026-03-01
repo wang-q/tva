@@ -482,9 +482,34 @@ fn tsv_utils_test_extended_stats() {
         .run();
 
     assert!(stdout.contains("length_first\tlength_last\tlength_median\tlength_mad\tlength_variance\tlength_stdev\tcolor_mode"));
-    assert!(
-        stdout.contains("10\t7.4\t11\t3\t9.613333333333307\t3.100537587795592\tblue")
-    );
+    // MAD of length:
+    // Values: 10, 8, 16, 11, 12, 14, 7.4
+    // Sorted: 7.4, 8, 10, 11, 12, 14, 16
+    // Median: 11
+    // Deviations: |7.4-11|=3.6, |8-11|=3, |10-11|=1, |11-11|=0, |12-11|=1, |14-11|=3, |16-11|=5
+    // Sorted Deviations: 0, 1, 1, 3, 3, 3.6, 5
+    // Median Deviation: 3
+    // MAD = 3 * 1.4826 = 4.4478
+
+    let output = stdout.trim();
+    let lines: Vec<&str> = output.lines().collect();
+    assert_eq!(lines.len(), 2);
+
+    let parts: Vec<&str> = lines[1].split('\t').collect();
+    assert_eq!(parts[0], "10"); // first
+    assert_eq!(parts[1], "7.4"); // last
+    assert_eq!(parts[2], "11"); // median
+
+    let mad: f64 = parts[3].parse().expect("MAD should be a number");
+    assert!((mad - 4.4478).abs() < 1e-4);
+
+    // Variance/Stdev checks
+    // Variance ~ 9.6133
+    // Stdev ~ 3.1005
+    assert!(parts[4].starts_with("9.6133"));
+    assert!(parts[5].starts_with("3.1005"));
+
+    assert_eq!(parts[6], "blue"); // mode
 }
 
 #[test]

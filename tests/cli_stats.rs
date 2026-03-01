@@ -102,7 +102,18 @@ fn stats_mad() {
         .stdin(INPUT)
         .run();
 
-    assert_eq!(stdout, "value_mad\n15\n");
+    // Data: 10, 20, 30, 40, 50, 60
+    // Median: 35
+    // Deviations: |10-35|=25, |20-35|=15, |30-35|=5, |40-35|=5, |50-35|=15, |60-35|=25
+    // Sorted Deviations: 5, 5, 15, 15, 25, 25
+    // Median Deviation: (15 + 15) / 2 = 15
+    // MAD = 15 * 1.4826 = 22.239
+    let output = stdout.trim();
+    let lines: Vec<&str> = output.lines().collect();
+    assert_eq!(lines.len(), 2); // Header + Value
+    assert_eq!(lines[0], "value_mad");
+    let mad: f64 = lines[1].parse().expect("MAD should be a number");
+    assert!((mad - 22.239).abs() < 1e-6);
 }
 
 #[test]

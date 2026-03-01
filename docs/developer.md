@@ -35,24 +35,7 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 
 `rust-csv` (BurntSushi/rust-csv) 是 Rust 生态中最权威的 CSV 解析库，也是 `tva` 的核心依赖之一。对其源码的分析有助于指导 `tva` 的底层优化和功能扩展。
 
-#### 核心架构
-
-该项目采用多 crate 架构，实现了分层抽象：
-
-1.  **`csv-core` (核心状态机)**:
-    *   **定位**: 无 `std` 依赖的裸机 CSV 解析器。
-    *   **实现**: 基于确定性有限自动机 (DFA) 的状态机。
-    *   **特点**: 极致的性能，专注于字节流的处理，不涉及 I/O 或内存分配。
-    *   **启示**: `tva` 的高性能流式处理很大程度上归功于此。如果需要自定义复杂的解析逻辑（如特殊的转义规则），可能需要深入此层。
-
-2.  **`csv` (高层 API)**:
-    *   **定位**: 提供易用的 `Reader` 和 `Writer` 接口，集成 `serde`。
-    *   **实现**: 封装 `csv-core`，处理缓冲 (Buffering)、I/O、UTF-8 验证和记录解析。
-    *   **关键特性**:
-        *   **ByteRecord**: 零拷贝解析的核心。它存储原始字节，避免了 UTF-8 校验和内存分配的开销，直到用户真正需要字符串时才转换。这对于 `tva filter` 和 `select` 等操作至关重要。
-        *   **Serde 集成**: 提供了极其方便的 `deserialize` 接口，但对于极致性能场景（如 `tva` 的大部分命令），通常优先使用 `ByteRecord` API。
-
-3.  **`csv-index` (索引机制)**:
+**`csv-index` (索引机制)**:
     *   **定位**: 提供 CSV 文件的随机访问能力。
     *   **实现**: 创建辅助的索引文件（通常是 `.idx`），记录每行（或每块）的字节偏移量。
     *   **价值**: 这是 `qsv` 能够瞬间完成切片 (`slice`) 和统计计数 (`count`) 的秘密武器。
@@ -60,11 +43,6 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
         *   目前 `tva` 是纯流式的，这对于单次扫描非常高效。
         *   但对于需要多次扫描或随机访问大文件的场景（如 `sample --random-access` 或大文件 `slice`），引入 `csv-index` 是实现性能飞跃的关键。
         *   **行动项**: 研究将 `csv-index` 集成到 `tva` 的 `input` 层，允许用户为大文件生成索引，从而加速后续操作。
-
-#### 性能优化借鉴
-
-*   **缓冲策略**: `rust-csv` 内部使用了精细调整的缓冲区。`tva` 在处理 I/O 时应确保始终使用 `BufReader` 和 `BufWriter` 包装器（`src/libs/io.rs` 中已实现）。
-*   **SIMD**: 虽然 `csv-core` 本身是标量实现，但现代 CSV 解析器（如 `simd-csv`）利用 SIMD 指令集可获得数倍性能提升。
 
 ### 参考项目: simd-csv
 
@@ -85,45 +63,35 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 3.  **流式支持**:
     *   与某些 SIMD 解析器要求全量加载不同，此 crate 明确支持流式处理 (`streaming`)，这使其成为 `tva` 的潜在高性能后端候选。
 
-#### 对 `tva` 的启示与潜在集成
+### 参考项目: GNU Datamash
 
-*   **特定场景加速**:
-    *   **行计数 (`tva nl --count`)**: 使用 `Splitter` 可能获得 4-6 倍的性能提升。
-    *   **简单切片/过滤**: 如果确定数据无复杂转义，`ZeroCopyReader` 可大幅加速 `slice` 或简单 `filter`。
-*   **作为可选后端**:
-    *   考虑到其 API 不如 `csv` crate 友好且灵活性较低（例如对编码支持、非标准方言的处理），不建议完全替换 `csv`。
-    *   **建议**: 可以在 `tva` 内部抽象一个 `Reader` trait，默认使用 `csv`，但在用户显式开启 `--fast` 标志或检测到简单数据时，切换到 `simd-csv` 后端。
-*   **性能权衡**:
-    *   README 指出在 worst-case（如全数字短字段）下性能提升微乎其微。因此集成时需谨慎评估引入依赖的成本与收益。
+`datamash` 是命令行统计分析的标杆工具。`tva` 可以借鉴其在数据验证和交叉制表方面的设计。
 
-#### 深度分析: simd-csv 为何最快?
+#### 1. 结构验证 (Check / Validation)
+*   **功能**: `check` 命令。
+*   **特性**:
+    *   **Fail-fast**: 在管道中尽早发现格式错误（如字段数不一致）。
+    *   **上下文报错**: 报错时提供具体的行号和内容。
+*   **借鉴**: `tva` 目前已通过 `check` 命令实现了核心的结构一致性检查，具备 Fail-fast 和上下文报错特性，满足大多数数据验证需求。Datamash 的显式行/列数断言可作为未来可选的增强功能。
 
-`simd-csv` 能够达到 1.12 GiB/s 的惊人速度，比 `csv` crate 快 60% 以上。通过分析其源码，我们发现了以下关键技术：
+#### 2. 交叉制表 (Crosstab / Pivot Table)
+*   **功能**: `crosstab` 命令。
+*   **特性**:
+    *   计算两个分类变量之间的关系矩阵。
+    *   支持 `count` (默认), `sum`, `unique` 等聚合操作。
+*   **借鉴**: `tva` 目前通过 `wider` 实现类似功能，但 `crosstab` 作为一种专门的统计视图，其简洁性（自动处理行列标签）值得参考。
 
-1.  **混合架构 (Hybrid Architecture)**:
-    `simd-csv` 并不是纯 SIMD 解析器，而是一个混合体：
-    *   **CoreReader (core.rs)**: 维护状态机 (Unquoted, Quoted, Quote)。
-    *   **Searcher (searcher.rs)**: 使用 SIMD (`memchr` 或 SSE2/AVX2 intrinsic) 快速跳过普通字符。
+#### 3. 数值提取 (Numeric Extraction)
+*   **功能**: `getnum` 操作。
+*   **特性**: 从混合文本中提取数字（如 "zoom-123.45xyz" -> 123.45）。
+*   **借鉴**: 这在处理脏数据时非常有用，可以作为 `filter` 或 `mutate` (待开发) 的一种转换函数。
 
-2.  **Searcher 的核心逻辑**:
-    在 `CoreReader::split_record` 中，它利用 SIMD 指令一次性扫描多个特殊字符（分隔符、换行符、引号）。这比逐字节查表（`csv` crate 的做法）更快，因为在大多数 CSV 数据中，特殊字符是稀疏的。
-
-3.  **SSE2/AVX2 手写 Intrinsic**:
-    `searcher.rs` 中包含了手写的 SSE2 实现：
-    *   加载 16 字节到向量寄存器 (`_mm_loadu_si128`)。
-    *   并行比较分隔符、换行符、引号 (`_mm_cmpeq_epi8`)。
-    *   使用 `_mm_movemask_epi8` 将比较结果提取为位掩码。
-    *   使用 `trailing_zeros` 快速找到第一个匹配位置。
-
-### 参考项目: xan
-
-`xan` (前身为 `xsv` 的 fork) 是一个功能极强的 CSV/TSV 工具集。通过分析其源码，我们可以为 `tva` 汲取以下几个关键的架构和功能灵感。
-
-#### 1. 并行处理架构 (Parallel Processing)
-
-*   **实现**: `cmd/parallel.rs`
-*   **机制**: 类似于 Map-Reduce。它不试图让每个命令内部并行化，而是提供一个通用的 `parallel` 子命令。
-    *   **Chunking**: 自动将文件分块，或按文件分发任务。
+#### 4. 丰富的统计指标
+*   **特性**: 除了基础的 sum/mean，还支持：
+    *   **稳健统计**: `mad` (中位数绝对偏差), `trimmean` (截尾均值)。
+    *   **分布检验**: `jarque` (正态性检验), `dpo` (Omnibus 检验)。
+    *   **高级均值**: `geomean` (几何平均), `harmmean` (调和平均)。
+*   **借鉴**: `tva stats` 可以逐步补充这些高级统计指标，满足更专业的分析需求。
 *   **对 `tva` 的启示**:
     *   `tva` 目前是单线程流式处理。
     *   **建议**: 实现 `tva parallel` 命令，负责将大文件切分 (利用 `split` 逻辑) 并启动多个子进程/线程处理，最后聚合结果。

@@ -1,30 +1,91 @@
+//! Statistical operations and aggregations.
+//!
+//! This module provides a set of tools for performing statistical analysis on data streams.
+//! It is designed to be efficient and work in a single pass where possible (e.g., Sum, Mean, Min, Max),
+//! but also supports multi-pass operations (e.g., Median, MAD) by buffering necessary data.
+//!
+//! # Key Components
+//!
+//! - [`OpKind`]: Enumeration of supported statistical operations.
+//! - [`StatsProcessor`]: The main engine that configures and executes statistical operations.
+//! - [`Aggregator`]: Holds the intermediate state during aggregation.
+//! - [`Cell`]: A specialized aggregator for single-value cells (used in pivoting).
+//!
+//! # Example
+//!
+//! ```rust,ignore
+//! use tva::libs::stats::{OpKind, Operation, StatsProcessor};
+//!
+//! // Define operations: Sum of field 0, Mean of field 1
+//! let ops = vec![
+//!     Operation { kind: OpKind::Sum, field_idx: Some(0) },
+//!     Operation { kind: OpKind::Mean, field_idx: Some(1) },
+//! ];
+//!
+//! let processor = StatsProcessor::new(ops);
+//! let mut agg = processor.create_aggregator();
+//!
+//! // Update with rows...
+//! // processor.update(&mut agg, &row);
+//!
+//! // Get results
+//! let results = processor.format_results(&agg);
+//! ```
+
 use crate::libs::tsv::record::Row;
 use std::collections::HashMap;
 
+/// Supported statistical operations.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OpKind {
+    /// Count of rows.
     Count,
+    /// Sum of values.
     Sum,
+    /// Arithmetic mean (average).
     Mean,
+    /// Minimum value.
     Min,
+    /// Maximum value.
     Max,
+    /// Median (50th percentile).
     Median,
+    /// First quartile (25th percentile).
     Q1,
+    /// Third quartile (75th percentile).
     Q3,
+    /// Interquartile range (Q3 - Q1).
     IQR,
+    /// Sample standard deviation (Bessel's correction).
     Stdev,
+    /// Coefficient of variation (stdev / mean).
     CV,
+    /// Sample variance (Bessel's correction).
     Variance,
+    /// Median Absolute Deviation (MAD).
+    /// Scaled by 1.4826 to be a consistent estimator for the standard deviation
+    /// of a normal distribution.
+    /// Formula: 1.4826 * median(|x_i - median(x)|)
     Mad,
+    /// Range (Max - Min).
     Range,
+    /// First value encountered.
     First,
+    /// Last value encountered.
     Last,
+    /// Number of unique values.
     NUnique,
+    /// Most frequent value.
     Mode,
+    /// Geometric mean.
     GeoMean,
+    /// Harmonic mean.
     HarmMean,
+    /// Comma-separated list of unique values.
     Unique,
+    /// Comma-separated list of all values.
     Collapse,
+    /// Randomly selected value from the group.
     Rand,
 }
 
@@ -1318,5 +1379,90 @@ mod tests {
         assert_eq!(results[0], "10"); // First
         assert_eq!(results[1], "20"); // Last
         assert_eq!(results[2], "15"); // Range (20 - 5)
+    }
+
+    #[test]
+    fn test_collapse_rand() {
+        let ops = vec![
+            Operation {
+                kind: OpKind::Collapse,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Rand,
+                field_idx: Some(0),
+            },
+        ];
+        let processor = StatsProcessor::new(ops);
+        let mut agg = processor.create_aggregator();
+
+        // Data: A, B, C
+        let data = vec!["A", "B", "C"];
+        for v in &data {
+            let row = TestRow {
+                fields: vec![v.to_string()],
+            };
+            processor.update(&mut agg, &row);
+        }
+
+        let results = processor.format_results(&agg);
+        assert_eq!(results[0], "A,B,C"); // Collapse
+        assert!(data.contains(&results[1].as_str())); // Rand
+    }
+
+    #[test]
+    fn test_empty_input() {
+        let ops = vec![
+            Operation {
+                kind: OpKind::Sum,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Mean,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Min,
+                field_idx: Some(0),
+            },
+        ];
+        let processor = StatsProcessor::new(ops);
+        let agg = processor.create_aggregator();
+
+        let results = processor.format_results(&agg);
+        assert_eq!(results[0], "0"); // Sum default 0
+        assert_eq!(results[1], "nan"); // Mean
+        assert_eq!(results[2], "nan"); // Min
+    }
+
+    #[test]
+    fn test_single_value_stats() {
+        let ops = vec![
+            Operation {
+                kind: OpKind::Stdev,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Variance,
+                field_idx: Some(0),
+            },
+            Operation {
+                kind: OpKind::Mad,
+                field_idx: Some(0),
+            },
+        ];
+        let processor = StatsProcessor::new(ops);
+        let mut agg = processor.create_aggregator();
+
+        // Data: 5
+        let row = TestRow {
+            fields: vec!["5".to_string()],
+        };
+        processor.update(&mut agg, &row);
+
+        let results = processor.format_results(&agg);
+        assert_eq!(results[0], "nan"); // Stdev (needs count > 1)
+        assert_eq!(results[1], "nan"); // Variance (needs count > 1)
+        assert_eq!(results[2], "0"); // MAD (deviation is 0)
     }
 }
