@@ -1,4 +1,4 @@
-//! Helpers for formatting numbers for human-readable output.
+//! Helpers for formatting output.
 //!
 //! The main entry point is [`format_number`], which formats a `f64` using
 //! thousands separators and a configurable number of decimal digits.
@@ -6,7 +6,7 @@
 //! Basic usage:
 //!
 //! ```
-//! use tva::libs::number::format_number;
+//! use tva::libs::fmt::format_number;
 //!
 //! assert_eq!(format_number(1234.5, 1), "1,234.5");
 //! assert_eq!(format_number(-1000.0, 0), "-1,000");

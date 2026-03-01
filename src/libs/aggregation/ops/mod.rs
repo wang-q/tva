@@ -1,9 +1,9 @@
 pub mod basic;
 pub mod mean;
-pub mod variance;
 pub mod quantile;
 pub mod set;
 pub mod text;
+pub mod variance;
 
 use crate::libs::tsv::record::Row;
 

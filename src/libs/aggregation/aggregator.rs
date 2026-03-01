@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use super::math;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Aggregator {

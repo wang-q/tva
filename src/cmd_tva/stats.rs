@@ -1,7 +1,8 @@
 use crate::libs::aggregation::{Aggregator, OpKind, Operation, StatsProcessor};
+use crate::libs::fmt::format_number;
 use crate::libs::io::map_io_err;
-use crate::libs::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::fields;
+use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::reader::TsvReader;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::collections::HashMap;

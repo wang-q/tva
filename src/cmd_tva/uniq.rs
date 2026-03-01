@@ -1,5 +1,5 @@
 use crate::libs::io::map_io_err;
-use crate::libs::key::KeyExtractor;
+use crate::libs::tsv::key::KeyExtractor;
 use crate::libs::tsv::reader::TsvReader;
 use clap::*;
 use rapidhash::rapidhash;

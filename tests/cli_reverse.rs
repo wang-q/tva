@@ -138,18 +138,18 @@ fn reverse_multi_file() {
     // Note: tva reverse currently reverses each file individually and concatenates the results.
     // This is different from `tac file1 file2` which reverses the concatenated stream (file2 then file1).
     // We are testing the current behavior of tva.
-    
+
     let file1_content = "1\n2\n";
     let file2_content = "3\n4\n";
-    
+
     // Using tempfiles
     let temp_dir = tempfile::tempdir().unwrap();
     let file1_path = temp_dir.path().join("file1.tsv");
     let file2_path = temp_dir.path().join("file2.tsv");
-    
+
     fs::write(&file1_path, file1_content).unwrap();
     fs::write(&file2_path, file2_content).unwrap();
-    
+
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "reverse",
@@ -157,12 +157,12 @@ fn reverse_multi_file() {
             file2_path.to_str().unwrap(),
         ])
         .run();
-        
+
     // file1 reversed: "2\n1\n"
     // file2 reversed: "4\n3\n"
     // concatenated: "2\n1\n4\n3\n"
     let expected = "2\n1\n4\n3\n";
-    
+
     assert_eq!(stdout, expected);
 }
 
@@ -174,17 +174,17 @@ fn reverse_multi_file_header() {
     // `header_printed` is passed to `process_buffer`.
     // Once printed (in first file), it stays true.
     // So subsequent files are processed as pure data (reversed fully).
-    
+
     let file1_content = "Header\n1\n";
     let file2_content = "2\n3\n";
-    
+
     let temp_dir = tempfile::tempdir().unwrap();
     let file1_path = temp_dir.path().join("file1.tsv");
     let file2_path = temp_dir.path().join("file2.tsv");
-    
+
     fs::write(&file1_path, file1_content).unwrap();
     fs::write(&file2_path, file2_content).unwrap();
-    
+
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "reverse",
@@ -193,12 +193,12 @@ fn reverse_multi_file_header() {
             file2_path.to_str().unwrap(),
         ])
         .run();
-        
+
     // file1: Header printed. "1\n" reversed -> "1\n". Output: "Header\n1\n"
     // file2: header_printed=true. "2\n3\n" reversed -> "3\n2\n".
     // Output total: "Header\n1\n3\n2\n"
     let expected = "Header\n1\n3\n2\n";
-    
+
     assert_eq!(stdout, expected);
 }
 
@@ -209,17 +209,17 @@ fn reverse_multi_file_header_empty_first() {
     // Implementation:
     // process_buffer(file1): empty -> returns. header_printed=false.
     // process_buffer(file2): finds header -> prints. header_printed=true.
-    
+
     let file1_content = "";
     let file2_content = "Header\n1\n";
-    
+
     let temp_dir = tempfile::tempdir().unwrap();
     let file1_path = temp_dir.path().join("file1.tsv");
     let file2_path = temp_dir.path().join("file2.tsv");
-    
+
     fs::write(&file1_path, file1_content).unwrap();
     fs::write(&file2_path, file2_content).unwrap();
-    
+
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "reverse",
@@ -228,10 +228,10 @@ fn reverse_multi_file_header_empty_first() {
             file2_path.to_str().unwrap(),
         ])
         .run();
-        
+
     // file1: nothing.
     // file2: Header found. Output: "Header\n1\n"
     let expected = "Header\n1\n";
-    
+
     assert_eq!(stdout, expected);
 }

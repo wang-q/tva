@@ -1,7 +1,7 @@
 use super::aggregator::Aggregator;
-use super::{OpKind, Operation};
-use super::traits::Calculator;
 use super::ops::*;
+use super::traits::Calculator;
+use super::{OpKind, Operation};
 use crate::libs::tsv::record::Row;
 use std::collections::HashMap;
 
@@ -26,7 +26,7 @@ pub struct StatsProcessor {
 impl StatsProcessor {
     pub fn new(ops: Vec<Operation>) -> Self {
         let mut calculators: Vec<Box<dyn Calculator>> = Vec::new();
-        
+
         // Maps from (field_idx, op_kind_discriminant) to slot_idx
         // We use OpKind as part of the key because different operations on the same field
         // might need different slots (e.g. Sum vs Mean both use sum_slot, but they should be distinct
@@ -51,7 +51,7 @@ impl StatsProcessor {
         // that iterated over fields and applied all updates at once.
         // Now that we have decoupled Calculators, each Calculator is an independent entity that drives its own updates.
         // Sharing mutable state (slots) between them without coordination causes the double-update bug.
-        
+
         // So, we will remove the HashMaps and just increment counters.
         // This might use slightly more memory (e.g. Sum and Mean on same field won't share the sum slot),
         // but it guarantees correctness with the decoupled architecture.
@@ -80,21 +80,30 @@ impl StatsProcessor {
                     if let Some(idx) = op.field_idx {
                         let slot = num_sums;
                         num_sums += 1;
-                        calculators.push(Box::new(basic::Sum { field_idx: idx, sum_slot: slot }));
+                        calculators.push(Box::new(basic::Sum {
+                            field_idx: idx,
+                            sum_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Min => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_mins;
                         num_mins += 1;
-                        calculators.push(Box::new(basic::Min { field_idx: idx, min_slot: slot }));
+                        calculators.push(Box::new(basic::Min {
+                            field_idx: idx,
+                            min_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Max => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_maxs;
                         num_maxs += 1;
-                        calculators.push(Box::new(basic::Max { field_idx: idx, max_slot: slot }));
+                        calculators.push(Box::new(basic::Max {
+                            field_idx: idx,
+                            max_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Range => {
@@ -103,7 +112,11 @@ impl StatsProcessor {
                         num_mins += 1;
                         let max_slot = num_maxs;
                         num_maxs += 1;
-                        calculators.push(Box::new(basic::Range { field_idx: idx, min_slot, max_slot }));
+                        calculators.push(Box::new(basic::Range {
+                            field_idx: idx,
+                            min_slot,
+                            max_slot,
+                        }));
                     }
                 }
                 OpKind::Mean => {
@@ -112,7 +125,11 @@ impl StatsProcessor {
                         num_sums += 1;
                         let count_slot = num_counts;
                         num_counts += 1;
-                        calculators.push(Box::new(mean::Mean { field_idx: idx, sum_slot, count_slot }));
+                        calculators.push(Box::new(mean::Mean {
+                            field_idx: idx,
+                            sum_slot,
+                            count_slot,
+                        }));
                     }
                 }
                 OpKind::GeoMean => {
@@ -121,7 +138,11 @@ impl StatsProcessor {
                         num_sum_logs += 1;
                         let count_slot = num_counts;
                         num_counts += 1;
-                        calculators.push(Box::new(mean::GeoMean { field_idx: idx, sum_log_slot, count_slot }));
+                        calculators.push(Box::new(mean::GeoMean {
+                            field_idx: idx,
+                            sum_log_slot,
+                            count_slot,
+                        }));
                     }
                 }
                 OpKind::HarmMean => {
@@ -130,7 +151,11 @@ impl StatsProcessor {
                         num_sum_invs += 1;
                         let count_slot = num_counts;
                         num_counts += 1;
-                        calculators.push(Box::new(mean::HarmMean { field_idx: idx, sum_inv_slot, count_slot }));
+                        calculators.push(Box::new(mean::HarmMean {
+                            field_idx: idx,
+                            sum_inv_slot,
+                            count_slot,
+                        }));
                     }
                 }
                 OpKind::Variance => {
@@ -141,7 +166,12 @@ impl StatsProcessor {
                         num_sum_sqs += 1;
                         let count_slot = num_counts;
                         num_counts += 1;
-                        calculators.push(Box::new(variance::Variance { field_idx: idx, sum_slot, sum_sq_slot, count_slot }));
+                        calculators.push(Box::new(variance::Variance {
+                            field_idx: idx,
+                            sum_slot,
+                            sum_sq_slot,
+                            count_slot,
+                        }));
                     }
                 }
                 OpKind::Stdev => {
@@ -152,7 +182,12 @@ impl StatsProcessor {
                         num_sum_sqs += 1;
                         let count_slot = num_counts;
                         num_counts += 1;
-                        calculators.push(Box::new(variance::Stdev { field_idx: idx, sum_slot, sum_sq_slot, count_slot }));
+                        calculators.push(Box::new(variance::Stdev {
+                            field_idx: idx,
+                            sum_slot,
+                            sum_sq_slot,
+                            count_slot,
+                        }));
                     }
                 }
                 OpKind::CV => {
@@ -163,91 +198,132 @@ impl StatsProcessor {
                         num_sum_sqs += 1;
                         let count_slot = num_counts;
                         num_counts += 1;
-                        calculators.push(Box::new(variance::CV { field_idx: idx, sum_slot, sum_sq_slot, count_slot }));
+                        calculators.push(Box::new(variance::CV {
+                            field_idx: idx,
+                            sum_slot,
+                            sum_sq_slot,
+                            count_slot,
+                        }));
                     }
                 }
                 OpKind::Median => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_values;
                         num_values += 1;
-                        calculators.push(Box::new(quantile::Median { field_idx: idx, values_slot: slot }));
+                        calculators.push(Box::new(quantile::Median {
+                            field_idx: idx,
+                            values_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Q1 => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_values;
                         num_values += 1;
-                        calculators.push(Box::new(quantile::Q1 { field_idx: idx, values_slot: slot }));
+                        calculators.push(Box::new(quantile::Q1 {
+                            field_idx: idx,
+                            values_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Q3 => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_values;
                         num_values += 1;
-                        calculators.push(Box::new(quantile::Q3 { field_idx: idx, values_slot: slot }));
+                        calculators.push(Box::new(quantile::Q3 {
+                            field_idx: idx,
+                            values_slot: slot,
+                        }));
                     }
                 }
                 OpKind::IQR => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_values;
                         num_values += 1;
-                        calculators.push(Box::new(quantile::IQR { field_idx: idx, values_slot: slot }));
+                        calculators.push(Box::new(quantile::IQR {
+                            field_idx: idx,
+                            values_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Mad => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_values;
                         num_values += 1;
-                        calculators.push(Box::new(quantile::Mad { field_idx: idx, values_slot: slot }));
+                        calculators.push(Box::new(quantile::Mad {
+                            field_idx: idx,
+                            values_slot: slot,
+                        }));
                     }
                 }
                 OpKind::First => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_firsts;
                         num_firsts += 1;
-                        calculators.push(Box::new(text::First { field_idx: idx, first_slot: slot }));
+                        calculators.push(Box::new(text::First {
+                            field_idx: idx,
+                            first_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Last => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_lasts;
                         num_lasts += 1;
-                        calculators.push(Box::new(text::Last { field_idx: idx, last_slot: slot }));
+                        calculators.push(Box::new(text::Last {
+                            field_idx: idx,
+                            last_slot: slot,
+                        }));
                     }
                 }
                 OpKind::NUnique => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_value_counts;
                         num_value_counts += 1;
-                        calculators.push(Box::new(set::NUnique { field_idx: idx, value_counts_slot: slot }));
+                        calculators.push(Box::new(set::NUnique {
+                            field_idx: idx,
+                            value_counts_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Mode => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_value_counts;
                         num_value_counts += 1;
-                        calculators.push(Box::new(set::Mode { field_idx: idx, value_counts_slot: slot }));
+                        calculators.push(Box::new(set::Mode {
+                            field_idx: idx,
+                            value_counts_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Unique => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_value_counts;
                         num_value_counts += 1;
-                        calculators.push(Box::new(set::Unique { field_idx: idx, value_counts_slot: slot }));
+                        calculators.push(Box::new(set::Unique {
+                            field_idx: idx,
+                            value_counts_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Collapse => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_string_values;
                         num_string_values += 1;
-                        calculators.push(Box::new(text::Collapse { field_idx: idx, string_values_slot: slot }));
+                        calculators.push(Box::new(text::Collapse {
+                            field_idx: idx,
+                            string_values_slot: slot,
+                        }));
                     }
                 }
                 OpKind::Rand => {
                     if let Some(idx) = op.field_idx {
                         let slot = num_string_values;
                         num_string_values += 1;
-                        calculators.push(Box::new(text::Rand { field_idx: idx, string_values_slot: slot }));
+                        calculators.push(Box::new(text::Rand {
+                            field_idx: idx,
+                            string_values_slot: slot,
+                        }));
                     }
                 }
             }

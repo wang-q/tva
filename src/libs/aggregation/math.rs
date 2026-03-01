@@ -92,14 +92,12 @@ pub fn mad(sorted_vals: &[f64]) -> f64 {
         return f64::NAN;
     }
     let median = quantile(sorted_vals, 0.5);
-    
-    let mut deviations: Vec<f64> = sorted_vals
-        .iter()
-        .map(|v| (v - median).abs())
-        .collect();
+
+    let mut deviations: Vec<f64> =
+        sorted_vals.iter().map(|v| (v - median).abs()).collect();
     // We need to sort deviations to find their median
     deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    
+
     let mad_val = quantile(&deviations, 0.5);
     // Scale by 1.4826 to be consistent with normal distribution (like R's mad)
     mad_val * 1.4826

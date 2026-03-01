@@ -57,6 +57,9 @@ fn arg_error(msg: &str) -> ! {
 }
 
 use crate::libs::io::map_io_err;
+use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::select;
+use crate::libs::tsv::select::SelectPlan;
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
@@ -97,7 +100,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut exclude_indices: Option<Vec<usize>> = None;
     let mut exclude_set: Option<HashSet<usize>> = None;
 
-    let mut select_plan: Option<crate::libs::select::SelectPlan> = None;
+    let mut select_plan: Option<SelectPlan> = None;
     let mut output_ranges: Vec<Range<usize>> = Vec::new();
 
     let delim_byte = delimiter as u8;
@@ -200,9 +203,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             if let Some(ref idxs) = field_indices {
                 if select_plan.is_none() {
-                    select_plan = Some(crate::libs::select::SelectPlan::new(idxs));
+                    select_plan = Some(SelectPlan::new(idxs));
                 }
-                crate::libs::select::write_selected_from_bytes(
+                select::write_selected_from_bytes(
                     &mut writer,
                     line_bytes,
                     delim_byte,
@@ -210,7 +213,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     &mut output_ranges,
                 )?;
             } else if let Some(ref ex_set) = exclude_set {
-                crate::libs::select::write_excluding_from_bytes(
+                select::write_excluding_from_bytes(
                     &mut writer,
                     line_bytes,
                     delim_byte,

@@ -1,6 +1,6 @@
-use crate::libs::aggregation::{Aggregator, Calculator};
-use crate::libs::aggregation::ops::parse_float;
 use crate::libs::aggregation::math;
+use crate::libs::aggregation::ops::parse_float;
+use crate::libs::aggregation::{Aggregator, Calculator};
 use crate::libs::tsv::record::Row;
 
 pub struct Median {
@@ -21,7 +21,11 @@ impl Calculator for Median {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let res = math::quantile(&sorted_vals, 0.5);
-            if res.is_nan() { "nan".to_string() } else { res.to_string() }
+            if res.is_nan() {
+                "nan".to_string()
+            } else {
+                res.to_string()
+            }
         } else {
             "nan".to_string()
         }
@@ -46,7 +50,11 @@ impl Calculator for Q1 {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let res = math::quantile(&sorted_vals, 0.25);
-            if res.is_nan() { "nan".to_string() } else { res.to_string() }
+            if res.is_nan() {
+                "nan".to_string()
+            } else {
+                res.to_string()
+            }
         } else {
             "nan".to_string()
         }
@@ -71,7 +79,11 @@ impl Calculator for Q3 {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let res = math::quantile(&sorted_vals, 0.75);
-            if res.is_nan() { "nan".to_string() } else { res.to_string() }
+            if res.is_nan() {
+                "nan".to_string()
+            } else {
+                res.to_string()
+            }
         } else {
             "nan".to_string()
         }
@@ -98,7 +110,11 @@ impl Calculator for IQR {
             let q1 = math::quantile(&sorted_vals, 0.25);
             let q3 = math::quantile(&sorted_vals, 0.75);
             let res = q3 - q1;
-            if res.is_nan() { "nan".to_string() } else { res.to_string() }
+            if res.is_nan() {
+                "nan".to_string()
+            } else {
+                res.to_string()
+            }
         } else {
             "nan".to_string()
         }
@@ -123,7 +139,11 @@ impl Calculator for Mad {
             let mut sorted_vals = vals.clone();
             sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let res = math::mad(&sorted_vals);
-            if res.is_nan() { "nan".to_string() } else { res.to_string() }
+            if res.is_nan() {
+                "nan".to_string()
+            } else {
+                res.to_string()
+            }
         } else {
             "nan".to_string()
         }

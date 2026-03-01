@@ -1,5 +1,5 @@
-use crate::libs::aggregation::{Aggregator, Calculator};
 use crate::libs::aggregation::ops::parse_float;
+use crate::libs::aggregation::{Aggregator, Calculator};
 use crate::libs::tsv::record::Row;
 
 pub struct Count;

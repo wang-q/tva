@@ -158,7 +158,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         && is_numeric_column[j]
                     {
                         if let Ok(num) = value.parse::<f64>() {
-                            crate::libs::number::format_number(num, opt_digits)
+                            crate::libs::fmt::format_number(num, opt_digits)
                         } else {
                             value.to_string()
                         }

@@ -1,9 +1,15 @@
-use crate::libs::key::{KeyBuffer, KeyExtractor};
+use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
+use crate::libs::tsv::select::SelectPlan;
 use ahash::RandomState;
 use clap::*;
-use std::collections::HashMap;
-use std::io::Write;
+use memchr::memchr;
+use std::collections::{HashMap, HashSet};
+use std::io::{self, BufWriter, Write};
 use std::ops::Range;
+
+use crate::libs::io::map_io_err;
+use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::select::{write_excluding_from_bytes, write_selected_from_bytes};
 
 pub fn make_subcommand() -> Command {
     Command::new("join")
@@ -152,7 +158,7 @@ fn parse_append_field_spec(
 fn extract_values(
     line: &[u8],
     delimiter: u8,
-    plan: &crate::libs::select::SelectPlan,
+    plan: &crate::libs::tsv::select::SelectPlan,
     ranges_buf: &mut Vec<Range<usize>>,
 ) -> Vec<u8> {
     if let Err(idx) = plan.extract_ranges(line, delimiter, ranges_buf) {
@@ -265,7 +271,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         KeyExtractor::new(filter_key_indices.clone(), false, true);
     let append_plan = append_indices
         .as_ref()
-        .map(|idxs| crate::libs::select::SelectPlan::new(idxs));
+        .map(|idxs| crate::libs::tsv::select::SelectPlan::new(idxs));
 
     // Map: Key -> Appended Values (as bytes)
     let mut filter_map: HashMap<KeyBuffer, Vec<u8>, RandomState> =

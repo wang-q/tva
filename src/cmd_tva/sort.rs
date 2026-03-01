@@ -1,4 +1,4 @@
-use crate::libs::key::{KeyBuffer, KeyExtractor};
+use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::record::TsvRecord;
 use clap::*;
 use intspan::IntSpan;

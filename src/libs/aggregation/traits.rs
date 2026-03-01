@@ -6,7 +6,7 @@ use crate::libs::tsv::record::Row;
 pub trait Calculator: Send + Sync {
     /// Update the aggregator state with a new row
     fn update(&self, agg: &mut Aggregator, row: &dyn Row);
-    
+
     /// Format the final result as a string
     fn format(&self, agg: &Aggregator) -> String;
 }
