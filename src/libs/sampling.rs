@@ -74,6 +74,7 @@ pub struct BernoulliSampler {
     pub prob: f64,
     pub print_random: bool,
     pub skip_counter: usize,
+    pub compatibility_mode: bool,
 }
 
 impl Sampler for BernoulliSampler {
@@ -83,6 +84,23 @@ impl Sampler for BernoulliSampler {
         writer: &mut W,
         rng: &mut RapidRng,
     ) -> anyhow::Result<()> {
+        if self.compatibility_mode {
+            // In compatibility mode, we generate a random number for *every* row
+            // to ensure that if we run with a higher probability, it selects a superset.
+            let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
+
+            if r < self.prob {
+                write_with_optional_random(writer, record, rng, self.print_random, Some(r))?;
+            } else if self.print_random {
+                // If we are not selecting the row, but we might want to print something?
+                // No, standard behavior is only print if selected.
+                // But wait, if 'print-random' is on, usually we only print for selected rows in Bernoulli.
+                // The issue is if we are in 'gen-random-inorder' mode (which uses a different path).
+                // Here we are in standard Bernoulli sampling.
+            }
+            return Ok(());
+        }
+
         if self.skip_counter > 0 {
             self.skip_counter -= 1;
             return Ok(());
@@ -280,8 +298,32 @@ pub struct DistinctBernoulliSampler {
     pub prob: f64,
     pub key_field_indices: Vec<usize>,
     pub print_random: bool,
-    pub decisions: AHashMap<Vec<u8>, (bool, f64)>,
     pub key_buffer: Vec<u8>,
+    pub num_buckets: u64,
+}
+
+impl DistinctBernoulliSampler {
+    pub fn new(prob: f64, key_field_indices: Vec<usize>, print_random: bool) -> Self {
+        // Calculate number of buckets: 1 / prob
+        // E.g., prob=0.1 -> 10 buckets. Key hash % 10 == 0 -> selected.
+        // We use u64 for bucket calculation.
+        // Clamp to avoid division by zero or overflow
+        let num_buckets = if prob <= 0.0 {
+            u64::MAX // effectively never select
+        } else if prob >= 1.0 {
+            1 // always select (mod 1 == 0)
+        } else {
+            (1.0 / prob).round() as u64
+        };
+
+        Self {
+            prob,
+            key_field_indices,
+            print_random,
+            key_buffer: Vec::new(),
+            num_buckets,
+        }
+    }
 }
 
 impl Sampler for DistinctBernoulliSampler {
@@ -330,16 +372,47 @@ impl Sampler for DistinctBernoulliSampler {
             }
         }
 
-        let (keep, r) = if let Some(&(keep, r)) = self.decisions.get(&self.key_buffer) {
-            (keep, r)
-        } else {
-            let r = rng.next() as f64 * INV_U64_MAX_PLUS_1;
-            let keep = r < self.prob;
-            self.decisions.insert(self.key_buffer.clone(), (keep, r));
-            (keep, r)
-        };
+        // Use rapidhash for O(1) hashing
+        let hash = rapidhash::rapidhash(&self.key_buffer);
+        let selected = (hash % self.num_buckets) == 0;
 
-        if keep {
+        if selected {
+            // Reconstruct consistent random value if needed?
+            // tsv-sample behavior:
+            // "Distinct sampling: An integer, zero and up, representing a selection group."
+            // "if (hasher.get % numBuckets == 0) { ... if (printRandom) outputStream.put('0'); ... }"
+            // So it just prints '0' if print_random is true.
+            // But wait, the previous tva implementation generated a random float.
+            // Let's check tsv-sample.d source again:
+            // if (cmdopt.printRandom) { outputStream.put('0'); ... }
+            // So it seems tsv-sample just outputs '0' for distinct sampling random value?
+            // Or maybe it outputs the bucket index?
+            // "Distinct sampling: An integer, zero and up, representing a selection group."
+            // "outputStream.formatValue(hasher.get % numBuckets, randomValueFormatSpec);" (only for generateRandomAll)
+            // But for standard distinct sampling:
+            // "if (hasher.get % numBuckets == 0) { ... outputStream.put('0'); ... }"
+            // Yes, it prints '0'.
+            // However, to keep it somewhat consistent with our interface which expects f64 for random value...
+            // We can just pass 0.0.
+
+            // Wait, tsv-sample doc says: "The inclusion probability determines the number of selection groups."
+            // And "Distinct sampling: An integer, zero and up..."
+
+            // In our previous implementation:
+            // let val = rng.next() as f64 * INV_U64_MAX_PLUS_1;
+            // distinct_random_values.insert(key_buffer.clone(), val);
+
+            // If we want to be stateless, we can't store the random value.
+            // But if we just need to decide selection, we use hash % bucket.
+            // If we need to print a random value, tsv-sample prints '0'.
+            // Let's stick to '0.0' for now to match tsv-sample behavior for selected items.
+            // Or better, use (hash / num_buckets) normalized if we wanted a "random" value, but that's not consistent.
+
+            // Let's use 0.0 as the "random value" for distinct sampling,
+            // because distinct sampling selection is deterministic based on key.
+            // The "randomness" comes from the hash.
+
+            let r = 0.0;
             write_with_optional_random(writer, record, rng, self.print_random, Some(r))?;
         }
         Ok(())
@@ -534,6 +607,7 @@ mod tests {
             prob: 0.5,
             print_random: false,
             skip_counter: 0,
+            compatibility_mode: false,
         };
 
         let inputs: Vec<String> = (0..10).map(|i| format!("row{}", i)).collect();
@@ -556,6 +630,61 @@ mod tests {
         // It selects some rows.
         assert!(!lines.is_empty());
         assert!(lines.len() <= 10);
+    }
+
+    #[test]
+    fn test_bernoulli_sampler_compatibility() {
+        // Test that compatibility mode works (selects based on per-row random value)
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = BernoulliSampler {
+            prob: 0.5,
+            print_random: false,
+            skip_counter: 0,
+            compatibility_mode: true,
+        };
+
+        let inputs: Vec<String> = (0..10).map(|i| format!("row{}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines_0_5: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        // Now run with prob=0.8 and same seed
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = BernoulliSampler {
+            prob: 0.8,
+            print_random: false,
+            skip_counter: 0,
+            compatibility_mode: true,
+        };
+
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines_0_8: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        // lines_0_8 should be a superset of lines_0_5
+        for line in &lines_0_5 {
+            assert!(lines_0_8.contains(line), "lines_0_8 missing {}", line);
+        }
     }
 
     #[test]
@@ -637,13 +766,7 @@ mod tests {
     fn test_distinct_bernoulli_sampler() {
         let mut rng = get_rng(42);
         let mut output = Vec::new();
-        let mut sampler = DistinctBernoulliSampler {
-            prob: 0.5,
-            key_field_indices: vec![1], // Key is 1st field
-            print_random: false,
-            decisions: AHashMap::new(),
-            key_buffer: Vec::new(),
-        };
+        let mut sampler = DistinctBernoulliSampler::new(0.5, vec![1], false);
 
         // Same keys should have same decision
         let inputs = vec![
@@ -862,13 +985,7 @@ mod tests {
         let mut rng = get_rng(42);
         let mut output = Vec::new();
         // Key is fields 1 and 3.
-        let mut sampler = DistinctBernoulliSampler {
-            prob: 0.5,
-            key_field_indices: vec![1, 3],
-            print_random: false,
-            decisions: AHashMap::new(),
-            key_buffer: Vec::new(),
-        };
+        let mut sampler = DistinctBernoulliSampler::new(0.5, vec![1, 3], false);
 
         // k1\tv1\tk2
         let inputs = vec![
@@ -956,6 +1073,7 @@ mod tests {
             prob: 1.0,
             print_random: false,
             skip_counter: 0,
+            compatibility_mode: false,
         };
 
         let inputs: Vec<String> = (0..10).map(|i| format!("row{}", i)).collect();
@@ -982,9 +1100,8 @@ mod tests {
         let mut sampler = BernoulliSampler {
             prob: 0.0,
             print_random: false,
-            // If p=0, skip_counter should prevent any selection.
-            // We set it high initially.
             skip_counter: usize::MAX,
+            compatibility_mode: false,
         };
 
         let inputs: Vec<String> = (0..10).map(|i| format!("row{}", i)).collect();

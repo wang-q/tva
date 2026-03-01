@@ -520,13 +520,11 @@ fn run_standard_sampling<W: Write>(
 
     let mut sampler: SamplerEnum = if let Some(p) = prob_opt {
         if let Some(ref _key_spec) = key_fields {
-            SamplerEnum::Distinct(DistinctBernoulliSampler {
-                prob: p,
-                key_field_indices: Vec::new(), // To be filled
+            SamplerEnum::Distinct(DistinctBernoulliSampler::new(
+                p,
+                Vec::new(), // To be filled
                 print_random,
-                decisions: AHashMap::new(),
-                key_buffer: Vec::new(),
-            })
+            ))
         } else {
             // Generate initial skip for Bernoulli sampler
             let initial_skip = if p >= 1.0 {
@@ -540,6 +538,7 @@ fn run_standard_sampling<W: Write>(
                 prob: p,
                 print_random,
                 skip_counter: initial_skip,
+                compatibility_mode,
             })
         }
     } else if replace && num_opt > 0 {
