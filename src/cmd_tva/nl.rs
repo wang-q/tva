@@ -62,6 +62,8 @@ pub fn make_subcommand() -> Command {
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
+    let line_buffered = args.get_flag("line-buffered");
+
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
         None => vec!["stdin".to_string()],
@@ -116,6 +118,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 writer.write_all(delimiter_bytes)?;
                 writer.write_all(line)?;
                 writer.write_all(b"\n")?;
+                if line_buffered {
+                    writer.flush()?;
+                }
                 line_num += 1;
             }
             Ok(())
