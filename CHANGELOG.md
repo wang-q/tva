@@ -2,6 +2,47 @@
 
 ## Unreleased - ReleaseDate
 
+## 0.3.0 - 2026-03-02
+
+### Added
+
+#### Data Manipulation
+- **`fill`**: New command to fill missing values in selected columns using various strategies (e.g., previous value, next value, specific constant).
+- **`select`**: Added `--rest` flag to select all remaining columns not explicitly selected. Allowed combining `-f` (select) and `-e` (exclude) flags for flexible column selection.
+- **`split`**: Enhanced file splitting with new strategies: by line count (`--lines`), by random bucket (`--bucket`), or by key field (`--key`).
+- **`filter`**: Introduced a modular filter engine supporting complex field-based row filtering logic.
+
+#### Statistics & Aggregation
+- **`stats`**: Major overhaul and feature expansion.
+    - Added **Quantile** aggregation support.
+    - Added **MAD** (Median Absolute Deviation) calculation.
+    - Added `--delimiter` option to specify output delimiter.
+    - Added `--exclude-missing` flag to ignore missing values in calculations.
+    - Added support for custom output headers and missing value replacement.
+    - Improved formatting options for numeric outputs.
+
+#### Input/Output & Formats
+- **`from-csv`**: Added options for custom quote character (`--quote`) and replacement string (`--replace`) for handling malformed CSVs.
+- **`nl`**: Added `--line-buffered` flag to flush output immediately after each line, useful for streaming pipelines.
+
+### Changed
+
+#### Performance
+- **Numeric Parsing**: Switched to `lexical` crate for faster `f64` parsing in `stats` and other numeric-heavy commands.
+
+#### Fixes
+- **`stats`**: Corrected the calculation logic for Median Absolute Deviation (MAD).
+- **`keep-header`**: Fixed handling of empty files or files containing only headers.
+- **`nl`**: Fixed behavior when processing empty input files.
+- **`append`**: Ensured input files are processed in the order specified on the command line; fixed line-buffered output behavior.
+
+#### Refactoring
+- **Modularization**: Extensive refactoring of `stats`, `sampling`, and `filter` modules to improve code organization and maintainability.
+- **`libs` Structure**: Moved key utilities into a dedicated `libs` directory structure.
+
+#### Documentation
+- **Reshape Diagram**: Added a visual diagram to `docs/reshape.md` illustrating `longer`, `wider`, `fill`, and `blank` operations.
+
 ## 0.2.1 - 2026-03-01
 
 ### Added
