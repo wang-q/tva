@@ -235,7 +235,8 @@ pub fn build_tests(
         } else {
             regex::Regex::new(&value_part)
         };
-        let regex = regex.map_err(|e| format!("invalid regex `{}`: {}", value_part, e))?;
+        let regex =
+            regex.map_err(|e| format!("invalid regex `{}`: {}", value_part, e))?;
 
         for idx in idxs {
             tests.push(TestKind::Regex {

@@ -1,4 +1,5 @@
 use super::config::{NumericOp, NumericProp};
+use crate::libs::parse::fast_parse_f64;
 use crate::libs::tsv::record::{Row, StrSliceRow};
 use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;
@@ -114,13 +115,13 @@ impl TestKind {
                 op,
                 value,
             } => idxs.iter().all(|idx| {
-                let s = match row.get_str(*idx) {
+                let bytes = match row.get_bytes(*idx) {
                     Some(v) => v,
                     None => return false,
                 };
-                let parsed = match s.parse::<f64>() {
-                    Ok(v) => v,
-                    Err(_) => return false,
+                let parsed = match fast_parse_f64(bytes) {
+                    Some(v) => v,
+                    None => return false,
                 };
                 match op {
                     NumericOp::Gt => parsed > *value,
@@ -163,13 +164,13 @@ impl TestKind {
                 }
             }),
             TestKind::NumericPropTest { fields: idxs, prop } => idxs.iter().all(|idx| {
-                let s = match row.get_str(*idx) {
+                let bytes = match row.get_bytes(*idx) {
                     Some(v) => v,
                     None => return false,
                 };
-                let parsed = match s.parse::<f64>() {
-                    Ok(v) => v,
-                    Err(_) => return false,
+                let parsed = match fast_parse_f64(bytes) {
+                    Some(v) => v,
+                    None => return false,
                 };
                 match prop {
                     NumericProp::IsNumeric => true,
@@ -263,24 +264,16 @@ impl TestKind {
                     return false;
                 }
                 left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
-                    let l_s = match row.get_str(*l) {
+                    let l_v = match row.get_bytes(*l).and_then(fast_parse_f64) {
                         Some(v) => v,
                         None => return false,
-                    };
-                    let l_v = match l_s.parse::<f64>() {
-                        Ok(v) => v,
-                        Err(_) => return false,
                     };
                     let r_v = if l == r {
                         l_v
                     } else {
-                        let r_s = match row.get_str(*r) {
+                        match row.get_bytes(*r).and_then(fast_parse_f64) {
                             Some(v) => v,
                             None => return false,
-                        };
-                        match r_s.parse::<f64>() {
-                            Ok(v) => v,
-                            Err(_) => return false,
                         }
                     };
                     match op {
@@ -330,24 +323,16 @@ impl TestKind {
                     return false;
                 }
                 left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
-                    let l_s = match row.get_str(*l) {
+                    let l_v = match row.get_bytes(*l).and_then(fast_parse_f64) {
                         Some(v) => v,
                         None => return false,
-                    };
-                    let l_v = match l_s.parse::<f64>() {
-                        Ok(v) => v,
-                        Err(_) => return false,
                     };
                     let r_v = if l == r {
                         l_v
                     } else {
-                        let r_s = match row.get_str(*r) {
+                        match row.get_bytes(*r).and_then(fast_parse_f64) {
                             Some(v) => v,
                             None => return false,
-                        };
-                        match r_s.parse::<f64>() {
-                            Ok(v) => v,
-                            Err(_) => return false,
                         }
                     };
                     let diff = (l_v - r_v).abs();
@@ -371,24 +356,16 @@ impl TestKind {
                     return false;
                 }
                 left_fields.iter().zip(right_fields.iter()).all(|(l, r)| {
-                    let l_s = match row.get_str(*l) {
+                    let l_v = match row.get_bytes(*l).and_then(fast_parse_f64) {
                         Some(v) => v,
                         None => return false,
-                    };
-                    let l_v = match l_s.parse::<f64>() {
-                        Ok(v) => v,
-                        Err(_) => return false,
                     };
                     let r_v = if l == r {
                         l_v
                     } else {
-                        let r_s = match row.get_str(*r) {
+                        match row.get_bytes(*r).and_then(fast_parse_f64) {
                             Some(v) => v,
                             None => return false,
-                        };
-                        match r_s.parse::<f64>() {
-                            Ok(v) => v,
-                            Err(_) => return false,
                         }
                     };
 
