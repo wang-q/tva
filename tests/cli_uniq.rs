@@ -413,3 +413,16 @@ fn uniq_error_field_name_requires_header() {
 
     assert!(stderr.contains("requires header"));
 }
+
+#[test]
+fn uniq_missing_fields_strict() {
+    let input = "col1\nA\nB\n";
+    // Field 2 is missing.
+
+    // We expect FAILURE because tsv-uniq is strict about field existence.
+    // If tva uniq is not strict, this test will fail (because run_fail panics).
+    TvaCmd::new()
+        .args(&["uniq", "-f", "2"])
+        .stdin(input)
+        .run_fail();
+}

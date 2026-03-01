@@ -235,7 +235,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                                     extractor = Some(KeyExtractor::new(
                                         Some(v),
                                         ignore_case,
-                                        false,
+                                        true,
                                     ))
                                 }
                                 Err(e) => {
@@ -280,7 +280,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     match parsed {
                         Ok(v) => {
                             extractor =
-                                Some(KeyExtractor::new(Some(v), ignore_case, false))
+                                Some(KeyExtractor::new(Some(v), ignore_case, true))
                         }
                         Err(e) => {
                             arg_error(&e);
@@ -298,13 +298,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 let subject = {
                     let key_res =
                         extractor.as_mut().unwrap().extract(line, delimiter as u8);
-                    // With strict=false, extract should return Ok unless something internal fails heavily.
-                    // Missing fields are treated as empty, so we get a key.
-                    if let Ok(parsed_key) = key_res {
-                        rapidhash(parsed_key.as_ref())
-                    } else {
-                        // Should theoretically not happen with strict=false, but as fallback
-                        rapidhash(&[])
+
+                    match key_res {
+                        Ok(parsed_key) => rapidhash(parsed_key.as_ref()),
+                        Err(missing_idx) => {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                format!(
+                                    "Not enough fields in line. Missing field index: {}",
+                                    missing_idx
+                                ),
+                            ));
+                        }
                     }
                 };
 
