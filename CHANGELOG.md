@@ -2,6 +2,8 @@
 
 ## Unreleased - ReleaseDate
 
+## 0.2.2 - 2026-03-01
+
 ### Added
 
 #### Data Manipulation
