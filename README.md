@@ -113,7 +113,7 @@ Alternatively, you can download individual files from the [docs/data](https://gi
 - **`nl`**: Add line numbers to rows.
 - **`keep-header`**: Run a shell command on the body of a TSV file, preserving the header.
 
-### [Import & Export](docs/utilities.md)
+### [Import & Export](docs/format-conversion.md)
 
 - **`from`**: Convert other formats to TSV (`csv`, `xlsx`).
 - **`to`**: Convert TSV to other formats (`csv`, `xlsx`).

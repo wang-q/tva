@@ -14,6 +14,7 @@
 - [Reshaping](reshape.md)
 - [Combining & Splitting](combining.md)
 - [Formatting & Utilities](utilities.md)
+- [Import & Export](format-conversion.md)
 
 # Command Reference
 - [select](help/select.md)
@@ -28,6 +29,8 @@
 - [uniq](help/uniq.md)
 - [longer](help/longer.md)
 - [wider](help/wider.md)
+- [blank](help/blank.md)
+- [fill](help/fill.md)
 - [join](help/join.md)
 - [append](help/append.md)
 - [split](help/split.md)
