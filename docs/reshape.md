@@ -187,16 +187,17 @@ tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estim
 
 Output:
 ```tsv
-GEOID	NAME	income	rent
-01	Alabama	24476	747
-02	Alaska	32940	1200
+GEOID	NAME	moe	income	rent
+01	Alabama	136	24476
+01	Alabama	3		747
+02	Alaska	508	32940
+02	Alaska	13		1200
 ...
 ```
 
 **Understanding ID Columns**:
 By default, `wider` uses all columns *except* `names-from` and `values-from` as ID columns. In this example, `GEOID`, `NAME`, and `moe` are treated as IDs.
-However, `moe` (margin of error) is different for each row (it depends on the variable). If we include it as an ID, we might get multiple rows for the same state if we're not careful.
-In this specific case, since `moe` is unique to the `variable`/`estimate` pair, `wider` handles it, but typically you might want to exclude such columns if they aren't part of the identifier.
+Because `moe` (margin of error) is different for the `income` row (136) and the `rent` row (3), `wider` keeps them as separate rows to preserve data.
 
 To explicitly specify that only `GEOID` and `NAME` identify a row (and drop `moe`):
 
@@ -299,18 +300,18 @@ tva wider docs/data/warpbreaks.tsv --names-from wool --values-from breaks --op s
 Output:
 ```tsv
 tension	A	B
-L	110	54
-M	87	63
-H	72	84
+L	110	47
+M	68	62
+H	81	96
 ```
 (For A-L: 26 + 30 + 54 = 110)
 
 ### Example: Crosstab (Counting)
 
-You can also use `wider` to create a frequency table (crosstab) by using `--op count`. In this case, `--values-from` is optional.
+You can also use `wider` to create a frequency table (crosstab) by using `--op count`. In this case, `--values-from` is optional. But to get a proper crosstab, you usually want to group by the other factor (here, `tension`), so you should specify it as the ID column.
 
 ```bash
-tva wider docs/data/warpbreaks.tsv --names-from wool --op count
+tva wider docs/data/warpbreaks.tsv --names-from wool --op count --id-cols tension
 ```
 
 Output:
