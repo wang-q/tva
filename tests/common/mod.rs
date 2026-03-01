@@ -59,6 +59,7 @@ impl TvaCmd {
     }
 }
 
+#[allow(dead_code)]
 pub fn assert_close(actual: f64, expected: f64, epsilon: f64) {
     if (actual - expected).abs() > epsilon {
         panic!(
