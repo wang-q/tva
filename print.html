@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f3c9044e.js";
+            window.path_to_searchindex_js = "searchindex-8b9191b2.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-be0b4150.js"></script>
+        <script src="toc-e7df0f54.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -254,6 +254,8 @@ cd tva
 <ul>
 <li><strong><code>longer</code></strong>: Reshape wide to long (unpivot). Requires a header row.</li>
 <li><strong><code>wider</code></strong>: Reshape long to wide (pivot). Supports aggregation via <code>--op</code> (sum, count, etc.).</li>
+<li><strong><code>fill</code></strong>: Fill missing values in selected columns (down/LOCF, const).</li>
+<li><strong><code>blank</code></strong>: Replace consecutive identical values in selected columns with empty strings (sparsify).</li>
 </ul>
 <h3 id="combining--splitting"><a class="header" href="#combining--splitting"><a href="#combining--splitting-documentation">Combining &amp; Splitting</a></a></h3>
 <ul>
@@ -263,13 +265,15 @@ cd tva
 </ul>
 <h3 id="formatting--utilities"><a class="header" href="#formatting--utilities"><a href="#formatting--utilities-documentation">Formatting &amp; Utilities</a></a></h3>
 <ul>
-<li><strong><code>from</code></strong>: Convert other formats to TSV (<code>csv</code>, <code>xlsx</code>).</li>
-<li><strong><code>to</code></strong>: Convert TSV to other formats (<code>csv</code>, <code>xlsx</code>).</li>
-<li><strong><code>blank</code></strong>: Replace consecutive identical values in selected columns with empty strings (sparsify).</li>
 <li><strong><code>check</code></strong>: Validate TSV file structure (column counts, encoding).</li>
 <li><strong><code>md</code></strong>: Convert TSV to Markdown table for display.</li>
 <li><strong><code>nl</code></strong>: Add line numbers to rows.</li>
 <li><strong><code>keep-header</code></strong>: Run a shell command on the body of a TSV file, preserving the header.</li>
+</ul>
+<h3 id="import--export"><a class="header" href="#import--export"><a href="#import--export-documentation">Import &amp; Export</a></a></h3>
+<ul>
+<li><strong><code>from</code></strong>: Convert other formats to TSV (<code>csv</code>, <code>xlsx</code>).</li>
+<li><strong><code>to</code></strong>: Convert TSV to other formats (<code>csv</code>, <code>xlsx</code>).</li>
 </ul>
 <h2 id="author"><a class="header" href="#author">Author</a></h2>
 <p>Qiang Wang <a href="mailto:wang-q@outlook.com">wang-q@outlook.com</a></p>
@@ -1625,7 +1629,7 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="formatting--utilities-documentation"><a class="header" href="#formatting--utilities-documentation">Formatting &amp; Utilities Documentation</a></h1>
-<p>This document explains how to use the utility commands in <code>tva</code>: <strong><code>check</code></strong>, <strong><code>from</code></strong>, <strong><code>to</code></strong>, <strong><code>md</code></strong>, <strong><code>nl</code></strong>, and <strong><code>keep-header</code></strong>.</p>
+<p>This document explains how to use the utility commands in <code>tva</code>: <strong><code>check</code></strong>, <strong><code>md</code></strong>, <strong><code>nl</code></strong>, and <strong><code>keep-header</code></strong>.</p>
 <h2 id="check"><a class="header" href="#check"><code>check</code></a></h2>
 <p>Checks TSV file structure for consistent field counts.</p>
 <h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
@@ -1639,64 +1643,9 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 <p>Output:</p>
 <pre><code>2 lines, 5 fields
 </code></pre>
-<h2 id="from"><a class="header" href="#from"><code>from</code></a></h2>
-<p>Converts other formats (CSV, XLSX) to TSV.</p>
-<h3 id="usage-1-1"><a class="header" href="#usage-1-1">Usage</a></h3>
-<pre><code class="language-bash">tva from &lt;SUBCOMMAND&gt; [options]
-</code></pre>
-<h3 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h3>
-<ul>
-<li><strong><code>csv</code></strong>: Convert CSV to TSV.
-<ul>
-<li><code>tva from csv [input] [-o output] [-d delimiter]</code></li>
-</ul>
-</li>
-<li><strong><code>xlsx</code></strong>: Convert XLSX to TSV.
-<ul>
-<li><code>tva from xlsx [input] [--sheet name] [--list-sheets]</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="examples-1-4"><a class="header" href="#examples-1-4">Examples</a></h3>
-<p>Convert a CSV file to TSV:</p>
-<pre><code class="language-bash">tva from csv docs/data/input.csv &gt; output.tsv
-</code></pre>
-<p>Convert an Excel sheet to TSV:</p>
-<pre><code class="language-bash">tva from xlsx docs/data/formats.xlsx --sheet "Introduction" &gt; output.tsv
-</code></pre>
-<h2 id="to"><a class="header" href="#to"><code>to</code></a></h2>
-<p>Converts TSV to other formats (CSV, XLSX).</p>
-<h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
-<pre><code class="language-bash">tva to &lt;SUBCOMMAND&gt; [options]
-</code></pre>
-<h3 id="subcommands-1"><a class="header" href="#subcommands-1">Subcommands</a></h3>
-<ul>
-<li><strong><code>csv</code></strong>: Convert TSV to CSV.
-<ul>
-<li><code>tva to csv [input] [-o output] [-d delimiter]</code></li>
-</ul>
-</li>
-<li><strong><code>xlsx</code></strong>: Convert TSV to XLSX.
-<ul>
-<li><code>tva to xlsx [input] [-o output.xlsx] [-H] [--le col:val] ...</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="examples-2-3"><a class="header" href="#examples-2-3">Examples</a></h3>
-<p>Convert a TSV file to CSV:</p>
-<pre><code class="language-bash">tva to csv docs/data/household.tsv &gt; output.csv
-</code></pre>
-<p>Convert a TSV file to XLSX with formatting:</p>
-<pre><code class="language-bash">tva to xlsx docs/data/household.tsv -o output.xlsx -H --le 1:2
-</code></pre>
-<p>Convert a TSV file to XLSX with multiple formatting rules:</p>
-<pre><code class="language-bash">tva to xlsx docs/data/rocauc.result.tsv -o output.xlsx \
-    -H --le 4:0.5 --ge 4:0.6 --bt 4:0.52:0.58 --str-in-fld 1:m03
-</code></pre>
-<p><img src="data/to_xlsx.png" alt="to xlsx output"></p>
 <h2 id="md"><a class="header" href="#md"><code>md</code></a></h2>
 <p>Converts a TSV file to a Markdown table.</p>
-<h3 id="usage-3"><a class="header" href="#usage-3">Usage</a></h3>
+<h3 id="usage-1-1"><a class="header" href="#usage-1-1">Usage</a></h3>
 <pre><code class="language-bash">tva md [file] [options]
 </code></pre>
 <p>Options:</p>
@@ -1706,7 +1655,7 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 <li><code>--digits &lt;N&gt;</code>: Set decimal precision for <code>--fmt</code> (default: 0).</li>
 <li><code>--center &lt;cols&gt;</code> / <code>--right &lt;cols&gt;</code>: Manually set alignment for specific columns.</li>
 </ul>
-<h3 id="examples-3-1"><a class="header" href="#examples-3-1">Examples</a></h3>
+<h3 id="examples-1-4"><a class="header" href="#examples-1-4">Examples</a></h3>
 <p>Basic markdown table:</p>
 <pre><code class="language-bash">tva md docs/data/household.tsv
 </code></pre>
@@ -1734,7 +1683,7 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 </code></pre>
 <h2 id="nl"><a class="header" href="#nl"><code>nl</code></a></h2>
 <p>Adds line numbers to TSV rows.</p>
-<h3 id="usage-4"><a class="header" href="#usage-4">Usage</a></h3>
+<h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
 <pre><code class="language-bash">tva nl [files...] [options]
 </code></pre>
 <p>Options:</p>
@@ -1743,7 +1692,7 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 <li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies <code>-H</code>).</li>
 <li><code>-n &lt;N&gt;</code> / <code>--start-number &lt;N&gt;</code>: Start numbering from N (default: 1).</li>
 </ul>
-<h3 id="examples-4-1"><a class="header" href="#examples-4-1">Examples</a></h3>
+<h3 id="examples-2-3"><a class="header" href="#examples-2-3">Examples</a></h3>
 <p>Add line numbers (no header logic):</p>
 <pre><code class="language-bash">tva nl docs/data/household.tsv
 </code></pre>
@@ -1760,11 +1709,11 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 </code></pre>
 <h2 id="keep-header"><a class="header" href="#keep-header"><code>keep-header</code></a></h2>
 <p>Executes a shell command on the body of a TSV file, preserving the header.</p>
-<h3 id="usage-5"><a class="header" href="#usage-5">Usage</a></h3>
+<h3 id="usage-3"><a class="header" href="#usage-3">Usage</a></h3>
 <pre><code class="language-bash">tva keep-header [files...] -- &lt;command&gt; [args...]
 </code></pre>
 <p>The first line of the first input file is printed immediately. The remaining lines (and all lines from subsequent files) are piped to the specified command. The output of the command is then printed.</p>
-<h3 id="examples-5-1"><a class="header" href="#examples-5-1">Examples</a></h3>
+<h3 id="examples-3-1"><a class="header" href="#examples-3-1">Examples</a></h3>
 <p>Sort a file while keeping the header at the top:</p>
 <pre><code class="language-bash">tva keep-header data.tsv -- sort
 </code></pre>
@@ -1776,6 +1725,64 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 AFG	SP.URB.TOTL	4436311	4648139
 AFG	SP.URB.GROW	3.91	4.66
 </code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="import--export-documentation"><a class="header" href="#import--export-documentation">Import &amp; Export Documentation</a></h1>
+<p>This document explains how to use the import/export commands in <code>tva</code>: <strong><code>from</code></strong> and <strong><code>to</code></strong>.</p>
+<h2 id="from"><a class="header" href="#from"><code>from</code></a></h2>
+<p>Converts other formats (CSV, XLSX) to TSV.</p>
+<h3 id="usage-4"><a class="header" href="#usage-4">Usage</a></h3>
+<pre><code class="language-bash">tva from &lt;SUBCOMMAND&gt; [options]
+</code></pre>
+<h3 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h3>
+<ul>
+<li><strong><code>csv</code></strong>: Convert CSV to TSV.
+<ul>
+<li><code>tva from csv [input] [-o output] [-d delimiter]</code></li>
+</ul>
+</li>
+<li><strong><code>xlsx</code></strong>: Convert XLSX to TSV.
+<ul>
+<li><code>tva from xlsx [input] [--sheet name] [--list-sheets]</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="examples-9"><a class="header" href="#examples-9">Examples</a></h3>
+<p>Convert a CSV file to TSV:</p>
+<pre><code class="language-bash">tva from csv docs/data/input.csv &gt; output.tsv
+</code></pre>
+<p>Convert an Excel sheet to TSV:</p>
+<pre><code class="language-bash">tva from xlsx docs/data/formats.xlsx --sheet "Introduction" &gt; output.tsv
+</code></pre>
+<h2 id="to"><a class="header" href="#to"><code>to</code></a></h2>
+<p>Converts TSV to other formats (CSV, XLSX).</p>
+<h3 id="usage-1-2"><a class="header" href="#usage-1-2">Usage</a></h3>
+<pre><code class="language-bash">tva to &lt;SUBCOMMAND&gt; [options]
+</code></pre>
+<h3 id="subcommands-1"><a class="header" href="#subcommands-1">Subcommands</a></h3>
+<ul>
+<li><strong><code>csv</code></strong>: Convert TSV to CSV.
+<ul>
+<li><code>tva to csv [input] [-o output] [-d delimiter]</code></li>
+</ul>
+</li>
+<li><strong><code>xlsx</code></strong>: Convert TSV to XLSX.
+<ul>
+<li><code>tva to xlsx [input] [-o output.xlsx] [-H] [--le col:val] ...</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="examples-1-5"><a class="header" href="#examples-1-5">Examples</a></h3>
+<p>Convert a TSV file to CSV:</p>
+<pre><code class="language-bash">tva to csv docs/data/household.tsv &gt; output.csv
+</code></pre>
+<p>Convert a TSV file to XLSX with formatting:</p>
+<pre><code class="language-bash">tva to xlsx docs/data/household.tsv -o output.xlsx -H --le 1:2
+</code></pre>
+<p>Convert a TSV file to XLSX with multiple formatting rules:</p>
+<pre><code class="language-bash">tva to xlsx docs/data/rocauc.result.tsv -o output.xlsx \
+    -H --le 4:0.5 --ge 4:0.6 --bt 4:0.52:0.58 --str-in-fld 1:m03
+</code></pre>
+<p><img src="data/to_xlsx.png" alt="to xlsx output"></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="select"><a class="header" href="#select">select</a></h1>
 <p>Reads TSV data from files or standard input and writes selected fields to
@@ -2205,6 +2212,109 @@ same cell. Default is ‘last’ (last value wins).</li>
 <li>
 <p>Calculate sum of values:
 <code>tva wider --names-from category --values-from amount --id-cols region --op sum</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="blank"><a class="header" href="#blank">blank</a></h1>
+<p>Replaces consecutive identical values in selected columns with a blank string (or a custom value).</p>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input; multiple files are processed as one stream.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header.
+The header is written once at the top of the output. Blanking logic starts
+from the first data row.</li>
+<li>If no header is specified, the first line is treated as data.</li>
+</ul>
+<p>Blanking logic:</p>
+<ul>
+<li>For each selected column, the current value is compared with the value in the
+previous row.</li>
+<li>If the values are identical, the current cell is replaced with an empty string
+(or the specified replacement value).</li>
+<li>If the values differ, the current value is written, and it becomes the new
+reference for subsequent rows.</li>
+<li>Blanking is stateful across file boundaries when multiple files are provided.</li>
+<li>Use <code>-i</code> / <code>--ignore-case</code> to compare values case-insensitively.</li>
+</ul>
+<p>Field Syntax:</p>
+<ul>
+<li>Use <code>-f</code> / <code>--field</code> to specify columns to blank.</li>
+<li>Format: <code>COL</code> (blank with empty string) or <code>COL:REPLACEMENT</code> (blank with custom string).</li>
+<li>Columns can be specified by 1-based index or, if <code>-H</code> is used, by header name.</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Writes processed records to standard output or to the file given by <code>--outfile</code>.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Blank the first column:
+<code>tva blank -H -f 1 data.tsv</code></p>
+</li>
+<li>
+<p>Blank the ‘category’ column with “—”:
+<code>tva blank -H -f category:--- data.tsv</code></p>
+</li>
+<li>
+<p>Blank multiple columns:
+<code>tva blank -H -f 1 -f 2 data.tsv</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="fill"><a class="header" href="#fill">fill</a></h1>
+<p>Fills missing values in selected columns using the last non-missing value (down/LOCF) or a constant value.</p>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input; multiple files are processed as one stream.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header.
+The header is written once at the top of the output. Filling logic starts
+from the first data row.</li>
+<li>If no header is specified, the first line is treated as data.</li>
+</ul>
+<p>Filling logic:</p>
+<ul>
+<li><strong>Down (LOCF)</strong>: By default, missing values are replaced with the most recent non-missing value in the same column.</li>
+<li><strong>Constant</strong>: If <code>--value</code> / <code>-v</code> is provided, missing values are replaced with this constant string.</li>
+<li><strong>Missing Definition</strong>: A value is considered “missing” if it matches the string provided by <code>--na</code> (default: empty string).</li>
+<li>Filling is stateful across file boundaries when multiple files are provided.</li>
+</ul>
+<p>Field Syntax:</p>
+<ul>
+<li>Use <code>-f</code> / <code>--field</code> to specify columns to fill.</li>
+<li>Columns can be specified by 1-based index or, if <code>-H</code> is used, by header name.</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Writes processed records to standard output or to the file given by <code>--outfile</code>.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Fill missing values in column 1 downwards:
+<code>tva fill -H -f 1 data.tsv</code></p>
+</li>
+<li>
+<p>Fill missing values in columns ‘category’ and ‘type’ downwards:
+<code>tva fill -H -f category -f type data.tsv</code></p>
+</li>
+<li>
+<p>Fill missing values in column 2 with “0”:
+<code>tva fill -H -f 2 -v "0" data.tsv</code></p>
+</li>
+<li>
+<p>Treat “NA” as missing and fill downwards:
+<code>tva fill -H -f 1 --na "NA" data.tsv</code></p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>

@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f3c9044e.js";
+            window.path_to_searchindex_js = "searchindex-8b9191b2.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-be0b4150.js"></script>
+        <script src="toc-e7df0f54.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -181,7 +181,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="formatting--utilities-documentation"><a class="header" href="#formatting--utilities-documentation">Formatting &amp; Utilities Documentation</a></h1>
-<p>This document explains how to use the utility commands in <code>tva</code>: <strong><code>check</code></strong>, <strong><code>from</code></strong>, <strong><code>to</code></strong>, <strong><code>md</code></strong>, <strong><code>nl</code></strong>, and <strong><code>keep-header</code></strong>.</p>
+<p>This document explains how to use the utility commands in <code>tva</code>: <strong><code>check</code></strong>, <strong><code>md</code></strong>, <strong><code>nl</code></strong>, and <strong><code>keep-header</code></strong>.</p>
 <h2 id="check"><a class="header" href="#check"><code>check</code></a></h2>
 <p>Checks TSV file structure for consistent field counts.</p>
 <h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
@@ -195,64 +195,9 @@
 <p>Output:</p>
 <pre><code>2 lines, 5 fields
 </code></pre>
-<h2 id="from"><a class="header" href="#from"><code>from</code></a></h2>
-<p>Converts other formats (CSV, XLSX) to TSV.</p>
-<h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
-<pre><code class="language-bash">tva from &lt;SUBCOMMAND&gt; [options]
-</code></pre>
-<h3 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h3>
-<ul>
-<li><strong><code>csv</code></strong>: Convert CSV to TSV.
-<ul>
-<li><code>tva from csv [input] [-o output] [-d delimiter]</code></li>
-</ul>
-</li>
-<li><strong><code>xlsx</code></strong>: Convert XLSX to TSV.
-<ul>
-<li><code>tva from xlsx [input] [--sheet name] [--list-sheets]</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
-<p>Convert a CSV file to TSV:</p>
-<pre><code class="language-bash">tva from csv docs/data/input.csv &gt; output.tsv
-</code></pre>
-<p>Convert an Excel sheet to TSV:</p>
-<pre><code class="language-bash">tva from xlsx docs/data/formats.xlsx --sheet "Introduction" &gt; output.tsv
-</code></pre>
-<h2 id="to"><a class="header" href="#to"><code>to</code></a></h2>
-<p>Converts TSV to other formats (CSV, XLSX).</p>
-<h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
-<pre><code class="language-bash">tva to &lt;SUBCOMMAND&gt; [options]
-</code></pre>
-<h3 id="subcommands-1"><a class="header" href="#subcommands-1">Subcommands</a></h3>
-<ul>
-<li><strong><code>csv</code></strong>: Convert TSV to CSV.
-<ul>
-<li><code>tva to csv [input] [-o output] [-d delimiter]</code></li>
-</ul>
-</li>
-<li><strong><code>xlsx</code></strong>: Convert TSV to XLSX.
-<ul>
-<li><code>tva to xlsx [input] [-o output.xlsx] [-H] [--le col:val] ...</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="examples-2"><a class="header" href="#examples-2">Examples</a></h3>
-<p>Convert a TSV file to CSV:</p>
-<pre><code class="language-bash">tva to csv docs/data/household.tsv &gt; output.csv
-</code></pre>
-<p>Convert a TSV file to XLSX with formatting:</p>
-<pre><code class="language-bash">tva to xlsx docs/data/household.tsv -o output.xlsx -H --le 1:2
-</code></pre>
-<p>Convert a TSV file to XLSX with multiple formatting rules:</p>
-<pre><code class="language-bash">tva to xlsx docs/data/rocauc.result.tsv -o output.xlsx \
-    -H --le 4:0.5 --ge 4:0.6 --bt 4:0.52:0.58 --str-in-fld 1:m03
-</code></pre>
-<p><img src="data/to_xlsx.png" alt="to xlsx output"></p>
 <h2 id="md"><a class="header" href="#md"><code>md</code></a></h2>
 <p>Converts a TSV file to a Markdown table.</p>
-<h3 id="usage-3"><a class="header" href="#usage-3">Usage</a></h3>
+<h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
 <pre><code class="language-bash">tva md [file] [options]
 </code></pre>
 <p>Options:</p>
@@ -262,7 +207,7 @@
 <li><code>--digits &lt;N&gt;</code>: Set decimal precision for <code>--fmt</code> (default: 0).</li>
 <li><code>--center &lt;cols&gt;</code> / <code>--right &lt;cols&gt;</code>: Manually set alignment for specific columns.</li>
 </ul>
-<h3 id="examples-3"><a class="header" href="#examples-3">Examples</a></h3>
+<h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
 <p>Basic markdown table:</p>
 <pre><code class="language-bash">tva md docs/data/household.tsv
 </code></pre>
@@ -290,7 +235,7 @@
 </code></pre>
 <h2 id="nl"><a class="header" href="#nl"><code>nl</code></a></h2>
 <p>Adds line numbers to TSV rows.</p>
-<h3 id="usage-4"><a class="header" href="#usage-4">Usage</a></h3>
+<h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
 <pre><code class="language-bash">tva nl [files...] [options]
 </code></pre>
 <p>Options:</p>
@@ -299,7 +244,7 @@
 <li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies <code>-H</code>).</li>
 <li><code>-n &lt;N&gt;</code> / <code>--start-number &lt;N&gt;</code>: Start numbering from N (default: 1).</li>
 </ul>
-<h3 id="examples-4"><a class="header" href="#examples-4">Examples</a></h3>
+<h3 id="examples-2"><a class="header" href="#examples-2">Examples</a></h3>
 <p>Add line numbers (no header logic):</p>
 <pre><code class="language-bash">tva nl docs/data/household.tsv
 </code></pre>
@@ -316,11 +261,11 @@
 </code></pre>
 <h2 id="keep-header"><a class="header" href="#keep-header"><code>keep-header</code></a></h2>
 <p>Executes a shell command on the body of a TSV file, preserving the header.</p>
-<h3 id="usage-5"><a class="header" href="#usage-5">Usage</a></h3>
+<h3 id="usage-3"><a class="header" href="#usage-3">Usage</a></h3>
 <pre><code class="language-bash">tva keep-header [files...] -- &lt;command&gt; [args...]
 </code></pre>
 <p>The first line of the first input file is printed immediately. The remaining lines (and all lines from subsequent files) are piped to the specified command. The output of the command is then printed.</p>
-<h3 id="examples-5"><a class="header" href="#examples-5">Examples</a></h3>
+<h3 id="examples-3"><a class="header" href="#examples-3">Examples</a></h3>
 <p>Sort a file while keeping the header at the top:</p>
 <pre><code class="language-bash">tva keep-header data.tsv -- sort
 </code></pre>
@@ -341,7 +286,7 @@ AFG	SP.URB.GROW	3.91	4.66
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="help/select.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="format-conversion.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -355,7 +300,7 @@ AFG	SP.URB.GROW	3.91	4.66
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="help/select.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="format-conversion.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

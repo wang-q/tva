@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f3c9044e.js";
+            window.path_to_searchindex_js = "searchindex-8b9191b2.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-be0b4150.js"></script>
+        <script src="toc-e7df0f54.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -256,6 +256,8 @@ cd tva
 <ul>
 <li><strong><code>longer</code></strong>: Reshape wide to long (unpivot). Requires a header row.</li>
 <li><strong><code>wider</code></strong>: Reshape long to wide (pivot). Supports aggregation via <code>--op</code> (sum, count, etc.).</li>
+<li><strong><code>fill</code></strong>: Fill missing values in selected columns (down/LOCF, const).</li>
+<li><strong><code>blank</code></strong>: Replace consecutive identical values in selected columns with empty strings (sparsify).</li>
 </ul>
 <h3 id="combining--splitting"><a class="header" href="#combining--splitting"><a href="combining.html">Combining &amp; Splitting</a></a></h3>
 <ul>
@@ -265,13 +267,15 @@ cd tva
 </ul>
 <h3 id="formatting--utilities"><a class="header" href="#formatting--utilities"><a href="utilities.html">Formatting &amp; Utilities</a></a></h3>
 <ul>
-<li><strong><code>from</code></strong>: Convert other formats to TSV (<code>csv</code>, <code>xlsx</code>).</li>
-<li><strong><code>to</code></strong>: Convert TSV to other formats (<code>csv</code>, <code>xlsx</code>).</li>
-<li><strong><code>blank</code></strong>: Replace consecutive identical values in selected columns with empty strings (sparsify).</li>
 <li><strong><code>check</code></strong>: Validate TSV file structure (column counts, encoding).</li>
 <li><strong><code>md</code></strong>: Convert TSV to Markdown table for display.</li>
 <li><strong><code>nl</code></strong>: Add line numbers to rows.</li>
 <li><strong><code>keep-header</code></strong>: Run a shell command on the body of a TSV file, preserving the header.</li>
+</ul>
+<h3 id="import--export"><a class="header" href="#import--export"><a href="format-conversion.html">Import &amp; Export</a></a></h3>
+<ul>
+<li><strong><code>from</code></strong>: Convert other formats to TSV (<code>csv</code>, <code>xlsx</code>).</li>
+<li><strong><code>to</code></strong>: Convert TSV to other formats (<code>csv</code>, <code>xlsx</code>).</li>
 </ul>
 <h2 id="author"><a class="header" href="#author">Author</a></h2>
 <p>Qiang Wang <a href="mailto:wang-q@outlook.com">wang-q@outlook.com</a></p>
