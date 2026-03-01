@@ -26,7 +26,9 @@ pub struct Sum {
 
 impl Calculator for Sum {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx, self.missing_val, self.exclude_missing) {
+        if let Some(val) =
+            parse_float(row, self.field_idx, self.missing_val, self.exclude_missing)
+        {
             agg.sums[self.sum_slot] += val;
         }
     }
@@ -46,7 +48,9 @@ pub struct Min {
 
 impl Calculator for Min {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx, self.missing_val, self.exclude_missing) {
+        if let Some(val) =
+            parse_float(row, self.field_idx, self.missing_val, self.exclude_missing)
+        {
             if val < agg.mins[self.min_slot] {
                 agg.mins[self.min_slot] = val;
             }
@@ -73,7 +77,9 @@ pub struct Max {
 
 impl Calculator for Max {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx, self.missing_val, self.exclude_missing) {
+        if let Some(val) =
+            parse_float(row, self.field_idx, self.missing_val, self.exclude_missing)
+        {
             if val > agg.maxs[self.max_slot] {
                 agg.maxs[self.max_slot] = val;
             }
@@ -101,7 +107,9 @@ pub struct Range {
 
 impl Calculator for Range {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        if let Some(val) = parse_float(row, self.field_idx, self.missing_val, self.exclude_missing) {
+        if let Some(val) =
+            parse_float(row, self.field_idx, self.missing_val, self.exclude_missing)
+        {
             if val < agg.mins[self.min_slot] {
                 agg.mins[self.min_slot] = val;
             }

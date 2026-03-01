@@ -35,6 +35,7 @@ pub fn make_subcommand() -> Command {
         )
         .arg(
             Arg::new("count")
+                .long("count")
                 .short('c')
                 .action(ArgAction::SetTrue)
                 .help("Count the number of rows"),
@@ -551,8 +552,13 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         }
     }
 
-    // Handle count.
-    if matches.get_flag("count") || matches.get_one::<String>("count-header").is_some() {
+    if matches.get_flag("count") {
+        op_configs.push(OpConfig {
+            kind: OpKind::Count,
+            spec: None,
+            arg_index: 0,
+        });
+    } else if matches.get_one::<String>("count-header").is_some() {
         op_configs.push(OpConfig {
             kind: OpKind::Count,
             spec: None,
@@ -663,7 +669,9 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     };
 
                 let indices = fields::parse_field_list_with_header(
-                    field_spec, header_opt, delimiter as char,
+                    field_spec,
+                    header_opt,
+                    delimiter as char,
                 )
                 .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
 
@@ -725,8 +733,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         }
 
         let extractor = if let Some(spec) = &group_by_spec {
-            let idxs = fields::parse_field_list_with_header(spec, header_opt, delimiter as char)
-                .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?;
+            let idxs = fields::parse_field_list_with_header(
+                spec,
+                header_opt,
+                delimiter as char,
+            )
+            .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?;
             // .into_iter()
             // .map(|i| i - 1) // KeyExtractor now takes 1-based indices!
             // .collect::<Vec<_>>();
