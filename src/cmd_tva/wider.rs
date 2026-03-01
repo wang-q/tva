@@ -278,7 +278,7 @@ fn process_file(
                 .entry(key)
                 .or_default()
                 .entry(name)
-                .or_insert_with(Cell::new)
+                .or_insert_with(|| Cell::new(config.op))
                 .update(value, config.op);
 
             Ok(())

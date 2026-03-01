@@ -92,11 +92,29 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
     *   **分布检验**: `jarque` (正态性检验), `dpo` (Omnibus 检验)。
     *   **高级均值**: `geomean` (几何平均), `harmmean` (调和平均)。
 *   **借鉴**: `tva stats` 可以逐步补充这些高级统计指标，满足更专业的分析需求。
+### 参考项目: xan
+
+`xan` (前身为 `xsv` 的 fork) 是一个功能极强的 CSV/TSV 工具集。通过分析其源码，我们可以为 `tva` 汲取以下几个关键的架构和功能灵感。
+
+#### 1. 并行处理架构 (Parallel Processing)
+
+*   **实现**: `cmd/parallel.rs`
+*   **机制**: 类似于 Map-Reduce。它不试图让每个命令内部并行化，而是提供一个通用的 `parallel` 子命令。
+    *   **Chunking**: 自动将文件分块，或按文件分发任务。
+    *   **Shuffle**: 保证输出顺序与输入一致（如果需要）。
 *   **对 `tva` 的启示**:
     *   `tva` 目前是单线程流式处理。
     *   **建议**: 实现 `tva parallel` 命令，负责将大文件切分 (利用 `split` 逻辑) 并启动多个子进程/线程处理，最后聚合结果。
 
-#### 2. Join 架构对比: xan vs tva
+#### 3. 近似算法 (Approximation)
+
+*   **现状**: `tva` 目前所有计算（`nunique`, `median`）都是精确的，这意味着内存消耗随数据量线性增长 `O(N)`。
+*   **借鉴**: `xan` 提供了近似算法支持：
+    *   **基数估计**: `ApproxCardinality` 使用 **HyperLogLog (HLL)**，内存占用恒定。
+    *   **分位数**: `ApproxQuantiles` (预计使用 T-Digest 或 KLL)，无需存储全量数据。
+*   **行动项**: 针对大数据场景，引入 `--approx-unique` 和 `--approx-quantile` 选项。
+
+#### 5. Join 架构对比: xan vs tva
 
 通过分析 `xan/src/cmd/join.rs`，我们发现其设计哲学与 `tva` 截然不同。
 
@@ -373,7 +391,117 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
     *   **Nice Scaling**: `LinearScale::nice` 算法能生成人类可读的边界（10, 20, 30），而不是数学上精确但丑陋的边界（10.123, 20.246）。
     *   **未来方向**: `tva` 可以保留现有的流式 `bin` 用于 ETL，但可以考虑增加一个聚合模式（或单独的 `histogram` 命令）来吸纳 `xan` 的自动分箱能力。
 
-### 6. 对 `tva` 的启示
 
-`tva` 目前专注于数据处理，但 `plot` 展示了 Rust 在终端可视化方面的潜力。虽然 `tva` 的核心原则是 "do one thing well" (数据处理)，但提供一个基本的 `preview` 或 `hist` 命令（基于简单的 ASCII 字符）可能对快速数据探索非常有价值，而无需引入完整的 `ratatui` 依赖。
+## 聚合架构深度对比 (Aggregation Architecture)
 
+本节深入剖析 `tva` 与 `xan` (Rust) 以及 `tsv-utils` (D Language) 在聚合模块设计上的核心差异与权衡。
+
+### 1. 架构模式对比
+
+| 特性 | tva | xan | tsv-utils | datamash | dplyr | qsv |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **模式** | **SoA** | **Enum** | **Template** | **Stateful Struct** | **Masking** | **Hybrid** |
+| **核心** | `Vec<f64>` | `enum Agg` | `Summarizer` | `struct op` | `eval(mask)` | `Stats+Idx` |
+| **内存** | 极致紧凑 | 碎片化 | AoS | O(1) (Streaming) | 向量化 | 混合 |
+| **GroupBy** | 统一 Hash | 统一 Hash | **分级特化** | **Sort-based** | Vectorized | Parallel |
+| **亮点** | 极低开销 | 模块化 | 稳定排序 | 高精度 | 避免小对象 | 缓存+并行 |
+
+### 2. 详细分析
+
+#### A. tva: 极致性能导向
+*   **设计**: Schema-State 分离。Schema (`StatsProcessor`) 计算好内存布局，State (`Aggregator`) 只是一个扁平的 `Vec<f64>`。
+*   **优势**: 在处理海量 GroupBy (如 1000万个组) 时，创建 Aggregator 的开销极低（仅分配几个 Vec），且内存占用最小。
+*   **短板**: 逻辑与数据紧耦合，增加新算法（如 HLL）需要修改核心结构。
+
+#### B. xan: 算法模块化导向
+*   **设计**: 每个统计指标是一个独立的结构体，通过 Enum 分发。
+*   **优势**: 极易集成复杂算法。例如 `ApproxCardinality` 封装了 `HyperLogLog`，`Welford` 封装了在线方差状态。
+*   **短板**: 每个指标是一个独立对象，GroupBy 时内存碎片较多，虚函数/Match 开销在大循环中不可忽视。
+
+##### C. tsv-utils (D Language): Template Strategy
+*   **模式**: **Template-based Strategy Pattern**
+*   **核心**: `SummarizerBase` -> `NoKeySummarizer` / `OneKeySummarizer` / `KeySummarizerBase`。
+*   **亮点**:
+    *   **分级特化**: 针对最常见的“单列 GroupBy”场景 (`OneKeySummarizer`) 进行了特化优化，避免通用逻辑开销。
+    *   **保持顺序**: 默认使用 `DList` (双向链表) 记录 Key 的插入顺序，保证输出稳定。
+
+##### D. datamash (C Language): Sort-based Streaming
+*   **模式**: **Stateful Fat Struct**
+*   **核心**: `struct fieldop` (包含 Schema 和 State)。
+*   **策略**: **Sort-based Grouping**。依赖输入已排序，每次只处理一个组，处理完即重置。
+*   **优势**: 内存占用极低 (O(1) Groups)；使用 `long double` 提供更高精度的累加。
+*   **劣势**: 必须预先排序 (O(N log N))；无法处理无序数据的 Hash GroupBy。
+
+##### E. dplyr (R/C++): Hybrid Mask Evaluation
+*   **模式**: **Vectorized Evaluation (Masking)**
+*   **核心**: `dplyr_mask_eval_all_summarise` (src/summarise.cpp)。
+*   **策略**: 不为每个组创建单独的 Aggregator 对象。相反，它利用 R 的向量化特性，通过 **Mask (位掩码)** 迭代每个组，对整个向量切片进行求值。
+*   **优势**: 极致利用 R 的向量化生态；避免了成千上万个小对象的创建开销。
+*   **劣势**: 极其依赖列式存储（Columnar Store），不适合流式处理（Row-based Streaming）。
+
+##### F. qsv (Rust): Caching & Parallelism
+*   **模式**: **Hybrid (Streaming + Indexed)**
+*   **策略**:
+    *   **缓存优先**: 将 `stats` 结果缓存为 `<file>.stats.csv`，后续命令 (如 `frequency`) 直接读取，极大提升工作流效率。
+    *   **索引加速**: 如果检测到 `.idx` 文件，自动启用多线程并行计算 (Parallel Chunking)。
+    *   **类型推断**: 结合全量扫描进行严格的类型推断 (Integer/Float/Date/String)，而非简单的采样。
+*   **优势**: 在重复分析场景下无敌；支持并行加速。
+*   **劣势**: 代码逻辑复杂，需处理缓存失效和索引同步。
+
+##### G. 综合建议 (Action Items)
+1.  **分级特化**: 借鉴 `tsv-utils`，针对单列 GroupBy (特别是整数列) 使用特化路径，避免 `KeyBuffer` 构建。
+2.  **保持顺序**: 将 GroupBy 的 `HashMap` 替换为 `IndexMap`，以零成本支持“保持插入顺序”。
+3.  **数值稳定性**: 借鉴 `xan`，引入 Welford 算法作为默认或可选 (`--stable`) 实现。
+4.  **近似算法**: 借鉴 `xan`，针对大数据场景引入 `--approx-unique` (HyperLogLog) 和 `--approx-quantile` (T-Digest)。
+5.  **向量化思考**: 借鉴 `dplyr`，在实现 `tva` 的 `window` 或 `mutate` 功能时，应优先考虑基于 Chunk 的向量化计算，而非逐行迭代。
+6.  **缓存机制**: 借鉴 `qsv`，考虑为 `tva stats` 引入可选的缓存机制，特别是针对大文件的元数据（行数、类型）。
+
+### 3. 代码结构重构建议 (Refactoring Proposal)
+
+目前的 `src/libs/aggregation.rs` 已成为一个“上帝类”，包含 1500+ 行代码，逻辑紧耦合。为了提高可维护性，建议进行以下重构：
+
+#### A. 拆分文件结构
+将单文件拆分为模块化结构：
+```text
+src/libs/aggregation/
+├── mod.rs           # 公共接口 (OpKind, Aggregator, StatsProcessor)
+├── processor.rs     # 核心逻辑 (StatsProcessor 实现)
+├── aggregator.rs    # 状态容器 (Aggregator 实现)
+├── ops/             # 具体算子实现 (按功能分组)
+│   ├── basic.rs     # Count, Sum, Min, Max
+│   ├── mean.rs      # Mean, GeoMean, HarmMean
+│   ├── variance.rs  # Stdev, Variance, CV
+│   ├── quantile.rs  # Median, Quartiles, IQR
+│   ├── set.rs       # Unique, Mode, NUnique
+│   └── text.rs      # First, Last, Collapse
+└── traits.rs        # 定义 Calculator Trait
+```
+
+#### B. 引入 Calculator Trait
+为了解耦 `StatsProcessor`，引入类似 `tsv-utils` 的 `Calculator` 模式，但保持底层的 SoA 内存布局。
+
+```rust
+/// 抽象计算逻辑，每个 OpKind 对应一个实现
+trait Calculator {
+    /// 告诉 Processor 需要分配多少个 f64 槽位
+    fn slots_needed(&self) -> usize;
+    
+    /// 处理单行数据，更新 Aggregator 状态
+    /// 注意：直接传入底层 Vec 的切片，保持零开销
+    fn update(&self, state: &mut [f64], value: f64);
+    
+    /// 计算最终结果
+    fn finalize(&self, state: &[f64]) -> f64;
+}
+```
+
+#### C. 宏与代码生成
+大量重复的样板代码（如 `Sum`, `Min`, `Max` 的更新逻辑）可以通过声明式宏 (`macro_rules!`) 或过程宏来简化。
+
+```rust
+// 示例：定义简单累加算子
+define_simple_op!(Sum, |acc, val| *acc += val);
+define_simple_op!(Min, |acc, val| if val < *acc { *acc = val });
+```
+
+### 4. 高精度计算 (High Precision)
