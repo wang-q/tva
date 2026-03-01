@@ -747,29 +747,36 @@ impl StatsProcessor {
                 }
                 OpKind::Mad => {
                     if let Some(idx) = op.field_idx {
-                        let vals = &agg.values[self.values_map[&idx]];
-                        if !vals.is_empty() {
-                            let mut sorted_vals = vals.clone();
-                            sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                            let len = sorted_vals.len();
-                            let median = if len % 2 == 1 {
-                                sorted_vals[len / 2]
-                            } else {
-                                let mid = len / 2;
-                                (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0
-                            };
+                        if let Some(vals_slot) = self.values_map.get(&idx) {
+                            let vals = &agg.values[*vals_slot];
+                            if !vals.is_empty() {
+                                let mut sorted_vals = vals.clone();
+                                sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                                let len = sorted_vals.len();
+                                let median = if len % 2 == 1 {
+                                    sorted_vals[len / 2]
+                                } else {
+                                    let mid = len / 2;
+                                    (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0
+                                };
 
-                            let mut deviations: Vec<f64> =
-                                vals.iter().map(|v| (v - median).abs()).collect();
-                            deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                                let mut deviations: Vec<f64> = vals
+                                    .iter()
+                                    .map(|v| (v - median).abs())
+                                    .collect();
+                                deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-                            let mad = if len % 2 == 1 {
-                                deviations[len / 2]
+                                let mad = if len % 2 == 1 {
+                                    deviations[len / 2]
+                                } else {
+                                    let mid = len / 2;
+                                    (deviations[mid - 1] + deviations[mid]) / 2.0
+                                };
+                                // Scale by 1.4826 to be consistent with normal distribution (like R's mad)
+                                values.push((mad * 1.4826).to_string());
                             } else {
-                                let mid = len / 2;
-                                (deviations[mid - 1] + deviations[mid]) / 2.0
-                            };
-                            values.push(mad.to_string());
+                                values.push("nan".to_string());
+                            }
                         } else {
                             values.push("nan".to_string());
                         }
@@ -1199,6 +1206,84 @@ mod tests {
         assert_eq!(results[1], "2"); // NUnique
                                      // Unique order is sorted: A,B
         assert_eq!(results[2], "A,B");
+    }
+
+    #[test]
+    fn test_mad_basic() {
+        let ops = vec![Operation {
+            kind: OpKind::Mad,
+            field_idx: Some(0),
+        }];
+        let processor = StatsProcessor::new(ops);
+        let mut agg = processor.create_aggregator();
+
+        // Data: 1, 2, 3, 4, 5
+        // Median = 3
+        // Deviations = |1-3|, |2-3|, |3-3|, |4-3|, |5-3|
+        //            = 2, 1, 0, 1, 2
+        // Sorted Deviations = 0, 1, 1, 2, 2
+        // Median Deviation = 1
+        // MAD = 1 * 1.4826 = 1.4826
+        for i in 1..=5 {
+            let row = TestRow {
+                fields: vec![i.to_string()],
+            };
+            processor.update(&mut agg, &row);
+        }
+
+        let results = processor.format_results(&agg);
+        assert_eq!(results[0], "1.4826");
+    }
+
+    #[test]
+    fn test_mad_even() {
+        let ops = vec![Operation {
+            kind: OpKind::Mad,
+            field_idx: Some(0),
+        }];
+        let processor = StatsProcessor::new(ops);
+        let mut agg = processor.create_aggregator();
+
+        // Data: 1, 2, 3, 4
+        // Median = (2+3)/2 = 2.5
+        // Deviations = |1-2.5|, |2-2.5|, |3-2.5|, |4-2.5|
+        //            = 1.5, 0.5, 0.5, 1.5
+        // Sorted Deviations = 0.5, 0.5, 1.5, 1.5
+        // Median Deviation = (0.5 + 1.5) / 2 = 1.0
+        // MAD = 1.0 * 1.4826 = 1.4826
+        for i in 1..=4 {
+            let row = TestRow {
+                fields: vec![i.to_string()],
+            };
+            processor.update(&mut agg, &row);
+        }
+
+        let results = processor.format_results(&agg);
+        assert_eq!(results[0], "1.4826");
+    }
+
+    #[test]
+    fn test_mad_constant() {
+        let ops = vec![Operation {
+            kind: OpKind::Mad,
+            field_idx: Some(0),
+        }];
+        let processor = StatsProcessor::new(ops);
+        let mut agg = processor.create_aggregator();
+
+        // Data: 5, 5, 5
+        // Median = 5
+        // Deviations = 0, 0, 0
+        // MAD = 0
+        for _ in 0..3 {
+            let row = TestRow {
+                fields: vec!["5".to_string()],
+            };
+            processor.update(&mut agg, &row);
+        }
+
+        let results = processor.format_results(&agg);
+        assert_eq!(results[0], "0");
     }
 
     #[test]
