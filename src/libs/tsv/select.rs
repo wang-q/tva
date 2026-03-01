@@ -206,6 +206,13 @@ pub fn write_with_rest(
         Ok(())
     };
 
+    // If we have "rest" fields, we need to iterate all fields to find which are NOT selected.
+    // Optimized: pre-calculate which indices are selected in a bitset or boolean array?
+    // Assume number of fields is not huge (e.g. < 1M).
+    // Rest mode is rare.
+
+    let mut exclude_set: Option<Vec<bool>> = None;
+
     // selected_set for fast lookup of what is "selected" (so we don't output it in rest)
     let selected_set: HashSet<usize> = selected_indices.iter().cloned().collect();
 

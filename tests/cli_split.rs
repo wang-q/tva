@@ -595,7 +595,7 @@ fn split_append_mode_correctness() {
     // Run 2: Append to split-0.txt and create split-1.txt (if needed, but here we append)
     // We use lines-per-file 2.
     // Input 2 has 2 lines (plus header).
-    // But split logic counts output lines.
+    // Split logic counts output lines.
     // If we run again, "current_idx0" starts at 0.
     // It will open part-0.txt.
     // Since it exists and --append is on, it appends.

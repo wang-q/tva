@@ -262,6 +262,7 @@ pub fn parse_field_list_with_header(
     let mut indices: Vec<usize> = Vec::new();
 
     for part in tokenize_field_spec(trimmed) {
+        // tokenize_field_spec handles splitting by comma and respects escaping.
         let token = part.trim();
         if token.is_empty() {
             return Err(format!("empty field list element in `{}`", spec));
@@ -357,7 +358,7 @@ pub fn parse_field_list_with_header_preserve_order(
         // If header is missing, we can only parse numeric indices.
         // If there are non-numeric tokens, we should error out with "requires header" or similar.
         // parse_numeric_field_list_preserve_order already handles numeric parsing.
-        // But if it encounters non-numeric, it returns "invalid numeric field spec".
+        // If it encounters non-numeric, it returns "invalid numeric field spec".
         // We need to catch that and see if it looks like a name.
         // Or better: iterate tokens here.
         let mut indices = Vec::new();
@@ -434,10 +435,8 @@ pub fn parse_field_list_with_header_preserve_order(
     let mut indices = Vec::new();
 
     for token in tokenize_field_spec(spec) {
-        // If token contains escaped chars, they are part of the name (unless header is present and we are matching)
-        // Actually tokenize_field_spec handles splitting by ',' but doesn't unescape.
-        // Wait, tokenize_field_spec respects escaped commas?
-        // Let's assume yes.
+        // tokenize_field_spec handles splitting by ',' and respects escaped commas.
+        // However, it does not unescape other characters.
 
         // Try parsing as usize first (simple index)
         if let Ok(idx) = token.parse::<usize>() {
@@ -471,12 +470,8 @@ pub fn parse_field_list_with_header_preserve_order(
                 }
                 idx
             } else {
-                // Check if end_str matches multiple fields (wildcard)
-                // If wildcard, it's ambiguous for range end unless it matches exactly one.
-                // tsv-select: "Second field in range matches multiple header fields"
-                // Simplified: exact match only for now, or simple expansion.
-                // Actually tsv-select allows expansion.
-                // For now, assume exact match or fail.
+                // Check if end_str matches header fields.
+                // Currently only supports exact match for range end.
                 header.get_index(&end_unescaped).map(|i| i + 1).ok_or_else(|| {
                     format!("Second field in range not found in file header. Range: '{}'. Not specifying a range? Backslash escape any hyphens in the field name.", token)
                 })?

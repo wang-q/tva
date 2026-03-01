@@ -704,7 +704,7 @@ b	2
     let b_count = lines.iter().filter(|l| l.starts_with("b	")).count();
 
     // With static seed, one of them might be selected.
-    // But critically, a_count must be 0 or 3. b_count must be 0 or 2.
+    // Critically, a_count must be 0 or 3. b_count must be 0 or 2.
     assert!(a_count == 0 || a_count == 3, "a_count was {}", a_count);
     assert!(b_count == 0 || b_count == 2, "b_count was {}", b_count);
 }
@@ -713,7 +713,7 @@ b	2
 fn sample_weighted_shuffle() {
     // Weighted shuffle (no --num).
     // High weight items should appear earlier on average.
-    // But for a deterministic test, we check that all items are present.
+    // For a deterministic test, we check that all items are present.
     let input = "A	1
 B	100
 C	1
@@ -1005,10 +1005,8 @@ fn sample_distinct_gen_random_inorder() {
 
     // A	1 and A	1 should have same random value
     assert_eq!(parts0[0], parts1[0]);
-    // B	1 should likely have different
+    // B	1 should likely have different value
     // (technically possible to be same collision, but unlikely with double)
-    // But with static seed 42...
-    // Let's just check they are valid numbers.
     assert!(parts0[0].parse::<f64>().is_ok());
 
     assert_eq!(parts0[1], "A");
@@ -1027,10 +1025,7 @@ A	1	Y
 A	2	X
 ";
     // Keys: (A,1), (A,1), (A,2)
-    // Row 1 and 2 share key (A,1) if we use k=1,2.
-    // Row 1 is A,1,X. Row 2 is A,1,Y.
-    // If k=1,2, keys are "A", "1".
-    // So row 1 and 2 are SAME key.
+    // Row 1 and 2 share key (A,1) and should be treated as duplicates for sampling.
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -1081,13 +1076,14 @@ fn sample_weight_field_header_by_wildcard() {
 A	1	100
 B	2	1
 ";
-    // Weight field *ght*
+    // Test --weight-field with wildcard matching (e.g., "weight_*").
+
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "sample",
             "--header",
             "--weight-field",
-            "wei*col",
+            "weight_*",
             "--static-seed",
         ])
         .stdin(input)
@@ -1135,10 +1131,6 @@ fn sample_inorder_numeric() {
 fn sample_replace_multiple_items() {
     // --replace --num 10 from 3 items.
     let input = "A\nB\nC\n";
-    "A
-B
-C
-";
     let (stdout, _) = TvaCmd::new()
         .args(&["sample", "--replace", "--num", "10", "--static-seed"])
         .stdin(input)
@@ -1449,4 +1441,24 @@ fn sample_weighted_print_random() {
     // Output should be float\tline.
     let parts: Vec<&str> = lines[1].split('\t').collect();
     assert!(parts[0].parse::<f64>().is_ok());
+}
+
+#[test]
+fn sample_key_fields_star() {
+    let input = "h1	h2
+A	1
+B	1
+A	2
+";
+    // Use header for -k * test.
+    // k=* means all fields are keys.
+    // Keys: (A,1), (B,1), (A,2). All distinct.
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "--header", "--key-fields", "*", "--prob", "0.5", "--static-seed"])
+        .stdin(input)
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Header + 3 distinct rows
+    assert_eq!(lines.len(), 4);
 }

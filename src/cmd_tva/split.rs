@@ -291,7 +291,7 @@ fn key_bucket(
         if !first {
             key_buffer.push(b'\t'); // Internal key delimiter is always TAB? Or user delimiter?
                                     // tsv-uniq usually uses TAB as internal separator for multi-field keys.
-                                    // Let's stick to TAB for consistency unless we want delimiter-agnostic key.
+                                    // Stick to TAB for consistency unless we want delimiter-agnostic key.
         }
         first = false;
 
@@ -536,23 +536,11 @@ fn split_randomly(
         let mut is_first_line_of_file = true;
 
         reader.for_each_record(|record| {
-            if record.is_empty() {
-                // Treat empty lines as data (will be assigned to a file)
-                // But skip header check for them (as they are not header)
-                // But we must NOT change is_first_line_of_file if we skip it?
-                // No, empty lines are data.
-                // But if the FIRST line is empty, it's not the header.
-                // So we can proceed to assign it.
-                // But `is_first_line_of_file` should remain true so we catch the REAL header later?
-                // "Treat first NON-EMPTY line as header" implies we skip empty lines when looking for header.
-                // So: if empty, write it, but don't toggle is_first_line_of_file?
-                // But if we write it, it becomes part of the output.
-                // If it's before the header, it's weird.
-                // Let's assume standard behavior: process empty lines as data.
-                // But if we haven't seen header yet, and we are looking for it...
-                // If we output it, we might output data before header in the output file.
-                // That's acceptable if the input has data before header.
-            } else if (manager.config.header_in_out || manager.config.header_in_only)
+            // Treat empty lines as data (will be assigned to a file).
+            // If this happens before the header, it's considered data before header (malformed TSV),
+            // but we process it as regular data to be safe.
+            if !record.is_empty()
+                && (manager.config.header_in_out || manager.config.header_in_only)
                 && is_first_line_of_file
             {
                 is_first_line_of_file = false;
@@ -563,36 +551,9 @@ fn split_randomly(
                 return Ok(());
             }
 
-            // Only turn off flag if it was non-empty (handled in else if) OR if we decide empty lines count as "lines" that aren't header.
-            // If we treat empty lines as data, they are not header.
-            // If we encounter empty line at start, and we want header, we skip it?
-            // "Treat first non-empty line as header".
-            // So empty lines before header are... preserved? or skipped?
-            // tsv-utils usually preserves everything.
-            // If I have:
-            // \n
-            // Header
-            // Data
-            //
-            // And I use --header.
-            // Line 1: Empty. Not header. Process as data.
-            // Line 2: Non-empty. Is header. Capture.
-            // Line 3: Data.
-            //
-            // If I process Line 1 as data, I assign it to a file.
-            // If that file is new, I write the header (which I haven't seen yet!).
-            // So I write NULL header? Or no header?
-            // `open_output_file` uses `header_line` (Option). If None, no header written.
-            // So Line 1 goes to file X without header.
-            // Line 2 is captured as header.
-            // Line 3 goes to file Y. If Y is new, it gets Header.
-            // This seems consistent with "streaming".
-
-            // So `is_first_line_of_file` should ONLY be toggled if we found the header (non-empty).
-            // BUT: if we process data, we are past the "start".
-            // If we have data before header, that's a malformed TSV usually.
-            // But let's stick to the logic: "first NON-EMPTY line".
-
+            // `is_first_line_of_file` tracks whether we have seen the first *non-empty* line (header).
+            // If we encounter empty lines before header, they are treated as data, but `is_first_line_of_file`
+            // remains true so we can still capture the real header when it arrives.
             if !record.is_empty() {
                 is_first_line_of_file = false;
             }
@@ -610,21 +571,6 @@ fn split_randomly(
             let output = manager
                 .get_writer(idx0, header_line.as_deref())
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-
-            // If we are writing data, and we JUST found the header (e.g. data line came after header),
-            // and the file was already open (from previous empty lines?),
-            // we missed writing the header to that file!
-            // `SplitOutput` has `header_written`.
-            // If `header_written` is false, and we now have `header_line`, should we write it?
-            // Only if we are at the top of the file?
-            // But we already wrote empty lines to it.
-            // Headers usually go at the top.
-            // If we wrote empty lines, we can't insert header at top.
-            // So: if data precedes header, the output will have data before header (or no header if file was opened before header known).
-            // This is an edge case (malformed input). I won't over-engineer for it.
-
-            // However, `SplitOutput` stores `header_written`.
-            // If we open a file, we check `header_line`.
 
             output.writer.write_all(record)?;
             output.writer.write_all(b"\n")?;

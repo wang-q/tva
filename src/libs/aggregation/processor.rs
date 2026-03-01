@@ -28,35 +28,9 @@ impl StatsProcessor {
         let mut calculators: Vec<Box<dyn Calculator>> = Vec::new();
 
         // Maps from (field_idx, op_kind_discriminant) to slot_idx
-        // We use OpKind as part of the key because different operations on the same field
-        // might need different slots (e.g. Sum vs Mean both use sum_slot, but they should be distinct
-        // if they are separate operations, OR they should share if we want optimization).
-        //
-        // However, the original logic seemed to intend sharing slots for the SAME underlying metric.
-        // e.g. Mean needs (sum, count). If we also have Sum and Count ops, they should ideally share.
-        // But the current implementation of Calculator trait puts the update logic inside each calculator.
-        // If multiple calculators share the same slot, they will ALL update it, leading to double counting!
-        //
-        // EXAMPLE:
-        // Ops: [Sum(0), Mean(0)]
-        // Sum(0) updates sums[0]
-        // Mean(0) updates sums[0] AND counts[0]
-        // Result: sums[0] is added TWICE per row!
-        //
-        // FIX: We must NOT share slots between different calculator instances unless we have a sophisticated
-        // dependency graph (which we don't).
-        // The simplest fix for correctness is to ALWAYS allocate new slots for each operation.
-        //
-        // The previous optimization (HashMap lookups) was only valid when we had a single "update" loop
-        // that iterated over fields and applied all updates at once.
-        // Now that we have decoupled Calculators, each Calculator is an independent entity that drives its own updates.
-        // Sharing mutable state (slots) between them without coordination causes the double-update bug.
-
-        // So, we will remove the HashMaps and just increment counters.
-        // This might use slightly more memory (e.g. Sum and Mean on same field won't share the sum slot),
-        // but it guarantees correctness with the decoupled architecture.
-        // Given that number of columns is usually small (< 1000), this memory overhead is negligible compared to
-        // the benefits of decoupled code.
+        // We do NOT share slots between operations (e.g. Sum and Mean on the same field)
+        // to avoid double-counting when multiple calculators update the same slot independently.
+        // Each calculator gets its own dedicated slot(s).
 
         let mut num_sums = 0;
         let mut num_sum_sqs = 0;

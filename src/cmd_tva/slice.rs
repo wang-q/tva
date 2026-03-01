@@ -142,7 +142,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             // Since ranges are sorted by start, we can optimize slightly.
-            // But full interval tree is overkill. Linear scan is okay for small N.
+            // Full interval tree is overkill. Linear scan is okay for small N.
             for r in &ranges {
                 if line_num >= r.start && line_num <= r.end {
                     in_range = true;

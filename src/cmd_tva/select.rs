@@ -243,8 +243,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     )?;
                 } else {
                     // Should not happen if one of -f or -e required
-                    // But if -f not present, and -e not present, we error early.
-                    // But here we are inside loop.
+                    // If -f not present, and -e not present, we error early.
+                    // Here we are inside loop.
                     // If -e not present, and rest_mode None, implies -f present.
                 }
             } else {

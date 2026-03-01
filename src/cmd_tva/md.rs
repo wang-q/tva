@@ -134,7 +134,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         } else if is_fmt {
             // If fmt is on but num check logic didn't run (though we set is_num=true if is_fmt is true),
-            // actually logic above handles it. But let's ensure is_numeric_column is sized if needed later.
+            // actually logic above handles it. Let's ensure is_numeric_column is sized if needed later.
             if is_numeric_column.is_empty() {
                 is_numeric_column = vec![false; num_columns];
             }

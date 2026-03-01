@@ -267,7 +267,7 @@ input1.txt.3,10,绿色|蓝色\n";
 fn keep_header_oneblankline_cat() {
     // oneblankline.txt contains a single blank line.
     // If it's treated as header, it's printed.
-    // But since it's just "\n", the behavior depends on whether we consider it empty or not.
+    // Since it's just "\n", the behavior depends on whether we consider it empty or not.
     // tsv-utils considers it a header.
     let tva_bin = env!("CARGO_BIN_EXE_tva");
     let (stdout, _) = TvaCmd::new()

@@ -102,7 +102,7 @@ impl KeyExtractor {
         }
 
         // Optimization: Single field and no ignore case -> Ref
-        // But only if plan output length is 1.
+        // Only valid if plan output length is 1.
         if plan.output_len() == 1 && !self.ignore_case {
             // ranges_buf should have size output_len
             if !self.ranges_buf.is_empty() {

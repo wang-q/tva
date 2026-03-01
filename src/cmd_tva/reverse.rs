@@ -122,10 +122,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             match mmap {
                 Ok(mmap) => {
-                    // We advise random access or sequential? We read backwards.
+                    // We read backwards.
                     // madvise(MADV_SEQUENTIAL) might assume forward.
                     // backwards is not standard sequential.
-                    // But usually mmap is fast enough.
+                    // Usually mmap is fast enough.
                     process_buffer(
                         &mut writer,
                         &mmap,

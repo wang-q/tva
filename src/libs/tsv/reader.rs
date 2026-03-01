@@ -114,7 +114,6 @@ impl<R: Read> TsvReader<R> {
                     let record = &self.buf[self.pos..content_end];
                     // Call the function
                     // If function returns Interrupted, we stop but don't propagate error (if caller handles it)
-                    // But here we propagate.
                     match func(record) {
                         Ok(_) => {}
                         Err(e) if e.kind() == io::ErrorKind::Interrupted => {
@@ -261,12 +260,11 @@ mod tests {
     }
 
     #[test]
-    fn test_buffer_resize() {
-        // Create data larger than initial buffer (force resize)
-        // Let's use a small initial buffer for test
-        let data = b"long_record_1\nlong_record_2\n";
-        let cursor = Cursor::new(data);
-        let mut reader = TsvReader::with_capacity(cursor, 10); // Too small for one record
+    fn test_reader_large_lines() {
+        // Use a small initial buffer for test
+        let data = "A".repeat(1000) + "\n" + &"B".repeat(2000) + "\n";
+        let reader = std::io::Cursor::new(data.clone());
+        let mut reader = TsvReader::with_capacity(reader, 10); // Too small for one record
         let mut records = Vec::new();
 
         reader

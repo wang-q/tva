@@ -348,24 +348,6 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     if let Some(idx) = spec.rfind(':') {
                         // Check if the part after ':' is likely a probability (e.g. for quantile 1:0.5)
                         // Quantile configs are created earlier, and their spec is "fields_spec" (e.g. "1,2").
-                        // But if the user typed --quantile 1:0.5:Header, the first split (in argument parsing loop)
-                        // would have split at the first ':', giving fields="1" and probs="0.5:Header".
-                        // Then probs parsing would fail.
-                        // So for quantile, we might need to handle headers differently or disallow them in the same arg.
-                        // tsv-summarize supports --quantile 1:0.5:Header.
-                        // My current quantile parsing loop splits by ':' (limit 2? no).
-                        // Let's re-examine quantile parsing loop.
-
-                        // But here, 'spec' is the field list string.
-                        // For quantile, I set spec = fields_spec.
-                        // If fields_spec contained a header, it would have been split out earlier?
-                        // No, quantile parsing loop:
-                        // let parts: Vec<&str> = val.split(':').collect();
-                        // fields_spec = parts[0]; probs_spec = parts[1];
-                        // If val="1:0.5:Header", parts=["1", "0.5", "Header"].
-                        // My current logic takes parts[0] and parts[1]. Ignores parts[2]?
-                        // No, I check parts.len() < 2. I don't check > 2.
-                        // So for quantile, spec is just parts[0] ("1").
                         // So this block handles non-quantile ops where spec comes directly from arg.
                         // e.g. --sum 1:Header -> spec="1:Header".
 
