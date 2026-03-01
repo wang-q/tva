@@ -225,7 +225,7 @@ pub fn make_subcommand() -> Command {
                 .long("values-delimiter")
                 .short('v')
                 .num_args(1)
-                .default_value(",")
+                .default_value("|")
                 .help("Delimiter for --unique and --collapse"),
         )
         .arg(
@@ -286,6 +286,30 @@ struct OpConfig {
 }
 
 pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
+    // Parameter validation
+    let delimiter_str = matches
+        .get_one::<String>("delimiter")
+        .map(|s| s.as_str())
+        .unwrap_or("\t");
+    let values_delimiter_str = matches
+        .get_one::<String>("values-delimiter")
+        .map(|s| s.as_str())
+        .unwrap_or("|");
+
+    if delimiter_str == values_delimiter_str {
+        return Err(anyhow::anyhow!(
+            "values delimiter cannot be the same as field delimiter"
+        ));
+    }
+
+    if matches.get_flag("exclude-missing")
+        && matches.get_one::<String>("replace-missing").is_some()
+    {
+        return Err(anyhow::anyhow!(
+            "argument '--exclude-missing' cannot be used with '--replace-missing <replace-missing>'"
+        ));
+    }
+
     let mut op_configs = Vec::new();
 
     // Collect operations
@@ -510,9 +534,9 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 let p = p_str.parse::<f64>().map_err(|e| {
                     anyhow::anyhow!("Invalid probability {}: {}", p_str, e)
                 })?;
-                if p < 0.0 || p > 1.0 {
+                if !(0.0..=1.0).contains(&p) {
                     return Err(anyhow::anyhow!(
-                        "Probability must be between 0 and 1: {}",
+                        "probability must be between 0.0 and 1.0: {}",
                         p
                     ));
                 }
@@ -678,6 +702,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     delimiter as char,
                 )
                 .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
+
+                if custom_header_override.is_some() && indices.len() > 1 {
+                    return Err(anyhow::anyhow!(
+                        "custom header is not allowed with multiple fields"
+                    ));
+                }
 
                 for idx in &indices {
                     let field_idx = *idx - 1;

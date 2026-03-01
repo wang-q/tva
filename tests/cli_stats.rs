@@ -330,10 +330,10 @@ fn stats_string_ops() {
     assert_eq!(parts.len(), 2);
 
     let unique_val = parts[0];
-    assert!(unique_val == "A,B" || unique_val == "B,A");
+    assert!(unique_val == "A|B" || unique_val == "B|A");
 
     let collapse_val = parts[1];
-    assert_eq!(collapse_val, "A,B,A");
+    assert_eq!(collapse_val, "A|B|A");
 }
 
 #[test]
@@ -448,7 +448,7 @@ fn stats_values_alias() {
         .stdin(input)
         .run();
 
-    assert_eq!(stdout.trim(), "A,B");
+    assert_eq!(stdout.trim(), "A|B");
 }
 
 #[test]
@@ -459,7 +459,7 @@ fn stats_unique_values_alias() {
         .stdin(input)
         .run();
 
-    assert_eq!(stdout.trim(), "A,B");
+    assert_eq!(stdout.trim(), "A|B");
 }
 
 #[test]
@@ -583,13 +583,6 @@ A\t20
         .stdin(input)
         .run();
     assert_eq!(stdout.trim(), "10");
-
-    // With -r 0 AND -x: Should be 15?
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--mean", "2", "--replace-missing", "0", "-x"])
-        .stdin(input)
-        .run();
-    assert_eq!(stdout.trim(), "15");
 }
 
 #[test]
@@ -1283,4 +1276,63 @@ fn tsv_utils_test_no_header_group_by() {
     assert!(stdout.contains("9\t1\t1"));
     assert!(stdout.contains("medium\t1\t1"));
     assert!(stdout.contains("\t1\t1"));
+}
+
+#[test]
+fn stats_error_quantile_invalid_prob() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["stats", "--quantile", "1:1.5"])
+        .stdin(INPUT_BASIC)
+        .run_fail();
+
+    assert!(stderr.contains("probability must be between 0.0 and 1.0"));
+}
+
+#[test]
+fn stats_error_quantile_no_prob() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["stats", "--quantile", "1"])
+        .stdin(INPUT_BASIC)
+        .run_fail();
+
+    // tva uses clap, so it might be a parsing error or custom validation
+    // The current implementation expects field:prob format
+    assert!(stderr.to_lowercase().contains("invalid quantile syntax"));
+}
+
+#[test]
+fn stats_error_custom_header_multiple_fields() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["stats", "--sum", "1,2:header"])
+        .stdin(INPUT_BASIC)
+        .run_fail();
+
+    assert!(stderr.contains("custom header is not allowed with multiple fields"));
+}
+
+#[test]
+fn stats_error_exclude_and_replace_missing() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--exclude-missing",
+            "--replace-missing",
+            "0",
+            "--mean",
+            "1",
+        ])
+        .stdin(INPUT_BASIC)
+        .run_fail();
+
+    assert!(stderr.contains("argument '--exclude-missing' cannot be used with '--replace-missing <replace-missing>'"));
+}
+
+#[test]
+fn stats_error_delimiter_and_values_delimiter_same() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["stats", "-d", ",", "-v", ",", "--values", "1"])
+        .stdin(INPUT_BASIC)
+        .run_fail();
+
+    assert!(stderr.contains("values delimiter cannot be the same as field delimiter"));
 }
