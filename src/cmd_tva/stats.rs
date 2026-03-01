@@ -73,16 +73,41 @@ pub fn make_subcommand() -> Command {
     add_op_arg!(cmd, "mad", "Calculate median absolute deviation of fields");
     add_op_arg!(cmd, "first", "retain", "Get the first value of fields");
     add_op_arg!(cmd, "last", "Get the last value of fields");
-    add_op_arg!(cmd, "nunique", "unique-count", "Count the number of unique values");
+    add_op_arg!(
+        cmd,
+        "nunique",
+        "unique-count",
+        "Count the number of unique values"
+    );
     add_op_arg!(cmd, "mode", "Get the most frequent value (mode)");
     add_op_arg!(cmd, "geomean", "Calculate geometric mean of fields");
     add_op_arg!(cmd, "harmmean", "Calculate harmonic mean of fields");
-    add_op_arg!(cmd, "q1", "Calculate 1st quartile (25th percentile) of fields");
-    add_op_arg!(cmd, "q3", "Calculate 3rd quartile (75th percentile) of fields");
-    add_op_arg!(cmd, "iqr", "Calculate interquartile range (Q3-Q1) of fields");
-    add_op_arg!(cmd, "cv", "Calculate coefficient of variation (stdev/mean) of fields");
+    add_op_arg!(
+        cmd,
+        "q1",
+        "Calculate 1st quartile (25th percentile) of fields"
+    );
+    add_op_arg!(
+        cmd,
+        "q3",
+        "Calculate 3rd quartile (75th percentile) of fields"
+    );
+    add_op_arg!(
+        cmd,
+        "iqr",
+        "Calculate interquartile range (Q3-Q1) of fields"
+    );
+    add_op_arg!(
+        cmd,
+        "cv",
+        "Calculate coefficient of variation (stdev/mean) of fields"
+    );
     add_op_arg!(cmd, "range", "Calculate range (max-min) of fields");
-    add_op_arg!(cmd, "quantile", "Calculate quantiles (e.g. field:0.25,0.75)");
+    add_op_arg!(
+        cmd,
+        "quantile",
+        "Calculate quantiles (e.g. field:0.25,0.75)"
+    );
     add_op_arg!(
         cmd,
         "values",
@@ -98,7 +123,11 @@ pub fn make_subcommand() -> Command {
     add_op_arg!(cmd, "rand", "Pick a random value from fields");
     add_op_arg!(cmd, "mode-count", "Count of the most frequent value");
     add_op_arg!(cmd, "missing-count", "Number of missing (empty) fields");
-    add_op_arg!(cmd, "not-missing-count", "Number of filled (non-empty) fields");
+    add_op_arg!(
+        cmd,
+        "not-missing-count",
+        "Number of filled (non-empty) fields"
+    );
 
     cmd = cmd
         .arg(

@@ -275,7 +275,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(records.len(), 2);
-        assert_eq!(records[0], b"long_record_1");
-        assert_eq!(records[1], b"long_record_2");
+        assert_eq!(records[0], "A".repeat(1000).as_bytes());
+        assert_eq!(records[1], "B".repeat(2000).as_bytes());
     }
 }
