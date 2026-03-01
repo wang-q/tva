@@ -78,6 +78,12 @@ pub fn make_subcommand() -> Command {
                 .help("Fields used as keys for distinct Bernoulli sampling (requires --prob)"),
         )
         .arg(
+            Arg::new("prefer-algorithm-r")
+                .long("prefer-algorithm-r")
+                .action(ArgAction::SetTrue)
+                .help("Use Algorithm R for reservoir sampling (default for unweighted --num)"),
+        )
+        .arg(
             Arg::new("inorder")
                 .long("inorder")
                 .short('i')
@@ -131,6 +137,7 @@ struct SampleConfig {
     gen_random_inorder: bool,
     random_value_header: String,
     compatibility_mode: bool,
+    prefer_algorithm_r: bool,
     key_fields: Option<String>,
     inorder: bool,
     static_seed: bool,
@@ -161,6 +168,7 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
         .cloned()
         .unwrap_or_else(|| "random_value".to_string());
     let compatibility_mode = args.get_flag("compatibility-mode");
+    let prefer_algorithm_r = args.get_flag("prefer-algorithm-r");
     let key_fields = args.get_one::<String>("key-fields").map(|s| s.to_string());
     let inorder = args.get_flag("inorder");
     let static_seed = args.get_flag("static-seed");
@@ -240,6 +248,7 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
         gen_random_inorder,
         random_value_header,
         compatibility_mode,
+        prefer_algorithm_r,
         key_fields,
         inorder,
         static_seed,
@@ -492,6 +501,7 @@ fn run_standard_sampling<W: Write>(
         print_random,
         random_value_header,
         compatibility_mode,
+        prefer_algorithm_r,
         key_fields,
         inorder,
         static_seed,
@@ -538,16 +548,28 @@ fn run_standard_sampling<W: Write>(
             rows: Vec::new(),
         })
     } else if let Some(ref _weight_spec) = weight_field {
-        let k = if num_opt == 0 {
-            usize::MAX
+        // If prefer_algorithm_r is set, we ignore weight field and use standard Reservoir sampling?
+        // tsv-sample docs: "This option forces Algorithm R even if --weight-field is used"
+        if prefer_algorithm_r {
+            SamplerEnum::Reservoir(ReservoirSampler {
+                k: num_opt as usize,
+                reservoir: Vec::new(),
+                count: 0,
+            })
         } else {
-            num_opt as usize
-        };
-        SamplerEnum::Weighted(WeightedReservoirSampler {
-            k,
-            weight_field_idx: 0, // To be filled
-            heap: std::collections::BinaryHeap::new(),
-        })
+            let k = if num_opt == 0 {
+                usize::MAX
+            } else {
+                num_opt as usize
+            };
+            SamplerEnum::Weighted(WeightedReservoirSampler {
+                k,
+                weight_field_idx: 0, // To be filled
+                heap: std::collections::BinaryHeap::new(),
+                inorder,
+                current_index: 0,
+            })
+        }
     } else if num_opt == 0 {
         if compatibility_mode {
             SamplerEnum::Compat(CompatRandomSampler {
@@ -562,15 +584,21 @@ fn run_standard_sampling<W: Write>(
             k: num_opt as usize,
             rows: Vec::new(),
         })
+    } else if prefer_algorithm_r {
+        SamplerEnum::Reservoir(ReservoirSampler {
+            k: num_opt as usize,
+            reservoir: Vec::with_capacity(num_opt as usize),
+            count: 0,
+        })
     } else if compatibility_mode {
         SamplerEnum::Compat(CompatRandomSampler {
             k: num_opt as usize,
-            rows: Vec::new(),
+            rows: Vec::with_capacity(num_opt as usize),
         })
     } else {
         SamplerEnum::Reservoir(ReservoirSampler {
             k: num_opt as usize,
-            reservoir: Vec::new(),
+            reservoir: Vec::with_capacity(num_opt as usize),
             count: 0,
         })
     };

@@ -25,6 +25,7 @@ pub const INV_U64_MAX_PLUS_1: f64 = 1.0 / (u64::MAX as f64 + 1.0);
 pub struct WeightedItem {
     pub key: f64,
     pub record: Vec<u8>,
+    pub original_index: usize,
 }
 
 impl PartialEq for WeightedItem {
@@ -168,6 +169,8 @@ pub struct WeightedReservoirSampler {
     // Use a Min-Heap (via Reverse) to store the top-K items with largest keys.
     // The root of the heap is the item with the smallest key among the top-K.
     pub heap: BinaryHeap<Reverse<WeightedItem>>,
+    pub inorder: bool,
+    pub current_index: usize,
 }
 
 impl Sampler for WeightedReservoirSampler {
@@ -210,6 +213,7 @@ impl Sampler for WeightedReservoirSampler {
                             self.heap.push(Reverse(WeightedItem {
                                 key,
                                 record: record.to_vec(),
+                                original_index: self.current_index,
                             }));
                         } else {
                             // Replace the smallest key in heap if new key is larger
@@ -219,6 +223,7 @@ impl Sampler for WeightedReservoirSampler {
                                     self.heap.push(Reverse(WeightedItem {
                                         key,
                                         record: record.to_vec(),
+                                        original_index: self.current_index,
                                     }));
                                 }
                             }
@@ -239,6 +244,7 @@ impl Sampler for WeightedReservoirSampler {
             )
             .into());
         }
+        self.current_index += 1;
         Ok(())
     }
 
@@ -252,13 +258,19 @@ impl Sampler for WeightedReservoirSampler {
             return Ok(());
         }
 
-        // Extract items and sort by key descending (highest probability first)
+        // Extract items
         let mut items: Vec<WeightedItem> =
             self.heap.drain().map(|Reverse(item)| item).collect();
-        items.sort_by(|a, b| b.key.partial_cmp(&a.key).unwrap_or(Ordering::Equal));
+
+        if self.inorder {
+            items.sort_by_key(|item| item.original_index);
+        } else {
+            // Sort by key descending (highest probability first)
+            items.sort_by(|a, b| b.key.partial_cmp(&a.key).unwrap_or(Ordering::Equal));
+        }
 
         for item in items {
-            write_with_optional_random(writer, &item.record, rng, print_random, None)?;
+            write_with_optional_random(writer, &item.record, rng, print_random, Some(item.key))?;
         }
         Ok(())
     }
@@ -587,6 +599,8 @@ mod tests {
             k: 2,
             weight_field_idx: 2,
             heap: BinaryHeap::new(),
+            inorder: false,
+            current_index: 0,
         };
 
         // item\tweight
@@ -808,6 +822,8 @@ mod tests {
             k: 2,
             weight_field_idx: 2,
             heap: BinaryHeap::new(),
+            inorder: false,
+            current_index: 0,
         };
 
         // Negative weights should be ignored (Ok), non-numeric should be error
@@ -829,6 +845,8 @@ mod tests {
             k: 2,
             weight_field_idx: 3,
             heap: BinaryHeap::new(),
+            inorder: false,
+            current_index: 0,
         };
 
         let inputs = vec!["A\t1.0"];
@@ -978,5 +996,47 @@ mod tests {
 
         let out_str = String::from_utf8(output).unwrap();
         assert!(out_str.is_empty());
+    }
+    #[test]
+    fn test_weighted_reservoir_sampler_inorder() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        // k=2, inorder=true
+        let mut sampler = WeightedReservoirSampler {
+            k: 2,
+            weight_field_idx: 2,
+            heap: BinaryHeap::new(),
+            inorder: true,
+            current_index: 0,
+        };
+
+        // A=10, B=1, C=100
+        let inputs = vec!["A	10.0", "B	1.0", "C	100.0"];
+
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        assert_eq!(lines.len(), 2);
+        // Should be A then C (inorder), not C then A (weight/key desc)
+        // With high weights A and C likely selected.
+
+        // Check order
+        let pos_a = lines.iter().position(|&r| r.starts_with("A"));
+        let pos_c = lines.iter().position(|&r| r.starts_with("C"));
+
+        if let (Some(pa), Some(pc)) = (pos_a, pos_c) {
+            assert!(pa < pc);
+        }
     }
 }
