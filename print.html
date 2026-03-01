@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8b9191b2.js";
+            window.path_to_searchindex_js = "searchindex-990cefbe.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e7df0f54.js"></script>
@@ -1246,30 +1246,23 @@ A	M	18	10
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="reshaping-documentation"><a class="header" href="#reshaping-documentation">Reshaping Documentation</a></h1>
-<p>This document explains how to use the reshaping commands in <code>tva</code>: <strong><code>longer</code></strong> and <strong><code>wider</code></strong>. These commands are inspired by the <code>pivot_longer()</code> and <code>pivot_wider()</code> functions from the R package <code>tidyr</code>.</p>
+<p>This document explains how to use the reshaping commands in <code>tva</code>: <strong><code>longer</code></strong>, <strong><code>wider</code></strong>, <strong><code>fill</code></strong>, and <strong><code>blank</code></strong>. These commands are inspired by the data tidying philosophy of the R package <code>tidyr</code>.</p>
 <h2 id="introduction-3"><a class="header" href="#introduction-3">Introduction</a></h2>
-<p>Data is often described as “long” or “wide”:</p>
+<p>Data reshaping involves changing the structure of a dataset without necessarily changing the information it contains. <code>tva</code> provides a suite of tools for these tasks:</p>
 <ul>
-<li><strong>Long data</strong>: Has more rows and fewer columns. This format is typically “tidy” and easier for analysis, where each row is an observation and each column is a variable.</li>
-<li><strong>Wide data</strong>: Has more columns and fewer rows. This format is often better for data entry or presentation (e.g., a spreadsheet with years as columns).</li>
-</ul>
-<p><code>tva</code> provides tools to switch between these formats:</p>
+<li><strong>Pivoting</strong>:
 <ul>
-<li><strong><code>longer</code></strong>: Reshapes “wide” data into a “long” format.</li>
-<li><strong><code>wider</code></strong>: Reshapes “long” data into a “wide” format.</li>
+<li><strong><code>longer</code></strong>: Reshapes “wide” data (many columns) into “long” data (many rows).</li>
+<li><strong><code>wider</code></strong>: Reshapes “long” data into “wide” data.</li>
 </ul>
-<p><strong>Comparison: <code>stats</code> vs <code>wider</code></strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>stats</code> (Group By)</th><th style="text-align: left"><code>wider</code> (Pivot)</th></tr>
-</thead>
-<tbody>
-<tr><td style="text-align: left"><strong>Goal</strong></td><td style="text-align: left">Summarize to rows</td><td style="text-align: left">Reshape to columns</td></tr>
-<tr><td style="text-align: left"><strong>Output</strong></td><td style="text-align: left">Long / Tall</td><td style="text-align: left">Wide / Matrix</td></tr>
-</tbody>
-</table>
-</div>
+</li>
+<li><strong>Completion</strong>:
+<ul>
+<li><strong><code>fill</code></strong>: Fills missing values with previous non-missing values (LOCF) or constants.</li>
+<li><strong><code>blank</code></strong>: The inverse of <code>fill</code>; replaces repeated values with empty strings (sparsify).</li>
+</ul>
+</li>
+</ul>
 <h2 id="longer-wide-to-long"><a class="header" href="#longer-wide-to-long"><code>longer</code> (Wide to Long)</a></h2>
 <p>The <code>longer</code> command is designed to reshape “wide” data into a “long” format. “Wide” data often has column names that are actually values of a variable. For example, a table might have columns like <code>2020</code>, <code>2021</code>, <code>2022</code> representing years. <code>longer</code> gathers these columns into a pair of key-value columns (e.g., <code>year</code> and <code>population</code>), making the data “longer” (more rows, fewer columns) and easier to analyze.</p>
 <h3 id="basic-usage-6"><a class="header" href="#basic-usage-6">Basic Usage</a></h3>
@@ -1348,15 +1341,23 @@ Afghanistan	AF	AFG	1980	sp	m	014	NA
 </code></pre>
 <h3 id="4-splitting-column-names-with-a-separator"><a class="header" href="#4-splitting-column-names-with-a-separator">4. Splitting Column Names with a Separator</a></h3>
 <p>If column names are consistently separated by a character, you can use <strong><code>--names-sep</code></strong>.</p>
-<p>Input <code>docs/data/household.tsv</code>:</p>
-<pre><code class="language-tsv">family	dob_child1	dob_child2	name_child1	name_child2
-1	1998-11-26	2000-01-29	J	K
+<p>Consider a dataset <code>docs/data/semester.tsv</code> where columns represent <code>year_semester</code>:</p>
+<pre><code class="language-tsv">student	2020_1	2020_2	2021_1
+Alice	85	90	88
+Bob	78	82	80
 </code></pre>
-<p>(Note: Handling “multiple observations per row” like <code>tidyr</code>’s <code>.value</code> sentinel is not yet fully supported in a single pass, but basic splitting is.)</p>
-<p>For a simpler example, if columns are <code>year_semester</code> (e.g., <code>2020_1</code>, <code>2020_2</code>):</p>
-<pre><code class="language-bash">tva longer data.tsv --cols "20*" --names-to year semester --names-sep "_"
+<p>We can split the column names into two separate columns: <code>year</code> and <code>semester</code>.</p>
+<pre><code class="language-bash">tva longer docs/data/semester.tsv --cols 2-4 --names-to year semester --names-sep "_"
 </code></pre>
-<p>This splits <code>2020_1</code> into <code>2020</code> (year) and <code>1</code> (semester).</p>
+<p>Output:</p>
+<pre><code class="language-tsv">student	year	semester	value
+Alice	2020	1	85
+Alice	2020	2	90
+Alice	2021	1	88
+Bob	2020	1	78
+Bob	2020	2	82
+Bob	2021	1	80
+</code></pre>
 <h2 id="wider-long-to-wide"><a class="header" href="#wider-long-to-wide"><code>wider</code> (Long to Wide)</a></h2>
 <p>The <code>wider</code> command is the inverse of <code>longer</code>. It spreads a key-value pair across multiple columns, increasing the number of columns and decreasing the number of rows. This is useful for creating summary tables or reshaping data for tools that expect a matrix-like format.</p>
 <h3 id="basic-usage-1-3"><a class="header" href="#basic-usage-1-3">Basic Usage</a></h3>
@@ -1370,6 +1371,18 @@ Afghanistan	AF	AFG	1980	sp	m	014	NA
 <li><strong><code>--names-sort</code></strong>: (Optional) Sort the new column headers alphabetically.</li>
 <li><strong><code>--op</code></strong>: (Optional) Aggregation operation (e.g., <code>sum</code>, <code>mean</code>, <code>count</code>, <code>last</code>). Default: <code>last</code>.</li>
 </ul>
+<p><strong>Comparison: <code>stats</code> vs <code>wider</code></strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>stats</code> (Group By)</th><th style="text-align: left"><code>wider</code> (Pivot)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Goal</strong></td><td style="text-align: left">Summarize to rows</td><td style="text-align: left">Reshape to columns</td></tr>
+<tr><td style="text-align: left"><strong>Output</strong></td><td style="text-align: left">Long / Tall</td><td style="text-align: left">Wide / Matrix</td></tr>
+</tbody>
+</table>
+</div>
 <h3 id="example-1-us-rent-and-income"><a class="header" href="#example-1-us-rent-and-income">Example 1: US Rent and Income</a></h3>
 <p>Consider the dataset <code>docs/data/us_rent_income.tsv</code>:</p>
 <pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
@@ -1382,15 +1395,16 @@ Afghanistan	AF	AFG	1980	sp	m	014	NA
 <pre><code class="language-bash">tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estimate
 </code></pre>
 <p>Output:</p>
-<pre><code class="language-tsv">GEOID	NAME	income	rent
-01	Alabama	24476	747
-02	Alaska	32940	1200
+<pre><code class="language-tsv">GEOID	NAME	moe	income	rent
+01	Alabama	136	24476
+01	Alabama	3		747
+02	Alaska	508	32940
+02	Alaska	13		1200
 ...
 </code></pre>
 <p><strong>Understanding ID Columns</strong>:
 By default, <code>wider</code> uses all columns <em>except</em> <code>names-from</code> and <code>values-from</code> as ID columns. In this example, <code>GEOID</code>, <code>NAME</code>, and <code>moe</code> are treated as IDs.
-However, <code>moe</code> (margin of error) is different for each row (it depends on the variable). If we include it as an ID, we might get multiple rows for the same state if we’re not careful.
-In this specific case, since <code>moe</code> is unique to the <code>variable</code>/<code>estimate</code> pair, <code>wider</code> handles it, but typically you might want to exclude such columns if they aren’t part of the identifier.</p>
+Because <code>moe</code> (margin of error) is different for the <code>income</code> row (136) and the <code>rent</code> row (3), <code>wider</code> keeps them as separate rows to preserve data.</p>
 <p>To explicitly specify that only <code>GEOID</code> and <code>NAME</code> identify a row (and drop <code>moe</code>):</p>
 <pre><code class="language-bash">tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estimate --id-cols GEOID,NAME
 </code></pre>
@@ -1460,14 +1474,14 @@ A	L	54
 </code></pre>
 <p>Output:</p>
 <pre><code class="language-tsv">tension	A	B
-L	110	54
-M	87	63
-H	72	84
+L	110	47
+M	68	62
+H	81	96
 </code></pre>
 <p>(For A-L: 26 + 30 + 54 = 110)</p>
 <h3 id="example-crosstab-counting"><a class="header" href="#example-crosstab-counting">Example: Crosstab (Counting)</a></h3>
-<p>You can also use <code>wider</code> to create a frequency table (crosstab) by using <code>--op count</code>. In this case, <code>--values-from</code> is optional.</p>
-<pre><code class="language-bash">tva wider docs/data/warpbreaks.tsv --names-from wool --op count
+<p>You can also use <code>wider</code> to create a frequency table (crosstab) by using <code>--op count</code>. In this case, <code>--values-from</code> is optional. But to get a proper crosstab, you usually want to group by the other factor (here, <code>tension</code>), so you should specify it as the ID column.</p>
+<pre><code class="language-bash">tva wider docs/data/warpbreaks.tsv --names-from wool --op count --id-cols tension
 </code></pre>
 <p>Output:</p>
 <pre><code class="language-tsv">tension	A	B
@@ -1511,6 +1525,64 @@ A       10  20
 B       30  40
 </code></pre>
 <p>(Spreads categories horizontally)</p>
+<h2 id="fill-fill-missing-values"><a class="header" href="#fill-fill-missing-values"><code>fill</code> (Fill Missing Values)</a></h2>
+<p>The <code>fill</code> command fills missing values in selected columns using the previous non-missing value (Last Observation Carried Forward, or LOCF) or a constant. This is common in time-series data or reports where values are only listed when they change.</p>
+<h3 id="basic-usage-2-3"><a class="header" href="#basic-usage-2-3">Basic Usage</a></h3>
+<pre><code class="language-bash">tva fill [options]
+</code></pre>
+<ul>
+<li><strong><code>--field</code> / <code>-f</code></strong>: Columns to fill.</li>
+<li><strong><code>--direction</code></strong>: Currently only <code>down</code> (default) is supported.</li>
+<li><strong><code>--value</code> / <code>-v</code></strong>: If provided, fills with this constant value instead of the previous value.</li>
+<li><strong><code>--na</code></strong>: String to consider as missing (default: empty string).</li>
+</ul>
+<h3 id="example-filling-down"><a class="header" href="#example-filling-down">Example: Filling Down</a></h3>
+<p>Input <code>docs/data/pet_names.tsv</code>:</p>
+<pre><code class="language-tsv">Pet	Name	Age
+Dog	Rex	5
+	Spot	3
+Cat	Felix	2
+	Tom	4
+</code></pre>
+<p>To fill the <code>Pet</code> column downwards:</p>
+<pre><code class="language-bash">tva fill -H -f Pet docs/data/pet_names.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">Pet	Name	Age
+Dog	Rex	5
+Dog	Spot	3
+Cat	Felix	2
+Cat	Tom	4
+</code></pre>
+<h3 id="example-filling-with-constant"><a class="header" href="#example-filling-with-constant">Example: Filling with Constant</a></h3>
+<p>To replace missing values with “Unknown”:</p>
+<pre><code class="language-bash">tva fill -H -f Pet -v "Unknown" docs/data/pet_names.tsv
+</code></pre>
+<h2 id="blank-sparsify--inverse-fill"><a class="header" href="#blank-sparsify--inverse-fill"><code>blank</code> (Sparsify / Inverse Fill)</a></h2>
+<p>The <code>blank</code> command replaces repeated values in selected columns with an empty string (or a custom placeholder). This is the inverse of <code>fill</code> and is useful for creating human-readable reports where repeated group labels are visually redundant.</p>
+<h3 id="basic-usage-3-1"><a class="header" href="#basic-usage-3-1">Basic Usage</a></h3>
+<pre><code class="language-bash">tva blank [options]
+</code></pre>
+<ul>
+<li><strong><code>--field</code> / <code>-f</code></strong>: Columns to blank.</li>
+<li><strong><code>--ignore-case</code> / <code>-i</code></strong>: Ignore case when comparing values.</li>
+</ul>
+<h3 id="example"><a class="header" href="#example">Example</a></h3>
+<p>Input <code>docs/data/blank_example.tsv</code>:</p>
+<pre><code class="language-tsv">Group	Item
+A	1
+A	2
+B	1
+</code></pre>
+<p>Command:</p>
+<pre><code class="language-bash">tva blank -H -f Group docs/data/blank_example.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">Group	Item
+A	1
+	2
+B	1
+</code></pre>
 <h2 id="detailed-options"><a class="header" href="#detailed-options">Detailed Options</a></h2>
 <div class="table-wrapper">
 <table>
@@ -1518,15 +1590,24 @@ B       30  40
 <tr><th style="text-align: left">Option</th><th style="text-align: left">Description</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><code>--cols &lt;cols&gt;</code></td><td style="text-align: left"><strong>(Longer Only)</strong> Columns to reshape. Supports indices (<code>1</code>, <code>1-3</code>), names (<code>year</code>), and wildcards (<code>wk*</code>).</td></tr>
-<tr><td style="text-align: left"><code>--names-to &lt;names...&gt;</code></td><td style="text-align: left"><strong>(Longer Only)</strong> Name(s) for the new key column(s).</td></tr>
-<tr><td style="text-align: left"><code>--values-to &lt;name&gt;</code></td><td style="text-align: left"><strong>(Longer Only)</strong> Name for the new value column.</td></tr>
-<tr><td style="text-align: left"><code>--names-from &lt;col&gt;</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Column for new headers.</td></tr>
-<tr><td style="text-align: left"><code>--values-from &lt;col&gt;</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Column for new values.</td></tr>
-<tr><td style="text-align: left"><code>--id-cols &lt;cols&gt;</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Columns identifying rows.</td></tr>
-<tr><td style="text-align: left"><code>--values-fill &lt;str&gt;</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Fill value for missing cells.</td></tr>
-<tr><td style="text-align: left"><code>--names-sort</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Sort new column headers.</td></tr>
-<tr><td style="text-align: left"><code>--op &lt;op&gt;</code></td><td style="text-align: left"><strong>(Wider Only)</strong> Aggregation operation (<code>sum</code>, <code>mean</code>, <code>count</code>, etc.).</td></tr>
+<tr><td style="text-align: left"><code>--cols &lt;cols&gt;</code></td><td style="text-align: left"><strong>(Longer)</strong> Columns to reshape. Supports indices (<code>1</code>, <code>1-3</code>), names (<code>year</code>), and wildcards (<code>wk*</code>).</td></tr>
+<tr><td style="text-align: left"><code>--names-to &lt;names...&gt;</code></td><td style="text-align: left"><strong>(Longer)</strong> Name(s) for the new key column(s).</td></tr>
+<tr><td style="text-align: left"><code>--values-to &lt;name&gt;</code></td><td style="text-align: left"><strong>(Longer)</strong> Name for the new value column.</td></tr>
+<tr><td style="text-align: left"><code>--names-prefix &lt;str&gt;</code></td><td style="text-align: left"><strong>(Longer)</strong> String to remove from start of column names.</td></tr>
+<tr><td style="text-align: left"><code>--names-sep &lt;str&gt;</code></td><td style="text-align: left"><strong>(Longer)</strong> Separator to split column names.</td></tr>
+<tr><td style="text-align: left"><code>--names-pattern &lt;regex&gt;</code></td><td style="text-align: left"><strong>(Longer)</strong> Regex with capture groups for column names.</td></tr>
+<tr><td style="text-align: left"><code>--values-drop-na</code></td><td style="text-align: left"><strong>(Longer)</strong> Drop rows where value is empty.</td></tr>
+<tr><td style="text-align: left"><code>--names-from &lt;col&gt;</code></td><td style="text-align: left"><strong>(Wider)</strong> Column for new headers.</td></tr>
+<tr><td style="text-align: left"><code>--values-from &lt;col&gt;</code></td><td style="text-align: left"><strong>(Wider)</strong> Column for new values.</td></tr>
+<tr><td style="text-align: left"><code>--id-cols &lt;cols&gt;</code></td><td style="text-align: left"><strong>(Wider)</strong> Columns identifying rows.</td></tr>
+<tr><td style="text-align: left"><code>--values-fill &lt;str&gt;</code></td><td style="text-align: left"><strong>(Wider)</strong> Fill value for missing cells.</td></tr>
+<tr><td style="text-align: left"><code>--names-sort</code></td><td style="text-align: left"><strong>(Wider)</strong> Sort new column headers.</td></tr>
+<tr><td style="text-align: left"><code>--op &lt;op&gt;</code></td><td style="text-align: left"><strong>(Wider)</strong> Aggregation operation (<code>sum</code>, <code>mean</code>, <code>count</code>, etc.).</td></tr>
+<tr><td style="text-align: left"><code>--field &lt;cols&gt;</code></td><td style="text-align: left"><strong>(Fill/Blank)</strong> Columns to process.</td></tr>
+<tr><td style="text-align: left"><code>--direction &lt;dir&gt;</code></td><td style="text-align: left"><strong>(Fill)</strong> Direction to fill (<code>down</code> is default).</td></tr>
+<tr><td style="text-align: left"><code>--value &lt;val&gt;</code></td><td style="text-align: left"><strong>(Fill)</strong> Constant value to fill with.</td></tr>
+<tr><td style="text-align: left"><code>--na &lt;str&gt;</code></td><td style="text-align: left"><strong>(Fill)</strong> String to treat as missing (default: empty).</td></tr>
+<tr><td style="text-align: left"><code>--ignore-case</code></td><td style="text-align: left"><strong>(Blank)</strong> Ignore case when comparing values.</td></tr>
 </tbody>
 </table>
 </div>
