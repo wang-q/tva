@@ -30,7 +30,7 @@ impl Cell {
                 Cell::Values(vec![0.0, 0.0, 0.0])
             } // [sum, sum_sq, count]
             OpKind::Range => Cell::Values(vec![f64::INFINITY, f64::NEG_INFINITY]), // [min, max]
-            OpKind::Median | OpKind::Mad | OpKind::Q1 | OpKind::Q3 | OpKind::IQR => {
+            OpKind::Median | OpKind::Mad | OpKind::Q1 | OpKind::Q3 | OpKind::IQR | OpKind::Quantile(_) => {
                 Cell::Values(Vec::new())
             }
             OpKind::First
@@ -168,7 +168,7 @@ impl Cell {
                     }
                 }
             }
-            OpKind::Median | OpKind::Mad | OpKind::Q1 | OpKind::Q3 | OpKind::IQR => {
+            OpKind::Median | OpKind::Mad | OpKind::Q1 | OpKind::Q3 | OpKind::IQR | OpKind::Quantile(_) => {
                 if let Some(v) = val {
                     if let Cell::Values(vals) = self {
                         vals.push(v);
@@ -301,6 +301,14 @@ impl Cell {
                     let mut v = vals.clone();
                     v.sort_by(|a, b| a.partial_cmp(b).unwrap());
                     math::quantile(&v, 0.75).to_string()
+                }
+                OpKind::Quantile(p) => {
+                    if vals.is_empty() {
+                        return "nan".to_string();
+                    }
+                    let mut v = vals.clone();
+                    v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                    math::quantile(&v, p).to_string()
                 }
                 OpKind::IQR => {
                     if vals.is_empty() {

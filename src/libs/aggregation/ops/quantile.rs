@@ -4,6 +4,33 @@ use crate::libs::aggregation::{Aggregator, Calculator};
 use crate::libs::fmt::format_float;
 use crate::libs::tsv::record::Row;
 
+pub struct Quantile {
+    pub field_idx: usize,
+    pub values_slot: usize,
+    pub precision: Option<usize>,
+    pub probability: f64,
+}
+
+impl Calculator for Quantile {
+    fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
+        if let Some(val) = parse_float(row, self.field_idx) {
+            agg.values[self.values_slot].push(val);
+        }
+    }
+
+    fn format(&self, agg: &Aggregator) -> String {
+        let vals = &agg.values[self.values_slot];
+        if !vals.is_empty() {
+            let mut sorted_vals = vals.clone();
+            sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let res = math::quantile(&sorted_vals, self.probability);
+            format_float(res, self.precision)
+        } else {
+            "nan".to_string()
+        }
+    }
+}
+
 pub struct Median {
     pub field_idx: usize,
     pub values_slot: usize,

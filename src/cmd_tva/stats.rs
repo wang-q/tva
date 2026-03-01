@@ -167,19 +167,42 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::Append)
                 .help("Calculate range (max-min) of fields"),
         )
+
         .arg(
-            Arg::new("unique")
-                .long("unique")
+            Arg::new("quantile")
+                .long("quantile")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Calculate quantiles (e.g. field:0.25,0.75)"),
+        )
+        .arg(
+            Arg::new("values")
+                .long("values")
+                .visible_alias("collapse")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("List all values of fields (comma separated)"),
+        )
+        .arg(
+            Arg::new("unique-values")
+                .long("unique-values")
+                .visible_alias("unique")
                 .num_args(1)
                 .action(ArgAction::Append)
                 .help("List unique values of fields (comma separated)"),
         )
         .arg(
-            Arg::new("collapse")
-                .long("collapse")
+            Arg::new("write-header")
+                .long("write-header")
+                .short('w')
+                .action(ArgAction::SetTrue)
+                .help("Write an output header even if there is no input header"),
+        )
+        .arg(
+            Arg::new("count-header")
+                .long("count-header")
                 .num_args(1)
-                .action(ArgAction::Append)
-                .help("List all values of fields (comma separated)"),
+                .help("Use STR as the header for count"),
         )
         .arg(
             Arg::new("rand")
@@ -448,17 +471,32 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             });
         }
     }
-    if let Some(indices) = matches.indices_of("unique") {
-        for (i, val) in indices.zip(matches.get_many::<String>("unique").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Unique,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
+    if let Some(indices) = matches.indices_of("quantile") {
+        for (i, val) in indices.zip(matches.get_many::<String>("quantile").unwrap()) {
+            // val format: "fields:probs" e.g. "1,2:0.5,0.9"
+            let parts: Vec<&str> = val.split(':').collect();
+            if parts.len() < 2 {
+                return Err(anyhow::anyhow!("Invalid quantile syntax: {}", val));
+            }
+            let fields_spec = parts[0];
+            let probs_spec = parts[1];
+            
+            for p_str in probs_spec.split(',') {
+                let p = p_str.parse::<f64>().map_err(|e| anyhow::anyhow!("Invalid probability {}: {}", p_str, e))?;
+                if p < 0.0 || p > 1.0 {
+                    return Err(anyhow::anyhow!("Probability must be between 0 and 1: {}", p));
+                }
+                op_configs.push(OpConfig {
+                    kind: OpKind::Quantile(p),
+                    spec: Some(fields_spec.to_string()),
+                    arg_index: i,
+                });
+            }
         }
     }
-    if let Some(indices) = matches.indices_of("collapse") {
-        for (i, val) in indices.zip(matches.get_many::<String>("collapse").unwrap()) {
+
+    if let Some(indices) = matches.indices_of("values") {
+        for (i, val) in indices.zip(matches.get_many::<String>("values").unwrap()) {
             op_configs.push(OpConfig {
                 kind: OpKind::Collapse,
                 spec: Some(val.clone()),
@@ -466,6 +504,17 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             });
         }
     }
+    
+    if let Some(indices) = matches.indices_of("unique-values") {
+        for (i, val) in indices.zip(matches.get_many::<String>("unique-values").unwrap()) {
+            op_configs.push(OpConfig {
+                kind: OpKind::Unique,
+                spec: Some(val.clone()),
+                arg_index: i,
+            });
+        }
+    }
+    
     if let Some(indices) = matches.indices_of("rand") {
         for (i, val) in indices.zip(matches.get_many::<String>("rand").unwrap()) {
             op_configs.push(OpConfig {
@@ -477,7 +526,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     }
 
     // Handle count.
-    if matches.get_flag("count") {
+    if matches.get_flag("count") || matches.get_one::<String>("count-header").is_some() {
         op_configs.push(OpConfig {
             kind: OpKind::Count,
             spec: None,
@@ -505,8 +554,10 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let header_mode = matches.get_flag("header");
+    let write_header = matches.get_flag("write-header");
     let group_by_spec = matches.get_one::<String>("group-by").cloned();
     let replace_missing = matches.get_one::<String>("replace-missing").cloned();
+    let count_header = matches.get_one::<String>("count-header").cloned();
 
     let mut processor: Option<StatsProcessor> = None;
     let mut aggregator: Option<Aggregator> = None;
@@ -529,7 +580,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     kind: OpKind::Count,
                     field_idx: None,
                 });
-                output_headers.push("count".to_string());
+                output_headers.push(count_header.clone().unwrap_or_else(|| "count".to_string()));
             } else if let Some(spec) = &config.spec {
                 let indices =
                     fields::parse_field_list_with_header(spec, header_opt, '\t')
@@ -545,32 +596,33 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     });
 
                     let suffix = match config.kind {
-                        OpKind::Sum => "_sum",
-                        OpKind::Mean => "_mean",
-                        OpKind::Min => "_min",
-                        OpKind::Max => "_max",
-                        OpKind::Median => "_median",
-                        OpKind::Stdev => "_stdev",
-                        OpKind::Variance => "_variance",
-                        OpKind::Mad => "_mad",
-                        OpKind::First => "_first",
-                        OpKind::Last => "_last",
-                        OpKind::NUnique => "_nunique",
-                        OpKind::Mode => "_mode",
-                        OpKind::GeoMean => "_geomean",
-                        OpKind::HarmMean => "_harmmean",
-                        OpKind::Q1 => "_q1",
-                        OpKind::Q3 => "_q3",
-                        OpKind::IQR => "_iqr",
-                        OpKind::CV => "_cv",
-                        OpKind::Range => "_range",
-                        OpKind::Unique => "_unique",
-                        OpKind::Collapse => "_collapse",
-                        OpKind::Rand => "_rand",
-                        OpKind::ModeCount => "_mode_count",
-                        OpKind::MissingCount => "_missing_count",
-                        OpKind::NotMissingCount => "_not_missing_count",
-                        OpKind::Count => "",
+                        OpKind::Sum => "_sum".to_string(),
+                        OpKind::Mean => "_mean".to_string(),
+                        OpKind::Min => "_min".to_string(),
+                        OpKind::Max => "_max".to_string(),
+                        OpKind::Median => "_median".to_string(),
+                        OpKind::Stdev => "_stdev".to_string(),
+                        OpKind::Variance => "_variance".to_string(),
+                        OpKind::Mad => "_mad".to_string(),
+                        OpKind::First => "_first".to_string(),
+                        OpKind::Last => "_last".to_string(),
+                        OpKind::NUnique => "_nunique".to_string(),
+                        OpKind::Mode => "_mode".to_string(),
+                        OpKind::GeoMean => "_geomean".to_string(),
+                        OpKind::HarmMean => "_harmmean".to_string(),
+                        OpKind::Q1 => "_q1".to_string(),
+                        OpKind::Q3 => "_q3".to_string(),
+                        OpKind::IQR => "_iqr".to_string(),
+                        OpKind::CV => "_cv".to_string(),
+                        OpKind::Range => "_range".to_string(),
+                        OpKind::Unique => "_unique".to_string(),
+                        OpKind::Collapse => "_collapse".to_string(),
+                        OpKind::Rand => "_rand".to_string(),
+                        OpKind::ModeCount => "_mode_count".to_string(),
+                        OpKind::MissingCount => "_missing_count".to_string(),
+                        OpKind::NotMissingCount => "_not_missing_count".to_string(),
+                        OpKind::Quantile(p) => format!("_quantile_{}", p),
+                        OpKind::Count => "".to_string(),
                     };
 
                     let name = if let Some(h) = header_opt {
@@ -667,13 +719,17 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             }
         } else {
             if processor.is_none() {
-                let (proc, extractor, _) = setup_processor(None)?;
+                let (proc, extractor, headers) = setup_processor(None)?;
                 processor = Some(proc);
                 group_extractor = extractor;
                 use_grouping = group_extractor.is_some();
 
                 if !use_grouping {
                     aggregator = Some(processor.as_ref().unwrap().create_aggregator());
+                }
+
+                if write_header {
+                    println!("{}", headers.join("\t"));
                 }
             }
         }

@@ -66,6 +66,7 @@ pub enum OpKind {
     ModeCount,
     MissingCount,
     NotMissingCount,
+    Quantile(f64),
 }
 
 #[derive(Debug, Clone)]

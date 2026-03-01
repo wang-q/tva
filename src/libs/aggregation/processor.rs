@@ -373,6 +373,18 @@ impl StatsProcessor {
                         }));
                     }
                 }
+                OpKind::Quantile(p) => {
+                    if let Some(idx) = op.field_idx {
+                        let slot = num_values;
+                        num_values += 1;
+                        calculators.push(Box::new(quantile::Quantile {
+                            field_idx: idx,
+                            values_slot: slot,
+                            precision: config.precision,
+                            probability: p,
+                        }));
+                    }
+                }
             }
         }
 
