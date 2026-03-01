@@ -24,21 +24,59 @@ pub fn make_subcommand() -> Command {
             Arg::new("delimiter")
                 .long("delimiter")
                 .short('d')
+                .alias("csv-delim") // Match csv2tsv --csv-delim
+                .short_alias('c')   // Match csv2tsv -c
                 .num_args(1)
                 .default_value(",")
                 .help("CSV field delimiter character (default: ,)"),
         )
+        .arg(
+            Arg::new("quote")
+                .long("quote")
+                .short('q')
+                .num_args(1)
+                .default_value("\"")
+                .help("CSV quote character (default: \")"),
+        )
+        .arg(
+            Arg::new("tab-replacement")
+                .long("tab-replacement")
+                .short('r')
+                .num_args(1)
+                .default_value(" ")
+                .help("Replacement for TAB characters in fields (default: Space)"),
+        )
+        .arg(
+            Arg::new("newline-replacement")
+                .long("newline-replacement")
+                .short('n')
+                .num_args(1)
+                .default_value(" ")
+                .help("Replacement for Newline characters in fields (default: Space)"),
+        )
 }
 
-fn sanitize_field(field: &[u8], writer: &mut impl Write) -> std::io::Result<()> {
+fn sanitize_field(
+    field: &[u8],
+    writer: &mut impl Write,
+    tab_replacement: &[u8],
+    newline_replacement: &[u8],
+) -> std::io::Result<()> {
     let mut last_pos = 0;
     for (i, &byte) in field.iter().enumerate() {
         match byte {
-            b'\t' | b'\n' | b'\r' => {
+            b'\t' => {
                 if i > last_pos {
                     writer.write_all(&field[last_pos..i])?;
                 }
-                writer.write_all(b" ")?;
+                writer.write_all(tab_replacement)?;
+                last_pos = i + 1;
+            }
+            b'\n' | b'\r' => {
+                if i > last_pos {
+                    writer.write_all(&field[last_pos..i])?;
+                }
+                writer.write_all(newline_replacement)?;
                 last_pos = i + 1;
             }
             _ => {}
@@ -55,6 +93,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let reader = crate::libs::io::raw_reader(infile);
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
 
+    // Parse delimiter
     let delimiter_str = args
         .get_one::<String>("delimiter")
         .map(|s| s.as_str())
@@ -68,8 +107,69 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
     let delimiter = delimiter_bytes[0];
 
+    // Parse quote
+    let quote_str = args
+        .get_one::<String>("quote")
+        .map(|s| s.as_str())
+        .unwrap_or("\"");
+    let quote_bytes = quote_str.as_bytes();
+    if quote_bytes.len() != 1 {
+        return Err(anyhow::anyhow!(
+            "quote must be a single byte, got \"{}\"",
+            quote_str
+        ));
+    }
+    let quote = quote_bytes[0];
+
+    // Parse replacements
+    let tab_replacement = args
+        .get_one::<String>("tab-replacement")
+        .map(|s| s.as_bytes())
+        .unwrap_or(b" ");
+    let newline_replacement = args
+        .get_one::<String>("newline-replacement")
+        .map(|s| s.as_bytes())
+        .unwrap_or(b" ");
+
+    // Validation: Delimiter and Quote cannot be newline
+    if delimiter == b'\n' || delimiter == b'\r' {
+        return Err(anyhow::anyhow!(
+            "CSV field delimiter cannot be newline (--d|delimiter|csv-delim)."
+        ));
+    }
+    if quote == b'\n' || quote == b'\r' {
+        return Err(anyhow::anyhow!(
+            "CSV quote character cannot be newline (--q|quote)."
+        ));
+    }
+    if delimiter == quote {
+        return Err(anyhow::anyhow!(
+            "CSV quote and CSV field delimiter characters must be different (--q|quote, --d|delimiter)."
+        ));
+    }
+    // Validation: Replacements cannot contain delimiter or newline (though csv2tsv says 'TSV delimiter', which is TAB)
+    // csv2tsv logic: "Replacement character cannot contain newlines or TSV field delimiters"
+    // TSV delimiter is TAB (b'\t').
+    if tab_replacement.contains(&b'\t')
+        || tab_replacement.contains(&b'\n')
+        || tab_replacement.contains(&b'\r')
+    {
+        return Err(anyhow::anyhow!(
+            "Replacement character cannot contain newlines or TSV field delimiters (--r|tab-replacement)."
+        ));
+    }
+    if newline_replacement.contains(&b'\t')
+        || newline_replacement.contains(&b'\n')
+        || newline_replacement.contains(&b'\r')
+    {
+        return Err(anyhow::anyhow!(
+            "Replacement character cannot contain newlines or TSV field delimiters (--n|newline-replacement)."
+        ));
+    }
+
     let mut csv_reader = csv::ReaderBuilder::new()
         .delimiter(delimiter)
+        .quote(quote)
         .has_headers(false)
         .from_reader(reader);
 
@@ -83,12 +183,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     continue;
                 }
 
+                // Rewrite loop to use writer directly
                 let mut first = true;
                 for field in record.iter() {
                     if !first {
                         writer.write_all(b"\t")?;
                     }
-                    sanitize_field(field, &mut writer)?;
+                    sanitize_field(field, &mut writer, tab_replacement, newline_replacement)?;
                     first = false;
                 }
                 writer.write_all(b"\n")?;
@@ -108,6 +209,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     format!(" in '{}'", infile)
                 };
 
+                // Match csv2tsv error format slightly better if needed, but this is fine.
+                // csv2tsv: "Error [csv2tsv]: Invalid CSV. Improperly terminated quoted field. File: invalid1.csv, Line: 3"
                 eprintln!(
                     "tva from csv: invalid CSV{}{}: {}",
                     file_info, line_info, err

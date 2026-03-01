@@ -81,7 +81,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         if !header_source_used {
             let mut current_file_records = 0;
 
-            reader.for_each_record(|line| {
+            // Read line by line until we satisfy header_lines
+            let res = reader.for_each_record(|line| {
                 current_file_records += 1;
 
                 if current_file_records <= header_lines {
@@ -89,26 +90,61 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     stdout.write_all(b"\n")?;
                     stdout.flush()?;
                 } else {
+                    // We found the first body line.
+                    // Write it, then interrupt iteration to switch to block copy.
                     child_stdin.write_all(line)?;
                     child_stdin.write_all(b"\n")?;
+                    return Err(io::Error::new(io::ErrorKind::Interrupted, "Switch to block copy"));
                 }
                 Ok(())
-            })?;
+            });
 
-            if current_file_records > 0 {
-                header_source_used = true;
+            // Handle the result of for_each_record
+            match res {
+                Ok(_) => {
+                    // Reached EOF before finding body lines (or exactly at end of header).
+                    // If file was empty, current_file_records is 0.
+                    if current_file_records > 0 {
+                        header_source_used = true;
+                    }
+                }
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => {
+                    // We found body lines and interrupted.
+                    // Copy the rest of the file efficiently.
+                    header_source_used = true;
+                    reader.copy_remainder_to(&mut child_stdin)?;
+                }
+                Err(e) => return Err(e.into()),
             }
         } else {
             let mut skipped = 0;
-            reader.for_each_record(|line| {
+            // Skip header lines
+            let res = reader.for_each_record(|line| {
                 if skipped < header_lines {
                     skipped += 1;
                 } else {
+                    // Found body line. Interrupt to switch to block copy.
+                    // But wait, the current line is ALREADY read into buffer and passed as slice.
+                    // We need to write THIS line, then copy remainder.
+                    // Oh, if we return Interrupted, `for_each_record` advances `pos` past this line.
+                    // So we must write THIS line here.
                     child_stdin.write_all(line)?;
                     child_stdin.write_all(b"\n")?;
+                    return Err(io::Error::new(io::ErrorKind::Interrupted, "Switch to block copy"));
                 }
                 Ok(())
-            })?;
+            });
+
+            match res {
+                Ok(_) => {
+                    // EOF reached while skipping headers or just after.
+                }
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => {
+                    // Switched to block copy
+                    reader.copy_remainder_to(&mut child_stdin)?;
+                }
+                Err(e) => return Err(e.into()),
+            }
         }
     }
 

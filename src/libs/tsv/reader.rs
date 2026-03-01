@@ -4,7 +4,7 @@
 //! iterating over TSV records with minimal allocation.
 
 use crate::libs::tsv::record::TsvRow;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 
 /// A reader that efficiently scans for TSV records (lines) in a byte stream.
 pub struct TsvReader<R> {
@@ -58,6 +58,30 @@ impl<R: Read> TsvReader<R> {
             Err(e) if e.kind() == io::ErrorKind::Interrupted => Ok(header),
             Err(e) => Err(e),
         }
+    }
+
+    /// Copies the remaining data (buffered and unread) to the given writer.
+    ///
+    /// This consumes the rest of the stream efficiently without line splitting.
+    /// This is useful when you want to pipe the rest of the file directly after processing headers.
+    pub fn copy_remainder_to<W: Write>(&mut self, writer: &mut W) -> io::Result<u64> {
+        let mut total_copied = 0;
+
+        // 1. Write remaining buffered data
+        if self.pos < self.len {
+            let buffered_data = &self.buf[self.pos..self.len];
+            writer.write_all(buffered_data)?;
+            total_copied += buffered_data.len() as u64;
+            self.pos = self.len; // Mark buffer as consumed
+        }
+
+        // 2. Copy the rest from the underlying reader
+        // Note: io::copy handles reading until EOF
+        let copied = io::copy(&mut self.reader, writer)?;
+        total_copied += copied;
+        self.eof = true;
+
+        Ok(total_copied)
     }
 
     /// Iterate over records using a closure.
