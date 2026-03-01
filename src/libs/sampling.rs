@@ -503,3 +503,480 @@ impl Sampler for CompatRandomSampler {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rapidhash::RapidRng;
+
+    fn get_rng(seed: u64) -> RapidRng {
+        RapidRng::new(seed)
+    }
+
+    #[test]
+    fn test_bernoulli_sampler() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        // prob=0.5
+        let mut sampler = BernoulliSampler {
+            prob: 0.5,
+            print_random: false,
+            skip_counter: 0,
+        };
+
+        let inputs: Vec<String> = (0..10).map(|i| format!("row{}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        // Finalize does nothing for Bernoulli
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        // Deterministic check with seed 42
+        // It selects some rows.
+        assert!(!lines.is_empty());
+        assert!(lines.len() <= 10);
+    }
+
+    #[test]
+    fn test_reservoir_sampler() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = ReservoirSampler {
+            k: 3,
+            reservoir: Vec::new(),
+            count: 0,
+        };
+
+        let inputs: Vec<String> = (0..10).map(|i| format!("row{}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        assert_eq!(lines.len(), 3);
+        // Verify unique lines
+        let mut sorted = lines.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(sorted.len(), 3);
+    }
+
+    #[test]
+    fn test_weighted_reservoir_sampler() {
+        let mut rng = get_rng(12345);
+        let mut output = Vec::new();
+        let mut sampler = WeightedReservoirSampler {
+            k: 2,
+            weight_field_idx: 2,
+            heap: BinaryHeap::new(),
+        };
+
+        // item\tweight
+        // Large weights should be preferred
+        let inputs = vec![
+            "A\t100000.0",
+            "B\t0.0001",
+            "C\t100000.0",
+            "D\t0.0001",
+            "E\t0.0001",
+        ];
+
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        assert_eq!(lines.len(), 2);
+        // A and C should be selected
+        assert!(out_str.contains("A\t"));
+        assert!(out_str.contains("C\t"));
+    }
+
+    #[test]
+    fn test_distinct_bernoulli_sampler() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = DistinctBernoulliSampler {
+            prob: 0.5,
+            key_field_indices: vec![1], // Key is 1st field
+            print_random: false,
+            decisions: AHashMap::new(),
+            key_buffer: Vec::new(),
+        };
+
+        // Same keys should have same decision
+        let inputs = vec![
+            "k1\tval1", "k2\tval2", "k1\tval3", // Should match k1 decision
+            "k3\tval4", "k2\tval5", // Should match k2 decision
+        ];
+
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        // Check consistency
+        let k1_in = lines.iter().any(|l| l.starts_with("k1"));
+        let k2_in = lines.iter().any(|l| l.starts_with("k2"));
+
+        // Count occurrences
+        let k1_count = lines.iter().filter(|l| l.starts_with("k1")).count();
+        let k2_count = lines.iter().filter(|l| l.starts_with("k2")).count();
+
+        // If k1 is kept, both k1 lines should be present
+        if k1_in {
+            assert_eq!(k1_count, 2);
+        } else {
+            assert_eq!(k1_count, 0);
+        }
+
+        if k2_in {
+            assert_eq!(k2_count, 2);
+        } else {
+            assert_eq!(k2_count, 0);
+        }
+    }
+
+    #[test]
+    fn test_shuffle_sampler() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = ShuffleSampler { rows: Vec::new() };
+
+        let inputs: Vec<String> = (0..10).map(|i| format!("row{}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        assert_eq!(lines.len(), 10);
+        // Order should likely change, but small chance it doesn't.
+        // With seed 42, we can check if it changed.
+        let is_same_order = lines.iter().zip(inputs.iter()).all(|(a, b)| a == b);
+        assert!(!is_same_order);
+
+        // Content should be same
+        let mut sorted_out = lines.clone();
+        sorted_out.sort();
+        let mut sorted_in = inputs.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        sorted_in.sort();
+        assert_eq!(sorted_out, sorted_in);
+    }
+
+    #[test]
+    fn test_inorder_sampler() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = InorderSampler {
+            k: 5,
+            rows: Vec::new(),
+        };
+
+        let inputs: Vec<String> = (0..10).map(|i| format!("row{:02}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        assert_eq!(lines.len(), 5);
+
+        // Order must be preserved (increasing indices)
+        // Since input is sorted, output must be sorted
+        let mut sorted_out = lines.clone();
+        sorted_out.sort();
+        assert_eq!(lines, sorted_out);
+    }
+
+    #[test]
+    fn test_replacement_sampler() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = ReplacementSampler {
+            k: 20,
+            rows: Vec::new(),
+        };
+
+        let inputs: Vec<String> = (0..5).map(|i| format!("row{}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        assert_eq!(lines.len(), 20);
+        // Since k=20 and n=5, there MUST be duplicates (pigeonhole principle)
+        let mut unique = lines.clone();
+        unique.sort();
+        unique.dedup();
+        assert!(unique.len() <= 5);
+        assert!(lines.len() > unique.len());
+    }
+
+    #[test]
+    fn test_compat_random_sampler() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = CompatRandomSampler {
+            k: 3,
+            rows: Vec::new(),
+        };
+
+        let inputs: Vec<String> = (0..10).map(|i| format!("row{}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        assert_eq!(lines.len(), 3);
+    }
+
+    #[test]
+    fn test_weighted_reservoir_sampler_invalid_weight() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = WeightedReservoirSampler {
+            k: 2,
+            weight_field_idx: 2,
+            heap: BinaryHeap::new(),
+        };
+
+        // Negative weights should be ignored (Ok), non-numeric should be error
+        let row_neg = "A\t-1.0";
+        let res_neg = sampler.process(row_neg.as_bytes(), &mut output, &mut rng);
+        assert!(res_neg.is_ok());
+
+        let row_invalid = "B\tnot_a_number";
+        let res_invalid = sampler.process(row_invalid.as_bytes(), &mut output, &mut rng);
+        assert!(res_invalid.is_err());
+    }
+
+    #[test]
+    fn test_weighted_reservoir_sampler_field_out_of_bounds() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        // Index 3, but input has only 2 fields
+        let mut sampler = WeightedReservoirSampler {
+            k: 2,
+            weight_field_idx: 3,
+            heap: BinaryHeap::new(),
+        };
+
+        let inputs = vec!["A\t1.0"];
+
+        for row in &inputs {
+            let res = sampler.process(row.as_bytes(), &mut output, &mut rng);
+            assert!(res.is_err());
+        }
+    }
+
+    #[test]
+    fn test_distinct_bernoulli_sampler_multiple_keys() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        // Key is fields 1 and 3.
+        let mut sampler = DistinctBernoulliSampler {
+            prob: 0.5,
+            key_field_indices: vec![1, 3],
+            print_random: false,
+            decisions: AHashMap::new(),
+            key_buffer: Vec::new(),
+        };
+
+        // k1\tv1\tk2
+        let inputs = vec![
+            "A\tval\tX",
+            "A\tval\tY", // Different key (A, Y)
+            "A\tval\tX", // Same key as first (A, X)
+            "B\tval\tX", // Different key (B, X)
+        ];
+
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        // (A, X) should appear twice or zero times
+        let ax_count = lines.iter().filter(|l| l.contains("A\tval\tX")).count();
+        if ax_count > 0 {
+            assert_eq!(ax_count, 2);
+        }
+    }
+
+    #[test]
+    fn test_reservoir_sampler_k_greater_than_n() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = ReservoirSampler {
+            k: 20, // > 5 items
+            reservoir: Vec::new(),
+            count: 0,
+        };
+
+        let inputs: Vec<String> = (0..5).map(|i| format!("row{}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        assert_eq!(lines.len(), 5);
+    }
+
+    #[test]
+    fn test_reservoir_sampler_k_zero() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = ReservoirSampler {
+            k: 0,
+            reservoir: Vec::new(),
+            count: 0,
+        };
+
+        let inputs: Vec<String> = (0..5).map(|i| format!("row{}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        assert!(out_str.is_empty());
+    }
+
+    #[test]
+    fn test_bernoulli_sampler_prob_one() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = BernoulliSampler {
+            prob: 1.0,
+            print_random: false,
+            skip_counter: 0,
+        };
+
+        let inputs: Vec<String> = (0..10).map(|i| format!("row{}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+        sampler.finalize(&mut output, &mut rng, false).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = out_str
+            .trim()
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .collect();
+        assert_eq!(lines.len(), 10);
+    }
+
+    #[test]
+    fn test_bernoulli_sampler_prob_zero() {
+        let mut rng = get_rng(42);
+        let mut output = Vec::new();
+        let mut sampler = BernoulliSampler {
+            prob: 0.0,
+            print_random: false,
+            // If p=0, skip_counter should prevent any selection.
+            // We set it high initially.
+            skip_counter: usize::MAX,
+        };
+
+        let inputs: Vec<String> = (0..10).map(|i| format!("row{}", i)).collect();
+        for row in &inputs {
+            sampler
+                .process(row.as_bytes(), &mut output, &mut rng)
+                .unwrap();
+        }
+
+        let out_str = String::from_utf8(output).unwrap();
+        assert!(out_str.is_empty());
+    }
+}
