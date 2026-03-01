@@ -458,7 +458,4 @@ git diff v0.2.0 HEAD -- "*.rs" "*.md" > gitdiff.txt
 2.  **数值稳定性**: 借鉴 `xan`，引入 Welford 算法作为默认或可选 (`--stable`) 实现。
 3.  **近似算法**: 借鉴 `xan`，针对大数据场景引入 `--approx-unique` (HyperLogLog) 和 `--approx-quantile` (T-Digest)。
 4.  **向量化思考**: 借鉴 `dplyr`，在实现 `tva` 的 `window` 或 `mutate` 功能时，应优先考虑基于 Chunk 的向量化计算，而非逐行迭代。
-5.  **缓存机制**: 借鉴 `qsv`，考虑为 `tva stats` 引入可选的缓存机制，特别是针对大文件的元数据（行数、类型）。
-6.  **缺省值策略**: 借鉴 `tsv-utils`，引入全局 `--replace-missing <VAL>` 选项，明确处理空值，增强鲁棒性。
-7.  **极致解析**: 借鉴 `tsv-utils` 对性能的关注，引入 `fast_float` 或 `lexical` crate 替代标准库解析，进一步提升 `stats` 吞吐量。
-8.  **类型化键优化**: 借鉴 `tsv-utils` 的模板特化思路，为整数 Key 提供专门的 `u64` 哈希路径，避免字符串转换开销。
+5.  **类型化键优化**: 借鉴 `tsv-utils` 的模板特化思路，为整数 Key 提供专门的 `u64` 哈希路径，避免字符串转换开销。

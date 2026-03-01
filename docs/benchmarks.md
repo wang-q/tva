@@ -128,7 +128,7 @@ echo "Running Benchmarks..."
 # Scenario 1: Numeric Filter
 hyperfine \
     --warmup 3 \
-    --min-runs 10 \
+    --min-runs 5 \
     --export-csv benchmark_filter.csv \
     "tva filter -H --gt 1:0.5 hepmass.tsv > /dev/null" \
     "tsv-filter -H --gt 1:0.5 hepmass.tsv > /dev/null" \
@@ -137,11 +137,11 @@ hyperfine \
 # Scenario 2: Column Selection
 hyperfine \
     --warmup 3 \
-    --min-runs 10 \
+    --min-runs 5 \
     --export-csv benchmark_select.csv \
-    "tva select -f 1,8,19 hepmass.tsv > /dev/null" \
-    "tsv-select -f 1,8,19 hepmass.tsv > /dev/null" \
-    "cut -f 1,8,19 hepmass.tsv > /dev/null"
+    -n "tva select" "tva select -f 1,8,19 hepmass.tsv > /dev/null" \
+    -n "tsv-select" "tsv-select -f 1,8,19 hepmass.tsv > /dev/null" \
+    -n "cut" "cut -f 1,8,19 hepmass.tsv > /dev/null"
 
 # Scenario 3: Join
 hyperfine \
@@ -167,7 +167,7 @@ hyperfine \
 # Assumes column 5 is a suitable weight (positive float)
 hyperfine \
     --warmup 3 \
-    --min-runs 10 \
+    --min-runs 5 \
     --export-csv benchmark_sample.csv \
     "tva sample -H --weight-field 5 -n 1000 hepmass.tsv > /dev/null" \
     "tsv-sample -H --weight-field 5 -n 1000 hepmass.tsv > /dev/null"
@@ -178,7 +178,7 @@ hyperfine \
     --min-runs 5 \
     --export-csv benchmark_uniq.csv \
     "tva uniq -H -f 1 hepmass.tsv > /dev/null" \
-    "tsv-uniq -H -f 1 hepmass.tsv > /dev/null" 
+    "tsv-uniq -H -f 1 hepmass.tsv > /dev/null"
 
 # Scenario 7: Sort (Numeric)
 hyperfine \
@@ -190,7 +190,7 @@ hyperfine \
 # Scenario 8: Slice (Middle of file)
 hyperfine \
     --warmup 3 \
-    --min-runs 10 \
+    --min-runs 5 \
     --export-csv benchmark_slice.csv \
     "tva slice -r 1000000-2000000 hepmass.tsv > /dev/null" \
     "sed -n '1000000,2000000p' hepmass.tsv > /dev/null"
