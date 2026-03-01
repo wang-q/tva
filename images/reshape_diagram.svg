@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;600&amp;display=swap');
+      
+      /* Colors */
+      .bg-white { fill: #ffffff; }
+      .text-dark { fill: #757575; font-family: 'Fira Sans', sans-serif; font-size: 14px; font-weight: 700; }
+      .text-title { fill: #d95f02; font-family: 'Fira Sans', sans-serif; font-weight: 600; font-size: 18px; }
+      
+      /* Table Cells */
+      .cell { stroke: #ffffff; stroke-width: 1.5; }
+      .header-bg { fill: #4d4d4d; }
+      .id-bg { fill: #d9d9d9; }
+      .key-bg { fill: #fdbf6f; }
+      .val-bg { fill: #ffff99; }
+      .val2-bg { fill: #b2df8a; }
+      .empty-bg { fill: #f5f5f5; }
+      
+      /* Text Colors */
+      .cell-text { font-family: 'Fira Sans', sans-serif; font-size: 11px; text-anchor: middle; dominant-baseline: middle; }
+      .text-white { fill: #ffffff; font-weight: 600; }
+      .text-black { fill: #000000; }
+      
+      /* Block Arrows */
+      .arrow-block { stroke: none; fill-opacity: 0.9; fill: #4d4d4d; }
+      .arrow-text { font-family: 'Fira Sans', sans-serif; font-size: 11px; fill: #ffffff; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
+    </style>
+  </defs>
+
+  <!-- ========================================= -->
+  <!-- SECTION 1: Reshape Data (Pivoting)        -->
+  <!-- ========================================= -->
+  <text x="30" y="30" class="text-title">Reshape Data</text>
+
+  <!-- Group 1: WIDE to LONG -->
+  <g transform="translate(30, 60)">
+    
+    <!-- Wide Table -->
+    <g>
+      <text x="60" y="-10" class="text-dark" text-anchor="middle">Wide</text>
+      <!-- Header -->
+      <rect x="0" y="0" width="40" height="20" class="cell header-bg" />
+      <text x="20" y="10" class="cell-text text-white">id</text>
+      <rect x="40" y="0" width="40" height="20" class="cell key-bg" />
+      <text x="60" y="10" class="cell-text text-black">A</text>
+      <rect x="80" y="0" width="40" height="20" class="cell key-bg" />
+      <text x="100" y="10" class="cell-text text-black">B</text>
+      
+      <!-- Rows -->
+      <rect x="0" y="20" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="30" class="cell-text text-black">1</text>
+      <rect x="40" y="20" width="40" height="20" class="cell val-bg" />
+      <text x="60" y="30" class="cell-text text-black">x</text>
+      <rect x="80" y="20" width="40" height="20" class="cell val-bg" />
+      <text x="100" y="30" class="cell-text text-black">y</text>
+      
+      <rect x="0" y="40" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="50" class="cell-text text-black">2</text>
+      <rect x="40" y="40" width="40" height="20" class="cell val-bg" />
+      <text x="60" y="50" class="cell-text text-black">z</text>
+      <rect x="80" y="40" width="40" height="20" class="cell val-bg" />
+      <text x="100" y="50" class="cell-text text-black">w</text>
+    </g>
+
+    <!-- Block Arrow: Longer -->
+    <g transform="translate(142.5, 20)">
+      <!-- Arrow shape pointing right -->
+      <path d="M0,0 L45,0 L45,-6 L55,10 L45,26 L45,20 L0,20 Z" class="arrow-block arrow-longer" />
+      <text x="22.5" y="11" class="arrow-text">longer</text>
+    </g>
+
+    <!-- Block Arrow: Wider -->
+    <g transform="translate(132.5, 60)">
+      <!-- Arrow shape pointing left -->
+      <path d="M55,0 L10,0 L10,-6 L0,10 L10,26 L10,20 L55,20 Z" class="arrow-block arrow-wider" />
+      <text x="32.5" y="11" class="arrow-text">wider</text>
+    </g>
+
+    <!-- Long Table -->
+    <g transform="translate(210, 0)">
+      <text x="60" y="-10" class="text-dark" text-anchor="middle">Long</text>
+      <!-- Header -->
+      <rect x="0" y="0" width="40" height="20" class="cell header-bg" />
+      <text x="20" y="10" class="cell-text text-white">id</text>
+      <rect x="40" y="0" width="40" height="20" class="cell header-bg" />
+      <text x="60" y="10" class="cell-text text-white">key</text>
+      <rect x="80" y="0" width="40" height="20" class="cell header-bg" />
+      <text x="100" y="10" class="cell-text text-white">val</text>
+      
+      <!-- Rows -->
+      <rect x="0" y="20" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="30" class="cell-text text-black">1</text>
+      <rect x="40" y="20" width="40" height="20" class="cell key-bg" />
+      <text x="60" y="30" class="cell-text text-black">A</text>
+      <rect x="80" y="20" width="40" height="20" class="cell val-bg" />
+      <text x="100" y="30" class="cell-text text-black">x</text>
+      
+      <rect x="0" y="40" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="50" class="cell-text text-black">1</text>
+      <rect x="40" y="40" width="40" height="20" class="cell key-bg" />
+      <text x="60" y="50" class="cell-text text-black">B</text>
+      <rect x="80" y="40" width="40" height="20" class="cell val-bg" />
+      <text x="100" y="50" class="cell-text text-black">y</text>
+      
+      <rect x="0" y="60" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="70" class="cell-text text-black">2</text>
+      <rect x="40" y="60" width="40" height="20" class="cell key-bg" />
+      <text x="60" y="70" class="cell-text text-black">A</text>
+      <rect x="80" y="60" width="40" height="20" class="cell val-bg" />
+      <text x="100" y="70" class="cell-text text-black">z</text>
+      
+      <rect x="0" y="80" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="90" class="cell-text text-black">2</text>
+      <rect x="40" y="80" width="40" height="20" class="cell key-bg" />
+      <text x="60" y="90" class="cell-text text-black">B</text>
+      <rect x="80" y="80" width="40" height="20" class="cell val-bg" />
+      <text x="100" y="90" class="cell-text text-black">w</text>
+    </g>
+  </g>
+
+  <!-- ========================================= -->
+  <!-- SECTION 2: Handle Missing Values          -->
+  <!-- ========================================= -->
+  <text x="30" y="210" class="text-title">Handle Missing Values</text>
+
+  <!-- Group 2: FILL & BLANK -->
+  <g transform="translate(30, 240)">
+    
+    <!-- Sparse Table -->
+    <g>
+      <text x="60" y="-10" class="text-dark" text-anchor="middle">Sparse</text>
+      <!-- Header -->
+      <rect x="0" y="0" width="40" height="20" class="cell header-bg" />
+      <text x="20" y="10" class="cell-text text-white">grp</text>
+      <rect x="40" y="0" width="40" height="20" class="cell header-bg" />
+      <text x="60" y="10" class="cell-text text-white">val</text>
+      <rect x="80" y="0" width="40" height="20" class="cell header-bg" />
+      <text x="100" y="10" class="cell-text text-white">res</text>
+      
+      <!-- Rows -->
+      <rect x="0" y="20" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="30" class="cell-text text-black">A</text>
+      <rect x="40" y="20" width="40" height="20" class="cell val-bg" />
+      <text x="60" y="30" class="cell-text text-black">1</text>
+      <rect x="80" y="20" width="40" height="20" class="cell val2-bg" />
+      <text x="100" y="30" class="cell-text text-black">ok</text>
+      
+      <rect x="0" y="40" width="40" height="20" class="cell empty-bg" />
+      <rect x="40" y="40" width="40" height="20" class="cell val-bg" />
+      <text x="60" y="50" class="cell-text text-black">2</text>
+      <rect x="80" y="40" width="40" height="20" class="cell empty-bg" />
+      
+      <rect x="0" y="60" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="70" class="cell-text text-black">B</text>
+      <rect x="40" y="60" width="40" height="20" class="cell val-bg" />
+      <text x="60" y="70" class="cell-text text-black">1</text>
+      <rect x="80" y="60" width="40" height="20" class="cell val2-bg" />
+      <text x="100" y="70" class="cell-text text-black">no</text>
+    </g>
+
+    <!-- Block Arrow: Fill -->
+    <g transform="translate(142.5, 20)">
+      <path d="M0,0 L45,0 L45,-6 L55,10 L45,26 L45,20 L0,20 Z" class="arrow-block arrow-fill" />
+      <text x="22.5" y="11" class="arrow-text">fill</text>
+    </g>
+
+    <!-- Block Arrow: Blank -->
+    <g transform="translate(132.5, 60)">
+      <path d="M55,0 L10,0 L10,-6 L0,10 L10,26 L10,20 L55,20 Z" class="arrow-block arrow-blank" />
+      <text x="32.5" y="11" class="arrow-text">blank</text>
+    </g>
+
+    <!-- Filled Table -->
+    <g transform="translate(210, 0)">
+      <text x="60" y="-10" class="text-dark" text-anchor="middle">Filled</text>
+      <!-- Header -->
+      <rect x="0" y="0" width="40" height="20" class="cell header-bg" />
+      <text x="20" y="10" class="cell-text text-white">grp</text>
+      <rect x="40" y="0" width="40" height="20" class="cell header-bg" />
+      <text x="60" y="10" class="cell-text text-white">val</text>
+      <rect x="80" y="0" width="40" height="20" class="cell header-bg" />
+      <text x="100" y="10" class="cell-text text-white">res</text>
+      
+      <!-- Rows -->
+      <rect x="0" y="20" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="30" class="cell-text text-black">A</text>
+      <rect x="40" y="20" width="40" height="20" class="cell val-bg" />
+      <text x="60" y="30" class="cell-text text-black">1</text>
+      <rect x="80" y="20" width="40" height="20" class="cell val2-bg" />
+      <text x="100" y="30" class="cell-text text-black">ok</text>
+      
+      <rect x="0" y="40" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="50" class="cell-text text-black">A</text>
+      <rect x="40" y="40" width="40" height="20" class="cell val-bg" />
+      <text x="60" y="50" class="cell-text text-black">2</text>
+      <rect x="80" y="40" width="40" height="20" class="cell val2-bg" />
+      <text x="100" y="50" class="cell-text text-black">ok</text>
+      
+      <rect x="0" y="60" width="40" height="20" class="cell id-bg" />
+      <text x="20" y="70" class="cell-text text-black">B</text>
+      <rect x="40" y="60" width="40" height="20" class="cell val-bg" />
+      <text x="60" y="70" class="cell-text text-black">1</text>
+      <rect x="80" y="60" width="40" height="20" class="cell val2-bg" />
+      <text x="100" y="70" class="cell-text text-black">no</text>
+    </g>
+  </g>
+
+</svg>
