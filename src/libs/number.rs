@@ -1,16 +1,36 @@
-//! Helpers for formatting output.
+//! Numeric utilities: parsing and formatting.
 //!
-//! The main entry point is [`format_number`], which formats a `f64` using
-//! thousands separators and a configurable number of decimal digits.
-//!
-//! Basic usage:
-//!
-//! ```
-//! use tva::libs::fmt::format_number;
-//!
-//! assert_eq!(format_number(1234.5, 1), "1,234.5");
-//! assert_eq!(format_number(-1000.0, 0), "-1,000");
-//! ```
+//! This module combines high-performance parsing (from bytes) and
+//! flexible formatting for floating point numbers.
+
+/// Trims ASCII whitespace from the beginning and end of a byte slice.
+#[inline]
+fn trim_bytes(bytes: &[u8]) -> &[u8] {
+    let mut start = 0;
+    let mut end = bytes.len();
+    while start < end && bytes[start].is_ascii_whitespace() {
+        start += 1;
+    }
+    while end > start && bytes[end - 1].is_ascii_whitespace() {
+        end -= 1;
+    }
+    &bytes[start..end]
+}
+
+/// Parses a byte slice into an f64 using lexical's high-performance algorithm.
+/// Returns None if parsing fails.
+///
+/// This handles trimming of whitespace automatically.
+/// This is significantly faster than `str::parse::<f64>` and operates directly on bytes,
+/// avoiding UTF-8 validation overhead.
+#[inline]
+pub fn fast_parse_f64(bytes: &[u8]) -> Option<f64> {
+    let trimmed = trim_bytes(bytes);
+    if trimmed.is_empty() {
+        return None;
+    }
+    lexical::parse(trimmed).ok()
+}
 
 /// Formats a number with thousands separators and fixed decimal precision.
 pub fn format_number(number: f64, decimal_digits: usize) -> String {

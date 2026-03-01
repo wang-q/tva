@@ -287,7 +287,7 @@ fn stats_replace_missing() {
         .stdin(INPUT_ALL_MISSING)
         .run();
 
-    assert_eq!(stdout.trim(), "0.0");
+    assert_eq!(stdout.trim(), "0");
 
     // Default behavior (nan)
     let (stdout, _) = TvaCmd::new()

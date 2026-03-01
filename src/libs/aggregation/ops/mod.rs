@@ -5,12 +5,16 @@ pub mod set;
 pub mod text;
 pub mod variance;
 
-use crate::libs::parse::fast_parse_f64;
+use crate::libs::number::fast_parse_f64;
 use crate::libs::tsv::record::Row;
 
 /// Helper to parse a float from a row at a given index
 #[inline]
-pub(crate) fn parse_float(row: &dyn Row, idx: usize, default: Option<f64>) -> Option<f64> {
+pub(crate) fn parse_float(
+    row: &dyn Row,
+    idx: usize,
+    default: Option<f64>,
+) -> Option<f64> {
     match row.get_bytes(idx + 1) {
         None => default,
         Some(bytes) if bytes.is_empty() => default,

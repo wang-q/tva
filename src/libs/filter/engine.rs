@@ -1,5 +1,5 @@
 use super::config::{NumericOp, NumericProp};
-use crate::libs::parse::fast_parse_f64;
+use crate::libs::number::fast_parse_f64;
 use crate::libs::tsv::record::{Row, StrSliceRow};
 use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;

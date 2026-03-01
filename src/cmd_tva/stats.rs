@@ -76,15 +76,9 @@ pub fn make_subcommand() -> Command {
                 .help("Calculate standard deviation of fields"),
         )
         .arg(
-            Arg::new("var")
-                .long("var")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Calculate variance (alias for --variance)"),
-        )
-        .arg(
             Arg::new("variance")
                 .long("variance")
+                .visible_alias("var")
                 .num_args(1)
                 .action(ArgAction::Append)
                 .help("Calculate variance of fields"),
@@ -97,15 +91,9 @@ pub fn make_subcommand() -> Command {
                 .help("Calculate median absolute deviation of fields"),
         )
         .arg(
-            Arg::new("retain")
-                .long("retain")
-                .num_args(1)
-                .action(ArgAction::Append)
-                .help("Retain one copy of the field (alias for --first)"),
-        )
-        .arg(
             Arg::new("first")
                 .long("first")
+                .visible_alias("retain")
                 .num_args(1)
                 .action(ArgAction::Append)
                 .help("Get the first value of fields"),
@@ -337,15 +325,6 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             });
         }
     }
-    if let Some(indices) = matches.indices_of("var") {
-        for (i, val) in indices.zip(matches.get_many::<String>("var").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::Variance,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
     if let Some(indices) = matches.indices_of("variance") {
         for (i, val) in indices.zip(matches.get_many::<String>("variance").unwrap()) {
             op_configs.push(OpConfig {
@@ -359,15 +338,6 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         for (i, val) in indices.zip(matches.get_many::<String>("mad").unwrap()) {
             op_configs.push(OpConfig {
                 kind: OpKind::Mad,
-                spec: Some(val.clone()),
-                arg_index: i,
-            });
-        }
-    }
-    if let Some(indices) = matches.indices_of("retain") {
-        for (i, val) in indices.zip(matches.get_many::<String>("retain").unwrap()) {
-            op_configs.push(OpConfig {
-                kind: OpKind::First,
                 spec: Some(val.clone()),
                 arg_index: i,
             });
@@ -633,45 +603,45 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                     .push(count_header.clone().unwrap_or_else(|| "count".to_string()));
             } else if let Some(spec) = &config.spec {
                 // Check if there is a custom header override (suffix ":header")
-                let (field_spec, custom_header_override) = if let Some(idx) = spec.rfind(':') {
-                    // Check if the part after ':' is likely a probability (e.g. for quantile 1:0.5)
-                    // Quantile configs are created earlier, and their spec is "fields_spec" (e.g. "1,2").
-                    // But if the user typed --quantile 1:0.5:Header, the first split (in argument parsing loop)
-                    // would have split at the first ':', giving fields="1" and probs="0.5:Header".
-                    // Then probs parsing would fail.
-                    // So for quantile, we might need to handle headers differently or disallow them in the same arg.
-                    // tsv-summarize supports --quantile 1:0.5:Header.
-                    // My current quantile parsing loop splits by ':' (limit 2? no).
-                    // Let's re-examine quantile parsing loop.
-                    
-                    // But here, 'spec' is the field list string.
-                    // For quantile, I set spec = fields_spec.
-                    // If fields_spec contained a header, it would have been split out earlier?
-                    // No, quantile parsing loop:
-                    // let parts: Vec<&str> = val.split(':').collect();
-                    // fields_spec = parts[0]; probs_spec = parts[1];
-                    // If val="1:0.5:Header", parts=["1", "0.5", "Header"].
-                    // My current logic takes parts[0] and parts[1]. Ignores parts[2]?
-                    // No, I check parts.len() < 2. I don't check > 2.
-                    // So for quantile, spec is just parts[0] ("1").
-                    // So this block handles non-quantile ops where spec comes directly from arg.
-                    // e.g. --sum 1:Header -> spec="1:Header".
-                    
-                    let suffix = &spec[idx+1..];
-                    if suffix.is_empty() {
-                         (spec.as_str(), None)
-                    } else {
-                         (&spec[..idx], Some(suffix.to_string()))
-                    }
-                } else {
-                    (spec.as_str(), None)
-                };
+                let (field_spec, custom_header_override) =
+                    if let Some(idx) = spec.rfind(':') {
+                        // Check if the part after ':' is likely a probability (e.g. for quantile 1:0.5)
+                        // Quantile configs are created earlier, and their spec is "fields_spec" (e.g. "1,2").
+                        // But if the user typed --quantile 1:0.5:Header, the first split (in argument parsing loop)
+                        // would have split at the first ':', giving fields="1" and probs="0.5:Header".
+                        // Then probs parsing would fail.
+                        // So for quantile, we might need to handle headers differently or disallow them in the same arg.
+                        // tsv-summarize supports --quantile 1:0.5:Header.
+                        // My current quantile parsing loop splits by ':' (limit 2? no).
+                        // Let's re-examine quantile parsing loop.
 
-                let indices =
-                    fields::parse_field_list_with_header(field_spec, header_opt, '\t')
-                        .map_err(|e| {
-                            anyhow::anyhow!("Error parsing field list: {}", e)
-                        })?;
+                        // But here, 'spec' is the field list string.
+                        // For quantile, I set spec = fields_spec.
+                        // If fields_spec contained a header, it would have been split out earlier?
+                        // No, quantile parsing loop:
+                        // let parts: Vec<&str> = val.split(':').collect();
+                        // fields_spec = parts[0]; probs_spec = parts[1];
+                        // If val="1:0.5:Header", parts=["1", "0.5", "Header"].
+                        // My current logic takes parts[0] and parts[1]. Ignores parts[2]?
+                        // No, I check parts.len() < 2. I don't check > 2.
+                        // So for quantile, spec is just parts[0] ("1").
+                        // So this block handles non-quantile ops where spec comes directly from arg.
+                        // e.g. --sum 1:Header -> spec="1:Header".
+
+                        let suffix = &spec[idx + 1..];
+                        if suffix.is_empty() {
+                            (spec.as_str(), None)
+                        } else {
+                            (&spec[..idx], Some(suffix.to_string()))
+                        }
+                    } else {
+                        (spec.as_str(), None)
+                    };
+
+                let indices = fields::parse_field_list_with_header(
+                    field_spec, header_opt, '\t',
+                )
+                .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
 
                 for idx in &indices {
                     let field_idx = *idx - 1;
