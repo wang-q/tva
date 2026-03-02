@@ -9,7 +9,7 @@ fn md_basic() {
     let expected = "| H1  | H2  |\n| --- | --- |\n| A   | 1   |\n| B   | 2   |\n";
 
     let (stdout, _) = TvaCmd::new()
-        .args(&["md"])
+        .args(&["to", "md"])
         .stdin("H1\tH2\nA\t1\nB\t2\n")
         .run();
 
@@ -23,7 +23,7 @@ fn md_center() {
         "|  H1   | H2  |\n| :---: | --- |\n|   A   | 1   |\n|   B   | 2   |\n";
 
     let (stdout, _) = TvaCmd::new()
-        .args(&["md", "--center", "1"])
+        .args(&["to", "md", "--center", "1"])
         .stdin("H1\tH2\nA\t1\nB\t2\n")
         .run();
 
@@ -35,7 +35,7 @@ fn md_right() {
     let expected = "| H1  |   H2 |\n| --- | ---: |\n| A   |    1 |\n| B   |    2 |\n";
 
     let (stdout, _) = TvaCmd::new()
-        .args(&["md", "--right", "2"])
+        .args(&["to", "md", "--right", "2"])
         .stdin("H1\tH2\nA\t1\nB\t2\n")
         .run();
 
@@ -48,7 +48,7 @@ fn md_num() {
     let expected = "| H1  |   H2 |\n| --- | ---: |\n| A   |    1 |\n| B   |    2 |\n";
 
     let (stdout, _) = TvaCmd::new()
-        .args(&["md", "--num"])
+        .args(&["to", "md", "--num"])
         .stdin("H1\tH2\nA\t1\nB\t2\n")
         .run();
 
@@ -61,7 +61,7 @@ fn md_fmt() {
     let expected = "| H1  |   H2 |\n| --- | ---: |\n| A   | 1.00 |\n| B   | 2.57 |\n";
 
     let (stdout, _) = TvaCmd::new()
-        .args(&["md", "--fmt", "--digits", "2"])
+        .args(&["to", "md", "--fmt", "--digits", "2"])
         .stdin("H1\tH2\nA\t1\nB\t2.567\n")
         .run();
 

@@ -13,9 +13,10 @@ fn command_invalid() -> anyhow::Result<()> {
 }
 
 #[test]
-fn command_md() -> anyhow::Result<()> {
+fn command_to_md() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
+        .arg("to")
         .arg("md")
         .arg("tests/genome/ctg.range.tsv")
         .arg("--num")
@@ -34,6 +35,7 @@ fn command_md() -> anyhow::Result<()> {
 
     let mut cmd = cargo_bin_cmd!("tva");
     let output = cmd
+        .arg("to")
         .arg("md")
         .arg("tests/genome/ctg.range.tsv")
         .arg("--fmt")
