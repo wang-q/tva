@@ -28,7 +28,6 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::join::make_subcommand())
         .subcommand(cmd_tva::keep_header::make_subcommand())
         .subcommand(cmd_tva::longer::make_subcommand())
-        .subcommand(cmd_tva::md::make_subcommand())
         .subcommand(cmd_tva::nl::make_subcommand())
         .subcommand(cmd_tva::reverse::make_subcommand())
         .subcommand(cmd_tva::sample::make_subcommand())
@@ -50,8 +49,8 @@ fn main() -> anyhow::Result<()> {
 * Statistics & Summary: bin, stats, uniq
 * Reshaping: blank, fill, longer, wider
 * Combining & Splitting: append, join, split
-* Formatting & Utilities: check, keep-header, md, nl
-* Import & Export: from, to
+* Formatting & Utilities: check, keep-header, nl
+* Import & Export: from, to (csv, xlsx, md)
 "###,
         );
 
@@ -74,7 +73,6 @@ fn main() -> anyhow::Result<()> {
         Some(("join", sub_matches)) => cmd_tva::join::execute(sub_matches),
         Some(("keep-header", sub_matches)) => cmd_tva::keep_header::execute(sub_matches),
         Some(("longer", sub_matches)) => cmd_tva::longer::execute(sub_matches),
-        Some(("md", sub_matches)) => cmd_tva::md::execute(sub_matches),
         Some(("nl", sub_matches)) => cmd_tva::nl::execute(sub_matches),
         Some(("reverse", sub_matches)) => cmd_tva::reverse::execute(sub_matches),
         Some(("sample", sub_matches)) => cmd_tva::sample::execute(sub_matches),

@@ -109,14 +109,13 @@ Alternatively, you can download individual files from the [docs/data](https://gi
 ### [Formatting & Utilities](docs/utilities.md)
 
 - **`check`**: Validate TSV file structure (column counts, encoding).
-- **`md`**: Convert TSV to Markdown table for display.
 - **`nl`**: Add line numbers to rows.
 - **`keep-header`**: Run a shell command on the body of a TSV file, preserving the header.
 
-### [Import & Export](docs/format-conversion.md)
+### Import & Export
 
-- **`from`**: Convert other formats to TSV (`csv`, `xlsx`).
-- **`to`**: Convert TSV to other formats (`csv`, `xlsx`).
+- **[`from`](docs/from.md)**: Convert other formats to TSV (`csv`, `xlsx`, `html`).
+- **[`to`](docs/to.md)**: Convert TSV to other formats (`csv`, `xlsx`, `md`).
 
 ## Author
 

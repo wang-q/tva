@@ -1,6 +1,8 @@
 # Formatting & Utilities Documentation
 
-This document explains how to use the utility commands in `tva`: **`check`**, **`md`**, **`nl`**, and **`keep-header`**.
+*   **`check`**: Validate TSV file structure.
+*   **`nl`**: Add line numbers.
+*   **`keep-header`**: Run a shell command on the body, preserving the header.
 
 ## `check`
 
@@ -23,57 +25,6 @@ tva check docs/data/household.tsv
 Output:
 ```
 2 lines, 5 fields
-```
-
-## `md`
-
-Converts a TSV file to a Markdown table.
-
-### Usage
-
-```bash
-tva md [file] [options]
-```
-
-Options:
-*   `--num`: Right-align numeric columns.
-*   `--fmt`: Format numeric columns (thousands separators, fixed decimals) and implies `--num`.
-*   `--digits <N>`: Set decimal precision for `--fmt` (default: 0).
-*   `--center <cols>` / `--right <cols>`: Manually set alignment for specific columns.
-
-### Examples
-
-Basic markdown table:
-```bash
-tva md docs/data/household.tsv
-```
-
-Output:
-```markdown
-| family | dob_child1 | dob_child2 | name_child1 | name_child2 |
-| ------ | ---------- | ---------- | ----------- | ----------- |
-| 1      | 1998-11-26 | 2000-01-29 | J           | K           |
-```
-
-Format numbers with commas and 2 decimal places:
-```bash
-tva md docs/data/us_rent_income.tsv --fmt --digits 2
-```
-
-Output:
-```markdown
-| GEOID | NAME       | variable |  estimate |    moe |
-| ----: | ---------- | -------- | --------: | -----: |
-|  1.00 | Alabama    | income   | 24,476.00 | 136.00 |
-|  1.00 | Alabama    | rent     |    747.00 |   3.00 |
-|  2.00 | Alaska     | income   | 32,940.00 | 508.00 |
-|  2.00 | Alaska     | rent     |  1,200.00 |  13.00 |
-|  4.00 | Arizona    | income   | 27,517.00 | 148.00 |
-|  4.00 | Arizona    | rent     |    972.00 |   4.00 |
-|  5.00 | Arkansas   | income   | 23,789.00 | 165.00 |
-|  5.00 | Arkansas   | rent     |    709.00 |   5.00 |
-|  6.00 | California | income   | 29,454.00 | 109.00 |
-|  6.00 | California | rent     |  1,358.00 |   3.00 |
 ```
 
 ## `nl`

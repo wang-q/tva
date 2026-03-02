@@ -14,7 +14,9 @@
 - [Reshaping](reshape.md)
 - [Combining & Splitting](combining.md)
 - [Formatting & Utilities](utilities.md)
-- [Import & Export](format-conversion.md)
+- [Import (from)](from.md)
+- [Export (to)](to.md)
+- [CSS Selectors](selectors.md)
 
 # Command Reference
 - [select](help/select.md)
@@ -36,10 +38,11 @@
 - [split](help/split.md)
 - [from csv](help/from_csv.md)
 - [from xlsx](help/from_xlsx.md)
+- [from html](help/from_html.md)
 - [to csv](help/to_csv.md)
 - [to xlsx](help/to_xlsx.md)
+- [to md](help/md.md)
 - [check](help/check.md)
-- [md](help/md.md)
 - [nl](help/nl.md)
 - [keep-header](help/keep_header.md)
 - [Field Syntax](help/fields.md)

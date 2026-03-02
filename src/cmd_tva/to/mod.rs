@@ -1,4 +1,5 @@
 pub mod csv;
+pub mod md;
 pub mod xlsx;
 
 use clap::{ArgMatches, Command};
@@ -10,12 +11,14 @@ pub fn make_subcommand() -> Command {
         .arg_required_else_help(true)
         .subcommand(csv::make_subcommand())
         .subcommand(xlsx::make_subcommand())
+        .subcommand(md::make_subcommand())
 }
 
 pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     match matches.subcommand() {
         Some(("csv", sub_matches)) => csv::execute(sub_matches),
         Some(("xlsx", sub_matches)) => xlsx::execute(sub_matches),
+        Some(("md", sub_matches)) => md::execute(sub_matches),
         _ => unreachable!(),
     }
 }

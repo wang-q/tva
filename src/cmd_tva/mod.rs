@@ -8,7 +8,6 @@ pub mod r#from;
 pub mod join;
 pub mod keep_header;
 pub mod longer;
-pub mod md;
 pub mod nl;
 pub mod reverse;
 pub mod sample;

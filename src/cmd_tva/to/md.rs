@@ -5,7 +5,7 @@ use std::io::Write;
 pub fn make_subcommand() -> Command {
     Command::new("md")
         .about("Converts TSV file to markdown table")
-        .after_help(include_str!("../../docs/help/md.md"))
+        .after_help(include_str!("../../../docs/help/md.md"))
         .arg(
             Arg::new("infile")
                 .num_args(0..=1)
