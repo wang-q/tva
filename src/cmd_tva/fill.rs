@@ -69,7 +69,6 @@ pub fn make_subcommand() -> Command {
         )
 }
 
-
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
@@ -78,8 +77,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let outfile = args.get_one::<String>("outfile").unwrap();
     let has_header = args.get_flag("header");
     let line_buffered = args.get_flag("line-buffered");
-    
-    let na_str = args.get_one::<String>("na").map(|s| s.as_str()).unwrap_or("");
+
+    let na_str = args
+        .get_one::<String>("na")
+        .map(|s| s.as_str())
+        .unwrap_or("");
     let na_bytes = na_str.as_bytes();
 
     let const_value = args.get_one::<String>("value");
@@ -145,12 +147,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut target_cols: Vec<usize> = Vec::new();
 
         for spec in &field_specs {
-            let indices = parse_field_list_with_header_preserve_order(
-                spec,
-                header.as_ref(),
-                '\t',
-            )
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+            let indices =
+                parse_field_list_with_header_preserve_order(spec, header.as_ref(), '\t')
+                    .map_err(|e| {
+                        std::io::Error::new(std::io::ErrorKind::InvalidInput, e)
+                    })?;
 
             for idx in indices {
                 // idx is 1-based, convert to 0-based
@@ -163,7 +164,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         reader.for_each_record(|record| {
             let mut first = true;
-            for (current_col, cell_bytes) in TsvSplitter::new(record, b'\t').enumerate() {
+            for (current_col, cell_bytes) in TsvSplitter::new(record, b'\t').enumerate()
+            {
                 if !first {
                     writer.write_all(b"\t")?;
                 }
@@ -190,7 +192,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         // Value is valid (not NA)
                         // If using 'down' fill, update the last seen valid value for this column
                         if const_value.is_none() {
-                             last_valid_values.insert(current_col, cell_bytes.to_vec());
+                            last_valid_values.insert(current_col, cell_bytes.to_vec());
                         }
                         writer.write_all(cell_bytes)?;
                     }

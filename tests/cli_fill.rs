@@ -62,7 +62,9 @@ a\tb
 ";
     let (result, _) = TvaCmd::new()
         .stdin(input)
-        .args(&["fill", "--header", "--field", "1,2", "--value", "0", "--na", "NA"])
+        .args(&[
+            "fill", "--header", "--field", "1,2", "--value", "0", "--na", "NA",
+        ])
         .run();
 
     assert_eq!(result.trim(), expected.trim());
@@ -105,10 +107,7 @@ fn fill_no_header() {
 1\t
 1\t2
 ";
-    let (result, _) = TvaCmd::new()
-        .stdin(input)
-        .args(&["fill", "-f", "1"])
-        .run();
+    let (result, _) = TvaCmd::new().stdin(input).args(&["fill", "-f", "1"]).run();
 
     assert_eq!(result.trim(), expected.trim());
 }
