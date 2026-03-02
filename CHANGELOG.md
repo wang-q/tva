@@ -2,6 +2,16 @@
 
 ## Unreleased - ReleaseDate
 
+### Added
+
+#### Data Import & Export
+- **`from html`**: New command for extracting data from HTML files. Supports Query Mode (Pup-compatible), Table Mode (automatic extraction), and List Mode (structured row/column extraction).
+- **`to md`**: Migrated from `tva md` to `tva to md`. Converts TSV files to Markdown tables with support for column alignment and numeric formatting.
+
+#### Documentation
+- **CSS Selectors Reference**: Added `docs/selectors.md` with a comprehensive guide for selectors used in `from html`.
+- **Restructured Format Docs**: Split the monolithic format conversion guide into dedicated `docs/from.md` and `docs/to.md` for better clarity.
+
 ## 0.2.2 - 2026-03-01
 
 ### Added
