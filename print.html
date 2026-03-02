@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-bf862335.js";
+            window.path_to_searchindex_js = "searchindex-b7313d22.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-e7df0f54.js"></script>
+        <script src="toc-d9050e99.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -266,14 +266,13 @@ cd tva
 <h3 id="formatting--utilities"><a class="header" href="#formatting--utilities"><a href="#formatting--utilities-documentation">Formatting &amp; Utilities</a></a></h3>
 <ul>
 <li><strong><code>check</code></strong>: Validate TSV file structure (column counts, encoding).</li>
-<li><strong><code>md</code></strong>: Convert TSV to Markdown table for display.</li>
 <li><strong><code>nl</code></strong>: Add line numbers to rows.</li>
 <li><strong><code>keep-header</code></strong>: Run a shell command on the body of a TSV file, preserving the header.</li>
 </ul>
-<h3 id="import--export"><a class="header" href="#import--export"><a href="#import--export-documentation">Import &amp; Export</a></a></h3>
+<h3 id="import--export"><a class="header" href="#import--export">Import &amp; Export</a></h3>
 <ul>
-<li><strong><code>from</code></strong>: Convert other formats to TSV (<code>csv</code>, <code>xlsx</code>).</li>
-<li><strong><code>to</code></strong>: Convert TSV to other formats (<code>csv</code>, <code>xlsx</code>).</li>
+<li><strong><a href="#from-command-documentation"><code>from</code></a></strong>: Convert other formats to TSV (<code>csv</code>, <code>xlsx</code>, <code>html</code>).</li>
+<li><strong><a href="#to-command-documentation"><code>to</code></a></strong>: Convert TSV to other formats (<code>csv</code>, <code>xlsx</code>, <code>md</code>).</li>
 </ul>
 <h2 id="author"><a class="header" href="#author">Author</a></h2>
 <p>Qiang Wang <a href="mailto:wang-q@outlook.com">wang-q@outlook.com</a></p>
@@ -1711,7 +1710,11 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="formatting--utilities-documentation"><a class="header" href="#formatting--utilities-documentation">Formatting &amp; Utilities Documentation</a></h1>
-<p>This document explains how to use the utility commands in <code>tva</code>: <strong><code>check</code></strong>, <strong><code>md</code></strong>, <strong><code>nl</code></strong>, and <strong><code>keep-header</code></strong>.</p>
+<ul>
+<li><strong><code>check</code></strong>: Validate TSV file structure.</li>
+<li><strong><code>nl</code></strong>: Add line numbers.</li>
+<li><strong><code>keep-header</code></strong>: Run a shell command on the body, preserving the header.</li>
+</ul>
 <h2 id="check"><a class="header" href="#check"><code>check</code></a></h2>
 <p>Checks TSV file structure for consistent field counts.</p>
 <h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
@@ -1725,47 +1728,9 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 <p>Output:</p>
 <pre><code>2 lines, 5 fields
 </code></pre>
-<h2 id="md"><a class="header" href="#md"><code>md</code></a></h2>
-<p>Converts a TSV file to a Markdown table.</p>
-<h3 id="usage-1-1"><a class="header" href="#usage-1-1">Usage</a></h3>
-<pre><code class="language-bash">tva md [file] [options]
-</code></pre>
-<p>Options:</p>
-<ul>
-<li><code>--num</code>: Right-align numeric columns.</li>
-<li><code>--fmt</code>: Format numeric columns (thousands separators, fixed decimals) and implies <code>--num</code>.</li>
-<li><code>--digits &lt;N&gt;</code>: Set decimal precision for <code>--fmt</code> (default: 0).</li>
-<li><code>--center &lt;cols&gt;</code> / <code>--right &lt;cols&gt;</code>: Manually set alignment for specific columns.</li>
-</ul>
-<h3 id="examples-1-4"><a class="header" href="#examples-1-4">Examples</a></h3>
-<p>Basic markdown table:</p>
-<pre><code class="language-bash">tva md docs/data/household.tsv
-</code></pre>
-<p>Output:</p>
-<pre><code class="language-markdown">| family | dob_child1 | dob_child2 | name_child1 | name_child2 |
-| ------ | ---------- | ---------- | ----------- | ----------- |
-| 1      | 1998-11-26 | 2000-01-29 | J           | K           |
-</code></pre>
-<p>Format numbers with commas and 2 decimal places:</p>
-<pre><code class="language-bash">tva md docs/data/us_rent_income.tsv --fmt --digits 2
-</code></pre>
-<p>Output:</p>
-<pre><code class="language-markdown">| GEOID | NAME       | variable |  estimate |    moe |
-| ----: | ---------- | -------- | --------: | -----: |
-|  1.00 | Alabama    | income   | 24,476.00 | 136.00 |
-|  1.00 | Alabama    | rent     |    747.00 |   3.00 |
-|  2.00 | Alaska     | income   | 32,940.00 | 508.00 |
-|  2.00 | Alaska     | rent     |  1,200.00 |  13.00 |
-|  4.00 | Arizona    | income   | 27,517.00 | 148.00 |
-|  4.00 | Arizona    | rent     |    972.00 |   4.00 |
-|  5.00 | Arkansas   | income   | 23,789.00 | 165.00 |
-|  5.00 | Arkansas   | rent     |    709.00 |   5.00 |
-|  6.00 | California | income   | 29,454.00 | 109.00 |
-|  6.00 | California | rent     |  1,358.00 |   3.00 |
-</code></pre>
 <h2 id="nl"><a class="header" href="#nl"><code>nl</code></a></h2>
 <p>Adds line numbers to TSV rows.</p>
-<h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
+<h3 id="usage-1-1"><a class="header" href="#usage-1-1">Usage</a></h3>
 <pre><code class="language-bash">tva nl [files...] [options]
 </code></pre>
 <p>Options:</p>
@@ -1774,7 +1739,7 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 <li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies <code>-H</code>).</li>
 <li><code>-n &lt;N&gt;</code> / <code>--start-number &lt;N&gt;</code>: Start numbering from N (default: 1).</li>
 </ul>
-<h3 id="examples-2-3"><a class="header" href="#examples-2-3">Examples</a></h3>
+<h3 id="examples-1-4"><a class="header" href="#examples-1-4">Examples</a></h3>
 <p>Add line numbers (no header logic):</p>
 <pre><code class="language-bash">tva nl docs/data/household.tsv
 </code></pre>
@@ -1791,11 +1756,11 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 </code></pre>
 <h2 id="keep-header"><a class="header" href="#keep-header"><code>keep-header</code></a></h2>
 <p>Executes a shell command on the body of a TSV file, preserving the header.</p>
-<h3 id="usage-3"><a class="header" href="#usage-3">Usage</a></h3>
+<h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
 <pre><code class="language-bash">tva keep-header [files...] -- &lt;command&gt; [args...]
 </code></pre>
 <p>The first line of the first input file is printed immediately. The remaining lines (and all lines from subsequent files) are piped to the specified command. The output of the command is then printed.</p>
-<h3 id="examples-3-1"><a class="header" href="#examples-3-1">Examples</a></h3>
+<h3 id="examples-2-3"><a class="header" href="#examples-2-3">Examples</a></h3>
 <p>Sort a file while keeping the header at the top:</p>
 <pre><code class="language-bash">tva keep-header data.tsv -- sort
 </code></pre>
@@ -1808,63 +1773,353 @@ AFG	SP.URB.TOTL	4436311	4648139
 AFG	SP.URB.GROW	3.91	4.66
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="import--export-documentation"><a class="header" href="#import--export-documentation">Import &amp; Export Documentation</a></h1>
-<p>This document explains how to use the import/export commands in <code>tva</code>: <strong><code>from</code></strong> and <strong><code>to</code></strong>.</p>
-<h2 id="from"><a class="header" href="#from"><code>from</code></a></h2>
-<p>Converts other formats (CSV, XLSX) to TSV.</p>
-<h3 id="usage-4"><a class="header" href="#usage-4">Usage</a></h3>
+<h1 id="from-command-documentation"><a class="header" href="#from-command-documentation"><code>from</code> Command Documentation</a></h1>
+<p>The <code>from</code> command converts other file formats (CSV, XLSX, HTML) into TSV (Tab-Separated Values).</p>
+<h2 id="usage-3"><a class="header" href="#usage-3">Usage</a></h2>
 <pre><code class="language-bash">tva from &lt;SUBCOMMAND&gt; [options]
 </code></pre>
-<h3 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h3>
+<h2 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h2>
 <ul>
-<li><strong><code>csv</code></strong>: Convert CSV to TSV.
-<ul>
-<li><code>tva from csv [input] [-o output] [-d delimiter]</code></li>
+<li><strong><code>csv</code></strong>: Convert CSV to TSV.</li>
+<li><strong><code>xlsx</code></strong>: Convert XLSX to TSV.</li>
+<li><strong><code>html</code></strong>: Extract data from HTML to TSV.</li>
 </ul>
-</li>
-<li><strong><code>xlsx</code></strong>: Convert XLSX to TSV.
+<hr>
+<h2 id="tva-from-csv"><a class="header" href="#tva-from-csv"><code>tva from csv</code></a></h2>
+<p>Converts Comma-Separated Values (CSV) files to TSV. It handles standard CSV escaping, quoting, and different delimiters.</p>
+<h3 id="usage-1-2"><a class="header" href="#usage-1-2">Usage</a></h3>
+<pre><code class="language-bash">tva from csv [input] [options]
+</code></pre>
+<h3 id="options-3"><a class="header" href="#options-3">Options</a></h3>
 <ul>
-<li><code>tva from xlsx [input] [--sheet name] [--list-sheets]</code></li>
-</ul>
-</li>
+<li><code>-o &lt;file&gt;</code> / <code>--outfile &lt;file&gt;</code>: Output filename (default: stdout).</li>
+<li><code>-d &lt;char&gt;</code> / <code>--delimiter &lt;char&gt;</code>: Specify the input delimiter (default: <code>,</code>).</li>
 </ul>
 <h3 id="examples-9"><a class="header" href="#examples-9">Examples</a></h3>
-<p>Convert a CSV file to TSV:</p>
-<pre><code class="language-bash">tva from csv docs/data/input.csv &gt; output.tsv
+<p><strong>Convert a standard CSV file:</strong></p>
+<pre><code class="language-bash">tva from csv docs/data/input.csv
 </code></pre>
-<p>Convert an Excel sheet to TSV:</p>
-<pre><code class="language-bash">tva from xlsx docs/data/formats.xlsx --sheet "Introduction" &gt; output.tsv
+<p>Output:</p>
+<pre><code class="language-tsv">Type    Value1  Value2
+Vanilla ABC     123
+Quoted  ABC     123
+...
 </code></pre>
-<h2 id="to"><a class="header" href="#to"><code>to</code></a></h2>
-<p>Converts TSV to other formats (CSV, XLSX).</p>
-<h3 id="usage-1-2"><a class="header" href="#usage-1-2">Usage</a></h3>
-<pre><code class="language-bash">tva to &lt;SUBCOMMAND&gt; [options]
+<p><strong>Convert a semicolon-separated file:</strong></p>
+<pre><code class="language-bash"># Assuming input.csv uses ';'
+tva from csv input.csv -d ";"
 </code></pre>
-<h3 id="subcommands-1"><a class="header" href="#subcommands-1">Subcommands</a></h3>
+<hr>
+<h2 id="tva-from-xlsx"><a class="header" href="#tva-from-xlsx"><code>tva from xlsx</code></a></h2>
+<p>Converts Excel (XLSX) spreadsheets to TSV.</p>
+<h3 id="usage-2-1"><a class="header" href="#usage-2-1">Usage</a></h3>
+<pre><code class="language-bash">tva from xlsx [input] [options]
+</code></pre>
+<h3 id="options-1-1"><a class="header" href="#options-1-1">Options</a></h3>
 <ul>
-<li><strong><code>csv</code></strong>: Convert TSV to CSV.
-<ul>
-<li><code>tva to csv [input] [-o output] [-d delimiter]</code></li>
-</ul>
-</li>
-<li><strong><code>xlsx</code></strong>: Convert TSV to XLSX.
-<ul>
-<li><code>tva to xlsx [input] [-o output.xlsx] [-H] [--le col:val] ...</code></li>
-</ul>
-</li>
+<li><code>-o &lt;file&gt;</code> / <code>--outfile &lt;file&gt;</code>: Output filename (default: stdout).</li>
+<li><code>--sheet &lt;name&gt;</code>: Select a specific sheet by name (default: first sheet).</li>
+<li><code>--list-sheets</code>: List all sheet names in the file and exit.</li>
 </ul>
 <h3 id="examples-1-5"><a class="header" href="#examples-1-5">Examples</a></h3>
-<p>Convert a TSV file to CSV:</p>
-<pre><code class="language-bash">tva to csv docs/data/household.tsv &gt; output.csv
+<p><strong>List sheets in an Excel file:</strong></p>
+<pre><code class="language-bash">tva from xlsx docs/data/formats.xlsx --list-sheets
 </code></pre>
-<p>Convert a TSV file to XLSX with formatting:</p>
-<pre><code class="language-bash">tva to xlsx docs/data/household.tsv -o output.xlsx -H --le 1:2
+<p>Output:</p>
+<pre><code>1: Introduction
+2: Fonts
+3: Named colors
+...
 </code></pre>
-<p>Convert a TSV file to XLSX with multiple formatting rules:</p>
+<p><strong>Extract a specific sheet:</strong></p>
+<pre><code class="language-bash">tva from xlsx docs/data/formats.xlsx --sheet "Introduction"
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">This workbook demonstrates some of
+the formatting options provided by
+...
+</code></pre>
+<hr>
+<h2 id="tva-from-html"><a class="header" href="#tva-from-html"><code>tva from html</code></a></h2>
+<p>Extracts data from HTML files using CSS selectors. It supports three modes:</p>
+<ol>
+<li><strong>Query Mode</strong>: Extract specific elements (like <code>pup</code>).</li>
+<li><strong>Table Mode</strong>: Automatically extract HTML tables to TSV.</li>
+<li><strong>List Mode</strong>: Extract structured lists (e.g., product cards, news items) to TSV.</li>
+</ol>
+<p>For a complete CSS selector reference, see <a href="#css-selectors-reference">CSS Selectors</a>.</p>
+<h3 id="usage-3-1"><a class="header" href="#usage-3-1">Usage</a></h3>
+<pre><code class="language-bash">tva from html [input] [options]
+</code></pre>
+<h3 id="options-2-1"><a class="header" href="#options-2-1">Options</a></h3>
+<ul>
+<li><code>-o &lt;file&gt;</code> / <code>--outfile &lt;file&gt;</code>: Output filename (default: stdout).</li>
+<li><code>-q &lt;query&gt;</code> / <code>--query &lt;query&gt;</code>: Selector + optional display function (e.g., <code>a attr{href}</code>).</li>
+<li><code>--table [selector]</code>: Extract standard HTML tables.</li>
+<li><code>--index &lt;N&gt;</code>: Select the N-th table (1-based). Implies <code>--table</code>.</li>
+<li><code>--row &lt;selector&gt;</code>: Selector for rows (List Mode).</li>
+<li><code>--col &lt;name:selector func&gt;</code>: Column definition (List Mode). Can be used multiple times.</li>
+</ul>
+<h3 id="examples-2-4"><a class="header" href="#examples-2-4">Examples</a></h3>
+<p><strong>Query Mode: Extract all links</strong></p>
+<pre><code class="language-bash">tva from html -q "a attr{href}" docs/data/sample.html
+</code></pre>
+<p><strong>Table Mode: Extract the first table</strong></p>
+<pre><code class="language-bash">tva from html --table docs/data/sample.html
+</code></pre>
+<p><strong>Table Mode: Extract a specific table by class</strong></p>
+<pre><code class="language-bash">tva from html --table=".specs-table" docs/data/sample.html
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">Feature Value
+Weight  1.2 kg
+Color   Silver
+Warranty        2 Years
+</code></pre>
+<p><strong>List Mode: Extract structured product data</strong></p>
+<pre><code class="language-bash">tva from html --row ".product-card" \
+    --col "Name:.title" \
+    --col "Price:.price" \
+    --col "Link:a.buy-btn attr{href}" \
+    docs/data/sample.html
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">Name    Price   Link
+Super Widget    $19.99  /buy/widget
+Mega Gadget     $29.99  /buy/gadget
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="to-command-documentation"><a class="header" href="#to-command-documentation"><code>to</code> Command Documentation</a></h1>
+<p>The <code>to</code> command converts TSV (Tab-Separated Values) files into other formats (CSV, XLSX, Markdown).</p>
+<h2 id="usage-4"><a class="header" href="#usage-4">Usage</a></h2>
+<pre><code class="language-bash">tva to &lt;SUBCOMMAND&gt; [options]
+</code></pre>
+<h2 id="subcommands-1"><a class="header" href="#subcommands-1">Subcommands</a></h2>
+<ul>
+<li><strong><code>csv</code></strong>: Convert TSV to CSV.</li>
+<li><strong><code>xlsx</code></strong>: Convert TSV to XLSX.</li>
+<li><strong><code>md</code></strong>: Convert TSV to Markdown.</li>
+</ul>
+<hr>
+<h2 id="tva-to-csv"><a class="header" href="#tva-to-csv"><code>tva to csv</code></a></h2>
+<p>Converts TSV files to Comma-Separated Values (CSV).</p>
+<h3 id="usage-1-3"><a class="header" href="#usage-1-3">Usage</a></h3>
+<pre><code class="language-bash">tva to csv [input] [options]
+</code></pre>
+<h3 id="options-4"><a class="header" href="#options-4">Options</a></h3>
+<ul>
+<li><code>-o &lt;file&gt;</code> / <code>--outfile &lt;file&gt;</code>: Output filename (default: stdout).</li>
+<li><code>-d &lt;char&gt;</code> / <code>--delimiter &lt;char&gt;</code>: Specify the output delimiter (default: <code>,</code>).</li>
+</ul>
+<h3 id="examples-10"><a class="header" href="#examples-10">Examples</a></h3>
+<p><strong>Convert TSV to CSV:</strong></p>
+<pre><code class="language-bash">tva to csv docs/data/household.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-csv">family,dob_child1,dob_child2,name_child1,name_child2
+1,1998-11-26,2000-01-29,J,K
+...
+</code></pre>
+<p><strong>Convert TSV to semicolon-separated values:</strong></p>
+<pre><code class="language-bash">tva to csv docs/data/household.tsv -d ";"
+</code></pre>
+<hr>
+<h2 id="tva-to-xlsx"><a class="header" href="#tva-to-xlsx"><code>tva to xlsx</code></a></h2>
+<p>Converts TSV files to Excel (XLSX) spreadsheets. Supports conditional formatting.</p>
+<h3 id="usage-2-2"><a class="header" href="#usage-2-2">Usage</a></h3>
+<pre><code class="language-bash">tva to xlsx [input] [options]
+</code></pre>
+<h3 id="options-1-2"><a class="header" href="#options-1-2">Options</a></h3>
+<ul>
+<li><code>-o &lt;file&gt;</code> / <code>--outfile &lt;file&gt;</code>: Output filename (default: <code>output.xlsx</code>).</li>
+<li><code>-H</code> / <code>--header</code>: Treat the first line as a header.</li>
+<li><code>--le &lt;col:val&gt;</code>: Format cells &lt;= value.</li>
+<li><code>--ge &lt;col:val&gt;</code>: Format cells &gt;= value.</li>
+<li><code>--bt &lt;col:min:max&gt;</code>: Format cells between min and max.</li>
+<li><code>--str-in-fld &lt;col:val&gt;</code>: Format cells containing substring.</li>
+</ul>
+<h3 id="examples-1-6"><a class="header" href="#examples-1-6">Examples</a></h3>
+<p><strong>Convert TSV to XLSX:</strong></p>
+<pre><code class="language-bash">tva to xlsx docs/data/household.tsv -o output.xlsx
+</code></pre>
+<p><strong>Convert TSV to XLSX with formatting:</strong></p>
 <pre><code class="language-bash">tva to xlsx docs/data/rocauc.result.tsv -o output.xlsx \
     -H --le 4:0.5 --ge 4:0.6 --bt 4:0.52:0.58 --str-in-fld 1:m03
 </code></pre>
 <p><img src="data/to_xlsx.png" alt="to xlsx output"></p>
+<hr>
+<h2 id="tva-to-md"><a class="header" href="#tva-to-md"><code>tva to md</code></a></h2>
+<p>Converts a TSV file to a Markdown table, with support for column alignment and numeric formatting.</p>
+<h3 id="usage-3-2"><a class="header" href="#usage-3-2">Usage</a></h3>
+<pre><code class="language-bash">tva to md [file] [options]
+</code></pre>
+<h3 id="options-2-2"><a class="header" href="#options-2-2">Options</a></h3>
+<ul>
+<li><code>--num</code>: Right-align numeric columns automatically.</li>
+<li><code>--fmt</code>: Format numeric columns (thousands separators, fixed decimals) and implies <code>--num</code>.</li>
+<li><code>--digits &lt;N&gt;</code>: Set decimal precision for <code>--fmt</code> (default: 0).</li>
+<li><code>--center &lt;cols&gt;</code> / <code>--right &lt;cols&gt;</code>: Manually set alignment for specific columns (e.g., <code>1,2-4</code>).</li>
+</ul>
+<h3 id="examples-2-5"><a class="header" href="#examples-2-5">Examples</a></h3>
+<p><strong>Basic markdown table:</strong></p>
+<pre><code class="language-bash">tva to md docs/data/household.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-markdown">| family | dob_child1 | dob_child2 | name_child1 | name_child2 |
+| ------ | ---------- | ---------- | ----------- | ----------- |
+| 1      | 1998-11-26 | 2000-01-29 | J           | K           |
+</code></pre>
+<p><strong>Format numbers with commas and 2 decimal places:</strong></p>
+<pre><code class="language-bash">tva to md docs/data/us_rent_income.tsv --fmt --digits 2
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-markdown">| GEOID | NAME       | variable |  estimate |    moe |
+| ----: | ---------- | -------- | --------: | -----: |
+|  1.00 | Alabama    | income   | 24,476.00 | 136.00 |
+|  1.00 | Alabama    | rent     |    747.00 |   3.00 |
+|  2.00 | Alaska     | income   | 32,940.00 | 508.00 |
+|  2.00 | Alaska     | rent     |  1,200.00 |  13.00 |
+...
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="css-selectors-reference"><a class="header" href="#css-selectors-reference">CSS Selectors Reference</a></h1>
+<p><code>tva from html</code> uses the <code>scraper</code> crate which implements a robust subset of CSS selectors. This document provides a comprehensive reference and examples, inspired by <code>pup</code>.</p>
+<h2 id="basic-selectors"><a class="header" href="#basic-selectors">Basic Selectors</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Selector</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th><th style="text-align: left">Matches</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>tag</code></td><td style="text-align: left">Selects elements by tag name.</td><td style="text-align: left"><code>div</code></td><td style="text-align: left"><code>&lt;div&gt;...&lt;/div&gt;</code></td></tr>
+<tr><td style="text-align: left"><code>.class</code></td><td style="text-align: left">Selects elements by class.</td><td style="text-align: left"><code>.content</code></td><td style="text-align: left"><code>&lt;div class="content"&gt;</code></td></tr>
+<tr><td style="text-align: left"><code>#id</code></td><td style="text-align: left">Selects elements by ID.</td><td style="text-align: left"><code>#header</code></td><td style="text-align: left"><code>&lt;div id="header"&gt;</code></td></tr>
+<tr><td style="text-align: left"><code>*</code></td><td style="text-align: left">Universal selector, matches everything.</td><td style="text-align: left"><code>*</code></td><td style="text-align: left">Any element</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="combinators"><a class="header" href="#combinators">Combinators</a></h2>
+<p>Combinators allow you to select elements based on their relationship to other elements.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Selector</th><th style="text-align: left">Name</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>A B</code></td><td style="text-align: left">Descendant</td><td style="text-align: left">Selects B inside A (any depth).</td><td style="text-align: left"><code>div p</code> (paragraphs inside divs)</td></tr>
+<tr><td style="text-align: left"><code>A &gt; B</code></td><td style="text-align: left">Child</td><td style="text-align: left">Selects B directly inside A.</td><td style="text-align: left"><code>ul &gt; li</code> (direct children list items)</td></tr>
+<tr><td style="text-align: left"><code>A + B</code></td><td style="text-align: left">Adjacent Sibling</td><td style="text-align: left">Selects B immediately after A.</td><td style="text-align: left"><code>h1 + p</code> (paragraph right after h1)</td></tr>
+<tr><td style="text-align: left"><code>A ~ B</code></td><td style="text-align: left">General Sibling</td><td style="text-align: left">Selects B after A (same parent).</td><td style="text-align: left"><code>h1 ~ p</code> (all paragraphs after h1)</td></tr>
+<tr><td style="text-align: left"><code>A, B</code></td><td style="text-align: left">Grouping</td><td style="text-align: left">Selects both A and B.</td><td style="text-align: left"><code>h1, h2</code> (all h1 and h2 headers)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="attribute-selectors"><a class="header" href="#attribute-selectors">Attribute Selectors</a></h2>
+<p>Filter elements based on their attributes.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Selector</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>[attr]</code></td><td style="text-align: left">Has attribute <code>attr</code>.</td><td style="text-align: left"><code>[href]</code></td></tr>
+<tr><td style="text-align: left"><code>[attr="val"]</code></td><td style="text-align: left">Attribute exactly equals <code>val</code>.</td><td style="text-align: left"><code>[type="text"]</code></td></tr>
+<tr><td style="text-align: left"><code>[attr~="val"]</code></td><td style="text-align: left">Attribute contains word <code>val</code> (space separated).</td><td style="text-align: left"><code>[class~="btn"]</code></td></tr>
+<tr><td style="text-align: left">`[attr</td><td style="text-align: left">=“val”]`</td><td style="text-align: left">Attribute starts with <code>val</code> (hyphen separated).</td></tr>
+<tr><td style="text-align: left"><code>[attr^="val"]</code></td><td style="text-align: left">Attribute starts with <code>val</code>.</td><td style="text-align: left"><code>[href^="https"]</code></td></tr>
+<tr><td style="text-align: left"><code>[attr$="val"]</code></td><td style="text-align: left">Attribute ends with <code>val</code>.</td><td style="text-align: left"><code>[href$=".pdf"]</code></td></tr>
+<tr><td style="text-align: left"><code>[attr*="val"]</code></td><td style="text-align: left">Attribute contains substring <code>val</code>.</td><td style="text-align: left"><code>[href*="google"]</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="pseudo-classes"><a class="header" href="#pseudo-classes">Pseudo-classes</a></h2>
+<p>Pseudo-classes select elements based on their state or position in the document tree.</p>
+<h3 id="structural--position"><a class="header" href="#structural--position">Structural &amp; Position</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Selector</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>:first-child</code></td><td style="text-align: left">First child of its parent.</td><td style="text-align: left"><code>li:first-child</code></td></tr>
+<tr><td style="text-align: left"><code>:last-child</code></td><td style="text-align: left">Last child of its parent.</td><td style="text-align: left"><code>li:last-child</code></td></tr>
+<tr><td style="text-align: left"><code>:only-child</code></td><td style="text-align: left">Elements that are the only child.</td><td style="text-align: left"><code>p:only-child</code></td></tr>
+<tr><td style="text-align: left"><code>:first-of-type</code></td><td style="text-align: left">First element of its type among siblings.</td><td style="text-align: left"><code>p:first-of-type</code></td></tr>
+<tr><td style="text-align: left"><code>:last-of-type</code></td><td style="text-align: left">Last element of its type among siblings.</td><td style="text-align: left"><code>p:last-of-type</code></td></tr>
+<tr><td style="text-align: left"><code>:only-of-type</code></td><td style="text-align: left">Only element of its type among siblings.</td><td style="text-align: left"><code>img:only-of-type</code></td></tr>
+<tr><td style="text-align: left"><code>:nth-child(n)</code></td><td style="text-align: left">Selects the n-th child (1-based).</td><td style="text-align: left"><code>tr:nth-child(2)</code></td></tr>
+<tr><td style="text-align: left"><code>:nth-last-child(n)</code></td><td style="text-align: left">n-th child from end.</td><td style="text-align: left"><code>li:nth-last-child(1)</code></td></tr>
+<tr><td style="text-align: left"><code>:nth-of-type(n)</code></td><td style="text-align: left">n-th element of its type.</td><td style="text-align: left"><code>p:nth-of-type(2)</code></td></tr>
+<tr><td style="text-align: left"><code>:nth-last-of-type(n)</code></td><td style="text-align: left">n-th element of its type from end.</td><td style="text-align: left"><code>tr:nth-last-of-type(2)</code></td></tr>
+<tr><td style="text-align: left"><code>:empty</code></td><td style="text-align: left">Elements with no children (including text).</td><td style="text-align: left"><code>td:empty</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Note on <code>nth-child</code> arguments:</strong></p>
+<ul>
+<li><code>2</code>: The 2nd child.</li>
+<li><code>odd</code>: 1st, 3rd, 5th…</li>
+<li><code>even</code>: 2nd, 4th, 6th…</li>
+<li><code>2n+1</code>: Every 2nd child starting from 1 (1, 3, 5…).</li>
+<li><code>3n</code>: Every 3rd child (3, 6, 9…).</li>
+</ul>
+<h3 id="logic--content"><a class="header" href="#logic--content">Logic &amp; Content</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Selector</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>:not(selector)</code></td><td style="text-align: left">Elements that do NOT match the selector.</td><td style="text-align: left"><code>input:not([type="submit"])</code></td></tr>
+<tr><td style="text-align: left"><code>:is(selector)</code></td><td style="text-align: left">Matches any of the selectors in the list.</td><td style="text-align: left"><code>:is(header, footer) a</code></td></tr>
+<tr><td style="text-align: left"><code>:where(selector)</code></td><td style="text-align: left">Same as <code>:is</code> but with 0 specificity.</td><td style="text-align: left"><code>:where(section, article)</code></td></tr>
+<tr><td style="text-align: left"><code>:has(selector)</code></td><td style="text-align: left"><strong>(Experimental)</strong> Elements containing specific descendants.</td><td style="text-align: left"><code>div:has(img)</code></td></tr>
+<tr><td style="text-align: left"><code>:contains("text")</code></td><td style="text-align: left">Not supported by <code>scraper</code>.</td><td style="text-align: left"><em>(Use <code>text{}</code> and filter downstream.)</em></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="display-functions"><a class="header" href="#display-functions">Display Functions</a></h2>
+<p>When using <code>tva from html -q</code>, you can append a display function to format the output. If omitted, the full HTML of selected elements is printed.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Function</th><th style="text-align: left">Description</th><th style="text-align: left">Example Output</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>text{}</code></td><td style="text-align: left">Prints text content of element and children.</td><td style="text-align: left"><code>Hello World</code></td></tr>
+<tr><td style="text-align: left"><code>attr{name}</code></td><td style="text-align: left">Prints value of attribute <code>name</code>.</td><td style="text-align: left"><code>https://example.com</code></td></tr>
+<tr><td style="text-align: left"><code>json{}</code></td><td style="text-align: left"><strong>(Not yet implemented)</strong> Output as JSON structure.</td><td style="text-align: left"><em>N/A</em></td></tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p>Note: <code>pup</code> supports <code>json{}</code>, but <code>tva</code> currently focuses on TSV/Text extraction. Use <code>Struct Mode</code> (<code>--row</code>/<code>--col</code>) for structured data extraction.</p>
+</blockquote>
+<h2 id="known-limitations"><a class="header" href="#known-limitations">Known Limitations</a></h2>
+<p>The following features from <code>pup</code> are <strong>not planned</strong> for implementation:</p>
+<ul>
+<li><code>json{}</code> output mode (use <code>text{}</code> or <code>attr{}</code> with TSV output).</li>
+<li><code>pup</code>-specific pseudo-classes (e.g., <code>:parent-of</code>).</li>
+<li><code>:contains()</code> selector (not supported by the underlying <code>scraper</code> engine).</li>
+</ul>
+<h2 id="examples-11"><a class="header" href="#examples-11">Examples</a></h2>
+<h3 id="basic-filtering"><a class="header" href="#basic-filtering">Basic Filtering</a></h3>
+<p>Extract page title:</p>
+<pre><code class="language-bash">tva from html -q "title text{}" index.html
+</code></pre>
+<p>Extract all links from a specific list:</p>
+<pre><code class="language-bash">tva from html -q "ul#menu &gt; li &gt; a attr{href}" index.html
+</code></pre>
+<h3 id="advanced-filtering"><a class="header" href="#advanced-filtering">Advanced Filtering</a></h3>
+<p>Extract rows from the second table on the page, skipping the header:</p>
+<pre><code class="language-bash">tva from html -q "table:nth-of-type(2) tr:nth-child(n+2)" index.html
+</code></pre>
+<p>Find all images that are NOT icons:</p>
+<pre><code class="language-bash">tva from html -q "img:not(.icon) attr{src}" index.html
+</code></pre>
+<p>Extract meta description:</p>
+<pre><code class="language-bash">tva from html -q "meta[name='description'] attr{content}" index.html
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="select"><a class="header" href="#select">select</a></h1>
 <p>Reads TSV data from files or standard input and writes selected fields to
@@ -2569,6 +2824,77 @@ tva from xlsx –sheet “Sheet2” data.xlsx &gt; data.tsv</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="from-html"><a class="header" href="#from-html">from html</a></h1>
+<p>Extracts data from HTML files using CSS selectors.</p>
+<p>This command converts HTML content into TSV format using three different modes:</p>
+<ol>
+<li><strong>Query Mode</strong>: For quick extraction of specific elements.</li>
+<li><strong>Table Mode</strong>: For automatically converting HTML tables (<code>&lt;table&gt;</code>).</li>
+<li><strong>Struct Mode</strong>: For extracting lists of objects into rows and columns.</li>
+</ol>
+<p><strong>Input:</strong></p>
+<ul>
+<li>Reads from standard input if no input file is given or if the input file is ‘stdin’.</li>
+<li>Supports plain text HTML files.</li>
+</ul>
+<p><strong>Output:</strong></p>
+<ul>
+<li>Writes to standard output by default.</li>
+<li>Use <code>--outfile</code> / <code>-o</code> to write to a file (<code>[stdout]</code> for screen).</li>
+</ul>
+<p><strong>Query Mode:</strong></p>
+<ul>
+<li>Activated by the <code>--query</code> / <code>-q</code> flag.</li>
+<li>Syntax: <code>selector [display_function]</code></li>
+<li><strong>Selectors</strong>: Standard CSS selectors (e.g., <code>div.content</code>, <code>#main a</code>).</li>
+<li><strong>Display Functions</strong>:
+<ul>
+<li><code>text{}</code> or <code>text()</code>: Print the text content of the selected elements.</li>
+<li><code>attr{name}</code> or <code>attr("name")</code>: Print the value of the specified attribute.</li>
+<li>If omitted, prints the full HTML of selected elements.</li>
+</ul>
+</li>
+<li>Empty results are kept by default (prints blank lines for empty text or missing attributes).</li>
+<li>For advanced CSS selector reference, see: <code>docs/selectors.md</code>.</li>
+</ul>
+<p><strong>Table Mode:</strong></p>
+<ul>
+<li>Activated by the <code>--table</code> flag.</li>
+<li>Extracts data from HTML <code>&lt;table&gt;</code> elements.</li>
+<li>Use <code>--index N</code> to select the N-th matched table (1-based). Implies <code>--table</code>.</li>
+<li>Use <code>--table=&lt;css&gt;</code> to target specific tables (e.g., <code>div.result table</code>).</li>
+</ul>
+<p><strong>Struct Mode (List Extraction):</strong></p>
+<ul>
+<li>Activated by using <code>--row</code> and <code>--col</code> flags.</li>
+<li>Designed to extract repetitive structures (like cards, list items) into a TSV table.</li>
+<li><strong>–row <selector></selector></strong>: Defines the container for each record (e.g., <code>div.product</code>, <code>li</code>).</li>
+<li><strong>–col “Name:Selector [Function]”</strong>: Defines a column in the output TSV.
+<ul>
+<li><code>Name</code>: The column header name.</li>
+<li><code>Selector</code>: CSS selector relative to the row element.</li>
+<li><code>Function</code>: <code>text{}</code> (default) or <code>attr{name}</code>.</li>
+<li>Example: <code>--col "Link:a.title attr{href}"</code></li>
+<li>Missing elements or attributes result in empty TSV cells.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Examples:</strong></p>
+<ol>
+<li>
+<p>Extract all links (Query Mode)
+tva from html -q “a attr{href}” index.html</p>
+</li>
+<li>
+<p>Extract the first table (Table Mode)
+tva from html –table data.html</p>
+</li>
+<li>
+<p>Extract product list (Struct Mode)
+tva from html –row “div.product-card” <br>–col “Title: h2.title text{}” <br>–col “Price: .price” <br>–col “URL: a.link attr{href}” <br>products.html</p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="to-csv"><a class="header" href="#to-csv">to csv</a></h1>
 <p>Reads TSV data and writes it as CSV.</p>
 <p>This command converts TSV data into CSV format, ensuring that fields containing
@@ -2622,28 +2948,7 @@ cat data.tsv | tva to xlsx &gt; data.xlsx</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="check-1"><a class="header" href="#check-1">check</a></h1>
-<p>Validates the structure of TSV input by ensuring that all lines have the
-same number of fields.</p>
-<p>Input:</p>
-<ul>
-<li>If no input files are given, or an input file is ‘stdin’, data is read
-from standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
-</ul>
-<p>Behavior:</p>
-<ul>
-<li>The number of fields on the first line is used as the expected count.</li>
-<li>Each subsequent line must have the same number of fields.</li>
-<li>On mismatch, details about the failing line and expected field count are
-printed to stderr and the command exits with a non-zero status.</li>
-</ul>
-<p>Output:</p>
-<ul>
-<li>On success, prints: <code>&lt;N&gt; lines, &lt;M&gt; fields</code></li>
-</ul>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="md-1"><a class="header" href="#md-1">md</a></h1>
+<h1 id="md"><a class="header" href="#md">md</a></h1>
 <p>Converts a tab-separated values (TSV) file into a markdown table.</p>
 <p>Notes:</p>
 <ul>
@@ -2664,6 +2969,27 @@ tva md tests/genome/ctg.range.tsv –num -c 2</p>
 tva md tests/genome/ctg.range.tsv –fmt –digits 2</p>
 </li>
 </ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="check-1"><a class="header" href="#check-1">check</a></h1>
+<p>Validates the structure of TSV input by ensuring that all lines have the
+same number of fields.</p>
+<p>Input:</p>
+<ul>
+<li>If no input files are given, or an input file is ‘stdin’, data is read
+from standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+</ul>
+<p>Behavior:</p>
+<ul>
+<li>The number of fields on the first line is used as the expected count.</li>
+<li>Each subsequent line must have the same number of fields.</li>
+<li>On mismatch, details about the failing line and expected field count are
+printed to stderr and the command exits with a non-zero status.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>On success, prints: <code>&lt;N&gt; lines, &lt;M&gt; fields</code></li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="nl-1"><a class="header" href="#nl-1">nl</a></h1>
 <p>Reads TSV data from files or standard input and writes each line preceded

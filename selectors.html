@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Import &amp; Export - tva Documentation</title>
+        <title>CSS Selectors - tva Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-bf862335.js";
+            window.path_to_searchindex_js = "searchindex-b7313d22.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-e7df0f54.js"></script>
+        <script src="toc-d9050e99.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -146,7 +146,7 @@
                         <a href="https://github.com/wang-q/tva" title="Git repository" aria-label="Git repository">
                             <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
                         </a>
-                        <a href="https://github.com/wang-q/tva/edit/master/docs/format-conversion.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                        <a href="https://github.com/wang-q/tva/edit/master/docs/selectors.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
                             <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
                         </a>
 
@@ -180,69 +180,150 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="import--export-documentation"><a class="header" href="#import--export-documentation">Import &amp; Export Documentation</a></h1>
-<p>This document explains how to use the import/export commands in <code>tva</code>: <strong><code>from</code></strong> and <strong><code>to</code></strong>.</p>
-<h2 id="from"><a class="header" href="#from"><code>from</code></a></h2>
-<p>Converts other formats (CSV, XLSX) to TSV.</p>
-<h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
-<pre><code class="language-bash">tva from &lt;SUBCOMMAND&gt; [options]
-</code></pre>
-<h3 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h3>
+                        <h1 id="css-selectors-reference"><a class="header" href="#css-selectors-reference">CSS Selectors Reference</a></h1>
+<p><code>tva from html</code> uses the <code>scraper</code> crate which implements a robust subset of CSS selectors. This document provides a comprehensive reference and examples, inspired by <code>pup</code>.</p>
+<h2 id="basic-selectors"><a class="header" href="#basic-selectors">Basic Selectors</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Selector</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th><th style="text-align: left">Matches</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>tag</code></td><td style="text-align: left">Selects elements by tag name.</td><td style="text-align: left"><code>div</code></td><td style="text-align: left"><code>&lt;div&gt;...&lt;/div&gt;</code></td></tr>
+<tr><td style="text-align: left"><code>.class</code></td><td style="text-align: left">Selects elements by class.</td><td style="text-align: left"><code>.content</code></td><td style="text-align: left"><code>&lt;div class="content"&gt;</code></td></tr>
+<tr><td style="text-align: left"><code>#id</code></td><td style="text-align: left">Selects elements by ID.</td><td style="text-align: left"><code>#header</code></td><td style="text-align: left"><code>&lt;div id="header"&gt;</code></td></tr>
+<tr><td style="text-align: left"><code>*</code></td><td style="text-align: left">Universal selector, matches everything.</td><td style="text-align: left"><code>*</code></td><td style="text-align: left">Any element</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="combinators"><a class="header" href="#combinators">Combinators</a></h2>
+<p>Combinators allow you to select elements based on their relationship to other elements.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Selector</th><th style="text-align: left">Name</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>A B</code></td><td style="text-align: left">Descendant</td><td style="text-align: left">Selects B inside A (any depth).</td><td style="text-align: left"><code>div p</code> (paragraphs inside divs)</td></tr>
+<tr><td style="text-align: left"><code>A &gt; B</code></td><td style="text-align: left">Child</td><td style="text-align: left">Selects B directly inside A.</td><td style="text-align: left"><code>ul &gt; li</code> (direct children list items)</td></tr>
+<tr><td style="text-align: left"><code>A + B</code></td><td style="text-align: left">Adjacent Sibling</td><td style="text-align: left">Selects B immediately after A.</td><td style="text-align: left"><code>h1 + p</code> (paragraph right after h1)</td></tr>
+<tr><td style="text-align: left"><code>A ~ B</code></td><td style="text-align: left">General Sibling</td><td style="text-align: left">Selects B after A (same parent).</td><td style="text-align: left"><code>h1 ~ p</code> (all paragraphs after h1)</td></tr>
+<tr><td style="text-align: left"><code>A, B</code></td><td style="text-align: left">Grouping</td><td style="text-align: left">Selects both A and B.</td><td style="text-align: left"><code>h1, h2</code> (all h1 and h2 headers)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="attribute-selectors"><a class="header" href="#attribute-selectors">Attribute Selectors</a></h2>
+<p>Filter elements based on their attributes.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Selector</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>[attr]</code></td><td style="text-align: left">Has attribute <code>attr</code>.</td><td style="text-align: left"><code>[href]</code></td></tr>
+<tr><td style="text-align: left"><code>[attr="val"]</code></td><td style="text-align: left">Attribute exactly equals <code>val</code>.</td><td style="text-align: left"><code>[type="text"]</code></td></tr>
+<tr><td style="text-align: left"><code>[attr~="val"]</code></td><td style="text-align: left">Attribute contains word <code>val</code> (space separated).</td><td style="text-align: left"><code>[class~="btn"]</code></td></tr>
+<tr><td style="text-align: left">`[attr</td><td style="text-align: left">=“val”]`</td><td style="text-align: left">Attribute starts with <code>val</code> (hyphen separated).</td></tr>
+<tr><td style="text-align: left"><code>[attr^="val"]</code></td><td style="text-align: left">Attribute starts with <code>val</code>.</td><td style="text-align: left"><code>[href^="https"]</code></td></tr>
+<tr><td style="text-align: left"><code>[attr$="val"]</code></td><td style="text-align: left">Attribute ends with <code>val</code>.</td><td style="text-align: left"><code>[href$=".pdf"]</code></td></tr>
+<tr><td style="text-align: left"><code>[attr*="val"]</code></td><td style="text-align: left">Attribute contains substring <code>val</code>.</td><td style="text-align: left"><code>[href*="google"]</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="pseudo-classes"><a class="header" href="#pseudo-classes">Pseudo-classes</a></h2>
+<p>Pseudo-classes select elements based on their state or position in the document tree.</p>
+<h3 id="structural--position"><a class="header" href="#structural--position">Structural &amp; Position</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Selector</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>:first-child</code></td><td style="text-align: left">First child of its parent.</td><td style="text-align: left"><code>li:first-child</code></td></tr>
+<tr><td style="text-align: left"><code>:last-child</code></td><td style="text-align: left">Last child of its parent.</td><td style="text-align: left"><code>li:last-child</code></td></tr>
+<tr><td style="text-align: left"><code>:only-child</code></td><td style="text-align: left">Elements that are the only child.</td><td style="text-align: left"><code>p:only-child</code></td></tr>
+<tr><td style="text-align: left"><code>:first-of-type</code></td><td style="text-align: left">First element of its type among siblings.</td><td style="text-align: left"><code>p:first-of-type</code></td></tr>
+<tr><td style="text-align: left"><code>:last-of-type</code></td><td style="text-align: left">Last element of its type among siblings.</td><td style="text-align: left"><code>p:last-of-type</code></td></tr>
+<tr><td style="text-align: left"><code>:only-of-type</code></td><td style="text-align: left">Only element of its type among siblings.</td><td style="text-align: left"><code>img:only-of-type</code></td></tr>
+<tr><td style="text-align: left"><code>:nth-child(n)</code></td><td style="text-align: left">Selects the n-th child (1-based).</td><td style="text-align: left"><code>tr:nth-child(2)</code></td></tr>
+<tr><td style="text-align: left"><code>:nth-last-child(n)</code></td><td style="text-align: left">n-th child from end.</td><td style="text-align: left"><code>li:nth-last-child(1)</code></td></tr>
+<tr><td style="text-align: left"><code>:nth-of-type(n)</code></td><td style="text-align: left">n-th element of its type.</td><td style="text-align: left"><code>p:nth-of-type(2)</code></td></tr>
+<tr><td style="text-align: left"><code>:nth-last-of-type(n)</code></td><td style="text-align: left">n-th element of its type from end.</td><td style="text-align: left"><code>tr:nth-last-of-type(2)</code></td></tr>
+<tr><td style="text-align: left"><code>:empty</code></td><td style="text-align: left">Elements with no children (including text).</td><td style="text-align: left"><code>td:empty</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Note on <code>nth-child</code> arguments:</strong></p>
 <ul>
-<li><strong><code>csv</code></strong>: Convert CSV to TSV.
+<li><code>2</code>: The 2nd child.</li>
+<li><code>odd</code>: 1st, 3rd, 5th…</li>
+<li><code>even</code>: 2nd, 4th, 6th…</li>
+<li><code>2n+1</code>: Every 2nd child starting from 1 (1, 3, 5…).</li>
+<li><code>3n</code>: Every 3rd child (3, 6, 9…).</li>
+</ul>
+<h3 id="logic--content"><a class="header" href="#logic--content">Logic &amp; Content</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Selector</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>:not(selector)</code></td><td style="text-align: left">Elements that do NOT match the selector.</td><td style="text-align: left"><code>input:not([type="submit"])</code></td></tr>
+<tr><td style="text-align: left"><code>:is(selector)</code></td><td style="text-align: left">Matches any of the selectors in the list.</td><td style="text-align: left"><code>:is(header, footer) a</code></td></tr>
+<tr><td style="text-align: left"><code>:where(selector)</code></td><td style="text-align: left">Same as <code>:is</code> but with 0 specificity.</td><td style="text-align: left"><code>:where(section, article)</code></td></tr>
+<tr><td style="text-align: left"><code>:has(selector)</code></td><td style="text-align: left"><strong>(Experimental)</strong> Elements containing specific descendants.</td><td style="text-align: left"><code>div:has(img)</code></td></tr>
+<tr><td style="text-align: left"><code>:contains("text")</code></td><td style="text-align: left">Not supported by <code>scraper</code>.</td><td style="text-align: left"><em>(Use <code>text{}</code> and filter downstream.)</em></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="display-functions"><a class="header" href="#display-functions">Display Functions</a></h2>
+<p>When using <code>tva from html -q</code>, you can append a display function to format the output. If omitted, the full HTML of selected elements is printed.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Function</th><th style="text-align: left">Description</th><th style="text-align: left">Example Output</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>text{}</code></td><td style="text-align: left">Prints text content of element and children.</td><td style="text-align: left"><code>Hello World</code></td></tr>
+<tr><td style="text-align: left"><code>attr{name}</code></td><td style="text-align: left">Prints value of attribute <code>name</code>.</td><td style="text-align: left"><code>https://example.com</code></td></tr>
+<tr><td style="text-align: left"><code>json{}</code></td><td style="text-align: left"><strong>(Not yet implemented)</strong> Output as JSON structure.</td><td style="text-align: left"><em>N/A</em></td></tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p>Note: <code>pup</code> supports <code>json{}</code>, but <code>tva</code> currently focuses on TSV/Text extraction. Use <code>Struct Mode</code> (<code>--row</code>/<code>--col</code>) for structured data extraction.</p>
+</blockquote>
+<h2 id="known-limitations"><a class="header" href="#known-limitations">Known Limitations</a></h2>
+<p>The following features from <code>pup</code> are <strong>not planned</strong> for implementation:</p>
 <ul>
-<li><code>tva from csv [input] [-o output] [-d delimiter]</code></li>
+<li><code>json{}</code> output mode (use <code>text{}</code> or <code>attr{}</code> with TSV output).</li>
+<li><code>pup</code>-specific pseudo-classes (e.g., <code>:parent-of</code>).</li>
+<li><code>:contains()</code> selector (not supported by the underlying <code>scraper</code> engine).</li>
 </ul>
-</li>
-<li><strong><code>xlsx</code></strong>: Convert XLSX to TSV.
-<ul>
-<li><code>tva from xlsx [input] [--sheet name] [--list-sheets]</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
-<p>Convert a CSV file to TSV:</p>
-<pre><code class="language-bash">tva from csv docs/data/input.csv &gt; output.tsv
+<h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
+<h3 id="basic-filtering"><a class="header" href="#basic-filtering">Basic Filtering</a></h3>
+<p>Extract page title:</p>
+<pre><code class="language-bash">tva from html -q "title text{}" index.html
 </code></pre>
-<p>Convert an Excel sheet to TSV:</p>
-<pre><code class="language-bash">tva from xlsx docs/data/formats.xlsx --sheet "Introduction" &gt; output.tsv
+<p>Extract all links from a specific list:</p>
+<pre><code class="language-bash">tva from html -q "ul#menu &gt; li &gt; a attr{href}" index.html
 </code></pre>
-<h2 id="to"><a class="header" href="#to"><code>to</code></a></h2>
-<p>Converts TSV to other formats (CSV, XLSX).</p>
-<h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
-<pre><code class="language-bash">tva to &lt;SUBCOMMAND&gt; [options]
+<h3 id="advanced-filtering"><a class="header" href="#advanced-filtering">Advanced Filtering</a></h3>
+<p>Extract rows from the second table on the page, skipping the header:</p>
+<pre><code class="language-bash">tva from html -q "table:nth-of-type(2) tr:nth-child(n+2)" index.html
 </code></pre>
-<h3 id="subcommands-1"><a class="header" href="#subcommands-1">Subcommands</a></h3>
-<ul>
-<li><strong><code>csv</code></strong>: Convert TSV to CSV.
-<ul>
-<li><code>tva to csv [input] [-o output] [-d delimiter]</code></li>
-</ul>
-</li>
-<li><strong><code>xlsx</code></strong>: Convert TSV to XLSX.
-<ul>
-<li><code>tva to xlsx [input] [-o output.xlsx] [-H] [--le col:val] ...</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
-<p>Convert a TSV file to CSV:</p>
-<pre><code class="language-bash">tva to csv docs/data/household.tsv &gt; output.csv
+<p>Find all images that are NOT icons:</p>
+<pre><code class="language-bash">tva from html -q "img:not(.icon) attr{src}" index.html
 </code></pre>
-<p>Convert a TSV file to XLSX with formatting:</p>
-<pre><code class="language-bash">tva to xlsx docs/data/household.tsv -o output.xlsx -H --le 1:2
+<p>Extract meta description:</p>
+<pre><code class="language-bash">tva from html -q "meta[name='description'] attr{content}" index.html
 </code></pre>
-<p>Convert a TSV file to XLSX with multiple formatting rules:</p>
-<pre><code class="language-bash">tva to xlsx docs/data/rocauc.result.tsv -o output.xlsx \
-    -H --le 4:0.5 --ge 4:0.6 --bt 4:0.52:0.58 --str-in-fld 1:m03
-</code></pre>
-<p><img src="data/to_xlsx.png" alt="to xlsx output"></p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="utilities.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="to.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -256,7 +337,7 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="utilities.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="to.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
