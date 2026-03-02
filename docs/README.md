@@ -40,7 +40,7 @@ See [Design Documentation](design.md) for details.
 
 ## Installation
 
-Current release: 0.2.1
+Current release: 0.2.2
 
 ```bash
 # Clone the repository and install via cargo
@@ -97,6 +97,8 @@ Alternatively, you can download individual files from the [docs/data](https://gi
 
 - **`longer`**: Reshape wide to long (unpivot). Requires a header row.
 - **`wider`**: Reshape long to wide (pivot). Supports aggregation via `--op` (sum, count, etc.).
+- **`fill`**: Fill missing values in selected columns (down/LOCF, const).
+- **`blank`**: Replace consecutive identical values in selected columns with empty strings (sparsify).
 
 ### [Combining & Splitting](combining.md)
 
@@ -106,13 +108,14 @@ Alternatively, you can download individual files from the [docs/data](https://gi
 
 ### [Formatting & Utilities](utilities.md)
 
-- **`from`**: Convert other formats to TSV (`csv`, `xlsx`).
-- **`to`**: Convert TSV to other formats (`csv`, `xlsx`).
-- **`blank`**: Replace consecutive identical values in selected columns with empty strings (sparsify).
 - **`check`**: Validate TSV file structure (column counts, encoding).
-- **`md`**: Convert TSV to Markdown table for display.
 - **`nl`**: Add line numbers to rows.
 - **`keep-header`**: Run a shell command on the body of a TSV file, preserving the header.
+
+### Import & Export
+
+- **[`from`](from.md)**: Convert other formats to TSV (`csv`, `xlsx`, `html`).
+- **[`to`](to.md)**: Convert TSV to other formats (`csv`, `xlsx`, `md`).
 
 ## Author
 
