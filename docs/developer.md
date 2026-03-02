@@ -492,3 +492,83 @@ git diff v0.2.1 HEAD -- "*.rs" "*.md" > gitdiff.txt
     *   构建笛卡尔积。
     *   Left Join 原数据。
 *   **建议**: 作为一个高级命令，初期可以不实现，或者仅支持基于预定义字典的 `expand`。
+
+## `tva from html`
+
+`pup` 是一个优秀的命令行 HTML 处理工具，但已停止维护。`tva from html` 的目标是**复刻 `pup` 的核心常用功能**（作为通用的 HTML 处理器），同时针对表格数据提取（Table Extraction）和结构化列表（List Extraction）提供**特化的 CLI 模式**，使其成为一个全能的 HTML-to-Data 工具。
+
+## 1. 核心定位
+
+*   **All-in-One**: 既是 `pup` 的 Rust 复刻版（通用 HTML 查询），也是专业的 HTML 表格提取器。
+*   **输入**: 标准输入（管道）或文件。
+*   **输出**:
+    *   通用模式：HTML 片段或纯文本（`text{}` / `attr{}`）。
+    *   提取模式：TSV 格式。
+
+## 2. CLI 设计草案
+
+### 模式 A: 通用查询 (Pup-compatible Mode)
+
+完全兼容 `pup` 的操作习惯，用于探索 HTML 结构或提取特定片段。
+
+```bash
+# 打印所有链接的 href
+cat index.html | tva from html --query 'a attr{href}'
+
+# 打印特定 div 下的文本
+cat index.html | tva from html --query '#content .article text{}'
+```
+
+支持 `pup` 的核心选择器和 Display Functions（`text{}`, `attr{}` 等）。
+
+### 模式 B: 表格自动提取 (Table Extraction)
+
+针对标准 `<table>` 的快捷提取模式，直接输出 TSV。
+
+```bash
+# 自动提取第一个 table
+tva from html --table input.html
+
+# 提取第 N 个 table
+tva from html --table --index 2 input.html
+
+# 提取特定选择器的 table
+tva from html --table="table#finance" input.html
+```
+
+### 模式 C: 结构化列表提取 (List Extraction)
+
+针对非 Table 结构（如 `<div>` 列表），通过定义“行”和“列”来生成 TSV。
+
+```bash
+# 提取 Hacker News 列表
+tva from html --row ".athing" \
+  --col "Rank:.rank text()" \
+  --col "Title:.titleline > a text()" \
+  --col "Link:.titleline > a attr('href')" \
+  input.html
+```
+
+    *   `attr("href")`: 提取属性。
+
+## 3. 实现技术栈
+
+*   **HTML Parser**: **`scraper`** (基于 `html5ever`)。它提供了完善的 CSS Selector 支持，能够覆盖 `pup` 的大部分选择器逻辑。
+*   **Selector Engine**: 复用 `scraper` 的选择器能力（支持标准 CSS Selectors）。对于 `pup` 特有的非标准伪类（如 `:parent-of`），**暂不实现**，以保持实现简单和标准兼容性。
+
+## 4. 路线图
+
+1.  **Phase 1**: 实现 `pup` 的核心功能（Selector + Display Functions），替代 `pup`。
+2.  **Phase 2**: 实现 `--table` 自动提取模式。
+3.  **Phase 3**: 实现 `--row`/`--col` 结构化提取模式。
+
+## 5. 当前状态（实现对照）
+
+*   已实现：
+    *   模式 A：`--query`（默认输出 HTML；支持 `text{}`/`text()`、`attr{}`/`attr()`）
+    *   模式 B：`--table[=<selector>]` 与 `--index`（`--index` 会隐式启用表格提取）
+    *   模式 C：`--row` + `--col` 输出 TSV（缺失元素/属性输出空字段）
+*   未实现 / 不计划实现：
+    *   `pup` 的 `json{}` 输出
+    *   `pup` 特有伪类（例如 `:parent-of`）
+    *   `:contains()`（`scraper` 选择器不支持）

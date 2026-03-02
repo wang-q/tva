@@ -18,6 +18,8 @@ tva from <SUBCOMMAND> [options]
     *   `tva from csv [input] [-o output] [-d delimiter]`
 *   **`xlsx`**: Convert XLSX to TSV.
     *   `tva from xlsx [input] [--sheet name] [--list-sheets]`
+*   **`html`**: Extract data from HTML to TSV.
+    *   `tva from html [input] [-q query] [--table] [--row selector --col spec] ...`
 
 ### Examples
 
@@ -29,6 +31,25 @@ tva from csv docs/data/input.csv > output.tsv
 Convert an Excel sheet to TSV:
 ```bash
 tva from xlsx docs/data/formats.xlsx --sheet "Introduction" > output.tsv
+```
+
+Extract all links from an HTML file:
+```bash
+tva from html -q "nav a attr{href}" docs/data/sample.html
+```
+
+Convert an HTML table to TSV:
+```bash
+tva from html --table=".specs-table" docs/data/sample.html
+```
+
+Extract structured data (rows and columns) from HTML:
+```bash
+tva from html --row ".product-card" \
+    --col "Name:.title" \
+    --col "Price:.price" \
+    --col "Link:a.buy-btn attr{href}" \
+    docs/data/sample.html
 ```
 
 ## `to`
