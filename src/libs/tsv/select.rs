@@ -356,7 +356,9 @@ mod tests {
         let line = b"a\tb\tc";
         let mut output = Vec::new();
         let mut ranges = Vec::new();
-        let err = write_selected_from_bytes(&mut output, line, b'\t', &plan, &mut ranges).unwrap_err();
+        let err =
+            write_selected_from_bytes(&mut output, line, b'\t', &plan, &mut ranges)
+                .unwrap_err();
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
         assert!(err.to_string().contains("Field index 4 out of range"));
     }
@@ -396,15 +398,7 @@ mod tests {
     fn test_write_with_rest_none() {
         let line = b"a\tb\tc";
         let mut output = Vec::new();
-        write_with_rest(
-            &mut output,
-            line,
-            b'\t',
-            &[2],
-            None,
-            RestMode::None,
-        )
-        .unwrap();
+        write_with_rest(&mut output, line, b'\t', &[2], None, RestMode::None).unwrap();
         assert_eq!(output, b"b\n");
     }
 
@@ -412,15 +406,7 @@ mod tests {
     fn test_write_with_rest_first() {
         let line = b"a\tb\tc";
         let mut output = Vec::new();
-        write_with_rest(
-            &mut output,
-            line,
-            b'\t',
-            &[2],
-            None,
-            RestMode::First,
-        )
-        .unwrap();
+        write_with_rest(&mut output, line, b'\t', &[2], None, RestMode::First).unwrap();
         // Rest: 1, 3 -> a, c
         // Selected: 2 -> b
         // Output: a, c, b
@@ -431,15 +417,7 @@ mod tests {
     fn test_write_with_rest_last() {
         let line = b"a\tb\tc";
         let mut output = Vec::new();
-        write_with_rest(
-            &mut output,
-            line,
-            b'\t',
-            &[2],
-            None,
-            RestMode::Last,
-        )
-        .unwrap();
+        write_with_rest(&mut output, line, b'\t', &[2], None, RestMode::Last).unwrap();
         // Selected: 2 -> b
         // Rest: 1, 3 -> a, c
         // Output: b, a, c
