@@ -1477,3 +1477,143 @@ A	2
     // Header + 3 distinct rows
     assert_eq!(lines.len(), 4);
 }
+
+#[test]
+fn sample_gen_random_inorder_custom_header() {
+    let input = "h1\tv1\nA\t1\nB\t2\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--gen-random-inorder",
+            "--header",
+            "--random-value-header",
+            "RND",
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run();
+
+    let mut lines = stdout.lines();
+    let header = lines.next().unwrap();
+    assert_eq!(header, "RND\th1\tv1");
+
+    let row1 = lines.next().unwrap();
+    let parts: Vec<&str> = row1.split('\t').collect();
+    assert_eq!(parts.len(), 3);
+    assert!(parts[0].parse::<f64>().is_ok());
+    assert_eq!(parts[1], "A");
+    assert_eq!(parts[2], "1");
+}
+
+#[test]
+fn sample_gen_random_inorder_key_fields_names() {
+    // Tests parsing key fields with header in gen-random-inorder mode
+    let input = "h1\th2\th3\nA\t1\tX\nA\t1\tY\nB\t2\tZ\n";
+    // Key fields: h1, h2.
+    // Row 1: A, 1. Row 2: A, 1. Row 3: B, 2.
+    // Row 1 and 2 share the same key (A, 1). They should get the SAME random value.
+    // Row 3 has different key (B, 2).
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--gen-random-inorder",
+            "--header",
+            "--key-fields",
+            "h1,h2",
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 4); // Header + 3 rows
+
+    let header = lines[0];
+    assert!(header.starts_with("random_value\th1"));
+
+    let row1 = lines[1];
+    let row2 = lines[2];
+    let row3 = lines[3];
+
+    let val1 = row1.split('\t').next().unwrap();
+    let val2 = row2.split('\t').next().unwrap();
+    let val3 = row3.split('\t').next().unwrap();
+
+    assert_eq!(val1, val2, "Rows with same key should have same random value");
+    assert_ne!(val1, val3, "Rows with different keys should have different random values (with high probability)");
+}
+
+#[test]
+fn sample_gen_random_inorder_key_out_of_range() {
+    let input = "a\tb\n";
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--gen-random-inorder",
+            "--key-fields",
+            "3",
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run_fail();
+
+    assert!(stderr.contains("key field index 3 out of range"));
+}
+
+#[test]
+fn sample_gen_random_inorder_complex_keys() {
+    // Test key extraction logic with gaps
+    // Input: c1, c2, c3, c4
+    // Key: c1, c3 (indices 1, 3)
+    let input = "A\tB\tC\tD\nA\tX\tC\tY\n";
+    // Row 1 key: A, C
+    // Row 2 key: A, C
+    // They should get same random value.
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--gen-random-inorder",
+            "--key-fields",
+            "1,3",
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 2);
+
+    let val1 = lines[0].split('\t').next().unwrap();
+    let val2 = lines[1].split('\t').next().unwrap();
+
+    assert_eq!(val1, val2);
+}
+
+#[test]
+fn sample_gen_random_inorder_key_reordered() {
+    // Test key extraction with reordered keys: 3,1
+    // Input: c1, c2, c3
+    // Row 1: A, B, C. Key: C, A.
+    // Row 2: A, X, C. Key: C, A.
+    // Should match.
+    let input = "A\tB\tC\nA\tX\tC\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--gen-random-inorder",
+            "--key-fields",
+            "3,1",
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    let val1 = lines[0].split('\t').next().unwrap();
+    let val2 = lines[1].split('\t').next().unwrap();
+
+    assert_eq!(val1, val2);
+}
