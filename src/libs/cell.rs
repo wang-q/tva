@@ -660,4 +660,128 @@ mod tests {
         assert_eq!(empty_mode.result(OpKind::Mode), "");
         assert_eq!(empty_mode.result(OpKind::ModeCount), "0");
     }
+
+    #[test]
+    fn test_state_transitions() {
+        // OpKind::Count
+        // 初始 Empty -> Value
+        let mut count_cell = Cell::Empty;
+        update_cell(&mut count_cell, "10", OpKind::Count);
+        if let Cell::Value(v) = count_cell {
+            assert_eq!(v, 1.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+        // Value -> Value (increment)
+        update_cell(&mut count_cell, "20", OpKind::Count);
+        if let Cell::Value(v) = count_cell {
+            assert_eq!(v, 2.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+
+        // OpKind::MissingCount
+        // 初始 Empty -> Value
+        let mut missing_cell = Cell::Empty;
+        update_cell(&mut missing_cell, "", OpKind::MissingCount);
+        if let Cell::Value(v) = missing_cell {
+            assert_eq!(v, 1.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+        // Value -> Value (increment)
+        update_cell(&mut missing_cell, "", OpKind::MissingCount);
+        if let Cell::Value(v) = missing_cell {
+            assert_eq!(v, 2.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+
+        // OpKind::NotMissingCount
+        // 初始 Empty -> Value
+        let mut not_missing_cell = Cell::Empty;
+        update_cell(&mut not_missing_cell, "val", OpKind::NotMissingCount);
+        if let Cell::Value(v) = not_missing_cell {
+            assert_eq!(v, 1.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+        // Value -> Value (increment)
+        update_cell(&mut not_missing_cell, "val", OpKind::NotMissingCount);
+        if let Cell::Value(v) = not_missing_cell {
+            assert_eq!(v, 2.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+
+        // OpKind::Sum
+        // 初始 Empty -> Value
+        let mut sum_cell = Cell::Empty;
+        update_cell(&mut sum_cell, "10", OpKind::Sum);
+        if let Cell::Value(v) = sum_cell {
+            assert_eq!(v, 10.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+        // Value -> Value (accumulate)
+        update_cell(&mut sum_cell, "20", OpKind::Sum);
+        if let Cell::Value(v) = sum_cell {
+            assert_eq!(v, 30.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+
+        // OpKind::Min
+        // 初始 Empty -> Value
+        let mut min_cell = Cell::Empty;
+        update_cell(&mut min_cell, "10", OpKind::Min);
+        if let Cell::Value(v) = min_cell {
+            assert_eq!(v, 10.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+        // Value -> Value (update min)
+        update_cell(&mut min_cell, "5", OpKind::Min);
+        if let Cell::Value(v) = min_cell {
+            assert_eq!(v, 5.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+
+        // OpKind::Max
+        // 初始 Empty -> Value
+        let mut max_cell = Cell::Empty;
+        update_cell(&mut max_cell, "10", OpKind::Max);
+        if let Cell::Value(v) = max_cell {
+            assert_eq!(v, 10.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+        // Value -> Value (update max)
+        update_cell(&mut max_cell, "20", OpKind::Max);
+        if let Cell::Value(v) = max_cell {
+            assert_eq!(v, 20.0);
+        } else {
+            panic!("Expected Cell::Value");
+        }
+
+        // OpKind::Mean
+        // 初始 Empty -> Values
+        let mut mean_cell = Cell::Empty;
+        update_cell(&mut mean_cell, "10", OpKind::Mean);
+        if let Cell::Values(ref v) = mean_cell {
+            assert_eq!(v[0], 10.0);
+            assert_eq!(v[1], 1.0);
+        } else {
+            panic!("Expected Cell::Values");
+        }
+        // Values -> Values (update mean state)
+        update_cell(&mut mean_cell, "20", OpKind::Mean);
+        if let Cell::Values(ref v) = mean_cell {
+            assert_eq!(v[0], 30.0);
+            assert_eq!(v[1], 2.0);
+        } else {
+            panic!("Expected Cell::Values");
+        }
+    }
 }
