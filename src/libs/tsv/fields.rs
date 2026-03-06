@@ -813,4 +813,138 @@ mod tests {
         let v = parse_field_list_with_header("c-a", Some(&header), '\t').unwrap();
         assert_eq!(v, vec![1, 2, 3]);
     }
+
+    #[test]
+    fn test_parse_numeric_field_list_preserve_order_basic() {
+        let v = parse_numeric_field_list_preserve_order("1,3-5").unwrap();
+        assert_eq!(v, vec![1, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_parse_numeric_field_list_preserve_order_reverse() {
+        let v = parse_numeric_field_list_preserve_order("5-3").unwrap();
+        assert_eq!(v, vec![5, 4, 3]);
+    }
+
+    #[test]
+    fn test_parse_numeric_field_list_preserve_order_mixed() {
+        let v = parse_numeric_field_list_preserve_order("2,4-5,1").unwrap();
+        assert_eq!(v, vec![2, 4, 5, 1]);
+    }
+
+    #[test]
+    fn test_parse_numeric_field_list_preserve_order_error_zero() {
+        let err = parse_numeric_field_list_preserve_order("0").unwrap_err();
+        assert!(err.contains("field index must be >= 1"));
+    }
+
+    #[test]
+    fn test_parse_numeric_field_list_preserve_order_error_empty() {
+        let err = parse_numeric_field_list_preserve_order(",").unwrap_err();
+        assert!(err.contains("empty field list element"));
+    }
+
+    #[test]
+    fn test_parse_numeric_field_list_preserve_order_error_invalid() {
+        let err = parse_numeric_field_list_preserve_order("a").unwrap_err();
+        assert!(err.contains("invalid numeric field spec"));
+    }
+
+    #[test]
+    fn test_fields_to_ints() {
+        let span = fields_to_ints("1,3-5");
+        assert_eq!(span.to_string(), "1,3-5");
+    }
+
+    #[test]
+    fn test_fields_to_idx() {
+        let v = fields_to_idx("1,3-5");
+        assert_eq!(v, vec![1, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_no_header() {
+        let v =
+            parse_field_list_with_header_preserve_order("3,1-2", None, '\t').unwrap();
+        assert_eq!(v, vec![3, 1, 2]);
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_no_header_reverse() {
+        let v = parse_field_list_with_header_preserve_order("3-1", None, '\t').unwrap();
+        assert_eq!(v, vec![3, 2, 1]);
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_no_header_error() {
+        let err =
+            parse_field_list_with_header_preserve_order("a", None, '\t').unwrap_err();
+        assert!(err.contains("requires header"));
+    }
+
+    #[test]
+    fn test_parse_numeric_field_list_preserve_order_limit() {
+        let err = parse_numeric_field_list_preserve_order("1048577").unwrap_err();
+        assert!(err.contains("Maximum allowed '--e|exclude' field number is 1048576"));
+    }
+
+    #[test]
+    fn test_parse_numeric_field_list_preserve_order_negative() {
+        let err = parse_numeric_field_list_preserve_order("-1").unwrap_err();
+        // The current implementation might parse this as a range "-1" with no second part
+        // But since split_once('-') splits on first dash, "-1" -> ("", "1").
+        // parse::<i32>("") fails.
+        // It falls through to parse::<i32>("-1"), which is Ok(-1).
+        // Then checks n <= 0.
+        assert!(err.contains("field index must be >= 1"));
+    }
+
+    #[test]
+    fn test_parse_numeric_field_list_preserve_order_range_negative() {
+        let err = parse_numeric_field_list_preserve_order("1--1").unwrap_err();
+        // "1--1" -> "1" and "-1". parse::<i32>("-1") is -1.
+        // Checks end <= 0.
+        assert!(err.contains("field index must be >= 1"));
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_reverse_name_range() {
+        let header = Header::from_line("a\tb\tc", '\t');
+        let v = parse_field_list_with_header_preserve_order("c-a", Some(&header), '\t')
+            .unwrap();
+        assert_eq!(v, vec![3, 2, 1]);
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_incomplete_range() {
+        let header = Header::from_line("a\tb\tc", '\t');
+        let err = parse_field_list_with_header_preserve_order("a-", Some(&header), '\t')
+            .unwrap_err();
+        assert!(err.contains("Incomplete ranges are not supported"));
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_incomplete_range_start() {
+        let header = Header::from_line("a\tb\tc", '\t');
+        let err = parse_field_list_with_header_preserve_order("-a", Some(&header), '\t')
+            .unwrap_err();
+        assert!(err.contains("Incomplete ranges are not supported"));
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_wildcard_not_found() {
+        let header = Header::from_line("a\tb\tc", '\t');
+        let err = parse_field_list_with_header_preserve_order("d*", Some(&header), '\t')
+            .unwrap_err();
+        assert!(err.contains("Field not found in file header"));
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_limit() {
+        let header = Header::from_line("a", '\t');
+        let err =
+            parse_field_list_with_header_preserve_order("1048577", Some(&header), '\t')
+                .unwrap_err();
+        assert!(err.contains("Maximum allowed '--e|exclude' field number is 1048576"));
+    }
 }

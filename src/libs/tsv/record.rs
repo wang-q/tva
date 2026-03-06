@@ -354,4 +354,82 @@ mod tests {
 
         assert_eq!(rec.get_str(1), Some("a"));
     }
+
+    #[test]
+    fn test_with_capacity() {
+        let rec = TsvRecord::with_capacity(100, 10);
+        assert!(rec.is_empty());
+        assert_eq!(rec.len(), 0);
+        assert_eq!(rec.line.capacity(), 100);
+        assert_eq!(rec.ends.capacity(), 10);
+    }
+
+    #[test]
+    fn test_parse_replaces_content() {
+        let mut rec = TsvRecord::new();
+        rec.parse_line(b"a\tb", b'\t');
+        assert_eq!(rec.len(), 2);
+        assert_eq!(rec.get(0), Some(b"a".as_slice()));
+
+        rec.parse_line(b"c\td\te", b'\t');
+        assert_eq!(rec.len(), 3);
+        assert_eq!(rec.get(0), Some(b"c".as_slice()));
+        assert_eq!(rec.get(2), Some(b"e".as_slice()));
+    }
+
+    #[test]
+    fn test_parse_no_delimiters() {
+        let mut rec = TsvRecord::new();
+        rec.parse_line(b"abc", b'\t');
+        assert_eq!(rec.len(), 1);
+        assert_eq!(rec.get(0), Some(b"abc".as_slice()));
+    }
+
+    #[test]
+    fn test_tsv_row_empty_line() {
+        let line = b"";
+        let ends: Vec<usize> = vec![];
+        let row = TsvRow { line, ends: &ends };
+
+        assert_eq!(row.get_bytes(1), Some(b"".as_slice()));
+        assert_eq!(row.get_bytes(2), None);
+    }
+
+    #[test]
+    fn test_get_str_invalid_utf8() {
+        let mut rec = TsvRecord::new();
+        // Invalid UTF-8 sequence: 0xFF
+        rec.parse_line(b"a\t\xFF", b'\t');
+
+        assert_eq!(rec.get_bytes(2), Some(b"\xFF".as_slice()));
+        assert_eq!(rec.get_str(2), None);
+    }
+
+    #[test]
+    fn test_row_trait_edge_cases() {
+        let mut rec = TsvRecord::new();
+        rec.parse_line(b"a\tb", b'\t');
+
+        // idx = 0 is invalid
+        assert_eq!(rec.get_bytes(0), None);
+        assert_eq!(rec.get_str(0), None);
+
+        // idx > len is invalid
+        assert_eq!(rec.get_bytes(3), None);
+    }
+
+    #[test]
+    fn test_tsv_row_complex_ends() {
+        // Construct TsvRow manually to simulate complex scenarios
+        // line: "a\tb\tc"
+        // ends: [1, 3, 5] (standard)
+        let line = b"a\tb\tc";
+        let ends = vec![1, 3, 5];
+        let row = TsvRow { line, ends: &ends };
+
+        // Check bounds logic
+        // idx 4 -> i=3. ends.len()=3. i > ends.len() is false.
+        // start = ends[2]+1 = 6. > line.len() (5). Should return None.
+        assert_eq!(row.get_bytes(4), None);
+    }
 }

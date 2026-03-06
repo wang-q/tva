@@ -421,4 +421,84 @@ mod tests {
         let result = extractor.extract_from_record(&record, b'\t');
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_extract_from_row_trait_basic() {
+        use crate::libs::tsv::record::StrSliceRow;
+
+        let fields = vec!["A", "B", "C"];
+        let row = StrSliceRow { fields: &fields };
+
+        // Extract field 2 (B)
+        let mut extractor = KeyExtractor::new(Some(vec![2]), false, true);
+        let key = extractor.extract_from_row(&row, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"B");
+    }
+
+    #[test]
+    fn test_extract_from_row_trait_multiple() {
+        use crate::libs::tsv::record::StrSliceRow;
+
+        let fields = vec!["A", "B", "C"];
+        let row = StrSliceRow { fields: &fields };
+
+        // Extract fields 3, 1 (C, A)
+        let mut extractor = KeyExtractor::new(Some(vec![3, 1]), false, true);
+        let key = extractor.extract_from_row(&row, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"C\tA");
+    }
+
+    #[test]
+    fn test_extract_from_row_trait_ignore_case() {
+        use crate::libs::tsv::record::StrSliceRow;
+
+        let fields = vec!["A", "B", "C"];
+        let row = StrSliceRow { fields: &fields };
+
+        // Extract field 2 (B)
+        let mut extractor = KeyExtractor::new(Some(vec![2]), true, true);
+        let key = extractor.extract_from_row(&row, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"b");
+    }
+
+    #[test]
+    fn test_extract_from_row_trait_strict() {
+        use crate::libs::tsv::record::StrSliceRow;
+
+        let fields = vec!["A", "B", "C"];
+        let row = StrSliceRow { fields: &fields };
+
+        // Index 4 out of bounds
+        let mut extractor = KeyExtractor::new(Some(vec![4]), false, true);
+        let result = extractor.extract_from_row(&row, b'\t');
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_extract_from_row_trait_non_strict() {
+        use crate::libs::tsv::record::StrSliceRow;
+
+        let fields = vec!["A", "B", "C"];
+        let row = StrSliceRow { fields: &fields };
+
+        // Index 4 out of bounds
+        let mut extractor = KeyExtractor::new(Some(vec![4]), false, false);
+        let key = extractor.extract_from_row(&row, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"");
+    }
+
+    #[test]
+    fn test_extract_from_row_whole_line_limitation() {
+        use crate::libs::tsv::record::StrSliceRow;
+
+        let fields = vec!["A", "B", "C"];
+        let row = StrSliceRow { fields: &fields };
+
+        // No indices -> Whole line
+        let mut extractor = KeyExtractor::new(None, false, true);
+        // Current implementation returns empty slice because Row doesn't expose whole line
+        // This is a known limitation when using extract_from_row without indices
+        let key = extractor.extract_from_row(&row, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"");
+    }
 }

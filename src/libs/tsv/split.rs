@@ -95,4 +95,18 @@ mod tests {
         let fields: Vec<&[u8]> = TsvSplitter::new(line, b',').collect();
         assert_eq!(fields, vec![&b"a"[..], &b"b"[..], &b"c"[..]]);
     }
+
+    #[test]
+    fn test_split_empty_input() {
+        let line = b"";
+        let fields: Vec<&[u8]> = TsvSplitter::new(line, b'\t').collect();
+        assert_eq!(fields, vec![&b""[..]]);
+    }
+
+    #[test]
+    fn test_split_leading_empty() {
+        let line = b"\ta";
+        let fields: Vec<&[u8]> = TsvSplitter::new(line, b'\t').collect();
+        assert_eq!(fields, vec![&b""[..], &b"a"[..]]);
+    }
 }

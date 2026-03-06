@@ -266,3 +266,77 @@ pub fn write_with_rest(
     writer.write_all(b"\n")?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_select_plan_basic() {
+        let plan = SelectPlan::new(&[1, 2, 3]);
+        let line = b"a\tb\tc";
+        let mut ranges = Vec::new();
+        plan.extract_ranges(line, b'\t', &mut ranges).unwrap();
+
+        assert_eq!(ranges.len(), 3);
+        assert_eq!(&line[ranges[0].clone()], b"a");
+        assert_eq!(&line[ranges[1].clone()], b"b");
+        assert_eq!(&line[ranges[2].clone()], b"c");
+    }
+
+    #[test]
+    fn test_select_plan_reorder() {
+        // Select 3, 1
+        let plan = SelectPlan::new(&[3, 1]);
+        let line = b"a\tb\tc";
+        let mut ranges = Vec::new();
+        plan.extract_ranges(line, b'\t', &mut ranges).unwrap();
+
+        assert_eq!(ranges.len(), 2);
+        // output_ranges[0] corresponds to index 3 ("c")
+        // output_ranges[1] corresponds to index 1 ("a")
+        assert_eq!(&line[ranges[0].clone()], b"c");
+        assert_eq!(&line[ranges[1].clone()], b"a");
+    }
+
+    #[test]
+    fn test_select_plan_repeat() {
+        // Select 2, 2
+        let plan = SelectPlan::new(&[2, 2]);
+        let line = b"a\tb\tc";
+        let mut ranges = Vec::new();
+        plan.extract_ranges(line, b'\t', &mut ranges).unwrap();
+
+        assert_eq!(ranges.len(), 2);
+        assert_eq!(&line[ranges[0].clone()], b"b");
+        assert_eq!(&line[ranges[1].clone()], b"b");
+    }
+
+    #[test]
+    fn test_select_plan_missing_field() {
+        // Select 4 (out of bounds)
+        let plan = SelectPlan::new(&[4]);
+        let line = b"a\tb\tc";
+        let mut ranges = Vec::new();
+        let err = plan.extract_ranges(line, b'\t', &mut ranges).unwrap_err();
+        assert_eq!(err, 4);
+    }
+
+    #[test]
+    fn test_select_plan_empty_line() {
+        let plan = SelectPlan::new(&[1]);
+        let line = b""; // 1 field (empty)
+        let mut ranges = Vec::new();
+        plan.extract_ranges(line, b'\t', &mut ranges).unwrap();
+        assert_eq!(&line[ranges[0].clone()], b"");
+    }
+
+    #[test]
+    fn test_select_plan_empty_line_missing() {
+        let plan = SelectPlan::new(&[2]);
+        let line = b""; // 1 field (empty)
+        let mut ranges = Vec::new();
+        let err = plan.extract_ranges(line, b'\t', &mut ranges).unwrap_err();
+        assert_eq!(err, 2);
+    }
+}

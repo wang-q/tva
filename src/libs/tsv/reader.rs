@@ -278,4 +278,84 @@ mod tests {
         assert_eq!(records[0], "A".repeat(1000).as_bytes());
         assert_eq!(records[1], "B".repeat(2000).as_bytes());
     }
+
+    #[test]
+    fn test_for_each_row() {
+        use crate::libs::tsv::record::Row;
+
+        let data = b"A\tB\nC\tD\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+        let mut rows = Vec::new();
+
+        reader
+            .for_each_row(b'\t', |row| {
+                // Collect row content as strings for checking
+                let mut row_data = Vec::new();
+                // TsvRow doesn't expose len directly but we can guess or rely on get_str
+                // Let's just grab known indices
+                if let Some(s) = row.get_str(1) {
+                    row_data.push(s.to_string());
+                }
+                if let Some(s) = row.get_str(2) {
+                    row_data.push(s.to_string());
+                }
+                rows.push(row_data);
+                Ok(())
+            })
+            .unwrap();
+
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0], vec!["A", "B"]);
+        assert_eq!(rows[1], vec!["C", "D"]);
+    }
+
+    #[test]
+    fn test_read_header() {
+        let data = b"h1\th2\nd1\td2\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header = reader.read_header().unwrap().unwrap();
+        assert_eq!(header, b"h1\th2");
+
+        let mut records = Vec::new();
+        reader
+            .for_each_record(|rec| {
+                records.push(rec.to_vec());
+                Ok(())
+            })
+            .unwrap();
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0], b"d1\td2");
+    }
+
+    #[test]
+    fn test_read_header_empty() {
+        let data = b"";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header = reader.read_header().unwrap();
+        assert!(header.is_none());
+    }
+
+    #[test]
+    fn test_copy_remainder() {
+        let data = b"line1\nline2\nline3\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        // Read first line
+        let header = reader.read_header().unwrap().unwrap();
+        assert_eq!(header, b"line1");
+
+        // Copy remainder
+        let mut output = Vec::new();
+        let count = reader.copy_remainder_to(&mut output).unwrap();
+
+        assert_eq!(count, 12); // "line2\nline3\n" is 6+6=12 bytes
+        assert_eq!(output, b"line2\nline3\n");
+    }
 }
