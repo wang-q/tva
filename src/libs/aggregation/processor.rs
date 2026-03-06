@@ -1,6 +1,6 @@
 use super::aggregator::Aggregator;
 use super::ops::*;
-use super::traits::Calculator;
+use super::Calculator;
 use super::{OpKind, Operation, StatsConfig};
 use crate::libs::tsv::record::Row;
 use std::collections::HashMap;
