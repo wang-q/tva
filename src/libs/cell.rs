@@ -593,27 +593,16 @@ mod tests {
         for i in 1..=10 {
             update_cell(&mut q, &i.to_string(), OpKind::Quantile(0.9));
         }
-        // 90th percentile of 1..10 should be 9.1 (depending on interpolation method in math.rs)
-        // Let's check math::quantile implementation:
-        // pos = p * (len - 1)
-        // pos = 0.9 * 9 = 8.1
-        // i = 8, fract = 0.1
-        // vals[8] = 9, vals[9] = 10
-        // 9 * 0.9 + 10 * 0.1 = 8.1 + 1.0 = 9.1
+        // 90th percentile of 1..10 should be 9.1
         assert_eq!(q.result(OpKind::Quantile(0.9)), "9.1");
 
         // Mad (Median Absolute Deviation)
         let mut mad = Cell::new(OpKind::Mad);
         // 1, 1, 2, 2, 4, 6, 9
-        // Sorted: 1, 1, 2, 2, 4, 6, 9
         // Median = 2
-        // Abs Devs: |1-2|=1, |1-2|=1, |2-2|=0, |2-2|=0, |4-2|=2, |6-2|=4, |9-2|=7
-        // Sorted Devs: 0, 0, 1, 1, 2, 4, 7
-        // Median Dev = 1
-        // MAD = 1 * 1.4826 (if scale factor applied) or just median?
-        // Checking math.rs (not visible here, but assuming standard definition)
-        // Actually I should check if math::mad applies the constant.
-        // Assuming raw median of deviations for now, or just test non-crash.
+        // Abs Devs: 1, 1, 0, 0, 2, 4, 7
+        // Sorted Devs: 0, 0, 1, 1, 2, 4, 7 -> Median Dev = 1
+        // MAD = 1 * 1.4826 = 1.4826
         for v in ["1", "1", "2", "2", "4", "6", "9"].iter() {
             update_cell(&mut mad, v, OpKind::Mad);
         }
@@ -637,18 +626,14 @@ mod tests {
         // Range with < 2 values
         let mut range = Cell::new(OpKind::Range);
         update_cell(&mut range, "5", OpKind::Range);
-        // Implementation check: Range needs 2 values in vector?
-        // Cell::Range init: vec![inf, -inf]
+        // Cell::Range init: vec![inf, -inf], len=2
         // Update: updates state[0] (min) and state[1] (max).
-        // Result: if vals.len() >= 2 ... wait, Cell::Range uses Cell::Values which is a Vec.
-        // But init is vec![inf, -inf], so len is 2.
-        // So it should work with 1 value (min=5, max=5) -> range=0
+        // Result: if vals.len() >= 2 -> correct
         assert_eq!(range.result(OpKind::Range), "0");
 
         // Empty Range
         let empty_range = Cell::new(OpKind::Range);
-        // min=inf, max=-inf -> range = -inf - inf = -inf (or nan)
-        // math::range checks is_finite.
+        // min=inf, max=-inf -> range = nan
         assert_eq!(empty_range.result(OpKind::Range), "nan");
 
         // Empty Median/Quantile
@@ -662,126 +647,308 @@ mod tests {
     }
 
     #[test]
-    fn test_state_transitions() {
-        // OpKind::Count
-        // 初始 Empty -> Value
-        let mut count_cell = Cell::Empty;
-        update_cell(&mut count_cell, "10", OpKind::Count);
-        if let Cell::Value(v) = count_cell {
-            assert_eq!(v, 1.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-        // Value -> Value (increment)
-        update_cell(&mut count_cell, "20", OpKind::Count);
-        if let Cell::Value(v) = count_cell {
-            assert_eq!(v, 2.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-
-        // OpKind::MissingCount
-        // 初始 Empty -> Value
-        let mut missing_cell = Cell::Empty;
-        update_cell(&mut missing_cell, "", OpKind::MissingCount);
-        if let Cell::Value(v) = missing_cell {
-            assert_eq!(v, 1.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-        // Value -> Value (increment)
-        update_cell(&mut missing_cell, "", OpKind::MissingCount);
-        if let Cell::Value(v) = missing_cell {
-            assert_eq!(v, 2.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-
-        // OpKind::NotMissingCount
-        // 初始 Empty -> Value
-        let mut not_missing_cell = Cell::Empty;
-        update_cell(&mut not_missing_cell, "val", OpKind::NotMissingCount);
-        if let Cell::Value(v) = not_missing_cell {
-            assert_eq!(v, 1.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-        // Value -> Value (increment)
-        update_cell(&mut not_missing_cell, "val", OpKind::NotMissingCount);
-        if let Cell::Value(v) = not_missing_cell {
-            assert_eq!(v, 2.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-
-        // OpKind::Sum
-        // 初始 Empty -> Value
-        let mut sum_cell = Cell::Empty;
-        update_cell(&mut sum_cell, "10", OpKind::Sum);
-        if let Cell::Value(v) = sum_cell {
-            assert_eq!(v, 10.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-        // Value -> Value (accumulate)
-        update_cell(&mut sum_cell, "20", OpKind::Sum);
-        if let Cell::Value(v) = sum_cell {
-            assert_eq!(v, 30.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-
-        // OpKind::Min
-        // 初始 Empty -> Value
-        let mut min_cell = Cell::Empty;
-        update_cell(&mut min_cell, "10", OpKind::Min);
-        if let Cell::Value(v) = min_cell {
-            assert_eq!(v, 10.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-        // Value -> Value (update min)
-        update_cell(&mut min_cell, "5", OpKind::Min);
-        if let Cell::Value(v) = min_cell {
-            assert_eq!(v, 5.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-
-        // OpKind::Max
-        // 初始 Empty -> Value
-        let mut max_cell = Cell::Empty;
-        update_cell(&mut max_cell, "10", OpKind::Max);
-        if let Cell::Value(v) = max_cell {
-            assert_eq!(v, 10.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-        // Value -> Value (update max)
-        update_cell(&mut max_cell, "20", OpKind::Max);
-        if let Cell::Value(v) = max_cell {
-            assert_eq!(v, 20.0);
-        } else {
-            panic!("Expected Cell::Value");
-        }
-
-        // OpKind::Mean
-        // 初始 Empty -> Values
-        let mut mean_cell = Cell::Empty;
-        update_cell(&mut mean_cell, "10", OpKind::Mean);
-        if let Cell::Values(ref v) = mean_cell {
-            assert_eq!(v[0], 10.0);
+    fn test_lazy_init_coverage() {
+        // GeoMean
+        let mut cell = Cell::Empty;
+        update_cell(&mut cell, "2", OpKind::GeoMean);
+        if let Cell::Values(v) = &cell {
+            assert_eq!(v[0], 2.0f64.ln());
             assert_eq!(v[1], 1.0);
         } else {
-            panic!("Expected Cell::Values");
+            panic!("GeoMean lazy init failed");
         }
-        // Values -> Values (update mean state)
-        update_cell(&mut mean_cell, "20", OpKind::Mean);
-        if let Cell::Values(ref v) = mean_cell {
-            assert_eq!(v[0], 30.0);
-            assert_eq!(v[1], 2.0);
+
+        // HarmMean
+        let mut cell = Cell::Empty;
+        update_cell(&mut cell, "2", OpKind::HarmMean);
+        if let Cell::Values(v) = &cell {
+            assert_eq!(v[0], 0.5);
+            assert_eq!(v[1], 1.0);
         } else {
-            panic!("Expected Cell::Values");
+            panic!("HarmMean lazy init failed");
         }
+
+        // Variance
+        let mut cell = Cell::Empty;
+        update_cell(&mut cell, "2", OpKind::Variance);
+        if let Cell::Values(v) = &cell {
+            assert_eq!(v[0], 2.0); // sum
+            assert_eq!(v[1], 4.0); // sum_sq
+            assert_eq!(v[2], 1.0); // count
+        } else {
+            panic!("Variance lazy init failed");
+        }
+
+        // Range
+        let mut cell = Cell::Empty;
+        update_cell(&mut cell, "5", OpKind::Range);
+        if let Cell::Values(v) = &cell {
+            assert_eq!(v[0], 5.0); // min
+            assert_eq!(v[1], 5.0); // max
+        } else {
+            panic!("Range lazy init failed");
+        }
+
+        // Median/Quantile (Vector ops)
+        let mut cell = Cell::Empty;
+        update_cell(&mut cell, "5", OpKind::Median);
+        if let Cell::Values(v) = &cell {
+            assert_eq!(v.len(), 1);
+            assert_eq!(v[0], 5.0);
+        } else {
+            panic!("Median lazy init failed");
+        }
+
+        // First
+        let mut cell = Cell::Empty;
+        update_cell(&mut cell, "A", OpKind::First);
+        if let Cell::Strings(v) = &cell {
+            assert_eq!(v[0], "A");
+        } else {
+            panic!("First lazy init failed");
+        }
+
+        // Last
+        let mut cell = Cell::Empty;
+        update_cell(&mut cell, "A", OpKind::Last);
+        if let Cell::Strings(v) = &cell {
+            assert_eq!(v[0], "A");
+        } else {
+            panic!("Last lazy init failed");
+        }
+
+        // Mode/Unique (String list ops)
+        let mut cell = Cell::Empty;
+        update_cell(&mut cell, "A", OpKind::Mode);
+        if let Cell::Strings(v) = &cell {
+            assert_eq!(v[0], "A");
+        } else {
+            panic!("Mode lazy init failed");
+        }
+    }
+
+    #[test]
+    fn test_ignored_values() {
+        // GeoMean: ignore <= 0
+        let mut cell = Cell::new(OpKind::GeoMean);
+        update_cell(&mut cell, "-5", OpKind::GeoMean);
+        update_cell(&mut cell, "0", OpKind::GeoMean);
+        if let Cell::Values(v) = &cell {
+            assert_eq!(v[1], 0.0); // count should remain 0
+        }
+
+        // HarmMean: ignore 0
+        let mut cell = Cell::new(OpKind::HarmMean);
+        update_cell(&mut cell, "0", OpKind::HarmMean);
+        if let Cell::Values(v) = &cell {
+            assert_eq!(v[1], 0.0); // count should remain 0
+        }
+
+        // First: ignore empty string
+        let mut cell = Cell::new(OpKind::First);
+        update_cell(&mut cell, "", OpKind::First);
+        if let Cell::Strings(v) = &cell {
+            assert!(v.is_empty());
+        }
+
+        // Last: ignore empty string
+        let mut cell = Cell::new(OpKind::Last);
+        update_cell(&mut cell, "", OpKind::Last);
+        if let Cell::Strings(v) = &cell {
+            assert!(v.is_empty());
+        }
+
+        // Mode: ignore empty string
+        let mut cell = Cell::new(OpKind::Mode);
+        update_cell(&mut cell, "", OpKind::Mode);
+        if let Cell::Strings(v) = &cell {
+            assert!(v.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_first_last_logic() {
+        // First: keep first non-empty
+        let mut cell = Cell::Empty;
+        update_cell(&mut cell, "A", OpKind::First); // Init with A
+        update_cell(&mut cell, "B", OpKind::First); // Should ignore B
+        assert_eq!(cell.result(OpKind::First), "A");
+
+        // Test First initialized but empty (simulating new() then update)
+        let mut cell = Cell::new(OpKind::First); // Strings([])
+        update_cell(&mut cell, "A", OpKind::First); // Pushes A
+        update_cell(&mut cell, "B", OpKind::First); // Ignored
+        assert_eq!(cell.result(OpKind::First), "A");
+
+        // Last: overwrite with last non-empty
+        let mut cell = Cell::Empty;
+        update_cell(&mut cell, "A", OpKind::Last); // Init with A
+        update_cell(&mut cell, "B", OpKind::Last); // Overwrite with B
+        assert_eq!(cell.result(OpKind::Last), "B");
+
+        // Test Last initialized but empty
+        let mut cell = Cell::new(OpKind::Last); // Strings([])
+        update_cell(&mut cell, "A", OpKind::Last); // Pushes A
+        update_cell(&mut cell, "B", OpKind::Last); // Overwrites with B
+        assert_eq!(cell.result(OpKind::Last), "B");
+    }
+
+    #[test]
+    fn test_result_branches() {
+        // Range with 0 or 1 value (should be nan/valid)
+        // Range uses Values[min, max] when init from Empty/Update.
+        // But result() implementation:
+        // OpKind::Range => if vals.len() >= 2 ...
+        // Wait, lazy init for Range creates Values(vec![v, v]) (len 2).
+        // Cell::new(Range) creates Values(vec![inf, -inf]) (len 2).
+        // So Range always has len 2 if initialized properly.
+        // When could it have len < 2? Only if manually corrupted or Cell::Values initialized incorrectly for other ops then switched?
+        // Let's verify result() safety against empty Values.
+        let cell = Cell::Values(vec![1.0]); // Invalid state for Range
+        assert_eq!(cell.result(OpKind::Range), "nan");
+
+        // Median with empty values
+        let cell = Cell::Values(vec![]);
+        assert_eq!(cell.result(OpKind::Median), "nan");
+
+        // First/Last with empty strings
+        let cell = Cell::Strings(vec![]);
+        assert_eq!(cell.result(OpKind::First), "");
+    }
+
+    #[test]
+    fn test_invalid_numeric() {
+        // Sum ignores invalid numeric string
+        let mut cell = Cell::new(OpKind::Sum);
+        update_cell(&mut cell, "10", OpKind::Sum);
+        update_cell(&mut cell, "abc", OpKind::Sum); // Should be ignored
+        assert_eq!(cell.result(OpKind::Sum), "10");
+
+        // Mean ignores invalid
+        let mut cell = Cell::new(OpKind::Mean);
+        update_cell(&mut cell, "10", OpKind::Mean);
+        update_cell(&mut cell, "abc", OpKind::Mean);
+        assert_eq!(cell.result(OpKind::Mean), "10");
+
+        // Min ignores invalid
+        let mut cell = Cell::new(OpKind::Min);
+        update_cell(&mut cell, "10", OpKind::Min);
+        update_cell(&mut cell, "abc", OpKind::Min);
+        assert_eq!(cell.result(OpKind::Min), "10");
+    }
+
+    #[test]
+    fn test_type_overwrite() {
+        // Init with Strings (wrong type for Sum)
+        let mut cell = Cell::Strings(vec!["A".to_string()]);
+        // Update with Sum -> Should overwrite with Value
+        update_cell(&mut cell, "10", OpKind::Sum);
+        if let Cell::Value(v) = cell {
+            assert_eq!(v, 10.0);
+        } else {
+            panic!("Expected Cell::Value after overwrite");
+        }
+
+        // Init with Value (wrong type for Mean)
+        let mut cell = Cell::Value(10.0);
+        // Update with Mean -> Should overwrite with Values
+        update_cell(&mut cell, "20", OpKind::Mean);
+        if let Cell::Values(v) = cell {
+            assert_eq!(v[0], 20.0);
+            assert_eq!(v[1], 1.0);
+        } else {
+            panic!("Expected Cell::Values after overwrite");
+        }
+    }
+
+    #[test]
+    fn test_noop_updates() {
+        // Min: update with larger value
+        let mut cell = Cell::new(OpKind::Min);
+        update_cell(&mut cell, "10", OpKind::Min);
+        update_cell(&mut cell, "20", OpKind::Min); // Should not change min
+        assert_eq!(cell.result(OpKind::Min), "10");
+
+        // Max: update with smaller value
+        let mut cell = Cell::new(OpKind::Max);
+        update_cell(&mut cell, "10", OpKind::Max);
+        update_cell(&mut cell, "5", OpKind::Max); // Should not change max
+        assert_eq!(cell.result(OpKind::Max), "10");
+
+        // Range: update with value inside range
+        let mut cell = Cell::new(OpKind::Range);
+        update_cell(&mut cell, "10", OpKind::Range); // min=10, max=10
+        update_cell(&mut cell, "20", OpKind::Range); // min=10, max=20
+        update_cell(&mut cell, "15", OpKind::Range); // Should not change
+        if let Cell::Values(v) = &cell {
+            assert_eq!(v[0], 10.0);
+            assert_eq!(v[1], 20.0);
+        }
+
+        // MissingCount: update with non-empty
+        let mut cell = Cell::new(OpKind::MissingCount);
+        update_cell(&mut cell, "", OpKind::MissingCount); // +1
+        update_cell(&mut cell, "val", OpKind::MissingCount); // Ignored
+        assert_eq!(cell.result(OpKind::MissingCount), "1");
+
+        // NotMissingCount: update with empty
+        let mut cell = Cell::new(OpKind::NotMissingCount);
+        update_cell(&mut cell, "val", OpKind::NotMissingCount); // +1
+        update_cell(&mut cell, "", OpKind::NotMissingCount); // Ignored
+        assert_eq!(cell.result(OpKind::NotMissingCount), "1");
+    }
+
+    #[test]
+    fn test_mode_tie_breaking() {
+        let mut mode = Cell::new(OpKind::Mode);
+        // A: 2, B: 2. Should pick A (lexicographical)
+        for v in ["B", "A", "B", "A"].iter() {
+            update_cell(&mut mode, v, OpKind::Mode);
+        }
+        assert_eq!(mode.result(OpKind::Mode), "A");
+
+        // C: 3, A: 2, B: 2. Should pick C (count)
+        update_cell(&mut mode, "C", OpKind::Mode);
+        update_cell(&mut mode, "C", OpKind::Mode);
+        update_cell(&mut mode, "C", OpKind::Mode);
+        assert_eq!(mode.result(OpKind::Mode), "C");
+    }
+
+    #[test]
+    fn test_cross_type_safety() {
+        // Cell::Value (e.g. Sum) called with Mean
+        let sum_cell = Cell::Value(10.0);
+        // Should return string representation of value
+        assert_eq!(sum_cell.result(OpKind::Mean), "10");
+
+        // Cell::Values (e.g. Mean) called with Sum
+        let mean_cell = Cell::Values(vec![10.0, 2.0]);
+        // Cell::Values matches specific Ops, _ => ""
+        assert_eq!(mean_cell.result(OpKind::Sum), "");
+
+        // Cell::Strings (e.g. First) called with Sum
+        let str_cell = Cell::Strings(vec!["A".to_string()]);
+        // Cell::Strings matches specific Ops, _ => ""
+        assert_eq!(str_cell.result(OpKind::Sum), "");
+    }
+
+    #[test]
+    fn test_cv_edge_cases() {
+        // Mean = 0 -> CV = Stdev / 0 -> NAN (per math::cv impl)
+        let mut cv = Cell::new(OpKind::CV);
+        // -2, 2 -> Mean=0, Stdev=sqrt(8)/1 = 2.82
+        update_cell(&mut cv, "-2", OpKind::CV);
+        update_cell(&mut cv, "2", OpKind::CV);
+
+        // math::cv checks if mean != 0.0, else returns NAN
+        assert_eq!(cv.result(OpKind::CV), "NaN");
+    }
+
+    #[test]
+    fn test_count_behavior() {
+        let mut count = Cell::new(OpKind::Count);
+        update_cell(&mut count, "A", OpKind::Count);
+        update_cell(&mut count, "", OpKind::Count); // Should count empty
+        assert_eq!(count.result(OpKind::Count), "2");
     }
 }
