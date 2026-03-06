@@ -6,7 +6,7 @@
 
 **当前状态**: 活跃开发中 | **主要语言**: Rust
 
-**语言约定**: 为了便于指导，本文件 (`CLAUDE.md`) 使用中文编写，且**与用户交流时请使用中文**。但项目代码中的**所有文档注释 (doc comments)**、**行内注释**以及**提交信息**必须使用**英文**。
+**语言约定**: 为了便于指导，本文件 (`AGENTS.md`) 使用中文编写，且**与用户交流时请使用中文**。但项目代码中的**所有文档注释 (doc comments)**、**行内注释**以及**提交信息**必须使用**英文**。
 
 `tva` 是一个高性能的命令行 TSV (Tab-Separated Values) 数据处理工具集。它旨在提供类 Unix 的文本处理体验，专注于流式处理、高性能和易用性。
 核心设计哲学是“流式优先”，尽量以 O(1) 内存处理大数据。
@@ -28,7 +28,6 @@ cargo build --release
 ```bash
 # 运行所有测试
 cargo test
-
 ```
 
 ## 架构
@@ -39,7 +38,17 @@ cargo test
     - Uses `clap` for argument parsing.
     - Enforces consistent flag naming and help text styles.
 - **`src/lib.rs`** - 库入口，导出模块。
-- **`src/cmd_tva/`** - 命令实现模块。每个子命令对应一个 `.rs` 文件（例如 `stats.rs`, `select.rs`）。
+- **`src/cmd_tva/`** - 命令实现模块。
+    - **Selection & Sampling**: `sample.rs`, `select.rs`, `slice.rs`
+    - **Filtering**: `filter.rs`
+    - **Ordering**: `reverse.rs`, `sort.rs`, `transpose.rs`
+    - **Statistics & Summary**: `bin.rs`, `stats.rs`, `uniq.rs`
+    - **Reshaping**: `blank.rs`, `fill.rs`, `longer.rs`, `wider.rs`
+    - **Combining & Splitting**: `append.rs`, `join.rs`, `split.rs`
+    - **Formatting & Utilities**: `check.rs`, `keep_header.rs`, `nl.rs`
+    - **Import & Export**:
+        - `from/`: `csv.rs`, `html.rs`, `xlsx.rs`, `mod.rs`
+        - `to/`: `csv.rs`, `md.rs`, `xlsx.rs`, `mod.rs`
 - **`src/libs/`** - 共享工具库和核心逻辑。
   - **`aggregation/`** - 高性能 SoA 聚合引擎 (用于 `stats`)。
     - **`aggregator.rs`** - 扁平化的状态存储 (`Vec<f64>`)，实现 Struct-of-Arrays 布局。
@@ -53,16 +62,16 @@ cargo test
     - **`builder.rs`** - 解析配置并构建测试链。
     - **`engine.rs`** - `TestKind` 枚举与核心求值逻辑。
     - **`runner.rs`** - 过滤命令的执行主循环。
-  - **`fmt.rs`** - 通用格式化工具 (原 `number.rs`)。
+  - **`number.rs`** - 通用数字处理与格式化工具。
     - `format_number`: 支持千位分隔符与小数位控制。
   - **`io.rs`** - I/O 辅助函数。
     - 统一处理 stdin/stdout 和文件。
     - 透明处理 `.gz` 压缩/解压。
     - `InputSource`: 提供多文件统一视图。
-  - **`sampling.rs`** - 高级采样算法。
-    - 实现 Reservoir Sampling (蓄水池采样)。
-    - 实现 Weighted Reservoir Sampling (A-Res 算法) - O(K) 内存。
-    - 实现 Bernoulli Sampling (Skip Sampling) - 几何分布跳过。
+  - **`sampling/`** - 高级采样算法。
+    - **`reservoir.rs`**: 实现 Reservoir Sampling (蓄水池采样)。
+    - **`bernoulli.rs`**: 实现 Bernoulli Sampling (Skip Sampling) - 几何分布跳过。
+    - **`other.rs`**: 其他采样辅助。
   - **`tsv/`** - 核心 TSV 解析与处理模块。
     - **`reader.rs`** - 高性能零拷贝 TSV 读取器。
         - `TsvReader`: 管理内部缓冲区，支持行级迭代，避免字符串分配。
