@@ -339,4 +339,149 @@ mod tests {
         let err = plan.extract_ranges(line, b'\t', &mut ranges).unwrap_err();
         assert_eq!(err, 2);
     }
+
+    #[test]
+    fn test_write_selected_basic() {
+        let plan = SelectPlan::new(&[2, 3]);
+        let line = b"a\tb\tc";
+        let mut output = Vec::new();
+        let mut ranges = Vec::new();
+        write_selected_from_bytes(&mut output, line, b'\t', &plan, &mut ranges).unwrap();
+        assert_eq!(output, b"b\tc\n");
+    }
+
+    #[test]
+    fn test_write_selected_error() {
+        let plan = SelectPlan::new(&[4]);
+        let line = b"a\tb\tc";
+        let mut output = Vec::new();
+        let mut ranges = Vec::new();
+        let err = write_selected_from_bytes(&mut output, line, b'\t', &plan, &mut ranges).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("Field index 4 out of range"));
+    }
+
+    #[test]
+    fn test_write_excluding_basic() {
+        let mut exclude = HashSet::new();
+        exclude.insert(2);
+        let line = b"a\tb\tc";
+        let mut output = Vec::new();
+        write_excluding_from_bytes(&mut output, line, b'\t', &exclude).unwrap();
+        assert_eq!(output, b"a\tc\n");
+    }
+
+    #[test]
+    fn test_write_excluding_all() {
+        let mut exclude = HashSet::new();
+        exclude.insert(1);
+        exclude.insert(2);
+        exclude.insert(3);
+        let line = b"a\tb\tc";
+        let mut output = Vec::new();
+        write_excluding_from_bytes(&mut output, line, b'\t', &exclude).unwrap();
+        assert_eq!(output, b"\n");
+    }
+
+    #[test]
+    fn test_write_excluding_none() {
+        let exclude = HashSet::new();
+        let line = b"a\tb\tc";
+        let mut output = Vec::new();
+        write_excluding_from_bytes(&mut output, line, b'\t', &exclude).unwrap();
+        assert_eq!(output, b"a\tb\tc\n");
+    }
+
+    #[test]
+    fn test_write_with_rest_none() {
+        let line = b"a\tb\tc";
+        let mut output = Vec::new();
+        write_with_rest(
+            &mut output,
+            line,
+            b'\t',
+            &[2],
+            None,
+            RestMode::None,
+        )
+        .unwrap();
+        assert_eq!(output, b"b\n");
+    }
+
+    #[test]
+    fn test_write_with_rest_first() {
+        let line = b"a\tb\tc";
+        let mut output = Vec::new();
+        write_with_rest(
+            &mut output,
+            line,
+            b'\t',
+            &[2],
+            None,
+            RestMode::First,
+        )
+        .unwrap();
+        // Rest: 1, 3 -> a, c
+        // Selected: 2 -> b
+        // Output: a, c, b
+        assert_eq!(output, b"a\tc\tb\n");
+    }
+
+    #[test]
+    fn test_write_with_rest_last() {
+        let line = b"a\tb\tc";
+        let mut output = Vec::new();
+        write_with_rest(
+            &mut output,
+            line,
+            b'\t',
+            &[2],
+            None,
+            RestMode::Last,
+        )
+        .unwrap();
+        // Selected: 2 -> b
+        // Rest: 1, 3 -> a, c
+        // Output: b, a, c
+        assert_eq!(output, b"b\ta\tc\n");
+    }
+
+    #[test]
+    fn test_write_with_rest_exclude_from_rest() {
+        let line = b"a\tb\tc\td";
+        let mut output = Vec::new();
+        let mut excluded = HashSet::new();
+        excluded.insert(4); // Exclude d from rest
+
+        write_with_rest(
+            &mut output,
+            line,
+            b'\t',
+            &[2],
+            Some(&excluded),
+            RestMode::Last,
+        )
+        .unwrap();
+        // Selected: 2 -> b
+        // Rest (all - selected - excluded): {1, 2, 3, 4} - {2} - {4} = {1, 3} -> a, c
+        // Output: b, a, c
+        assert_eq!(output, b"b\ta\tc\n");
+    }
+
+    #[test]
+    fn test_write_with_rest_error() {
+        let line = b"a\tb\tc";
+        let mut output = Vec::new();
+        let err = write_with_rest(
+            &mut output,
+            line,
+            b'\t',
+            &[4], // Out of bounds
+            None,
+            RestMode::None,
+        )
+        .unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("Field index 4 out of range"));
+    }
 }
