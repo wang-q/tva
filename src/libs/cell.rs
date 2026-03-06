@@ -430,3 +430,131 @@ impl Cell {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libs::aggregation::OpKind;
+
+    fn update_cell(cell: &mut Cell, val: &str, op: OpKind) {
+        cell.update(val.as_bytes(), op);
+    }
+
+    #[test]
+    fn test_basic_numeric_stats() {
+        // Sum
+        let mut cell = Cell::new(OpKind::Sum);
+        update_cell(&mut cell, "10", OpKind::Sum);
+        update_cell(&mut cell, "20", OpKind::Sum);
+        update_cell(&mut cell, "", OpKind::Sum); // Ignore empty
+        assert_eq!(cell.result(OpKind::Sum), "30");
+
+        // Count
+        let mut cell = Cell::new(OpKind::Count);
+        update_cell(&mut cell, "10", OpKind::Count);
+        update_cell(&mut cell, "20", OpKind::Count);
+        update_cell(&mut cell, "", OpKind::Count); // Count empty as well? update impl says: always count
+        assert_eq!(cell.result(OpKind::Count), "3");
+
+        // Min/Max
+        let mut min_cell = Cell::new(OpKind::Min);
+        let mut max_cell = Cell::new(OpKind::Max);
+        for v in ["10", "5", "20", ""].iter() {
+            update_cell(&mut min_cell, v, OpKind::Min);
+            update_cell(&mut max_cell, v, OpKind::Max);
+        }
+        assert_eq!(min_cell.result(OpKind::Min), "5");
+        assert_eq!(max_cell.result(OpKind::Max), "20");
+
+        // Mean
+        let mut cell = Cell::new(OpKind::Mean);
+        update_cell(&mut cell, "10", OpKind::Mean);
+        update_cell(&mut cell, "20", OpKind::Mean);
+        assert_eq!(cell.result(OpKind::Mean), "15");
+    }
+
+    #[test]
+    fn test_advanced_numeric_stats() {
+        // Variance / Stdev
+        let mut cell = Cell::new(OpKind::Variance);
+        // 2, 4
+        for v in ["2", "4"].iter() {
+            update_cell(&mut cell, v, OpKind::Variance);
+        }
+        // Mean = 3
+        // Variance (Sample) = ((2-3)^2 + (4-3)^2) / (2-1) = 2
+        assert_eq!(cell.result(OpKind::Variance), "2");
+
+        // Stdev = sqrt(2)
+        assert_eq!(cell.result(OpKind::Stdev), (2.0f64).sqrt().to_string());
+
+        // Range
+        let mut cell = Cell::new(OpKind::Range);
+        update_cell(&mut cell, "10", OpKind::Range);
+        update_cell(&mut cell, "2", OpKind::Range);
+        assert_eq!(cell.result(OpKind::Range), "8");
+    }
+
+    #[test]
+    fn test_quantiles() {
+        let mut cell = Cell::new(OpKind::Median);
+        // 1, 2, 3, 4, 5
+        for v in ["5", "1", "3", "2", "4"].iter() {
+            update_cell(&mut cell, v, OpKind::Median);
+        }
+        assert_eq!(cell.result(OpKind::Median), "3");
+        assert_eq!(cell.result(OpKind::Q1), "2");
+        assert_eq!(cell.result(OpKind::Q3), "4");
+        assert_eq!(cell.result(OpKind::IQR), "2");
+    }
+
+    #[test]
+    fn test_string_ops() {
+        // First / Last
+        let mut first = Cell::new(OpKind::First);
+        let mut last = Cell::new(OpKind::Last);
+        update_cell(&mut first, "A", OpKind::First);
+        update_cell(&mut first, "B", OpKind::First);
+        update_cell(&mut last, "A", OpKind::Last);
+        update_cell(&mut last, "B", OpKind::Last);
+        assert_eq!(first.result(OpKind::First), "A");
+        assert_eq!(last.result(OpKind::Last), "B");
+
+        // Unique / NUnique
+        let mut uniq = Cell::new(OpKind::Unique);
+        for v in ["A", "B", "A", "C"].iter() {
+            update_cell(&mut uniq, v, OpKind::Unique);
+        }
+        assert_eq!(uniq.result(OpKind::NUnique), "3");
+        // BTreeSet sort order
+        assert_eq!(uniq.result(OpKind::Unique), "A,B,C");
+
+        // Mode
+        let mut mode = Cell::new(OpKind::Mode);
+        for v in ["A", "B", "A", "C", "A"].iter() {
+            update_cell(&mut mode, v, OpKind::Mode);
+        }
+        assert_eq!(mode.result(OpKind::Mode), "A");
+        assert_eq!(mode.result(OpKind::ModeCount), "3");
+
+        // Collapse
+        let mut collapse = Cell::new(OpKind::Collapse);
+        update_cell(&mut collapse, "A", OpKind::Collapse);
+        update_cell(&mut collapse, "B", OpKind::Collapse);
+        assert_eq!(collapse.result(OpKind::Collapse), "A,B");
+    }
+
+    #[test]
+    fn test_missing_counts() {
+        let mut missing = Cell::new(OpKind::MissingCount);
+        let mut not_missing = Cell::new(OpKind::NotMissingCount);
+
+        for v in ["A", "", "B", ""].iter() {
+            update_cell(&mut missing, v, OpKind::MissingCount);
+            update_cell(&mut not_missing, v, OpKind::NotMissingCount);
+        }
+
+        assert_eq!(missing.result(OpKind::MissingCount), "2");
+        assert_eq!(not_missing.result(OpKind::NotMissingCount), "2");
+    }
+}
