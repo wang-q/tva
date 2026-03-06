@@ -501,4 +501,99 @@ mod tests {
         let key = extractor.extract_from_row(&row, b'\t').unwrap();
         assert_eq!(key.as_ref(), b"");
     }
+
+    #[test]
+    fn test_extract_from_record_idx_zero_strict() {
+        // Field 0 (invalid) in strict mode
+        let mut extractor = KeyExtractor::new(Some(vec![0]), false, true);
+        let mut record = TsvRecord::new();
+        record.parse_line(b"A\tB\tC", b'\t');
+
+        let result = extractor.extract_from_record(&record, b'\t');
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_extract_from_record_idx_zero_non_strict() {
+        // Field 0 (invalid) in non-strict mode -> empty
+        let mut extractor = KeyExtractor::new(Some(vec![0]), false, false);
+        let mut record = TsvRecord::new();
+        record.parse_line(b"A\tB\tC", b'\t');
+
+        let key = extractor.extract_from_record(&record, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"");
+    }
+
+    #[test]
+    fn test_extract_from_record_mixed_zero_index() {
+        // Fields 1 and 0 (valid and invalid)
+        let mut extractor = KeyExtractor::new(Some(vec![1, 0]), false, false);
+        let mut record = TsvRecord::new();
+        record.parse_line(b"A\tB\tC", b'\t');
+
+        let key = extractor.extract_from_record(&record, b'\t').unwrap();
+        // A + tab + empty
+        assert_eq!(key.as_ref(), b"A\t");
+    }
+
+    #[test]
+    fn test_extract_from_record_missing_non_strict() {
+        // Field 4 (missing) in non-strict mode -> empty
+        let mut extractor = KeyExtractor::new(Some(vec![4]), false, false);
+        let mut record = TsvRecord::new();
+        record.parse_line(b"A\tB\tC", b'\t');
+
+        let key = extractor.extract_from_record(&record, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"");
+    }
+
+    #[test]
+    fn test_extract_from_record_multiple_missing_non_strict() {
+        // Fields 1 and 4 (valid and missing)
+        let mut extractor = KeyExtractor::new(Some(vec![1, 4]), false, false);
+        let mut record = TsvRecord::new();
+        record.parse_line(b"A\tB\tC", b'\t');
+
+        let key = extractor.extract_from_record(&record, b'\t').unwrap();
+        // A + tab + empty
+        assert_eq!(key.as_ref(), b"A\t");
+    }
+
+    #[test]
+    fn test_parsed_key_into_owned() {
+        let key_ref = ParsedKey::Ref(b"test");
+        let owned = key_ref.into_owned();
+        assert_eq!(owned.as_ref(), b"test");
+
+        let key_owned = ParsedKey::Owned(KeyBuffer::from_slice(b"test2"));
+        let owned2 = key_owned.into_owned();
+        assert_eq!(owned2.as_ref(), b"test2");
+    }
+
+    #[test]
+    fn test_extract_empty_indices_vec() {
+        // Some(vec![]) should behave like None (whole line) in extract() due to SelectPlan::new logic
+        // But let's verify extract_from_record behavior.
+        // If KeyExtractor::new passes Some(vec![]) to indices, extract_from_record treats it as empty key.
+        // This test documents current behavior, even if potentially inconsistent.
+
+        let mut extractor = KeyExtractor::new(Some(vec![]), false, true);
+
+        // Test extract()
+        // plan is None, so extract() returns whole line
+        let line = b"A\tB\tC";
+        let key = extractor.extract(line, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"A\tB\tC");
+
+        // Test extract_from_record()
+        // indices is Some([]), so it skips the None check and loops over empty vec -> empty key
+        let mut record = TsvRecord::new();
+        record.parse_line(b"A\tB\tC", b'\t');
+        let key_rec = extractor.extract_from_record(&record, b'\t').unwrap();
+
+        // NOTE: This confirms the inconsistency mentioned in thought process.
+        // extract() uses plan (which becomes None), extract_from_record() uses indices (which is Some([])).
+        // For now we assert current behavior.
+        assert_eq!(key_rec.as_ref(), b"");
+    }
 }
