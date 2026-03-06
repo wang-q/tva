@@ -88,3 +88,89 @@ impl Calculator for HarmMean {
         format_float(res, self.precision)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libs::tsv::record::StrSliceRow;
+
+    // Helper to create a dummy aggregator
+    fn new_agg() -> Aggregator {
+        Aggregator {
+            count: 0,
+            sums: vec![0.0],
+            mins: vec![],
+            maxs: vec![],
+            field_counts: vec![0],
+            sum_sqs: vec![],
+            sum_logs: vec![0.0],
+            sum_invs: vec![0.0],
+            firsts: vec![],
+            lasts: vec![],
+            string_values: vec![],
+            values: vec![],
+            value_counts: vec![],
+        }
+    }
+
+    #[test]
+    fn test_mean() {
+        let mut agg = new_agg();
+        let calc = Mean {
+            field_idx: 0,
+            sum_slot: 0,
+            count_slot: 0,
+            precision: None,
+            missing_val: None,
+            exclude_missing: false,
+        };
+
+        // 10, 20. Mean = 15.
+        calc.update(&mut agg, &StrSliceRow { fields: &["10"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["20"] });
+
+        assert_eq!(agg.sums[0], 30.0);
+        assert_eq!(agg.field_counts[0], 2);
+        assert_eq!(calc.format(&agg), "15");
+    }
+
+    #[test]
+    fn test_geo_mean() {
+        let mut agg = new_agg();
+        let calc = GeoMean {
+            field_idx: 0,
+            sum_log_slot: 0,
+            count_slot: 0,
+            precision: None,
+            missing_val: None,
+            exclude_missing: false,
+        };
+
+        // 2, 8. GeoMean = sqrt(2*8) = 4.
+        calc.update(&mut agg, &StrSliceRow { fields: &["2"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["8"] });
+
+        assert_eq!(calc.format(&agg), "4");
+    }
+
+    #[test]
+    fn test_harm_mean() {
+        let mut agg = new_agg();
+        let calc = HarmMean {
+            field_idx: 0,
+            sum_inv_slot: 0,
+            count_slot: 0,
+            precision: None,
+            missing_val: None,
+            exclude_missing: false,
+        };
+
+        // 2, 4. HarmMean = 2 / (1/2 + 1/4) = 2 / (0.75) = 2.666...
+        calc.update(&mut agg, &StrSliceRow { fields: &["2"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["4"] });
+
+        let res = calc.format(&agg);
+        // Default precision format might vary, but should be close
+        assert!(res.starts_with("2.666"));
+    }
+}

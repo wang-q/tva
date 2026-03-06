@@ -186,3 +186,143 @@ impl Calculator for Mad {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libs::tsv::record::StrSliceRow;
+
+    // Helper to create a dummy aggregator
+    fn new_agg() -> Aggregator {
+        Aggregator {
+            count: 0,
+            sums: vec![],
+            mins: vec![],
+            maxs: vec![],
+            field_counts: vec![],
+            sum_sqs: vec![],
+            sum_logs: vec![],
+            sum_invs: vec![],
+            firsts: vec![],
+            lasts: vec![],
+            string_values: vec![],
+            values: vec![vec![]], // One slot for values
+            value_counts: vec![],
+        }
+    }
+
+    #[test]
+    fn test_median() {
+        let mut agg = new_agg();
+        let calc = Median {
+            field_idx: 0,
+            values_slot: 0,
+            precision: None,
+            missing_val: None,
+            exclude_missing: false,
+        };
+
+        // 1, 3, 5 -> Median 3
+        calc.update(&mut agg, &StrSliceRow { fields: &["1"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["5"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["3"] });
+
+        assert_eq!(calc.format(&agg), "3");
+    }
+
+    #[test]
+    fn test_quantile() {
+        let mut agg = new_agg();
+        let calc = Quantile {
+            field_idx: 0,
+            values_slot: 0,
+            precision: None,
+            probability: 0.9,
+            missing_val: None,
+            exclude_missing: false,
+        };
+
+        // 0..10. 0.9 quantile -> 9
+        for i in 0..=10 {
+            calc.update(
+                &mut agg,
+                &StrSliceRow {
+                    fields: &[i.to_string().as_str()],
+                },
+            );
+        }
+
+        assert_eq!(calc.format(&agg), "9");
+    }
+
+    #[test]
+    fn test_iqr() {
+        let mut agg = new_agg();
+        let calc = IQR {
+            field_idx: 0,
+            values_slot: 0,
+            precision: None,
+            missing_val: None,
+            exclude_missing: false,
+        };
+
+        // 1, 2, 3, 4, 5, 6, 7, 8
+        // Q1 (25%) = 2.75? Or depending on implementation.
+        // math::quantile usually does linear interpolation or similar.
+        // Let's use simple case: 0, 10, 20, 30, 40.
+        // Q1(25%) = 10. Q3(75%) = 30. IQR = 20.
+
+        calc.update(&mut agg, &StrSliceRow { fields: &["0"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["10"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["20"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["30"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["40"] });
+
+        assert_eq!(calc.format(&agg), "20");
+    }
+
+    #[test]
+    fn test_mad() {
+        let mut agg = new_agg();
+        let calc = Mad {
+            field_idx: 0,
+            values_slot: 0,
+            precision: None,
+            missing_val: None,
+            exclude_missing: false,
+        };
+
+        // 1, 1, 2, 2, 4, 6, 9. Median = 2.
+        // Abs diffs: 1, 1, 0, 0, 2, 4, 7.
+        // Sorted diffs: 0, 0, 1, 1, 2, 4, 7.
+        // Median diff = 1.
+        // MAD usually includes a scaling factor (1.4826) to estimate sigma for normal distribution.
+        // math::mad implementation seems to apply this factor.
+        // 1 * 1.4826 = 1.4826.
+
+        calc.update(&mut agg, &StrSliceRow { fields: &["1"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["1"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["2"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["2"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["4"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["6"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["9"] });
+
+        // Check if result starts with 1.48
+        let res = calc.format(&agg);
+        assert!(res.starts_with("1.48"));
+    }
+
+    #[test]
+    fn test_empty_values() {
+        let agg = new_agg();
+        let calc = Median {
+            field_idx: 0,
+            values_slot: 0,
+            precision: None,
+            missing_val: None,
+            exclude_missing: false,
+        };
+        assert_eq!(calc.format(&agg), "nan");
+    }
+}

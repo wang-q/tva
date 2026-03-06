@@ -98,3 +98,108 @@ impl Calculator for Unique {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libs::tsv::record::StrSliceRow;
+    use std::collections::HashMap;
+
+    // Helper to create a dummy aggregator
+    fn new_agg() -> Aggregator {
+        Aggregator {
+            count: 0,
+            sums: vec![],
+            mins: vec![],
+            maxs: vec![],
+            field_counts: vec![],
+            sum_sqs: vec![],
+            sum_logs: vec![],
+            sum_invs: vec![],
+            firsts: vec![],
+            lasts: vec![],
+            string_values: vec![],
+            values: vec![],
+            value_counts: vec![HashMap::new()], // One slot
+        }
+    }
+
+    #[test]
+    fn test_nunique() {
+        let mut agg = new_agg();
+        let calc = NUnique {
+            field_idx: 0,
+            value_counts_slot: 0,
+        };
+
+        calc.update(&mut agg, &StrSliceRow { fields: &["A"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["B"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["A"] });
+
+        assert_eq!(calc.format(&agg), "2");
+    }
+
+    #[test]
+    fn test_mode() {
+        let mut agg = new_agg();
+        let calc = Mode {
+            field_idx: 0,
+            value_counts_slot: 0,
+        };
+
+        calc.update(&mut agg, &StrSliceRow { fields: &["A"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["B"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["B"] });
+
+        assert_eq!(calc.format(&agg), "B");
+    }
+
+    #[test]
+    fn test_mode_count() {
+        let mut agg = new_agg();
+        let calc = ModeCount {
+            field_idx: 0,
+            value_counts_slot: 0,
+        };
+
+        calc.update(&mut agg, &StrSliceRow { fields: &["A"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["B"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["B"] });
+
+        assert_eq!(calc.format(&agg), "2");
+    }
+
+    #[test]
+    fn test_unique() {
+        let mut agg = new_agg();
+        let calc = Unique {
+            field_idx: 0,
+            value_counts_slot: 0,
+            delimiter: ",".to_string(),
+        };
+
+        calc.update(&mut agg, &StrSliceRow { fields: &["A"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["C"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["B"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["A"] });
+
+        // Output should be sorted: A,B,C
+        assert_eq!(calc.format(&agg), "A,B,C");
+    }
+
+    #[test]
+    fn test_empty_mode() {
+        let agg = new_agg();
+        let calc = Mode {
+            field_idx: 0,
+            value_counts_slot: 0,
+        };
+        assert_eq!(calc.format(&agg), "");
+
+        let calc_count = ModeCount {
+            field_idx: 0,
+            value_counts_slot: 0,
+        };
+        assert_eq!(calc_count.format(&agg), "0");
+    }
+}

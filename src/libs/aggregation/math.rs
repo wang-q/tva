@@ -112,3 +112,107 @@ pub fn mad(sorted_vals: &[f64]) -> f64 {
     // Scale by 1.4826 to be consistent with normal distribution (like R's mad)
     mad_val * 1.4826
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mean() {
+        assert_eq!(mean(10.0, 2), 5.0);
+        assert!(mean(0.0, 0).is_nan());
+    }
+
+    #[test]
+    fn test_geomean() {
+        // ln(2) + ln(8) = 0.693 + 2.079 = 2.772
+        // geomean = exp(2.772 / 2) = exp(1.386) = 4.0
+        let sum_log = 2.0_f64.ln() + 8.0_f64.ln();
+        let res = geomean(sum_log, 2);
+        assert!((res - 4.0).abs() < 1e-10);
+
+        assert!(geomean(0.0, 0).is_nan());
+    }
+
+    #[test]
+    fn test_harmmean() {
+        // 1/2 + 1/4 = 0.75
+        // harmmean = 2 / 0.75 = 2.666
+        let sum_inv = 0.5 + 0.25;
+        let res = harmmean(sum_inv, 2);
+        assert!((res - 2.6666666666666665).abs() < 1e-10);
+
+        assert!(harmmean(0.0, 0).is_nan());
+        assert!(harmmean(0.0, 2).is_nan()); // sum_inv = 0
+    }
+
+    #[test]
+    fn test_variance() {
+        // 2, 4
+        // mean = 3
+        // sum = 6
+        // sum_sq = 4 + 16 = 20
+        // var = (20 - 6*3) / (2-1) = 20 - 18 = 2
+        let res = variance(20.0, 6.0, 2);
+        assert!((res - 2.0).abs() < 1e-10);
+
+        assert!(variance(0.0, 0.0, 1).is_nan());
+    }
+
+    #[test]
+    fn test_stdev() {
+        // 2, 4 -> var = 2 -> stdev = sqrt(2) = 1.414
+        let res = stdev(20.0, 6.0, 2);
+        assert!((res - 2.0_f64.sqrt()).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_cv() {
+        // 2, 4 -> mean = 3, stdev = 1.414
+        // cv = 1.414 / 3 = 0.4714
+        let res = cv(20.0, 6.0, 2);
+        assert!((res - (2.0_f64.sqrt() / 3.0)).abs() < 1e-10);
+
+        assert!(cv(0.0, 0.0, 1).is_nan());
+        assert!(cv(0.0, 0.0, 2).is_nan()); // mean = 0
+    }
+
+    #[test]
+    fn test_range() {
+        assert_eq!(range(2.0, 10.0), 8.0);
+        assert!(range(f64::NAN, 10.0).is_nan());
+    }
+
+    #[test]
+    fn test_quantile() {
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        // Median
+        assert_eq!(quantile(&data, 0.5), 3.0);
+        // Min
+        assert_eq!(quantile(&data, 0.0), 1.0);
+        // Max
+        assert_eq!(quantile(&data, 1.0), 5.0);
+
+        // Interpolation
+        // 1, 2, 3, 4
+        let data2 = vec![1.0, 2.0, 3.0, 4.0];
+        // 0.5 * (3) = 1.5 -> index 1 (2.0) and 2 (3.0) -> 2.5
+        assert_eq!(quantile(&data2, 0.5), 2.5);
+
+        assert!(quantile(&[], 0.5).is_nan());
+        assert_eq!(quantile(&[1.0], 0.5), 1.0);
+    }
+
+    #[test]
+    fn test_mad() {
+        // 1, 2, 3, 4, 5 -> median = 3
+        // devs: 2, 1, 0, 1, 2 -> sort -> 0, 1, 1, 2, 2
+        // median dev = 1
+        // mad = 1 * 1.4826
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let res = mad(&data);
+        assert!((res - 1.4826).abs() < 1e-10);
+
+        assert!(mad(&[]).is_nan());
+    }
+}

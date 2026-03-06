@@ -440,3 +440,136 @@ impl StatsProcessor {
         self.calculators.iter().map(|c| c.format(agg)).collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libs::aggregation::{OpKind, Operation, StatsConfig};
+    use crate::libs::tsv::record::Row;
+
+    #[test]
+    fn test_processor_allocation() {
+        let ops = vec![
+            Operation {
+                kind: OpKind::Count,
+                field_idx: None,
+            }, // No slots
+            Operation {
+                kind: OpKind::Sum,
+                field_idx: Some(1),
+            }, // sum: 1
+            Operation {
+                kind: OpKind::Mean,
+                field_idx: Some(2),
+            }, // sum: 2, count: 1
+            Operation {
+                kind: OpKind::Variance,
+                field_idx: Some(3),
+            }, // sum: 3, sum_sq: 1, count: 2
+            Operation {
+                kind: OpKind::Min,
+                field_idx: Some(4),
+            }, // min: 1
+            Operation {
+                kind: OpKind::Max,
+                field_idx: Some(4),
+            }, // max: 1
+            Operation {
+                kind: OpKind::Range,
+                field_idx: Some(5),
+            }, // min: 2, max: 2
+        ];
+
+        let config = StatsConfig::default();
+        let processor = StatsProcessor::new(ops, config);
+
+        assert_eq!(processor.num_sums, 3); // Sum(1) + Mean(1) + Variance(1)
+        assert_eq!(processor.num_counts, 2); // Mean(1) + Variance(1)
+        assert_eq!(processor.num_sum_sqs, 1); // Variance(1)
+        assert_eq!(processor.num_mins, 2); // Min(1) + Range(1)
+        assert_eq!(processor.num_maxs, 2); // Max(1) + Range(1)
+
+        let agg = processor.create_aggregator();
+        assert_eq!(agg.sums.len(), 3);
+        assert_eq!(agg.field_counts.len(), 2);
+        assert_eq!(agg.sum_sqs.len(), 1);
+        assert_eq!(agg.mins.len(), 2);
+        assert_eq!(agg.maxs.len(), 2);
+    }
+
+    #[test]
+    fn test_processor_update() {
+        let ops = vec![Operation {
+            kind: OpKind::Sum,
+            field_idx: Some(0),
+        }];
+        let processor = StatsProcessor::new(ops, StatsConfig::default());
+        let mut agg = processor.create_aggregator();
+
+        // Mock Row
+        struct TestRow(Vec<String>);
+        impl Row for TestRow {
+            fn get_bytes(&self, index: usize) -> Option<&[u8]> {
+                if index == 0 || index > self.0.len() {
+                    None
+                } else {
+                    Some(self.0[index - 1].as_bytes())
+                }
+            }
+        }
+
+        let row1 = TestRow(vec!["10.0".to_string()]);
+        let row2 = TestRow(vec!["20.0".to_string()]);
+
+        processor.update(&mut agg, &row1);
+        processor.update(&mut agg, &row2);
+
+        let results = processor.format_results(&agg);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], "30"); // 10 + 20
+    }
+
+    #[test]
+    fn test_processor_more_ops() {
+        let ops = vec![
+            Operation {
+                kind: OpKind::GeoMean,
+                field_idx: Some(1),
+            }, // sum_logs, count
+            Operation {
+                kind: OpKind::HarmMean,
+                field_idx: Some(1),
+            }, // sum_invs, count
+            Operation {
+                kind: OpKind::Median,
+                field_idx: Some(1),
+            }, // values
+            Operation {
+                kind: OpKind::First,
+                field_idx: Some(1),
+            }, // firsts
+            Operation {
+                kind: OpKind::Last,
+                field_idx: Some(1),
+            }, // lasts
+            Operation {
+                kind: OpKind::Unique,
+                field_idx: Some(1),
+            }, // value_counts
+            Operation {
+                kind: OpKind::Collapse,
+                field_idx: Some(1),
+            }, // string_values
+        ];
+        let processor = StatsProcessor::new(ops, StatsConfig::default());
+
+        assert_eq!(processor.num_sum_logs, 1);
+        assert_eq!(processor.num_sum_invs, 1);
+        assert_eq!(processor.num_counts, 2); // GeoMean + HarmMean
+        assert_eq!(processor.num_values, 1);
+        assert_eq!(processor.num_firsts, 1);
+        assert_eq!(processor.num_lasts, 1);
+        assert_eq!(processor.num_value_counts, 1);
+        assert_eq!(processor.num_string_values, 1);
+    }
+}

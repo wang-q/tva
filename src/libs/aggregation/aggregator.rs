@@ -49,3 +49,21 @@ impl Aggregator {
         math::quantile(sorted_vals, p)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_aggregator_default() {
+        let agg = Aggregator::default();
+        assert_eq!(agg.count, 0);
+        assert!(agg.sums.is_empty());
+    }
+
+    #[test]
+    fn test_calculate_quantile() {
+        let data = vec![1.0, 2.0, 3.0];
+        assert_eq!(Aggregator::calculate_quantile(&data, 0.5), 2.0);
+    }
+}
