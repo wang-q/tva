@@ -415,4 +415,60 @@ mod tests {
         let content = std::fs::read_to_string(path).unwrap();
         assert!(content.contains("test output"));
     }
+
+    #[test]
+    fn test_input_sources() {
+        let mut file1 = NamedTempFile::new().unwrap();
+        writeln!(file1, "file1 content").unwrap();
+        let path1 = file1.path().to_str().unwrap().to_string();
+
+        let mut file2 = NamedTempFile::new().unwrap();
+        writeln!(file2, "file2 content").unwrap();
+        let path2 = file2.path().to_str().unwrap().to_string();
+
+        let inputs = vec![path1.clone(), "stdin".to_string(), path2.clone()];
+        let sources = input_sources(&inputs);
+
+        assert_eq!(sources.len(), 3);
+        assert!(!sources[0].is_stdin);
+        assert!(sources[1].is_stdin);
+        assert!(!sources[2].is_stdin);
+
+        assert_eq!(sources[0].name, path1);
+        assert_eq!(sources[1].name, "stdin");
+        assert_eq!(sources[2].name, path2);
+    }
+
+    #[test]
+    fn test_raw_input_sources() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, "raw content").unwrap();
+        let path = file.path().to_str().unwrap().to_string();
+
+        let inputs = vec![path.clone()];
+        let sources = raw_input_sources(&inputs);
+
+        assert_eq!(sources.len(), 1);
+        assert!(!sources[0].is_stdin);
+        assert_eq!(sources[0].name, path);
+    }
+
+    #[test]
+    fn test_raw_reader_gzip() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap().to_string() + ".gz";
+
+        {
+            let f = File::create(&path).unwrap();
+            let mut e = GzEncoder::new(f, Compression::default());
+            e.write_all(b"raw gzip content").unwrap();
+        }
+
+        let mut r = raw_reader(&path);
+        let mut s = String::new();
+        r.read_to_string(&mut s).unwrap();
+        assert_eq!(s, "raw gzip content");
+
+        std::fs::remove_file(path).unwrap();
+    }
 }
