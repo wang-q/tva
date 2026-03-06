@@ -67,3 +67,60 @@ pub fn write_with_optional_random<W: std::io::Write>(
     writer.write_all(b"\n")?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_weighted_item_ordering() {
+        let item1 = WeightedItem {
+            key: 1.0,
+            record: vec![],
+            original_index: 0,
+        };
+        let item2 = WeightedItem {
+            key: 2.0,
+            record: vec![],
+            original_index: 1,
+        };
+        let item3 = WeightedItem {
+            key: 1.0,
+            record: vec![],
+            original_index: 2,
+        };
+
+        assert!(item1 < item2);
+        assert!(item2 > item1);
+        assert!(item1 == item3);
+        assert!(item1 <= item3);
+        assert!(item1 >= item3);
+    }
+
+    #[test]
+    fn test_write_with_optional_random() {
+        let mut writer = Vec::new();
+        let mut rng = RapidRng::new(42);
+        let row = b"test";
+
+        // Without random
+        write_with_optional_random(&mut writer, row, &mut rng, false, None).unwrap();
+        assert_eq!(writer, b"test\n");
+
+        // With random, provided value
+        writer.clear();
+        write_with_optional_random(&mut writer, row, &mut rng, true, Some(0.123)).unwrap();
+        let s = String::from_utf8(writer.clone()).unwrap();
+        assert!(s.starts_with("0.123\ttest\n"));
+
+        // With random, generated value
+        writer.clear();
+        write_with_optional_random(&mut writer, row, &mut rng, true, None).unwrap();
+        let s = String::from_utf8(writer).unwrap();
+        assert!(s.ends_with("\ttest\n"));
+        // Check if starts with a number
+        let parts: Vec<&str> = s.split('\t').collect();
+        assert_eq!(parts.len(), 2);
+        assert!(parts[0].parse::<f64>().is_ok());
+    }
+}

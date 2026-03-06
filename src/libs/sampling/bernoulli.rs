@@ -50,6 +50,8 @@ impl Sampler for BernoulliSampler {
         // Variate generation: floor(ln(u) / ln(1-p))
         if self.prob >= 1.0 {
             self.skip_counter = 0;
+        } else if self.prob <= 0.0 {
+            self.skip_counter = usize::MAX;
         } else {
             let u = rng.next() as f64 * INV_U64_MAX_PLUS_1;
             // Avoid log(0)
@@ -67,6 +69,129 @@ impl Sampler for BernoulliSampler {
         _print_random: bool,
     ) -> anyhow::Result<()> {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bernoulli_always() {
+        let mut sampler = BernoulliSampler {
+            prob: 1.0,
+            print_random: false,
+            skip_counter: 0,
+            compatibility_mode: false,
+        };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+        let record = b"test";
+
+        sampler.process(record, &mut writer, &mut rng).unwrap();
+        assert_eq!(writer, b"test\n");
+    }
+
+    #[test]
+    fn test_bernoulli_never() {
+        // Initialize skip_counter to a non-zero value to prevent the first item from being selected
+        let mut sampler = BernoulliSampler {
+            prob: 0.0,
+            print_random: false,
+            skip_counter: 10,
+            compatibility_mode: false,
+        };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+        let record = b"test";
+
+        // First call should be skipped
+        sampler.process(record, &mut writer, &mut rng).unwrap();
+        assert_eq!(writer, b"");
+        assert_eq!(sampler.skip_counter, 9);
+
+        // Reset skip_counter to 0. It should output once, then set skip_counter to MAX.
+        sampler.skip_counter = 0;
+        writer.clear();
+        sampler.process(record, &mut writer, &mut rng).unwrap();
+        assert_eq!(writer, b"test\n");
+
+        // Verify next skip is huge (effectively never select again)
+        assert_eq!(sampler.skip_counter, usize::MAX);
+
+        // Next call should be skipped
+        writer.clear();
+        sampler.process(record, &mut writer, &mut rng).unwrap();
+        assert_eq!(writer, b"");
+    }
+
+    #[test]
+    fn test_bernoulli_compatibility() {
+        let mut sampler = BernoulliSampler {
+            prob: 0.5,
+            print_random: false,
+            skip_counter: 0,
+            compatibility_mode: true,
+        };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        // Should select ~50%
+        let mut count = 0;
+        for _ in 0..100 {
+            writer.clear();
+            sampler.process(b"row", &mut writer, &mut rng).unwrap();
+            if !writer.is_empty() {
+                count += 1;
+            }
+        }
+        assert!(count > 30 && count < 70);
+    }
+
+    #[test]
+    fn test_distinct_bernoulli_basic() {
+        // Prob 1.0 -> always select
+        let mut sampler = DistinctBernoulliSampler::new(1.0, vec![], false);
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        sampler.process(b"test", &mut writer, &mut rng).unwrap();
+        assert_eq!(writer, b"test\n");
+    }
+
+    #[test]
+    fn test_distinct_bernoulli_key() {
+        // Prob 0.5 -> buckets = 2.
+        // Key "a" hash % 2 vs Key "b" hash % 2.
+        // We need deterministic behavior.
+        // rapidhash is seeded? The wrapper uses default seed.
+
+        let mut sampler = DistinctBernoulliSampler::new(0.5, vec![1], false);
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        // Same key should always have same result
+        let record1 = b"key1\tdata1";
+
+        writer.clear();
+        sampler.process(record1, &mut writer, &mut rng).unwrap();
+        let result1 = writer.clone();
+
+        writer.clear();
+        sampler.process(record1, &mut writer, &mut rng).unwrap();
+        assert_eq!(writer, result1);
+    }
+
+    #[test]
+    fn test_distinct_bernoulli_key_out_of_range() {
+        let mut sampler = DistinctBernoulliSampler::new(0.5, vec![2], false);
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        let record = b"col1"; // Only 1 column
+        let res = sampler.process(record, &mut writer, &mut rng);
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("out of range"));
     }
 }
 

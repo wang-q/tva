@@ -34,6 +34,79 @@ impl Sampler for ShuffleSampler {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_shuffle_sampler() {
+        let mut sampler = ShuffleSampler { rows: Vec::new() };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        sampler.process(b"1", &mut writer, &mut rng).unwrap();
+        sampler.process(b"2", &mut writer, &mut rng).unwrap();
+        sampler.process(b"3", &mut writer, &mut rng).unwrap();
+
+        sampler.finalize(&mut writer, &mut rng, false).unwrap();
+        let s = String::from_utf8(writer).unwrap();
+        let lines: Vec<&str> = s.lines().collect();
+        assert_eq!(lines.len(), 3);
+        assert!(lines.contains(&"1"));
+        assert!(lines.contains(&"2"));
+        assert!(lines.contains(&"3"));
+    }
+
+    #[test]
+    fn test_inorder_sampler() {
+        let mut sampler = InorderSampler { k: 2, rows: Vec::new() };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        sampler.process(b"1", &mut writer, &mut rng).unwrap();
+        sampler.process(b"2", &mut writer, &mut rng).unwrap();
+        sampler.process(b"3", &mut writer, &mut rng).unwrap();
+
+        sampler.finalize(&mut writer, &mut rng, false).unwrap();
+        let s = String::from_utf8(writer).unwrap();
+        let lines: Vec<&str> = s.lines().collect();
+        assert_eq!(lines.len(), 2);
+    }
+
+    #[test]
+    fn test_replacement_sampler() {
+        let mut sampler = ReplacementSampler { k: 5, rows: Vec::new() };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        sampler.process(b"1", &mut writer, &mut rng).unwrap();
+        sampler.process(b"2", &mut writer, &mut rng).unwrap();
+
+        sampler.finalize(&mut writer, &mut rng, false).unwrap();
+        let s = String::from_utf8(writer).unwrap();
+        let lines: Vec<&str> = s.lines().collect();
+        assert_eq!(lines.len(), 5);
+    }
+
+    #[test]
+    fn test_compat_random_sampler() {
+        let mut sampler = CompatRandomSampler { k: 2, rows: Vec::new() };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        sampler.process(b"1", &mut writer, &mut rng).unwrap();
+        sampler.process(b"2", &mut writer, &mut rng).unwrap();
+        sampler.process(b"3", &mut writer, &mut rng).unwrap();
+
+        sampler.finalize(&mut writer, &mut rng, true).unwrap();
+        let s = String::from_utf8(writer).unwrap();
+        let lines: Vec<&str> = s.lines().collect();
+        assert_eq!(lines.len(), 2);
+        // Each line should have random value prefix
+        assert!(lines[0].contains('\t'));
+    }
+}
+
 pub struct InorderSampler {
     pub k: usize,
     pub rows: Vec<Vec<u8>>,

@@ -49,6 +49,88 @@ impl Sampler for ReservoirSampler {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_reservoir_sampler_basic() {
+        let mut sampler = ReservoirSampler {
+            k: 2,
+            reservoir: Vec::new(),
+            count: 0,
+        };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        // Add 3 items
+        sampler.process(b"1", &mut writer, &mut rng).unwrap();
+        sampler.process(b"2", &mut writer, &mut rng).unwrap();
+        sampler.process(b"3", &mut writer, &mut rng).unwrap();
+
+        assert_eq!(sampler.count, 3);
+        assert_eq!(sampler.reservoir.len(), 2);
+
+        sampler.finalize(&mut writer, &mut rng, false).unwrap();
+        let s = String::from_utf8(writer).unwrap();
+        let lines: Vec<&str> = s.lines().collect();
+        assert_eq!(lines.len(), 2);
+    }
+
+    #[test]
+    fn test_weighted_reservoir_sampler_basic() {
+        let mut sampler = WeightedReservoirSampler {
+            k: 1,
+            weight_field_idx: 2,
+            heap: BinaryHeap::new(),
+            inorder: false,
+            current_index: 0,
+        };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        // 100 with weight 1, 200 with weight 100
+        sampler.process(b"100\t1", &mut writer, &mut rng).unwrap();
+        sampler.process(b"200\t100", &mut writer, &mut rng).unwrap();
+
+        sampler.finalize(&mut writer, &mut rng, false).unwrap();
+        // High probability that 200 is selected due to weight 100 vs 1
+        assert_eq!(writer, b"200\t100\n");
+    }
+
+    #[test]
+    fn test_weighted_reservoir_sampler_invalid_weight() {
+        let mut sampler = WeightedReservoirSampler {
+            k: 1,
+            weight_field_idx: 2,
+            heap: BinaryHeap::new(),
+            inorder: false,
+            current_index: 0,
+        };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        let res = sampler.process(b"100\tbad", &mut writer, &mut rng);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_weighted_reservoir_sampler_missing_weight() {
+        let mut sampler = WeightedReservoirSampler {
+            k: 1,
+            weight_field_idx: 3,
+            heap: BinaryHeap::new(),
+            inorder: false,
+            current_index: 0,
+        };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+
+        let res = sampler.process(b"100\t1", &mut writer, &mut rng);
+        assert!(res.is_err());
+    }
+}
+
 pub struct WeightedReservoirSampler {
     pub k: usize,
     pub weight_field_idx: usize,
