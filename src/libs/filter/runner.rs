@@ -165,3 +165,176 @@ pub fn run_filter<W: Write>(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libs::filter::config::{NumericOp, PendingNumeric};
+    use tempfile::NamedTempFile;
+
+    // Helper to create a temp file
+    fn create_temp_file(content: &str) -> NamedTempFile {
+        let mut file = NamedTempFile::new().unwrap();
+        write!(file, "{}", content).unwrap();
+        file
+    }
+
+    #[test]
+    fn test_basic_filter_numeric_gt() {
+        let file = create_temp_file("1\t10\n2\t20\n3\t30\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        // Spec: 2:20 (col 2 > 20)
+        config.numeric_specs.push(PendingNumeric {
+            spec: "2:20".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        assert_eq!(out_str, "3\t30\n");
+    }
+
+    #[test]
+    fn test_filter_with_header_by_name() {
+        let file = create_temp_file("ID\tValue\n1\t10\n2\t20\n3\t30\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.has_header = true;
+        // Spec: Value:20 (Value > 20)
+        config.numeric_specs.push(PendingNumeric {
+            spec: "Value:20".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        // Should include header
+        assert_eq!(out_str, "ID\tValue\n3\t30\n");
+    }
+
+    #[test]
+    fn test_filter_invert() {
+        let file = create_temp_file("1\t10\n2\t20\n3\t30\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.invert = true;
+        // Spec: 2:20 (col 2 > 20)
+        // Invert -> col 2 <= 20
+        config.numeric_specs.push(PendingNumeric {
+            spec: "2:20".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        assert_eq!(out_str, "1\t10\n2\t20\n");
+    }
+
+    #[test]
+    fn test_filter_or_logic() {
+        let file = create_temp_file("1\t10\n2\t20\n3\t30\n4\t40\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.use_or = true;
+        // Col 1 == 1 OR Col 2 > 30
+        config.numeric_specs.push(PendingNumeric {
+            spec: "1:1".to_string(),
+            op: NumericOp::Eq,
+        });
+        config.numeric_specs.push(PendingNumeric {
+            spec: "2:30".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        // 1 matches first condition
+        // 4 matches second condition (40 > 30)
+        // 2 matches neither
+        // 3 matches neither (30 is not > 30)
+        assert_eq!(out_str, "1\t10\n4\t40\n");
+    }
+
+    #[test]
+    fn test_filter_count_only() {
+        let file = create_temp_file("1\t10\n2\t20\n3\t30\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.count_only = true;
+        // Spec: 2:10 (col 2 > 10) -> matches 20, 30
+        config.numeric_specs.push(PendingNumeric {
+            spec: "2:10".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        assert_eq!(out_str, "2\n");
+    }
+
+    #[test]
+    fn test_filter_label_header() {
+        let file = create_temp_file("ID\tValue\n1\t10\n2\t30\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.has_header = true;
+        config.label_header = Some("Label".to_string());
+        config.label_pass_val = "PASS".to_string();
+        config.label_fail_val = "FAIL".to_string();
+
+        // Spec: Value > 20
+        config.numeric_specs.push(PendingNumeric {
+            spec: "Value:20".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        // Header should have Label
+        // Row 1 (10) fails -> FAIL
+        // Row 2 (30) passes -> PASS
+        let expected = "ID\tValue\tLabel\n1\t10\tFAIL\n2\t30\tPASS\n";
+        assert_eq!(out_str, expected);
+    }
+
+    #[test]
+    fn test_filter_empty_specs_match_all() {
+        let file = create_temp_file("1\n2\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        // No specs
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        assert_eq!(out_str, "1\n2\n");
+    }
+}

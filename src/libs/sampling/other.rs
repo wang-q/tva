@@ -59,7 +59,10 @@ mod tests {
 
     #[test]
     fn test_inorder_sampler() {
-        let mut sampler = InorderSampler { k: 2, rows: Vec::new() };
+        let mut sampler = InorderSampler {
+            k: 2,
+            rows: Vec::new(),
+        };
         let mut rng = RapidRng::new(123);
         let mut writer = Vec::new();
 
@@ -75,7 +78,10 @@ mod tests {
 
     #[test]
     fn test_replacement_sampler() {
-        let mut sampler = ReplacementSampler { k: 5, rows: Vec::new() };
+        let mut sampler = ReplacementSampler {
+            k: 5,
+            rows: Vec::new(),
+        };
         let mut rng = RapidRng::new(123);
         let mut writer = Vec::new();
 
@@ -90,7 +96,10 @@ mod tests {
 
     #[test]
     fn test_compat_random_sampler() {
-        let mut sampler = CompatRandomSampler { k: 2, rows: Vec::new() };
+        let mut sampler = CompatRandomSampler {
+            k: 2,
+            rows: Vec::new(),
+        };
         let mut rng = RapidRng::new(123);
         let mut writer = Vec::new();
 

@@ -4,6 +4,7 @@ use crate::libs::tsv::record::{Row, StrSliceRow};
 use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[derive(Debug)]
 pub enum TestKind {
     Empty {
         fields: Vec<usize>,
@@ -439,5 +440,187 @@ impl TestKind {
                 .max()
                 .unwrap_or(0),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libs::filter::config::NumericOp;
+    use crate::libs::tsv::record::StrSliceRow;
+
+    // Helper to create a row
+    fn row<'a>(fields: &'a [&'a str]) -> StrSliceRow<'a> {
+        StrSliceRow { fields }
+    }
+
+    #[test]
+    fn test_numeric_cmp_edge_cases() {
+        // Invalid number string
+        let test = TestKind::NumericCmp {
+            fields: vec![1], // 1-based index (field 1)
+            op: NumericOp::Gt,
+            value: 10.0,
+        };
+        assert!(
+            !test.eval_row(&row(&["abc"])),
+            "Should return false for invalid number"
+        );
+
+        // Missing field (index 2 doesn't exist)
+        let test = TestKind::NumericCmp {
+            fields: vec![2],
+            op: NumericOp::Gt,
+            value: 10.0,
+        };
+        assert!(
+            !test.eval_row(&row(&["15.0"])),
+            "Should return false for missing field"
+        );
+    }
+
+    #[test]
+    fn test_str_eq_case_insensitive() {
+        let test = TestKind::StrEq {
+            fields: vec![1],
+            value: "FOO".to_string(),
+            case_insensitive: true,
+        };
+        assert!(test.eval_row(&row(&["foo"])));
+        assert!(test.eval_row(&row(&["FOO"])));
+
+        let test_sensitive = TestKind::StrEq {
+            fields: vec![1],
+            value: "FOO".to_string(),
+            case_insensitive: false,
+        };
+        assert!(!test_sensitive.eval_row(&row(&["foo"])));
+        assert!(test_sensitive.eval_row(&row(&["FOO"])));
+    }
+
+    #[test]
+    fn test_str_ne_missing() {
+        let test = TestKind::StrNe {
+            fields: vec![2], // Missing field
+            value: "foo".to_string(),
+            case_insensitive: false,
+        };
+        // None branch returns true (if field is missing, it's not equal to value)
+        assert!(test.eval_row(&row(&["bar"])));
+    }
+
+    #[test]
+    fn test_ff_numeric_cmp_edge_cases() {
+        // Mismatched lengths
+        let test = TestKind::FieldFieldNumericCmp {
+            left_fields: vec![1],
+            right_fields: vec![1, 2],
+            op: NumericOp::Eq,
+        };
+        assert!(
+            !test.eval_row(&row(&["1", "1"])),
+            "Should return false for mismatched field count"
+        );
+
+        // Same field optimization (l == r)
+        let test = TestKind::FieldFieldNumericCmp {
+            left_fields: vec![1],
+            right_fields: vec![1],
+            op: NumericOp::Eq,
+        };
+        assert!(test.eval_row(&row(&["10"])), "Should match same field");
+
+        // Invalid number in right field
+        let test = TestKind::FieldFieldNumericCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Eq,
+        };
+        assert!(
+            !test.eval_row(&row(&["10", "abc"])),
+            "Should return false if parsing fails"
+        );
+    }
+
+    #[test]
+    fn test_ff_str_cmp_optimization() {
+        // l == r optimization
+        let test = TestKind::FieldFieldStrCmp {
+            left_fields: vec![1],
+            right_fields: vec![1],
+            case_insensitive: false,
+            negated: false,
+        };
+        assert!(test.eval_row(&row(&["foo"])));
+
+        let test_neg = TestKind::FieldFieldStrCmp {
+            left_fields: vec![1],
+            right_fields: vec![1],
+            case_insensitive: false,
+            negated: true,
+        };
+        assert!(!test_neg.eval_row(&row(&["foo"])));
+    }
+
+    #[test]
+    fn test_ff_reldiff_edge_cases() {
+        // Same field (diff = 0)
+        let test = TestKind::FieldFieldRelDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![1],
+            op: NumericOp::Le,
+            value: 0.0,
+        };
+        assert!(test.eval_row(&row(&["10"])));
+
+        // Denom = 0 (infinity case)
+        // left=10, right=0. diff=10. denom=min(|10|, |0|) = 0. rel=inf.
+        let test = TestKind::FieldFieldRelDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Gt,
+            value: 1000.0, // inf > 1000
+        };
+        assert!(test.eval_row(&row(&["10", "0"])));
+
+        // Unsupported op
+        let test = TestKind::FieldFieldRelDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Eq, // Not supported in match -> false
+            value: 0.1,
+        };
+        assert!(!test.eval_row(&row(&["10", "11"])));
+    }
+
+    #[test]
+    fn test_regex_negated() {
+        let test = TestKind::Regex {
+            fields: vec![1],
+            regex: regex::Regex::new("foo").unwrap(),
+            negated: true,
+        };
+        assert!(test.eval_row(&row(&["bar"])));
+        assert!(!test.eval_row(&row(&["foobar"])));
+    }
+
+    #[test]
+    fn test_max_field_index() {
+        let test = TestKind::NumericCmp {
+            fields: vec![1, 5],
+            op: NumericOp::Gt,
+            value: 10.0,
+        };
+        assert_eq!(test.max_field_index(), 5);
+
+        let test_ff = TestKind::FieldFieldNumericCmp {
+            left_fields: vec![1],
+            right_fields: vec![3],
+            op: NumericOp::Eq,
+        };
+        assert_eq!(test_ff.max_field_index(), 3);
+
+        let test_empty = TestKind::Empty { fields: vec![] };
+        assert_eq!(test_empty.max_field_index(), 0);
     }
 }

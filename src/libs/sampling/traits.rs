@@ -109,7 +109,8 @@ mod tests {
 
         // With random, provided value
         writer.clear();
-        write_with_optional_random(&mut writer, row, &mut rng, true, Some(0.123)).unwrap();
+        write_with_optional_random(&mut writer, row, &mut rng, true, Some(0.123))
+            .unwrap();
         let s = String::from_utf8(writer.clone()).unwrap();
         assert!(s.starts_with("0.123\ttest\n"));
 
