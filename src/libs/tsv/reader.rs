@@ -358,4 +358,66 @@ mod tests {
         assert_eq!(count, 12); // "line2\nline3\n" is 6+6=12 bytes
         assert_eq!(output, b"line2\nline3\n");
     }
+
+    // A mock reader that returns an error after a certain number of reads
+    struct FailingReader {
+        data: Vec<u8>,
+        fail_after: usize,
+        read_count: usize,
+    }
+
+    impl FailingReader {
+        fn new(data: Vec<u8>, fail_after: usize) -> Self {
+            Self {
+                data,
+                fail_after,
+                read_count: 0,
+            }
+        }
+    }
+
+    impl std::io::Read for FailingReader {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            self.read_count += 1;
+            if self.read_count > self.fail_after {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Simulated read error",
+                ));
+            }
+            let len = std::cmp::min(buf.len(), self.data.len());
+            buf[..len].copy_from_slice(&self.data[..len]);
+            self.data.drain(..len);
+            Ok(len)
+        }
+    }
+
+    #[test]
+    fn test_for_each_record_error_propagation() {
+        // Test that non-Interrupted errors are properly propagated
+        let data = b"header1\theader2\n".to_vec();
+        let reader = FailingReader::new(data, 0);
+        let mut tsv_reader = TsvReader::new(reader);
+
+        let result: std::io::Result<()> = tsv_reader
+            .for_each_record(|_rec| {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Interrupted,
+                    "Stop iteration",
+                ))
+            })
+            .or_else(|e| {
+                if e.kind() == std::io::ErrorKind::Interrupted {
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            });
+
+        // Should fail with the simulated error, not Interrupted
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::Other);
+        assert!(err.to_string().contains("Simulated read error"));
+    }
 }
