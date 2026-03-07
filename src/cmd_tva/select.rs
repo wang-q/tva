@@ -224,7 +224,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         // Ensure conflicts are checked at least once
         if let (Some(ref f), Some(ref e)) = (&field_indices, &exclude_set) {
-             check_conflicts(f, e);
+            check_conflicts(f, e);
         }
 
         // Initialize Plan if possible
@@ -243,7 +243,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             if let Some(ref plan) = select_plan {
-                 select::write_selected_from_bytes(
+                select::write_selected_from_bytes(
                     &mut writer,
                     line_bytes,
                     delim_byte,
