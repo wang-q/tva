@@ -1540,7 +1540,10 @@ fn sample_gen_random_inorder_key_fields_names() {
     let val2 = row2.split('\t').next().unwrap();
     let val3 = row3.split('\t').next().unwrap();
 
-    assert_eq!(val1, val2, "Rows with same key should have same random value");
+    assert_eq!(
+        val1, val2,
+        "Rows with same key should have same random value"
+    );
     assert_ne!(val1, val3, "Rows with different keys should have different random values (with high probability)");
 }
 
