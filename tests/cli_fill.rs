@@ -114,8 +114,10 @@ fn fill_empty_file_with_header() {
         .args(&[
             "fill",
             "--header",
-            "--field", "1",
-            "--value", "0",
+            "--field",
+            "1",
+            "--value",
+            "0",
             p_empty.to_str().unwrap(),
             p_normal.to_str().unwrap(),
         ])
