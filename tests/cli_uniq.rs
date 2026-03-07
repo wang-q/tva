@@ -421,8 +421,139 @@ fn uniq_missing_fields_strict() {
 
     // We expect FAILURE because tsv-uniq is strict about field existence.
     // If tva uniq is not strict, this test will fail (because run_fail panics).
-    TvaCmd::new()
+    let (_, stderr) = TvaCmd::new()
         .args(&["uniq", "-f", "2"])
         .stdin(input)
         .run_fail();
+    assert!(stderr.contains("Not enough fields"));
+}
+
+#[test]
+fn uniq_error_delimiter_length() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["uniq", "--delimiter", "TAB"])
+        .run_fail();
+    assert!(stderr.contains("delimiter must be a single character"));
+}
+
+#[test]
+fn uniq_equiv_start_negative() {
+    // L186: if equiv_start < 0 { 1 } else { equiv_start as u64 }
+    let input = "a\nb\na\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["uniq", "--equiv", "--equiv-start=-5"])
+        .stdin(input)
+        .run();
+
+    // Should start from 1
+    // Output should be:
+    // a\t1
+    // b\t2
+    // a\t1 (since key "a" maps to ID 1)
+
+    assert!(stdout.contains("a\t1"));
+    assert!(stdout.contains("b\t2"));
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 3);
+    assert!(lines[0].ends_with("\t1"));
+    assert!(lines[1].ends_with("\t2"));
+    assert!(lines[2].ends_with("\t1"));
+}
+
+#[test]
+fn uniq_empty_input_with_header() {
+    // L227: continue; // Empty file
+    // Create an empty file
+    let temp = tempfile::Builder::new().tempfile().unwrap();
+    let path = temp.path().to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new().args(&["uniq", "--header", path]).run();
+    assert!(stdout.is_empty());
+}
+
+#[test]
+fn uniq_header_field_spec_0() {
+    // L232: if spec.trim() == "0"
+    let input = "h1\th2\nv1\tv2\nv1\tv2\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["uniq", "--header", "-f", "0"])
+        .stdin(input)
+        .run();
+    // Should output header + unique lines (whole line key)
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 2);
+    assert_eq!(lines[0], "h1\th2");
+    assert_eq!(lines[1], "v1\tv2");
+}
+
+#[test]
+fn uniq_noheader_field_spec_0() {
+    // L276: if spec.trim() == "0"
+    let input = "v1\tv2\nv1\tv2\n";
+    let (stdout, _) = TvaCmd::new().args(&["uniq", "-f", "0"]).stdin(input).run();
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines[0], "v1\tv2");
+}
+
+#[test]
+fn uniq_field_parse_error_in_header_block() {
+    // L244: Err(e) => arg_error(&e)
+    let input = "h1\th2\n";
+    let (_, stderr) = TvaCmd::new()
+        .args(&["uniq", "--header", "-f", "invalid"])
+        .stdin(input)
+        .run_fail();
+
+    assert!(
+        stderr.contains("Field")
+            || stderr.contains("not found")
+            || stderr.contains("Invalid")
+            || stderr.contains("does not exist")
+            || stderr.contains("unknown field")
+    );
+}
+
+#[test]
+fn uniq_field_parse_error_in_noheader_block() {
+    // L288: Err(e) => arg_error(&e)
+    let input = "v1\tv2\n";
+    let (_, stderr) = TvaCmd::new()
+        .args(&["uniq", "-f", "invalid"])
+        .stdin(input)
+        .run_fail();
+    // Without header, named fields fail with "requires header" or similar from parse_field_list_with_header(..., None)
+    assert!(stderr.contains("requires header"));
+}
+
+#[test]
+fn uniq_repeated_logic_at_least_1() {
+    // L149: if repeated && at_least <= 1 { at_least = 2; }
+    let input = "a\na\nb\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["uniq", "--repeated", "--at-least", "1"])
+        .stdin(input)
+        .run();
+    // repeated implies at_least=2 if not specified or <=1
+    // So "b" (count 1) should be excluded. "a" (count 2) included.
+    assert_eq!(stdout.trim(), "a");
+}
+
+#[test]
+fn uniq_max_logic() {
+    // L152: logic for max = at_least
+    // Case: at_least=2, max=1 (max < at_least) -> max becomes at_least (2)
+    let input = "a\na\na\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["uniq", "--at-least", "2", "--max", "1"])
+        .stdin(input)
+        .run();
+    // max should be adjusted to 2.
+    // 1st a: count=1. Not output (at_least=2).
+    // 2nd a: count=2. Output (2 <= 2 && 2 >= 2).
+    // 3rd a: count=3. Not output (3 > 2).
+    // So output line count is 1.
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 1);
 }
