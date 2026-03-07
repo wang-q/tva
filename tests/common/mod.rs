@@ -26,6 +26,12 @@ impl TvaCmd {
         self
     }
 
+    #[allow(dead_code)]
+    pub fn current_dir<P: AsRef<std::path::Path>>(mut self, dir: P) -> Self {
+        self.cmd.current_dir(dir);
+        self
+    }
+
     pub fn run(mut self) -> (String, String) {
         if let Some(input) = self.stdin {
             self.cmd.write_stdin(input);
