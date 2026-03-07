@@ -449,3 +449,49 @@ fn from_csv_replacement_tab_error() {
         "Replacement character cannot contain newlines or TSV field delimiters"
     ));
 }
+
+#[test]
+fn from_csv_newline_replacement_validation() {
+    // Tests L160-167: newline replacement validation
+    let (_, stderr) = TvaCmd::new()
+        .args(&["from", "csv", "--newline-replacement", "\t"])
+        .run_fail();
+    assert!(stderr.contains("Replacement character cannot contain newlines or TSV field delimiters"));
+
+    let (_, stderr2) = TvaCmd::new()
+        .args(&["from", "csv", "--newline-replacement", "\n"])
+        .run_fail();
+    assert!(stderr2.contains("Replacement character cannot contain newlines or TSV field delimiters"));
+}
+
+#[test]
+fn from_csv_quote_invalid_length() {
+    // Tests L115-120: Quote must be single byte
+    let (_, stderr) = TvaCmd::new()
+        .args(&["from", "csv", "--quote", "QQ"])
+        .run_fail();
+    assert!(stderr.contains("quote must be a single byte"));
+}
+
+#[test]
+fn from_csv_sanitize_field() {
+    // Tests sanitize_field function logic (L67-79)
+    // We need input with tabs and newlines inside quoted fields to trigger sanitize_field logic
+    let input = "a,\"b\tc\",d\n1,\"2\n3\",4\n";
+    // Expected: tabs replaced by default " ", newlines replaced by default " "
+    let expected = "a\tb c\td\n1\t2 3\t4\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["from", "csv"])
+        .run();
+    assert_eq!(normalize_newlines(&stdout), expected);
+
+    // Custom replacements
+    let (stdout2, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["from", "csv", "--tab-replacement", "T", "--newline-replacement", "N"])
+        .run();
+    let expected2 = "a\tbTc\td\n1\t2N3\t4\n";
+    assert_eq!(normalize_newlines(&stdout2), expected2);
+}
