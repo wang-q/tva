@@ -312,6 +312,23 @@ mod tests {
     use super::*;
     use crate::libs::tsv::record::TsvRecord;
 
+    // Helper mock row for testing
+    struct MockRow<'a> {
+        fields: Vec<&'a [u8]>,
+    }
+
+    impl<'a> crate::libs::tsv::record::Row for MockRow<'a> {
+        fn get_bytes(&self, index: usize) -> Option<&[u8]> {
+            if index > 0 && index <= self.fields.len() {
+                Some(self.fields[index - 1])
+            } else {
+                None
+            }
+        }
+
+        // Removed unnecessary methods that are not part of the Row trait
+    }
+
     #[test]
     fn test_extract_whole_line() {
         let mut extractor = KeyExtractor::new(None, false, true);
@@ -319,6 +336,106 @@ mod tests {
 
         let key = extractor.extract(line, b'\t').unwrap();
         assert_eq!(key.as_ref(), b"A\tB\tC");
+    }
+
+    // Covers L122-123: Single field optimization with empty range/missing field in strict mode is handled by SelectPlan,
+    // but here we test the "empty range" logic if we can trigger it or similar.
+    // L122-123 is `return Ok(ParsedKey::Ref(&[]));` inside `extract` for single field.
+    #[test]
+    fn test_extract_single_field_empty() {
+        // Select field 2 from "A\t\tC" -> empty
+        let mut extractor = KeyExtractor::new(Some(vec![2]), false, true);
+        let line = b"A\t\tC";
+
+        let key = extractor.extract(line, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"");
+
+        // Test strict mode error for missing field
+        let mut extractor = KeyExtractor::new(Some(vec![4]), false, true); // Strict=true
+        let result = extractor.extract(line, b'\t');
+        assert!(result.is_err());
+        assert_eq!(result.err(), Some(4));
+    }
+
+    // Covers L160-167: `extract_from_record` whole line with ignore_case
+    #[test]
+    fn test_extract_from_record_whole_line_ignore_case() {
+        let mut extractor = KeyExtractor::new(None, true, true);
+
+        let data = b"A\tB\tC"; // No newline needed for direct parsing
+        let mut record = crate::libs::tsv::record::TsvRecord::new();
+        // Use parse_line directly
+        record.parse_line(data, b'\t');
+
+        let key = extractor.extract_from_record(&record, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"a\tb\tc");
+
+        // Test without ignore case (else branch L166)
+        let mut extractor = KeyExtractor::new(None, false, true);
+        let key = extractor.extract_from_record(&record, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"A\tB\tC");
+    }
+
+    // Covers L217-218: `extract_from_record` strict mode error for single field
+    #[test]
+    fn test_extract_from_record_strict_error() {
+        let data = b"A\tB\tC";
+        let mut record = crate::libs::tsv::record::TsvRecord::new();
+        record.parse_line(data, b'\t');
+
+        // Field 4 missing
+        let mut extractor = KeyExtractor::new(Some(vec![4]), false, true);
+        let result = extractor.extract_from_record(&record, b'\t');
+        assert!(result.is_err());
+        assert_eq!(result.err(), Some(4));
+
+        // Multiple fields, one missing (L227-228)
+        let mut extractor = KeyExtractor::new(Some(vec![1, 4]), false, true);
+        let result = extractor.extract_from_record(&record, b'\t');
+        assert!(result.is_err());
+        assert_eq!(result.err(), Some(4));
+    }
+
+    // Covers L233-234: `extract_from_record` multiple fields ignore case
+    #[test]
+    fn test_extract_from_record_multiple_fields_ignore_case() {
+        let data = b"A\tB\tC";
+        let mut record = crate::libs::tsv::record::TsvRecord::new();
+        record.parse_line(data, b'\t');
+
+        let mut extractor = KeyExtractor::new(Some(vec![1, 3]), true, true);
+        let key = extractor.extract_from_record(&record, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"a\tc");
+    }
+
+    // Covers L292-296: `extract_from_row` strict error
+    #[test]
+    fn test_extract_from_row_strict_error() {
+        let fields: Vec<&[u8]> = vec![b"A", b"B", b"C"];
+        let row = MockRow { fields };
+
+        // Field 4 missing
+        let mut extractor = KeyExtractor::new(Some(vec![4]), false, true);
+        let result = extractor.extract_from_row(&row, b'\t');
+        assert!(result.is_err());
+        assert_eq!(result.err(), Some(4));
+
+        // Multiple fields, one missing
+        let mut extractor = KeyExtractor::new(Some(vec![1, 4]), false, true);
+        let result = extractor.extract_from_row(&row, b'\t');
+        assert!(result.is_err());
+        assert_eq!(result.err(), Some(4));
+    }
+
+    // Covers L299-300: `extract_from_row` multiple fields ignore case
+    #[test]
+    fn test_extract_from_row_multiple_fields_ignore_case() {
+        let fields: Vec<&[u8]> = vec![b"A", b"B", b"C"];
+        let row = MockRow { fields };
+
+        let mut extractor = KeyExtractor::new(Some(vec![1, 3]), true, true);
+        let key = extractor.extract_from_row(&row, b'\t').unwrap();
+        assert_eq!(key.as_ref(), b"a\tc");
     }
 
     #[test]
