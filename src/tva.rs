@@ -90,6 +90,3 @@ fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-// TODO: `rgr span` 5p and 3p
-// TODO: --bed for `rgr field`

@@ -1,6 +1,23 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*; // Used for writing assertions
 
+#[macro_use]
+#[path = "common/mod.rs"]
+mod common;
+
+use common::TvaCmd;
+
+#[test]
+fn help_fields_flag() {
+    // Tests L60-63: --help-fields flag
+    let (stdout, _) = TvaCmd::new().args(&["--help-fields"]).run();
+
+    // Output starts with "# Field Syntax"
+    assert!(stdout.contains("Field Syntax"));
+    assert!(stdout.contains("1-based Indexing"));
+    assert!(stdout.contains("Wildcards"));
+}
+
 #[test]
 fn command_invalid() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
