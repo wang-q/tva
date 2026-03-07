@@ -118,3 +118,12 @@ fn bin_new_name_append_mode_non_numeric() {
 
     assert_eq!(stdout.as_bytes(), b"10\tabc\t30\t\n");
 }
+
+#[test]
+fn bin_field_index_too_large() {
+    let (stdout, _) = TvaCmd::new()
+        .stdin("10\t20\n")
+        .args(&["bin", "--width", "10", "-f", "10"])
+        .run();
+    assert_eq!(stdout, "10\t20\n");
+}
