@@ -102,8 +102,49 @@ cargo llvm-cov --html
 *   **特性**: 除了基础的 sum/mean，还支持：
     *   **稳健统计**: `mad` (中位数绝对偏差), `trimmean` (截尾均值)。
     *   **分布检验**: `jarque` (正态性检验), `dpo` (Omnibus 检验)。
-    *   **高级均值**: `geomean` (几何平均), `harmmean` (调和平均)。
+    *   **偏度与峰度**: `sskew`/`pskew` (偏度), `skurt`/`pkurt` (峰度)。
+    *   **协方差与相关**: `scov`/`pcov` (协方差), `spearson`/`ppearson` (Pearson 相关系数)。
 *   **借鉴**: `tva stats` 可以逐步补充这些高级统计指标，满足更专业的分析需求。
+
+#### 5. 逐行转换操作 (Per-Line Operations)
+*   **特性**: datamash 提供大量逐行转换操作，无需分组即可使用：
+    *   **数值修约**: `round`, `floor`, `ceil`, `trunc`, `frac`。
+    *   **哈希与编码**: `base64`, `debase64`, `md5`, `sha1`, `sha256` 等。
+    *   **文件路径处理**: `dirname`, `basename`, `extname`, `barename`。
+    *   **数值提取**: `getnum` 从混合文本中提取数字（如 "zoom-123.45xyz" -> 123.45）。
+    *   **分箱**: `bin` (数值分箱), `strbin` (字符串哈希分箱)。
+*   **借鉴**: 这些操作可以作为 `tva` 的新命令或 `transform` 命令的功能。
+
+#### 6. 示例文件组织
+*   **特性**: datamash 的 `examples/` 目录包含：
+    *   `scores.txt` / `scores_h.txt`: 成对的无表头/有表头示例。
+    *   `genes.txt` / `genes_h.txt`: 真实生物信息学数据（UCSC Genome Browser）。
+    *   `readme.md`: 详细解释每个示例的用法和场景。
+*   **借鉴**: 
+    *   为 `tva` 的 `docs/data/` 提供成对的示例文件（有/无表头）。
+    *   添加真实领域数据：金融数据、日志数据、科学数据。
+    *   编写 `docs/data/README.md` 详细说明示例用途。
+
+#### 7. 命令语法设计
+*   **特性**: datamash 使用简洁的位置参数语法：
+    ```bash
+    datamash [options] op1 column1 [op2 column2 ...]
+    # 例如: datamash -g 2 mean 3 pstdev 3
+    ```
+*   **借鉴**: 
+    *   考虑为 `tva stats` 添加位置参数语法支持作为替代方案。
+    *   提供操作别名（如 `uniq` 作为 `unique` 的别名）。
+
+#### 8. 文档与帮助系统
+*   **特性**: 
+    *   Texinfo 格式文档，可生成 info/HTML/PDF 多种格式。
+    *   详细的 man page，包含数学公式和渐进式示例。
+    *   每个统计操作都有与 R 函数的对应关系说明。
+*   **借鉴**: 
+    *   为 `tva` 的统计操作添加数学公式说明。
+    *   添加与其他工具（R、Python pandas）的对比。
+    *   在帮助文档中提供从简单到复杂的渐进式示例。
+
 ### 参考项目: xan
 
 `xan` (前身为 `xsv` 的 fork) 是一个功能极强的 CSV/TSV 工具集。通过分析其源码，我们可以为 `tva` 汲取以下几个关键的架构和功能灵感。
@@ -267,7 +308,7 @@ cargo llvm-cov --html
 *   **行复制 (Row Replication)**:
     *   `uncount`: 根据计数列的值复制行（逆向 `count`）。
 *   **缺失值处理 (Missing Values)**:
-    *   `fill`: 类似于 `tidyr::fill`，支持向上/向下填充 (LOCF/NOCB)。
+    *   `fill`: 支持向上/向下填充 (LOCF/NOCB) - **已实现向下填充**。
     *   `replace_na`: 将显式 `NA` (空字符串) 替换为指定值。
     *   `drop_na`: 丢弃包含缺失值的行。
 
@@ -284,11 +325,34 @@ cargo llvm-cov --html
 
 ### 扩展统计 (Extended Statistics)
 
-*   向 `stats` 添加 `skewness`, `kurtosis`。
+基于 GNU Datamash 的分析，`tva stats` 可以逐步添加以下统计指标：
 
-### 缺失值填充 (Fill Missing Values)
+#### 高优先级
+*   **稳健统计**: `trimmean` (截尾均值), `madraw` (未缩放的中位数绝对偏差)。
 
-*   `fill`: 实现前向/后向填充以及常数填充。
+#### 中优先级
+*   **分布形态**: `sskew`/`pskew` (样本/总体偏度), `skurt`/`pkurt` (样本/总体峰度)。
+*   **正态性检验**: `jarque` (Jarque-Bera 检验), `dpo` (D'Agostino-Pearson Omnibus 检验)。
+*   **相关与协方差**: `scov`/`pcov` (样本/总体协方差), `spearson`/`ppearson` (Pearson 相关系数), `dotprod` (点积)。
+
+#### 低优先级
+*   **百分位数**: `perc` (自定义百分位数, 默认 95%)。
+*   **众数相关**: `antimode` (反众数 - 最少出现的值)。
+
+### 逐行转换命令 (Transform / Apply)
+
+参考 GNU Datamash 的 Per-Line Operations，添加 `transform` 或 `apply` 命令支持：
+
+#### 高优先级
+*   **数值修约**: `round`, `floor`, `ceil`, `trunc`, `frac` (取小数部分)。
+*   **数值提取**: `getnum` 从混合文本中提取数字（如 "price-$123.45" -> 123.45）。
+
+#### 中优先级
+*   **哈希与编码**: `base64`/`debase64`, `md5`, `sha1`, `sha256`, `sha512`。
+*   **文件路径处理**: `dirname`, `basename`, `extname`, `barename` (无扩展名的文件名)。
+
+#### 低优先级
+*   **字符串分箱**: `strbin` 将字符串哈希到固定数量的桶中（用于数据分片）。
 
 ### 借鉴 xan 的未来演进路线 (Future Roadmap: Lessons from xan)
 
