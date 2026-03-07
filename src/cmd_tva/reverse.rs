@@ -78,6 +78,12 @@ fn process_buffer(
         // This \n belongs to the line BEFORE it (in forward order).
         // The content AFTER it is the line we just finished scanning (in reverse).
 
+        // Note on trailing newline behavior:
+        // If input is "A\nB\n", output is "B\nA\n".
+        // If input is "A\nB" (no trailing newline), output is "BA\n".
+        // This is a correct byte-level reversal where "B" + "A\n" becomes "BA\n".
+        // Users should ensure input has trailing newline if they want clean line separation.
+
         writer.write_all(&slice[i + 1..following_line_start])?;
         following_line_start = i + 1;
     }
