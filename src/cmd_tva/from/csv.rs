@@ -90,8 +90,9 @@ fn sanitize_field(
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let infile = args.get_one::<String>("infile").unwrap();
-    let reader = crate::libs::io::raw_reader(infile);
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let reader = crate::libs::io::raw_reader(infile)?;
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     // Parse delimiter
     let delimiter_str = args

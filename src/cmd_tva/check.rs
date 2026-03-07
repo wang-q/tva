@@ -22,8 +22,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut total_lines: u64 = 0;
     let mut expected_fields: Option<usize> = None;
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
-        let mut reader = TsvReader::new(input.reader);
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
+        let mut reader =
+            crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
 
         reader.for_each_record(|record| {
             total_lines += 1;
@@ -39,11 +40,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     eprintln!("line {} ({} fields):", total_lines, fields);
                     // Lossy conversion for error display is fine
                     eprintln!("  {}", String::from_utf8_lossy(record));
-                    eprintln!(
-                        "tva check: structure check failed: line {} has {} fields (expected {})",
-                        total_lines, fields, exp
-                    );
-                    std::process::exit(1);
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "tva check: structure check failed: line {} has {} fields (expected {})",
+                            total_lines, fields, exp
+                        ),
+                    ));
                 }
             } else {
                 expected_fields = Some(fields);

@@ -89,7 +89,9 @@ fn parse_range(s: &str) -> anyhow::Result<Range> {
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
+
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
         None => vec!["stdin".to_string()],
@@ -112,7 +114,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut header_written = false;
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut line_num = 0;

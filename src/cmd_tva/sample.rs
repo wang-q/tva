@@ -256,17 +256,9 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
         replace,
     };
 
-    let outfile = args.get_one::<String>("outfile").unwrap();
-    if outfile == "stdout" {
-        let stdout = std::io::stdout();
-        let handle = stdout.lock();
-        let mut writer = std::io::BufWriter::with_capacity(128 * 1024, handle);
-        run_sampling(config, &mut writer)
-    } else {
-        let file = std::fs::File::create(outfile)?;
-        let mut writer = std::io::BufWriter::with_capacity(128 * 1024, file);
-        run_sampling(config, &mut writer)
-    }
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
+    run_sampling(config, &mut writer)
 }
 
 enum SamplerEnum {
@@ -381,7 +373,7 @@ fn run_gen_random_inorder<W: Write>(
 
     let distinct_key_spec = config.key_fields.as_deref();
 
-    for input in crate::libs::io::raw_input_sources(&config.infiles) {
+    for input in crate::libs::io::raw_input_sources(&config.infiles)? {
         let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_record = true;
 
@@ -609,7 +601,7 @@ fn run_standard_sampling<W: Write>(
     let distinct_key_spec = key_fields.as_deref();
     let weighted_weight_spec = weight_field.as_deref();
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_record = true;
 

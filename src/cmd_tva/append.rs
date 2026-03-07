@@ -85,7 +85,8 @@ fn default_source_label(path: &str) -> String {
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     let line_buffered = args.get_flag("line-buffered");
 
@@ -176,7 +177,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut header_written = false;
 
     for spec in specs {
-        let input_reader = crate::libs::io::raw_reader(&spec.path);
+        let input_reader = crate::libs::io::reader(&spec.path)?;
         let mut reader = TsvReader::new(input_reader);
 
         let label = match spec.label {

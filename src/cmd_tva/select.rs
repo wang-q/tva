@@ -77,7 +77,8 @@ fn check_conflicts(selected: &[usize], excluded: &HashSet<usize>) {
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
@@ -132,7 +133,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut select_plan: Option<SelectPlan> = None;
     let mut output_ranges: Vec<Range<usize>> = Vec::new();
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut tsv_reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
 

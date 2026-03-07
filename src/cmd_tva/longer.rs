@@ -67,7 +67,8 @@ pub fn make_subcommand() -> Command {
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
@@ -97,7 +98,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     // Each entry corresponds to a melt_index and contains the tab-joined name columns as bytes
     let mut melt_name_bytes: Option<Vec<Vec<u8>>> = None;
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
 
         // Read header

@@ -69,12 +69,13 @@ pub fn make_subcommand() -> Command {
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     // 1. Read input
     let infile = args.get_one::<String>("infile").unwrap();
-    let mut reader = crate::libs::io::raw_reader(infile);
+    let mut reader = crate::libs::io::raw_reader(infile)?;
     let mut html_content = String::new();
     reader.read_to_string(&mut html_content)?;
 
     // 1b. Prepare output
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     // 2. Parse HTML
     let document = Html::parse_document(&html_content);

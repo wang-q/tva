@@ -93,13 +93,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .map(|s| s.to_string())
         .collect();
 
-    let mut writer = crate::libs::io::writer(outfile);
+    let mut writer = crate::libs::io::writer(outfile)?;
 
     // State tracking: store last valid values for selected columns
     let mut last_valid_values: HashMap<usize, Vec<u8>> = HashMap::new();
     let mut header_written = false;
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader = TsvReader::new(input.reader);
         let mut header_record = TsvRecord::new();
         let mut header: Option<Header> = None;

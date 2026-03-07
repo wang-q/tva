@@ -60,7 +60,8 @@ pub fn make_subcommand() -> Command {
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     let line_buffered = args.get_flag("line-buffered");
 
@@ -86,10 +87,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let delimiter_bytes = delimiter.as_bytes();
     let header_bytes = header_string.as_bytes();
 
-    for infile in &infiles {
-        let mut reader = crate::libs::tsv::reader::TsvReader::new(
-            crate::libs::io::raw_reader(infile),
-        );
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
+        let mut reader =
+            crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut file_line_num: u64 = 0;
 
         reader.for_each_record(|line| {

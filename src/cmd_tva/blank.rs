@@ -90,14 +90,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         });
     }
 
-    let mut writer = crate::libs::io::writer(outfile);
+    let mut writer = crate::libs::io::writer(outfile)?;
 
     // State tracking: store previous values for selected columns
     // We only need to store previous values for the columns we are blanking
     let mut previous_values: HashMap<usize, Vec<u8>> = HashMap::new();
     let mut header_written = false;
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader = TsvReader::new(input.reader);
         let mut header_record = TsvRecord::new();
         let mut header: Option<Header> = None;

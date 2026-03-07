@@ -75,7 +75,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         file_args.to_vec()
     };
 
-    for input in crate::libs::io::raw_input_sources(&filenames) {
+    for input in crate::libs::io::raw_input_sources(&filenames)? {
         let mut reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
 
         if !header_source_used {

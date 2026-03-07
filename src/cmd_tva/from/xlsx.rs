@@ -61,7 +61,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .worksheet_range(&sheet_name)
         .map_err(|e| anyhow::anyhow!("Failed to read sheet '{}': {}", sheet_name, e))?;
 
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     for row in range.rows() {
         let mut first = true;

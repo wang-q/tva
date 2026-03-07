@@ -27,9 +27,10 @@ pub fn make_subcommand() -> Command {
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let infile = args.get_one::<String>("infile").unwrap();
-    let reader = crate::libs::io::reader(infile);
+    let reader = crate::libs::io::reader(infile)?;
     let mut tsv_reader = TsvReader::with_capacity(reader, 512 * 1024);
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     let mut data: Vec<TsvRecord> = Vec::new();
     let mut expected_fields: Option<usize> = None;

@@ -18,6 +18,14 @@ pub fn make_subcommand() -> Command {
                 .help("Input TSV data file(s) to process (default: stdin)"),
         )
         .arg(
+            Arg::new("outfile")
+                .long("outfile")
+                .short('o')
+                .num_args(1)
+                .default_value("stdout")
+                .help("Output filename. [stdout] for screen"),
+        )
+        .arg(
             Arg::new("header")
                 .long("header")
                 .short('H')
@@ -258,6 +266,9 @@ fn arg_error(msg: &str) -> ! {
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
+
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
         None => vec!["stdin".to_string()],
@@ -488,7 +499,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         ff_reldiff_specs,
     };
 
-    let mut writer = crate::libs::io::writer("stdout");
     crate::libs::filter::run_filter(&infiles, &mut writer, config)
         .map_err(|e| anyhow::anyhow!("tva filter: {}", e))?;
 

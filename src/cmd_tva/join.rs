@@ -183,7 +183,8 @@ fn extract_values(
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
@@ -235,7 +236,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     // 1. Process Filter File
     let mut filter_reader = crate::libs::tsv::reader::TsvReader::new(
-        crate::libs::io::raw_reader(&filter_file),
+        crate::libs::io::raw_reader(&filter_file)?,
     );
 
     let mut filter_header: Option<crate::libs::tsv::fields::Header> = None;
@@ -372,10 +373,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         s
     });
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
-        // Use 128KB buffer for data reader
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
+        // Use 512KB buffer for data reader
         let mut reader =
-            crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 128 * 1024);
+            crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_line = true;
 
         reader.for_each_record(|line| {

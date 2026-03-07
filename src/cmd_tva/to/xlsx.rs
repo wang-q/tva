@@ -169,7 +169,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .set_font_size(font_size);
 
     // Read TSV and write to XLSX
-    let reader = crate::libs::io::reader(infile);
+    let reader = crate::libs::io::reader(infile)?;
     let mut tsv_reader = TsvReader::with_capacity(reader, 512 * 1024);
     let mut row_cursor: u32 = 0;
     let has_header = args.get_flag("header");

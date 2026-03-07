@@ -110,7 +110,8 @@ impl ProcessState {
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
@@ -156,7 +157,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut state = ProcessState::new();
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
         process_file(input, &config, &mut state)?;
     }
 

@@ -59,10 +59,11 @@ pub fn make_subcommand() -> Command {
 
 // command implementation
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
-    let mut reader = crate::libs::tsv::reader::TsvReader::new(
-        crate::libs::io::raw_reader(args.get_one::<String>("infile").unwrap()),
-    );
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
+    let mut reader = crate::libs::tsv::reader::TsvReader::new(crate::libs::io::reader(
+        args.get_one::<String>("infile").unwrap(),
+    )?);
 
     let mut opt_center: intspan::IntSpan = if args.contains_id("center") {
         crate::libs::tsv::fields::fields_to_ints(

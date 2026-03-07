@@ -464,7 +464,7 @@ fn split_by_line_count(
     let mut current_writer: Option<Box<dyn Write>> = None;
     let mut current_lines: u64 = 0;
 
-    for input in crate::libs::io::raw_input_sources(infiles) {
+    for input in crate::libs::io::raw_input_sources(infiles)? {
         let mut reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_line_of_file = true;
@@ -530,7 +530,7 @@ fn split_randomly(
     let mut header_line: Option<Vec<u8>> = None;
     let mut global_header_captured = false;
 
-    for input in crate::libs::io::raw_input_sources(infiles) {
+    for input in crate::libs::io::raw_input_sources(infiles)? {
         let mut reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_line_of_file = true;

@@ -34,8 +34,8 @@ pub fn make_subcommand() -> Command {
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let infile = args.get_one::<String>("infile").unwrap();
-    let reader = crate::libs::io::reader(infile);
-    let writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
+    let reader = crate::libs::io::reader(infile)?;
+    let writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     let delimiter_str = args
         .get_one::<String>("delimiter")

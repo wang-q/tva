@@ -505,7 +505,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         ))
     };
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
 
         if header_mode {

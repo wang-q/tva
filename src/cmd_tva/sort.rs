@@ -99,21 +99,29 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         Vec::new()
     };
 
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
+
+    // Phase 1: Split and sort chunks
+    // let mut chunk_files: Vec<String> = Vec::new();
+    // let mut current_chunk: Vec<SortItem> = Vec::with_capacity(buffer_size);
+    // let mut current_chunk_size: usize = 0;
+
     let mut rows: Vec<TsvRecord> = Vec::new();
-    let mut header_record: Option<TsvRecord> = None;
+    let mut header: Option<TsvRecord> = None;
     let mut header_written = false;
 
-    for input in crate::libs::io::raw_input_sources(&infiles) {
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_line = true;
 
         reader.for_each_record(|record| {
             if has_header && is_first_line {
-                if header_record.is_none() {
+                if header.is_none() {
                     let mut tsv_rec = TsvRecord::new();
                     tsv_rec.parse_line(record, delimiter);
-                    header_record = Some(tsv_rec);
+                    header = Some(tsv_rec);
                 }
                 is_first_line = false;
                 return Ok(());
@@ -132,10 +140,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         })?;
     }
 
-    let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
-
-    if let Some(header) = header_record {
-        writer.write_all(header.as_line())?;
+    if let Some(h) = &header {
+        writer.write_all(h.as_line())?;
         writer.write_all(b"\n")?;
         header_written = true;
     }

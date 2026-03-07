@@ -16,7 +16,7 @@
 //! writeln!(file, "line1").unwrap();
 //! let path = file.path().to_str().unwrap();
 //!
-//! let lines = read_lines(path);
+//! let lines = read_lines(path).unwrap();
 //! assert!(!lines.is_empty());
 //! ```
 //!
@@ -26,7 +26,7 @@
 //! use std::io::Write;
 //! use tva::libs::io::writer;
 //!
-//! let mut w = writer("stdout");
+//! let mut w = writer("stdout").unwrap();
 //! writeln!(w, "hello\tworld").unwrap();
 //! ```
 
@@ -66,23 +66,22 @@ pub struct InputSourceRaw {
 ///
 /// If `input` is "stdin" or "-", it reads from standard input.
 /// If the file extension is ".gz", it transparently decompresses the content.
-pub fn raw_reader(input: &str) -> Box<dyn Read> {
+pub fn raw_reader(input: &str) -> io::Result<Box<dyn Read>> {
     if is_stdin_name(input) {
-        Box::new(io::stdin())
+        Ok(Box::new(io::stdin()))
     } else {
         let path = Path::new(input);
-        let file = match File::open(path) {
-            Ok(file) => file,
-            Err(err) => {
-                eprintln!("tva: could not open {}: {}", path.display(), err);
-                std::process::exit(1);
-            }
-        };
+        let file = File::open(path).map_err(|err| {
+            io::Error::new(
+                err.kind(),
+                format!("tva: could not open {}: {}", path.display(), err),
+            )
+        })?;
 
         if path.extension() == Some(OsStr::new("gz")) {
-            Box::new(MultiGzDecoder::new(file))
+            Ok(Box::new(MultiGzDecoder::new(file)))
         } else {
-            Box::new(file)
+            Ok(Box::new(file))
         }
     }
 }
@@ -103,23 +102,22 @@ pub fn raw_reader(input: &str) -> Box<dyn Read> {
 /// writeln!(file, "hello").unwrap();
 /// let path = file.path().to_str().unwrap();
 ///
-/// let mut r = reader(path);
+/// let mut r = reader(path).unwrap();
 /// let mut s = String::new();
 /// r.read_to_string(&mut s).unwrap();
 /// assert!(s.contains("hello"));
 /// ```
-pub fn reader(input: &str) -> Box<dyn BufRead> {
+pub fn reader(input: &str) -> io::Result<Box<dyn BufRead>> {
     let reader: Box<dyn BufRead> = if is_stdin_name(input) {
         Box::new(BufReader::new(io::stdin()))
     } else {
         let path = Path::new(input);
-        let file = match File::open(path) {
-            Ok(file) => file,
-            Err(err) => {
-                eprintln!("tva: could not open {}: {}", path.display(), err);
-                std::process::exit(1);
-            }
-        };
+        let file = File::open(path).map_err(|err| {
+            io::Error::new(
+                err.kind(),
+                format!("tva: could not open {}: {}", path.display(), err),
+            )
+        })?;
 
         if path.extension() == Some(OsStr::new("gz")) {
             Box::new(BufReader::new(MultiGzDecoder::new(file)))
@@ -128,40 +126,40 @@ pub fn reader(input: &str) -> Box<dyn BufRead> {
         }
     };
 
-    reader
+    Ok(reader)
 }
 
 /// Creates a list of input sources from filenames.
 ///
 /// Each `InputSource` contains the filename, a flag indicating if it is stdin,
 /// and a `BufRead` reader for the content.
-pub fn input_sources(infiles: &[String]) -> Vec<InputSource> {
+pub fn input_sources(infiles: &[String]) -> io::Result<Vec<InputSource>> {
     infiles
         .iter()
         .map(|name| {
             let is_stdin = is_stdin_name(name);
-            let reader = reader(name);
-            InputSource {
+            let reader = reader(name)?;
+            Ok(InputSource {
                 name: name.clone(),
                 is_stdin,
                 reader,
-            }
+            })
         })
         .collect()
 }
 
 /// Creates a list of raw input sources from filenames.
-pub fn raw_input_sources(infiles: &[String]) -> Vec<InputSourceRaw> {
+pub fn raw_input_sources(infiles: &[String]) -> io::Result<Vec<InputSourceRaw>> {
     infiles
         .iter()
         .map(|name| {
             let is_stdin = is_stdin_name(name);
-            let reader = raw_reader(name);
-            InputSourceRaw {
+            let reader = raw_reader(name)?;
+            Ok(InputSourceRaw {
                 name: name.clone(),
                 is_stdin,
                 reader,
-            }
+            })
         })
         .collect()
 }
@@ -185,7 +183,7 @@ pub fn raw_input_sources(infiles: &[String]) -> Vec<InputSourceRaw> {
 /// assert!(has_nonempty_line(path).unwrap());
 /// ```
 pub fn has_nonempty_line(input: &str) -> io::Result<bool> {
-    let mut reader = reader(input);
+    let mut reader = reader(input)?;
     let mut buf = String::new();
 
     loop {
@@ -217,18 +215,20 @@ pub fn has_nonempty_line(input: &str) -> io::Result<bool> {
 /// writeln!(file, "line2").unwrap();
 /// let path = file.path().to_str().unwrap();
 ///
-/// let lines = read_lines(path);
+/// let lines = read_lines(path).unwrap();
 /// assert_eq!(lines.len(), 2);
 /// assert_eq!(lines[0], "line1");
 /// ```
-pub fn read_lines(input: &str) -> Vec<String> {
-    let mut reader = reader(input);
+pub fn read_lines(input: &str) -> io::Result<Vec<String>> {
+    let mut reader = reader(input)?;
     let mut s = String::new();
-    if let Err(err) = reader.read_to_string(&mut s) {
-        eprintln!("tva: read error from {}: {}", input, err);
-        std::process::exit(1);
-    }
-    s.lines().map(|s| s.to_string()).collect::<Vec<String>>()
+    reader.read_to_string(&mut s).map_err(|err| {
+        io::Error::new(
+            err.kind(),
+            format!("tva: read error from {}: {}", input, err),
+        )
+    })?;
+    Ok(s.lines().map(|s| s.to_string()).collect::<Vec<String>>())
 }
 
 /// Reads tab-separated key-values replacement pairs from a file.
@@ -247,14 +247,14 @@ pub fn read_lines(input: &str) -> Vec<String> {
 /// writeln!(file, "key1\tval1\tval2").unwrap();
 /// let path = file.path().to_str().unwrap();
 ///
-/// let replaces = read_replaces(path);
+/// let replaces = read_replaces(path).unwrap();
 /// assert!(replaces.contains_key("key1"));
 /// assert_eq!(replaces["key1"], vec!["val1", "val2"]);
 /// ```
-pub fn read_replaces(input: &str) -> BTreeMap<String, Vec<String>> {
+pub fn read_replaces(input: &str) -> io::Result<BTreeMap<String, Vec<String>>> {
     let mut replaces: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
-    for line in read_lines(input) {
+    for line in read_lines(input)? {
         let mut fields: Vec<&str> = line.split('\t').collect();
 
         let left = fields.split_off(1);
@@ -265,7 +265,7 @@ pub fn read_replaces(input: &str) -> BTreeMap<String, Vec<String>> {
         );
     }
 
-    replaces
+    Ok(replaces)
 }
 
 /// Opens a file or stdout for writing.
@@ -284,28 +284,27 @@ pub fn read_replaces(input: &str) -> BTreeMap<String, Vec<String>> {
 /// let path = file.path().to_str().unwrap();
 ///
 /// {
-///     let mut w = writer(path);
+///     let mut w = writer(path).unwrap();
 ///     writeln!(w, "result").unwrap();
 /// }
 /// // Verify content
 /// let content = std::fs::read_to_string(path).unwrap();
 /// assert!(content.contains("result"));
 /// ```
-pub fn writer(output: &str) -> Box<dyn Write> {
+pub fn writer(output: &str) -> io::Result<Box<dyn Write>> {
     let writer: Box<dyn Write> = if output == "stdout" {
         Box::new(BufWriter::new(io::stdout()))
     } else {
-        let file = match File::create(output) {
-            Ok(file) => file,
-            Err(err) => {
-                eprintln!("tva: could not create {}: {}", output, err);
-                std::process::exit(1);
-            }
-        };
+        let file = File::create(output).map_err(|err| {
+            io::Error::new(
+                err.kind(),
+                format!("tva: could not create {}: {}", output, err),
+            )
+        })?;
         Box::new(BufWriter::new(file))
     };
 
-    writer
+    Ok(writer)
 }
 
 #[cfg(test)]
@@ -336,7 +335,7 @@ mod tests {
         writeln!(file, "hello").unwrap();
         let path = file.path().to_str().unwrap();
 
-        let mut r = reader(path);
+        let mut r = reader(path).unwrap();
         let mut s = String::new();
         r.read_to_string(&mut s).unwrap();
         assert!(s.contains("hello"));
@@ -353,7 +352,7 @@ mod tests {
             e.write_all(b"compressed hello").unwrap();
         }
 
-        let mut r = reader(&path);
+        let mut r = reader(&path).unwrap();
         let mut s = String::new();
         r.read_to_string(&mut s).unwrap();
         assert_eq!(s, "compressed hello");
@@ -383,7 +382,7 @@ mod tests {
         writeln!(file, "line2").unwrap();
         let path = file.path().to_str().unwrap();
 
-        let lines = read_lines(path);
+        let lines = read_lines(path).unwrap();
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0], "line1");
         assert_eq!(lines[1], "line2");
@@ -396,7 +395,7 @@ mod tests {
         writeln!(file, "k2\tv3").unwrap();
         let path = file.path().to_str().unwrap();
 
-        let replaces = read_replaces(path);
+        let replaces = read_replaces(path).unwrap();
         assert_eq!(replaces.len(), 2);
         assert_eq!(replaces["k1"], vec!["v1", "v2"]);
         assert_eq!(replaces["k2"], vec!["v3"]);
@@ -408,7 +407,7 @@ mod tests {
         let path = file.path().to_str().unwrap();
 
         {
-            let mut w = writer(path);
+            let mut w = writer(path).unwrap();
             writeln!(w, "test output").unwrap();
         }
 
@@ -427,7 +426,7 @@ mod tests {
         let path2 = file2.path().to_str().unwrap().to_string();
 
         let inputs = vec![path1.clone(), "stdin".to_string(), path2.clone()];
-        let sources = input_sources(&inputs);
+        let sources = input_sources(&inputs).unwrap();
 
         assert_eq!(sources.len(), 3);
         assert!(!sources[0].is_stdin);
@@ -446,7 +445,7 @@ mod tests {
         let path = file.path().to_str().unwrap().to_string();
 
         let inputs = vec![path.clone()];
-        let sources = raw_input_sources(&inputs);
+        let sources = raw_input_sources(&inputs).unwrap();
 
         assert_eq!(sources.len(), 1);
         assert!(!sources[0].is_stdin);
@@ -464,7 +463,7 @@ mod tests {
             e.write_all(b"raw gzip content").unwrap();
         }
 
-        let mut r = raw_reader(&path);
+        let mut r = raw_reader(&path).unwrap();
         let mut s = String::new();
         r.read_to_string(&mut s).unwrap();
         assert_eq!(s, "raw gzip content");
