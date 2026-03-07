@@ -1716,6 +1716,118 @@ fn join_error_no_such_filter_file() {
 }
 
 #[test]
+fn join_coverage_exclude_with_append() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "join",
+            "--exclude",
+            "--append-fields",
+            "1",
+            "-f",
+            "tests/data/join/input1.tsv",
+            "tests/data/join/input2.tsv",
+        ])
+        .run_fail();
+    assert!(stderr.contains("--exclude cannot be used with --append-fields"));
+}
+
+#[test]
+fn join_coverage_exclude_with_write_all() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "join",
+            "--exclude",
+            "--write-all",
+            "NA",
+            "-f",
+            "tests/data/join/input1.tsv",
+            "-k",
+            "1",
+            // "-a", "2", // Removed to hit the write-all check first
+            "tests/data/join/input2.tsv",
+        ])
+        .run_fail();
+    assert!(
+        stderr.contains("--write-all cannot be used with --exclude"),
+        "stderr was: {}",
+        stderr
+    );
+}
+
+#[test]
+fn join_coverage_write_all_requires_append() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "join",
+            "--write-all",
+            "NA",
+            "-f",
+            "tests/data/join/input1.tsv",
+            "-k",
+            "1",
+            "tests/data/join/input2.tsv",
+        ])
+        .run_fail();
+    assert!(stderr.contains("--write-all requires --append-fields"));
+}
+
+#[test]
+fn join_coverage_append_index_out_of_range_no_header() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "join",
+            "-f",
+            "tests/data/join/input1_noheader.tsv", // 5 columns
+            "-k",
+            "1",
+            "-a",
+            "6", // 6th column, out of range
+            "tests/data/join/input2.tsv",
+        ])
+        .run_fail();
+
+    assert!(stderr.contains("append index 6 is out of range"));
+}
+
+#[test]
+fn join_coverage_append_index_out_of_range_filter_header() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "join",
+            "--header",
+            "-f",
+            "tests/data/join/input1.tsv", // 5 columns
+            "-k",
+            "1",
+            "-a",
+            "6", // 6th column
+            "tests/data/join/input2.tsv",
+        ])
+        .run_fail();
+
+    assert!(stderr.contains("out of range"), "stderr was: {}", stderr);
+}
+
+#[test]
+fn join_coverage_duplicate_key_error() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "join",
+            "--header",
+            "-f",
+            "tests/data/join/input1.tsv",
+            "-k",
+            "2", // f2 has duplicates (ggg)
+            "-a",
+            "3", // append f3 (UUU vs III vs ...)
+            "tests/data/join/input2.tsv",
+        ])
+        .run_fail();
+
+    assert!(stderr.contains("duplicate key with different append values"));
+}
+
+#[test]
 fn join_error_no_such_data_file() {
     let (_, stderr) = TvaCmd::new()
         .args(&[
