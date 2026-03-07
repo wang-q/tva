@@ -325,6 +325,39 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
     }
 }
 
+fn parse_key_specs(
+    spec: &str,
+    header: Option<&crate::libs::tsv::fields::Header>,
+) -> std::io::Result<Vec<usize>> {
+    if spec == "0" {
+        Ok(Vec::new())
+    } else {
+        crate::libs::tsv::fields::parse_field_list_with_header(spec, header, '\t')
+            .map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e))
+            })
+    }
+}
+
+fn parse_single_weight_field(
+    spec: &str,
+    header: Option<&crate::libs::tsv::fields::Header>,
+) -> std::io::Result<usize> {
+    let indices =
+        crate::libs::tsv::fields::parse_field_list_with_header(spec, header, '\t')
+            .map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e))
+            })?;
+
+    if indices.len() != 1 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "--weight-field must select exactly one field",
+        ));
+    }
+    Ok(indices[0])
+}
+
 fn run_gen_random_inorder<W: Write>(
     config: SampleConfig,
     writer: &mut W,
@@ -352,15 +385,6 @@ fn run_gen_random_inorder<W: Write>(
         let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_record = true;
 
-        if !header_written && header_line.is_some() {
-            let header = header_line.as_ref().unwrap();
-            writer.write_all(config.random_value_header.as_bytes())?;
-            writer.write_all(b"\t")?;
-            writer.write_all(header)?;
-            writer.write_all(b"\n")?;
-            header_written = true;
-        }
-
         reader.for_each_record(|record| {
             if record.is_empty() {
                 writer.write_all(b"\n")?;
@@ -373,9 +397,7 @@ fn run_gen_random_inorder<W: Write>(
                     header_line = Some(record.to_vec());
 
                     if !initialized && distinct_key_spec.is_some() {
-                        use crate::libs::tsv::fields::{
-                            parse_field_list_with_header, Header,
-                        };
+                        use crate::libs::tsv::fields::Header;
                         let record_str = std::str::from_utf8(record).map_err(|e| {
                             std::io::Error::new(
                                 std::io::ErrorKind::InvalidData,
@@ -384,18 +406,7 @@ fn run_gen_random_inorder<W: Write>(
                         })?;
                         let header = Header::from_line(record_str, '\t');
                         let spec = distinct_key_spec.unwrap();
-                        let indices = if spec == "0" {
-                            Vec::new()
-                        } else {
-                            parse_field_list_with_header(spec, Some(&header), '\t')
-                                .map_err(|e| {
-                                    std::io::Error::new(
-                                        std::io::ErrorKind::InvalidInput,
-                                        format!("{}", e),
-                                    )
-                                })?
-                        };
-                        key_field_indices = indices;
+                        key_field_indices = parse_key_specs(spec, Some(&header))?;
                         initialized = true;
                     }
 
@@ -411,19 +422,8 @@ fn run_gen_random_inorder<W: Write>(
 
             // Init if no header
             if !initialized && distinct_key_spec.is_some() {
-                use crate::libs::tsv::fields::parse_field_list_with_header;
                 let spec = distinct_key_spec.unwrap();
-                let indices = if spec == "0" {
-                    Vec::new()
-                } else {
-                    parse_field_list_with_header(spec, None, '\t').map_err(|e| {
-                        std::io::Error::new(
-                            std::io::ErrorKind::InvalidInput,
-                            format!("{}", e),
-                        )
-                    })?
-                };
-                key_field_indices = indices;
+                key_field_indices = parse_key_specs(spec, None)?;
                 initialized = true;
             }
 
@@ -627,9 +627,7 @@ fn run_standard_sampling<W: Write>(
                     if !sampler_initialized {
                         match &mut sampler {
                             SamplerEnum::Distinct(s) => {
-                                use crate::libs::tsv::fields::{
-                                    parse_field_list_with_header, Header,
-                                };
+                                use crate::libs::tsv::fields::Header;
                                 let record_str =
                                     std::str::from_utf8(record).map_err(|e| {
                                         std::io::Error::new(
@@ -639,28 +637,11 @@ fn run_standard_sampling<W: Write>(
                                     })?;
                                 let header = Header::from_line(record_str, '\t');
                                 let spec = distinct_key_spec.unwrap();
-                                let indices =
-                                    if spec == "0" {
-                                        Vec::new()
-                                    } else {
-                                        parse_field_list_with_header(
-                                            spec,
-                                            Some(&header),
-                                            '\t',
-                                        )
-                                        .map_err(|e| {
-                                            std::io::Error::new(
-                                                std::io::ErrorKind::InvalidInput,
-                                                format!("{}", e),
-                                            )
-                                        })?
-                                    };
-                                s.key_field_indices = indices;
+                                s.key_field_indices =
+                                    parse_key_specs(spec, Some(&header))?;
                             }
                             SamplerEnum::Weighted(s) => {
-                                use crate::libs::tsv::fields::{
-                                    parse_field_list_with_header, Header,
-                                };
+                                use crate::libs::tsv::fields::Header;
                                 let record_str =
                                     std::str::from_utf8(record).map_err(|e| {
                                         std::io::Error::new(
@@ -670,25 +651,8 @@ fn run_standard_sampling<W: Write>(
                                     })?;
                                 let header = Header::from_line(record_str, '\t');
                                 let spec = weighted_weight_spec.unwrap();
-                                let indices = parse_field_list_with_header(
-                                    spec,
-                                    Some(&header),
-                                    '\t',
-                                )
-                                .map_err(|e| {
-                                    std::io::Error::new(
-                                        std::io::ErrorKind::InvalidInput,
-                                        format!("{}", e),
-                                    )
-                                })?;
-                                if indices.len() != 1 {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidInput,
-                                        "--weight-field must select exactly one field",
-                                    )
-                                    .into());
-                                }
-                                s.weight_field_idx = indices[0];
+                                s.weight_field_idx =
+                                    parse_single_weight_field(spec, Some(&header))?;
                             }
                             _ => {}
                         }
@@ -716,40 +680,12 @@ fn run_standard_sampling<W: Write>(
             if !sampler_initialized {
                 match &mut sampler {
                     SamplerEnum::Distinct(s) => {
-                        use crate::libs::tsv::fields::parse_field_list_with_header;
                         let spec = distinct_key_spec.unwrap();
-                        let indices = if spec == "0" {
-                            Vec::new()
-                        } else {
-                            parse_field_list_with_header(spec, None, '\t').map_err(
-                                |e| {
-                                    std::io::Error::new(
-                                        std::io::ErrorKind::InvalidInput,
-                                        format!("{}", e),
-                                    )
-                                },
-                            )?
-                        };
-                        s.key_field_indices = indices;
+                        s.key_field_indices = parse_key_specs(spec, None)?;
                     }
                     SamplerEnum::Weighted(s) => {
-                        use crate::libs::tsv::fields::parse_field_list_with_header;
                         let spec = weighted_weight_spec.unwrap();
-                        let indices = parse_field_list_with_header(spec, None, '\t')
-                            .map_err(|e| {
-                                std::io::Error::new(
-                                    std::io::ErrorKind::InvalidInput,
-                                    format!("{}", e),
-                                )
-                            })?;
-                        if indices.len() != 1 {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidInput,
-                                "--weight-field must select exactly one field",
-                            )
-                            .into());
-                        }
-                        s.weight_field_idx = indices[0];
+                        s.weight_field_idx = parse_single_weight_field(spec, None)?;
                     }
                     _ => {}
                 }
