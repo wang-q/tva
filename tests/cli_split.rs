@@ -666,3 +666,308 @@ fn split_numeric_filenames_padding() {
     assert!(f1.exists());
     assert!(f2.exists());
 }
+
+#[test]
+fn split_seed_value_reproducible() {
+    let input: String = (1..=20).map(|i| format!("{}\n", i)).collect();
+
+    let dir1 = tempdir().unwrap();
+    let dir1_str = dir1.path().to_str().unwrap();
+
+    let (out1, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--num-files",
+            "3",
+            "--seed-value",
+            "12345",
+            "--dir",
+            dir1_str,
+        ])
+        .stdin(input.clone())
+        .run();
+    assert!(out1.is_empty());
+
+    let mut files1: Vec<PathBuf> = fs::read_dir(dir1.path())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    files1.sort();
+
+    let dir2 = tempdir().unwrap();
+    let dir2_str = dir2.path().to_str().unwrap();
+
+    let (out2, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--num-files",
+            "3",
+            "--seed-value",
+            "12345",
+            "--dir",
+            dir2_str,
+        ])
+        .stdin(input)
+        .run();
+    assert!(out2.is_empty());
+
+    let mut files2: Vec<PathBuf> = fs::read_dir(dir2.path())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    files2.sort();
+
+    assert_eq!(files1.len(), files2.len());
+
+    for (p1, p2) in files1.iter().zip(files2.iter()) {
+        let c1 = fs::read_to_string(p1).unwrap();
+        let c2 = fs::read_to_string(p2).unwrap();
+        assert_eq!(c1, c2);
+    }
+}
+
+#[test]
+fn split_random_with_append() {
+    let input1 = "1\n2\n3\n";
+    let input2 = "4\n5\n6\n";
+
+    let dir = tempdir().unwrap();
+    let dir_str = dir.path().to_str().unwrap();
+
+    // First run: split input1 into 2 files with static seed
+    TvaCmd::new()
+        .args(&[
+            "split",
+            "--num-files",
+            "2",
+            "--static-seed",
+            "--dir",
+            dir_str,
+        ])
+        .stdin(input1)
+        .run();
+
+    // Second run: append input2 with same seed
+    TvaCmd::new()
+        .args(&[
+            "split",
+            "--num-files",
+            "2",
+            "--static-seed",
+            "--dir",
+            dir_str,
+            "--append",
+        ])
+        .stdin(input2)
+        .run();
+
+    let mut files: Vec<PathBuf> = fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    files.sort();
+
+    assert_eq!(files.len(), 2);
+
+    // Verify all 6 lines are distributed across files
+    let mut all_lines = Vec::new();
+    for path in files {
+        let content = fs::read_to_string(path).unwrap();
+        for line in content.lines() {
+            all_lines.push(line.to_string());
+        }
+    }
+    all_lines.sort();
+    assert_eq!(all_lines, vec!["1", "2", "3", "4", "5", "6"]);
+}
+
+#[test]
+fn split_empty_lines_in_data() {
+    let input = "line1\n\nline2\n\n\nline3\n";
+
+    let dir = tempdir().unwrap();
+    let dir_str = dir.path().to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["split", "--lines-per-file", "2", "--dir", dir_str])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.is_empty());
+
+    let mut files: Vec<PathBuf> = fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    files.sort();
+
+    // Verify empty lines are preserved
+    let mut total_lines = 0;
+    for path in files {
+        let content = fs::read_to_string(path).unwrap();
+        total_lines += content.lines().count();
+    }
+    assert_eq!(total_lines, 6); // line1, (empty), line2, (empty), (empty), line3
+}
+
+#[test]
+fn split_creates_output_dir() {
+    let input = "1\n2\n3\n";
+
+    let dir = tempdir().unwrap();
+    let nested_dir = dir.path().join("nested").join("output");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--lines-per-file",
+            "2",
+            "--dir",
+            nested_dir.to_str().unwrap(),
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.is_empty());
+    assert!(nested_dir.exists());
+
+    let files: Vec<PathBuf> = fs::read_dir(&nested_dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    assert_eq!(files.len(), 2);
+}
+
+#[test]
+fn split_prefix_and_suffix_custom() {
+    let input = "1\n2\n";
+
+    let dir = tempdir().unwrap();
+    let dir_str = dir.path().to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--lines-per-file",
+            "1",
+            "--prefix",
+            "part_",
+            "--suffix",
+            ".dat",
+            "--dir",
+            dir_str,
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.is_empty());
+
+    // With --lines-per-file, default digit-width is 3
+    let f1 = dir.path().join("part_000.dat");
+    let f2 = dir.path().join("part_001.dat");
+
+    assert!(f1.exists());
+    assert!(f2.exists());
+}
+
+#[test]
+fn split_key_fields_with_empty_fields() {
+    // Test key extraction with missing fields
+    let input = "a\t\n\tb\nc\t\n";
+
+    let dir = tempdir().unwrap();
+    let dir_str = dir.path().to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--num-files",
+            "2",
+            "--key-fields",
+            "1,2",
+            "--dir",
+            dir_str,
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.is_empty());
+
+    let files: Vec<PathBuf> = fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+
+    // Should create files without error
+    assert!(!files.is_empty());
+}
+
+#[test]
+fn split_random_num_files_1() {
+    // Edge case: --num-files 1 should create single file
+    let input = "1\n2\n3\n4\n5\n";
+
+    let dir = tempdir().unwrap();
+    let dir_str = dir.path().to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--num-files",
+            "1",
+            "--static-seed",
+            "--dir",
+            dir_str,
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.is_empty());
+
+    let files: Vec<PathBuf> = fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+
+    assert_eq!(files.len(), 1);
+
+    let content = fs::read_to_string(&files[0]).unwrap();
+    let lines: Vec<&str> = content.lines().collect();
+    assert_eq!(lines.len(), 5);
+}
+
+#[test]
+fn split_lines_with_header_and_empty_lines() {
+    let input = "Header\n\ndata1\n\ndata2\n";
+
+    let dir = tempdir().unwrap();
+    let dir_str = dir.path().to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "split",
+            "--lines-per-file",
+            "2",
+            "--header-in-out",
+            "--dir",
+            dir_str,
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.is_empty());
+
+    let files: Vec<PathBuf> = fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+
+    // Should create files with header and handle empty lines
+    assert!(!files.is_empty());
+
+    // Check first file has header
+    let mut sorted_files = files;
+    sorted_files.sort();
+    let first_content = fs::read_to_string(&sorted_files[0]).unwrap();
+    assert!(first_content.starts_with("Header"));
+}

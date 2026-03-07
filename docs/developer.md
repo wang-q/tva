@@ -39,7 +39,7 @@ cargo install cargo-llvm-cov
 cargo llvm-cov --html
 ```
 
-使用 `cargo llvm-cov` 生成的覆盖率报告，找出需要提升测试覆盖率的代码路径。
+使用 `cargo llvm-cov` 生成覆盖率报告，找出需要提升测试覆盖率的代码路径，供我分析。
 
 ## 深度技术分析
 
