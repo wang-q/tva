@@ -39,6 +39,8 @@ cargo install cargo-llvm-cov
 cargo llvm-cov --html
 ```
 
+使用 `cargo llvm-cov` 生成的覆盖率报告，找出需要提升测试覆盖率的代码路径。
+
 ## 深度技术分析
 
 ### 参考项目: rust-csv
