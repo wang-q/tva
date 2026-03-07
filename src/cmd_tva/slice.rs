@@ -110,6 +110,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     // Actually, sorting ranges by start might help performance if we have many ranges.
     ranges.sort_by_key(|r| r.start);
 
+    let mut header_written = false;
+
     for input in crate::libs::io::raw_input_sources(&infiles) {
         let mut reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
@@ -120,8 +122,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             // Always keep header if requested
             if line_num == 1 && keep_header {
-                writer.write_all(record)?;
-                writer.write_all(b"\n")?;
+                if !header_written {
+                    writer.write_all(record)?;
+                    writer.write_all(b"\n")?;
+                    header_written = true;
+                }
                 return Ok(());
             }
 

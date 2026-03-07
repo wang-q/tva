@@ -2,6 +2,10 @@ use clap::*;
 use std::collections::HashSet;
 use std::ops::Range;
 
+use crate::libs::io::map_io_err;
+use crate::libs::tsv::select;
+use crate::libs::tsv::select::SelectPlan;
+
 pub fn make_subcommand() -> Command {
     Command::new("select")
         .about("Selects and reorders TSV fields")
@@ -64,9 +68,13 @@ fn arg_error(msg: &str) -> ! {
     std::process::exit(1);
 }
 
-use crate::libs::io::map_io_err;
-use crate::libs::tsv::select;
-use crate::libs::tsv::select::SelectPlan;
+fn check_conflicts(selected: &[usize], excluded: &HashSet<usize>) {
+    for idx in selected {
+        if excluded.contains(idx) {
+            arg_error(&format!("Field {} is both selected and excluded", idx));
+        }
+    }
+}
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer = crate::libs::io::writer(args.get_one::<String>("outfile").unwrap());
@@ -91,12 +99,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         _ => select::RestMode::None,
     };
 
-    if fields_spec.is_some() && exclude_spec.is_some() {
-        if rest_arg.is_none() {
+    // Auto-detect rest mode if not specified
+    if rest_arg.is_none() {
+        if fields_spec.is_some() && exclude_spec.is_some() {
             rest_mode = select::RestMode::Last;
-        }
-    } else if fields_spec.is_none() && exclude_spec.is_some() {
-        if rest_arg.is_none() {
+        } else if fields_spec.is_none() && exclude_spec.is_some() {
             rest_mode = select::RestMode::First;
         }
     }
@@ -115,6 +122,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             delimiter_str
         ));
     }
+    let delim_byte = delimiter as u8;
 
     let mut header_written = false;
     let mut field_indices: Option<Vec<usize>> = None;
@@ -123,8 +131,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut select_plan: Option<SelectPlan> = None;
     let mut output_ranges: Vec<Range<usize>> = Vec::new();
-
-    let delim_byte = delimiter as u8;
 
     for input in crate::libs::io::raw_input_sources(&infiles) {
         let mut tsv_reader =
@@ -138,37 +144,38 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         &line_str, delimiter,
                     );
 
-                    if let Some(ref spec) = fields_spec {
-                        field_indices = Some(
-                            crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
-                                spec,
-                                Some(&header),
-                                delimiter,
-                            )
-                            .map_err(map_io_err)?,
-                        );
-                    }
-                    if let Some(ref spec) = exclude_spec {
-                        let indices =
-                            crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
-                                spec,
-                                Some(&header),
-                                delimiter,
-                            )
-                            .map_err(map_io_err)?;
-                        exclude_indices = Some(indices.clone());
-                        exclude_set = Some(indices.into_iter().collect());
+                    // Resolve fields if not yet resolved
+                    if field_indices.is_none() {
+                        if let Some(ref spec) = fields_spec {
+                            field_indices = Some(
+                                crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
+                                    spec,
+                                    Some(&header),
+                                    delimiter,
+                                )
+                                .map_err(map_io_err)?,
+                            );
+                        }
                     }
 
-                    if let (Some(ref f), Some(ref e)) = (&field_indices, &exclude_set) {
-                        for idx in f {
-                            if e.contains(idx) {
-                                arg_error(&format!(
-                                    "Field {} is both selected and excluded",
-                                    idx
-                                ));
-                            }
+                    // Resolve exclude if not yet resolved
+                    if exclude_indices.is_none() {
+                        if let Some(ref spec) = exclude_spec {
+                            let indices =
+                                crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
+                                    spec,
+                                    Some(&header),
+                                    delimiter,
+                                )
+                                .map_err(map_io_err)?;
+                            exclude_set = Some(indices.iter().copied().collect());
+                            exclude_indices = Some(indices);
                         }
+                    }
+
+                    // Check conflicts
+                    if let (Some(ref f), Some(ref e)) = (&field_indices, &exclude_set) {
+                        check_conflicts(f, e);
                     }
 
                     let empty_vec = Vec::new();
@@ -191,6 +198,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
+        // Fallback resolution if not resolved by header (e.g. no header mode or first file was empty?)
         if fields_spec.is_some() && field_indices.is_none() {
             if let Some(ref spec) = fields_spec {
                 field_indices = Some(
@@ -203,24 +211,29 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
 
         if exclude_spec.is_some() && exclude_set.is_none() {
-            if let Some(ref indices) = exclude_indices {
-                exclude_set = Some(indices.iter().copied().collect());
-            } else if let Some(ref spec) = exclude_spec {
+            if let Some(ref spec) = exclude_spec {
                 let indices =
                     crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
                         spec, None, delimiter,
                     )
                     .map_err(map_io_err)?;
-                exclude_indices = Some(indices.clone());
-                exclude_set = Some(indices.into_iter().collect());
+                exclude_set = Some(indices.iter().copied().collect());
+                exclude_indices = Some(indices);
             }
         }
 
+        // Ensure conflicts are checked at least once
         if let (Some(ref f), Some(ref e)) = (&field_indices, &exclude_set) {
-            for idx in f {
-                if e.contains(idx) {
-                    arg_error(&format!("Field {} is both selected and excluded", idx));
-                }
+             check_conflicts(f, e);
+        }
+
+        // Initialize Plan if possible
+        if select_plan.is_none()
+            && rest_mode == select::RestMode::None
+            && exclude_set.is_none()
+        {
+            if let Some(ref idxs) = field_indices {
+                select_plan = Some(SelectPlan::new(idxs));
             }
         }
 
@@ -229,26 +242,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 return Ok(());
             }
 
-            if rest_mode == select::RestMode::None && exclude_set.is_none() {
-                if let Some(ref idxs) = field_indices {
-                    if select_plan.is_none() {
-                        select_plan = Some(SelectPlan::new(idxs));
-                    }
-                    select::write_selected_from_bytes(
-                        &mut writer,
-                        line_bytes,
-                        delim_byte,
-                        select_plan.as_ref().unwrap(),
-                        &mut output_ranges,
-                    )?;
-                } else {
-                    // Should not happen if one of -f or -e required
-                    // If -f not present, and -e not present, we error early.
-                    // Here we are inside loop.
-                    // If -e not present, and rest_mode None, implies -f present.
-                }
+            if let Some(ref plan) = select_plan {
+                 select::write_selected_from_bytes(
+                    &mut writer,
+                    line_bytes,
+                    delim_byte,
+                    plan,
+                    &mut output_ranges,
+                )?;
             } else {
-                // Use generic write_with_rest
                 let empty_vec = Vec::new();
                 let f_indices = field_indices.as_ref().unwrap_or(&empty_vec);
 
