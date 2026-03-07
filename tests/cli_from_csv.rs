@@ -456,12 +456,16 @@ fn from_csv_newline_replacement_validation() {
     let (_, stderr) = TvaCmd::new()
         .args(&["from", "csv", "--newline-replacement", "\t"])
         .run_fail();
-    assert!(stderr.contains("Replacement character cannot contain newlines or TSV field delimiters"));
+    assert!(stderr.contains(
+        "Replacement character cannot contain newlines or TSV field delimiters"
+    ));
 
     let (_, stderr2) = TvaCmd::new()
         .args(&["from", "csv", "--newline-replacement", "\n"])
         .run_fail();
-    assert!(stderr2.contains("Replacement character cannot contain newlines or TSV field delimiters"));
+    assert!(stderr2.contains(
+        "Replacement character cannot contain newlines or TSV field delimiters"
+    ));
 }
 
 #[test]
@@ -481,16 +485,20 @@ fn from_csv_sanitize_field() {
     // Expected: tabs replaced by default " ", newlines replaced by default " "
     let expected = "a\tb c\td\n1\t2 3\t4\n";
 
-    let (stdout, _) = TvaCmd::new()
-        .stdin(input)
-        .args(&["from", "csv"])
-        .run();
+    let (stdout, _) = TvaCmd::new().stdin(input).args(&["from", "csv"]).run();
     assert_eq!(normalize_newlines(&stdout), expected);
 
     // Custom replacements
     let (stdout2, _) = TvaCmd::new()
         .stdin(input)
-        .args(&["from", "csv", "--tab-replacement", "T", "--newline-replacement", "N"])
+        .args(&[
+            "from",
+            "csv",
+            "--tab-replacement",
+            "T",
+            "--newline-replacement",
+            "N",
+        ])
         .run();
     let expected2 = "a\tbTc\td\n1\t2N3\t4\n";
     assert_eq!(normalize_newlines(&stdout2), expected2);
