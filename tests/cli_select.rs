@@ -685,3 +685,37 @@ fn select_header_range_second_missing() {
         .run_fail();
     assert!(stderr.contains("Second field in range not found"));
 }
+
+#[test]
+fn select_empty_file_with_header() {
+    // Test empty file handling with --header flag (covers L198-199)
+    let input = "";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-H", "-f", "1"])
+        .stdin(input)
+        .run();
+    // Empty file should produce no output
+    assert_eq!(stdout, "");
+}
+
+#[test]
+fn select_fields_and_exclude_no_conflict() {
+    // Test fields and exclude without conflict (covers L179-180 check_conflicts)
+    let input = "a\tb\tc\td
+1\t2\t3\t4
+";
+    // -f 1,3 -e 2 (no overlap)
+    // With both --fields and --exclude, the behavior is:
+    // --fields specifies selected columns, --exclude removes from the rest
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "-f", "1,3", "-e", "2"])
+        .stdin(input)
+        .run();
+    // Output: 1, 3, 4 (1,3 selected; 2 excluded from rest; 4 is rest)
+    assert_eq!(
+        stdout,
+        "a\tc\td
+1\t3\t4
+"
+    );
+}
