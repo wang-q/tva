@@ -598,6 +598,130 @@ mod tests {
     }
 
     #[test]
+    fn test_header_from_line_empty() {
+        let h = Header::from_line("", '\t');
+        assert!(h.fields.is_empty());
+        assert!(h.index_by_name.is_empty());
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_unknown_field_pattern() {
+        let h = Header::from_line("f1\tf2", '\t');
+        let res = parse_field_list_with_header("f3*", Some(&h), '\t');
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "unknown field name `f3*` in `f3*`");
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_unknown_start_range() {
+        let h = Header::from_line("f1\tf2\tf3", '\t');
+        let res = parse_field_list_with_header("x-f2", Some(&h), '\t');
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "unknown field name `x` in `x-f2`");
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_unknown_end_range() {
+        let h = Header::from_line("f1\tf2\tf3", '\t');
+        let res = parse_field_list_with_header("f1-x", Some(&h), '\t');
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "unknown field name `x` in `f1-x`");
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_numeric_zero_or_negative() {
+        let res = parse_field_list_with_header_preserve_order("0", None, '\t');
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "field index must be >= 1 in `0`");
+
+        // The logic for negative numbers is:
+        // token.parse::<usize>() fails.
+        // split_name_range_token("-1") returns None (because start is empty).
+        // token.starts_with('-') is true.
+        // token.parse::<isize>() -> Ok(-1).
+        let res = parse_field_list_with_header_preserve_order("-1", None, '\t');
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "field index must be >= 1 in `-1`");
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_no_header_name_error() {
+        let res = parse_field_list_with_header_preserve_order("f1", None, '\t');
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "field name `f1` requires header in `f1`");
+
+        let res =
+            parse_field_list_with_header_preserve_order("invalid-range", None, '\t');
+        assert!(res.is_err());
+        // This hits "field name requires header" in the no-header branch because "invalid-range" doesn't parse as usize range
+        assert_eq!(
+            res.unwrap_err(),
+            "field name `invalid-range` requires header in `invalid-range`"
+        );
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_range_errors() {
+        let h = Header::from_line("f1\tf2\tf3", '\t');
+
+        // Start index 0
+        let res = parse_field_list_with_header_preserve_order("0-f2", Some(&h), '\t');
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "field index must be >= 1 in `0-f2`");
+
+        // Start name not found
+        let res = parse_field_list_with_header_preserve_order("x-f2", Some(&h), '\t');
+        assert!(res.is_err());
+        assert!(res.unwrap_err().contains("First field in range not found"));
+
+        // End index 0
+        let res = parse_field_list_with_header_preserve_order("f1-0", Some(&h), '\t');
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "field index must be >= 1 in `f1-0`");
+
+        // End name not found (Wait, end_idx logic uses unescape_name_pattern too)
+        // If end_unescaped parses as usize, it uses it.
+        // Else it looks up in header.
+        let res = parse_field_list_with_header_preserve_order("f1-x", Some(&h), '\t');
+        assert!(res.is_err());
+        assert!(res.unwrap_err().contains("Second field in range not found"));
+    }
+
+    #[test]
+    fn test_parse_field_list_with_header_preserve_order_name_requires_header_error() {
+        // This covers the case where header is Some, but we encounter a name that looks like a number <= 0 (e.g. "-5")
+        // But wait, if header is Some, we go to the second main block.
+        // token "-5"
+        // parse::<usize> fails.
+        // split_name_range_token("-5") -> None.
+        // ends_with('-') -> false.
+        // Unescape name pattern "-5". has_wildcard=false.
+        // get_index("-5") -> None.
+        // parse::<isize>("-5") -> Ok.
+        // Returns "field name `-5` requires header..." -> Wait, the error message in code is "field name `{}` requires header in `{}`".
+        // But we HAVE a header. This error message seems misleading in the context of "header is present but token looks like a negative number".
+        // Actually, looking at L518-522:
+        // if let Ok(_) = token.parse::<isize>() { return Err(...) }
+        // The message says "requires header". This implies it thinks it's a name, but maybe it should say "invalid field index"?
+        // Or maybe this logic is for when we failed to find it as a name, and it looks like a number, so we assume the user meant a number but it's invalid.
+        // But the error message is specific.
+
+        let h = Header::from_line("f1", '\t');
+        let res = parse_field_list_with_header_preserve_order("-5", Some(&h), '\t');
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "field name `-5` requires header in `-5`");
+    }
+
+    #[test]
+    fn test_name_matches_pattern_trailing_stars() {
+        // Matches "abc" against "abc**"
+        let h = Header::from_line("abc", '\t');
+        let res = parse_field_list_with_header("abc**", Some(&h), '\t');
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap(), vec![1]);
+    }
+
+    #[test]
     fn parse_field_list_with_header_numeric_and_names() {
         let header = Header::from_line("a\tb\tc", '\t');
         let v = parse_field_list_with_header("1,c", Some(&header), '\t').unwrap();
