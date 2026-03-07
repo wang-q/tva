@@ -212,3 +212,183 @@ fn from_html_list_mode_missing_col_keeps_empty() {
     let expected = "Title\tMissing\tAttr\nApple\t\t\nBanana\t\t\n";
     assert_eq!(stdout, expected);
 }
+
+#[test]
+fn from_html_query_empty_returns_original() {
+    let content = "<html><body><p>Test</p></body></html>";
+    let (stdout, _) = TvaCmd::new().args(&["from", "html"]).stdin(content).run();
+    assert_eq!(stdout, content);
+}
+
+#[test]
+fn from_html_parse_query_empty() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "html", "--query", "   "])
+        .stdin("<html></html>")
+        .run();
+    let content = "<html></html>";
+    assert_eq!(stdout, content);
+}
+
+#[test]
+fn from_html_query_attr_paren() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "from",
+            "html",
+            "--query",
+            "a attr(href)",
+            "tests/data/from_html/basic.html",
+        ])
+        .run();
+    let stdout = normalize_newlines(&stdout);
+    let expected = "/a1\n/a2\n";
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn from_html_query_attr_paren_quoted() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "from",
+            "html",
+            "--query",
+            "a attr(\"href\")",
+            "tests/data/from_html/basic.html",
+        ])
+        .run();
+    let stdout = normalize_newlines(&stdout);
+    let expected = "/a1\n/a2\n";
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn from_html_index_zero_fail() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "from",
+            "html",
+            "--index",
+            "0",
+            "tests/data/from_html/basic.html",
+        ])
+        .run_fail();
+    assert!(stderr.contains("Index must be >= 1"));
+}
+
+#[test]
+fn from_html_table_not_found() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "from",
+            "html",
+            "--table=#nonexistent",
+            "tests/data/from_html/basic.html",
+        ])
+        .run_fail();
+
+    if !stderr.contains("No table found matching") {
+        panic!("stderr was: {}", stderr);
+    }
+}
+
+#[test]
+fn from_html_table_direct_tr() {
+    let html = "<table><tr><td>Direct</td></tr></table>";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "html", "--table"])
+        .stdin(html)
+        .run();
+    assert_eq!(normalize_newlines(&stdout), "Direct\n");
+}
+
+#[test]
+fn from_html_table_nested_ignored() {
+    let html = "<table><div>Ignored</div><tr><td>Row</td></tr></table>";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "html", "--table"])
+        .stdin(html)
+        .run();
+    assert_eq!(normalize_newlines(&stdout), "Row\n");
+}
+
+#[test]
+fn from_html_col_invalid_format() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "from",
+            "html",
+            "--row",
+            "div",
+            "--col",
+            "InvalidFormat",
+            "tests/data/from_html/basic.html",
+        ])
+        .run_fail();
+    assert!(stderr.contains("Invalid column definition"));
+}
+
+#[test]
+fn from_html_col_empty_selector() {
+    let html = "<div class='row'>RowContent</div>";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "html", "--row", ".row", "--col", "Whole:"])
+        .stdin(html)
+        .run();
+    assert_eq!(normalize_newlines(&stdout), "Whole\nRowContent\n");
+}
+
+#[test]
+fn from_html_col_invalid_selector() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "from",
+            "html",
+            "--row",
+            "div",
+            "--col",
+            "Name:!!!",
+            "tests/data/from_html/basic.html",
+        ])
+        .run_fail();
+    assert!(stderr.contains("Invalid column selector"));
+}
+
+#[test]
+fn from_html_col_attr_paren_syntax() {
+    let html = r#"
+    <div class="item"><a href="/a1">1</a></div>
+    <div class="item"><a href="/a2">2</a></div>
+    "#;
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "from",
+            "html",
+            "--row",
+            ".item",
+            "--col",
+            "Link:a attr(href)",
+        ])
+        .stdin(html)
+        .run();
+
+    let expected = "Link\n/a1\n/a2\n";
+    assert_eq!(normalize_newlines(&stdout), expected);
+}
+
+#[test]
+fn from_html_col_attr_invalid_syntax() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "from",
+            "html",
+            "--row",
+            "div",
+            "--col",
+            "Name:attr{href",
+            "tests/data/from_html/basic.html",
+        ])
+        .run_fail();
+    assert!(stderr.contains("Invalid attr{} syntax"));
+}
