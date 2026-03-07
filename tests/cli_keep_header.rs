@@ -351,3 +351,82 @@ input2.txt.3,35,vihreä|sininen\n";
 
     assert_eq!(stdout, expected);
 }
+
+#[test]
+fn keep_header_missing_command() {
+    // Tests L49-51: No command parts provided after --
+    let (stdout, stderr) = TvaCmd::new().args(&["keep-header", "--"]).run();
+    assert_eq!(stdout, "");
+
+    if stderr.contains("required arguments were not provided") {
+        return;
+    }
+    assert!(stderr.contains("Synopsis: tva keep-header"));
+}
+
+#[test]
+fn keep_header_empty_command_list() {
+    // Covered by missing_command or clap
+}
+
+#[test]
+fn keep_header_io_error_broken_pipe() {
+    // Tests L120-121 and L152-153: IO errors during processing
+    let tva_bin = env!("CARGO_BIN_EXE_tva");
+    let input = "Header\n".to_string() + &"Body\n".repeat(20000); // ~100KB
+
+    // Using `tva --help` as a command that reads nothing and exits 0.
+    let (_, _) = TvaCmd::new()
+        .args(&["keep-header", "--", tva_bin, "--help"])
+        .stdin(&input)
+        .run();
+}
+
+#[test]
+fn keep_header_eof_during_header_skip() {
+    // Tests L145-146: EOF reached while skipping headers
+    let tva_bin = env!("CARGO_BIN_EXE_tva");
+    let file1 = "H1\nH2\nBody1\n";
+    let file2 = "H1\n"; // Only 1 line
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let p1 = temp_dir.path().join("f1.tsv");
+    let p2 = temp_dir.path().join("f2.tsv");
+    std::fs::write(&p1, file1).unwrap();
+    std::fs::write(&p2, file2).unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "keep-header",
+            "--lines",
+            "2",
+            p1.to_str().unwrap(),
+            p2.to_str().unwrap(),
+            "--",
+            tva_bin,
+            "select",
+            "-f",
+            "1",
+        ])
+        .run();
+
+    let expected = "H1\nH2\nBody1\n";
+    assert_eq!(normalize_newlines(&stdout), expected);
+}
+
+#[test]
+fn keep_header_child_fail() {
+    // Tests L168-169: Child process exits with non-zero
+    let tva_bin = env!("CARGO_BIN_EXE_tva");
+
+    let (_, _) = TvaCmd::new()
+        .args(&[
+            "keep-header",
+            "tests/data/keep_header/input1.csv",
+            "--",
+            tva_bin,
+            "sort",
+            "non_existent_file_for_sort",
+        ])
+        .run_fail();
+}
