@@ -996,6 +996,85 @@ fn join_error_invalid_whole_line_combo_key_and_fields_header_data_0_2() {
 }
 
 #[test]
+fn join_error_exclude_with_append() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "join",
+            "-f",
+            "tests/data/join/input1.tsv",
+            "--exclude",
+            "--append-fields",
+            "1",
+            "tests/data/join/input2.tsv",
+        ])
+        .run_fail();
+    assert!(stderr.contains("--exclude cannot be used with --append-fields"));
+}
+
+#[test]
+fn join_error_key_length_mismatch_noheader() {
+    // input1 has 5 fields, input2 has 5 fields.
+    // Use -k 1,2 for filter (2 keys) and -d 1 for data (1 key)
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "join",
+            "-f",
+            "tests/data/join/input1_noheader.tsv",
+            "-k",
+            "1,2",
+            "-d",
+            "1",
+            "tests/data/join/input2_noheader.tsv",
+        ])
+        .run_fail();
+    assert!(stderr.contains("different number of key-fields and data-fields"));
+}
+
+#[test]
+fn join_error_append_index_out_of_filter_header() {
+    // filter_basic.tsv has header: id, dv1, fv1, fv2 (4 fields)
+    // Try to append field 5
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "join",
+            "--header",
+            "-f",
+            "tests/data/join/filter_basic.tsv",
+            "-k",
+            "1",
+            "-a",
+            "5",
+            "tests/data/join/data_basic.tsv",
+        ])
+        .run_fail();
+
+    // Check if the error is from fields parsing OR explicit range check
+    assert!(
+        stderr.contains("append index 5 is out of range for filter header")
+            || stderr.contains("append index 5 is out of range")
+    );
+}
+
+#[test]
+fn join_error_data_key_index_out_of_range() {
+    // input1.tsv has 5 fields. Try to use field 6 as key.
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "join",
+            "--header",
+            "-f",
+            "tests/data/join/input1.tsv",
+            "-k",
+            "1",
+            "-d",
+            "6",
+            "tests/data/join/input2.tsv",
+        ])
+        .run_fail();
+    assert!(stderr.contains("key index 6 is out of range"));
+}
+
+#[test]
 fn join_error_invalid_whole_line_combo_key_and_fields_header_data_2_0() {
     let (_, stderr) = TvaCmd::new()
         .args(&[
