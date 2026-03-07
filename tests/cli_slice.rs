@@ -110,3 +110,60 @@ fn slice_start_ranges() {
 
     assert_eq!(stdout, expected);
 }
+
+#[test]
+fn slice_invalid_zero_index() {
+    // Tests L74-75 and L85-86: Row index must be >= 1
+    // Case 1: Single number 0
+    let (_, stderr) = TvaCmd::new()
+        .args(&["slice", "-r", "0"])
+        .stdin("header\n")
+        .run_fail();
+    assert!(stderr.contains("Row index must be >= 1"));
+
+    // Case 2: Range starting with 0 (0-5)
+    let (_, stderr2) = TvaCmd::new()
+        .args(&["slice", "-r", "0-5"])
+        .stdin("header\n")
+        .run_fail();
+    assert!(stderr2.contains("Row index must be >= 1"));
+}
+
+#[test]
+fn slice_invalid_range_order() {
+    // Tests L77-78: Invalid range: end < start
+    let (_, stderr) = TvaCmd::new()
+        .args(&["slice", "-r", "5-2"])
+        .stdin("header\n")
+        .run_fail();
+    assert!(stderr.contains("Invalid range: end < start"));
+}
+
+#[test]
+fn slice_empty_ranges_behavior() {
+    // Tests L140-147: Empty ranges list behavior
+    let input = "1\n2\n3\n";
+
+    // Case 1: Keep mode with no ranges -> Keep nothing
+    // But wait, if keep_header is set, header should still be printed?
+    // Let's test basic case first.
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice"]) // No -r provided
+        .stdin(input)
+        .run();
+    assert_eq!(stdout, ""); // Keep nothing
+
+    // Case 2: Drop mode (invert) with no ranges -> Drop nothing (Keep all)
+    let (stdout2, _) = TvaCmd::new()
+        .args(&["slice", "--invert"])
+        .stdin(input)
+        .run();
+    assert_eq!(stdout2, "1\n2\n3\n");
+
+    // Case 3: Keep mode with no ranges BUT with --header
+    let (stdout3, _) = TvaCmd::new()
+        .args(&["slice", "--header"])
+        .stdin(input)
+        .run();
+    assert_eq!(stdout3, "1\n"); // Header kept, rest dropped
+}
