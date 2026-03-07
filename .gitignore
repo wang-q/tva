@@ -100,3 +100,4 @@ Cargo.lock
 # mdBook output directory
 /book/
 /coverage-report*/
+coverge_*
