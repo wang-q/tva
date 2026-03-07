@@ -122,27 +122,86 @@ fn bin_error_field_not_found_in_header() {
 
 #[test]
 fn bin_new_name_field_index_out_of_bounds() {
-    // Input has 1 column, but we ask for field 2
     let input = "10\n20\n";
-    // With --new-name, we append a new column.
-    // If field index is out of bounds, the code should gracefully handle it (skipped == idx - 1 check fails or iter ends).
-    // Based on the code snippet:
-    // if idx == 0 { ... } else { loop ... }
-    // if skipped == idx - 1 { if let Some(start_pos) = iter.next() ... }
-    // If out of bounds, field_bytes remains None.
-    // Then nothing is written for the bin value?
-    // Let's verify behavior. It seems it just writes empty string or nothing?
-    // Wait, the code:
-    // if let Some(bytes) = field_bytes { ... write!(writer, "{}", result)?; }
-    // So if field_bytes is None, nothing is written for that value.
-    // But we still write "\n".
-    // So it should be "10\t\n20\t\n" if new-name is used?
-
     let expected = "10\t\n20\t\n";
 
     let (stdout, _) = TvaCmd::new()
         .stdin(input)
         .args(&["bin", "--width", "10", "--field", "2", "--new-name", "Bin"])
+        .run();
+
+    assert_eq!(stdout.replace("\r\n", "\n"), expected);
+}
+
+#[test]
+fn bin_multiple_files_header() {
+    let file1 = "H\n10\n";
+    let file2 = "H\n20\n";
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let p1 = temp_dir.path().join("f1.tsv");
+    let p2 = temp_dir.path().join("f2.tsv");
+    std::fs::write(&p1, file1).unwrap();
+    std::fs::write(&p2, file2).unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "bin",
+            "--width",
+            "10",
+            "--field",
+            "1",
+            "--header",
+            p1.to_str().unwrap(),
+            p2.to_str().unwrap(),
+        ])
+        .run();
+
+    // Expected: H\n10\n20\n (bins: 10->10, 20->20)
+    assert_eq!(stdout.replace("\r\n", "\n"), "H\n10\n20\n");
+}
+
+#[test]
+fn bin_field_index_zero_fail() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["bin", "--width", "10", "--field", "0"])
+        .stdin("10\n")
+        .run_fail();
+    assert!(stderr.contains("Field index must be >= 1"));
+}
+
+#[test]
+fn bin_field_index_logic_error_unreachable() {
+    // Tests L139-140: Field index logic error
+    // This is technically unreachable if validation works, but we can try to trigger it
+    // if `field_idx` remains None after all checks.
+    // But `field_idx` is set if field is numeric OR if header resolution succeeds.
+    // If header resolution fails, it returns error earlier.
+    // So this is defensive coding. Hard to trigger in CLI test without mocking internal state.
+}
+
+#[test]
+fn bin_new_name_field_parsing_optimization() {
+    // We use a file with multiple columns and select a middle one.
+    let input = "A\t12\tC\nB\t25\tD";
+    let expected = "A\t12\tC\t10\nB\t25\tD\t20\n"; // Binning col 2
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["bin", "--width", "10", "--field", "2", "--new-name", "Bin"])
+        .run();
+
+    assert_eq!(stdout.replace("\r\n", "\n"), expected);
+}
+
+#[test]
+fn bin_replace_mode_non_numeric_fallback() {
+    let input = "10\nNotANum\n30";
+    let expected = "10\nNotANum\n30\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["bin", "--width", "10", "--field", "1"])
         .run();
 
     assert_eq!(stdout.replace("\r\n", "\n"), expected);
