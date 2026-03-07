@@ -470,4 +470,33 @@ mod tests {
 
         std::fs::remove_file(path).unwrap();
     }
+
+    #[test]
+    fn test_read_lines_error() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap().to_string() + ".gz";
+
+        // Write invalid gzip data
+        {
+            let mut f = File::create(&path).unwrap();
+            f.write_all(b"not a gzip file").unwrap();
+        }
+
+        let result = read_lines(&path);
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        assert!(err.to_string().contains("tva: read error from"));
+
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn test_writer_error() {
+        // Try to create a file in a non-existent directory
+        let path = "non_existent_dir_12345/file.txt";
+        let result = writer(path);
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        assert!(err.to_string().contains("tva: could not create"));
+    }
 }
