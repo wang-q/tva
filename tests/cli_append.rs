@@ -827,3 +827,52 @@ fn append_line_buffered() {
         .run();
     assert_eq!(stdout, "a\tb\n1\t2\n");
 }
+
+#[test]
+fn append_line_buffered_multiple_files() {
+    // Test line-buffered mode with multiple files to cover header flush
+    let expected = "field1\tfield2\tfield3
+abc\tdef\tghi
+field1\tfield2\tfield3
+jkl\tmno\tpqr
+123\t456\t789
+xy1\txy2\txy3
+pqx\tpqy\tpqz
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--line-buffered",
+            "tests/data/append/input3x2.tsv",
+            "tests/data/append/input3x5.tsv",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn append_line_buffered_with_source() {
+    // Test line-buffered mode with --source-header flag
+    // Note: --source-header implies --header, so only first file's header is output
+    // Note: source label uses file_stem() (without extension)
+    let expected = "source\tfield1\tfield2\tfield3
+input3x2\tabc\tdef\tghi
+input3x5\tjkl\tmno\tpqr
+input3x5\t123\t456\t789
+input3x5\txy1\txy2\txy3
+input3x5\tpqx\tpqy\tpqz
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--line-buffered",
+            "--source-header",
+            "source",
+            "tests/data/append/input3x2.tsv",
+            "tests/data/append/input3x5.tsv",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
