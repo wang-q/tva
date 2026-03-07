@@ -206,3 +206,58 @@ fn bin_replace_mode_non_numeric_fallback() {
 
     assert_eq!(stdout.replace("\r\n", "\n"), expected);
 }
+
+#[test]
+fn bin_data_invalid_utf8_in_numeric_field() {
+    use assert_cmd::cargo::cargo_bin_cmd;
+
+    // Using 0xFF which is invalid UTF-8
+    let input = b"10\t\xFF\t30\n";
+
+    // assert_cmd doesn't expose underlying process builder directly in a way that allows us to
+    // easily write raw bytes to stdin while capturing output, unless we use Command::cargo_bin.
+    // TvaCmd uses cargo_bin_cmd! which returns assert_cmd::Command.
+    // assert_cmd::Command has .write_stdin(impl AsRef<[u8]>) but we need to verify output bytes too.
+    // TvaCmd wraps this but enforces String output.
+    let mut cmd = cargo_bin_cmd!("tva");
+    let assert = cmd
+        .args(&["bin", "--width", "10", "-f", "2"])
+        .write_stdin(input.as_slice())
+        .assert();
+
+    let output = assert.get_output();
+    assert_eq!(output.stdout, input);
+}
+
+#[test]
+fn bin_data_non_numeric_field() {
+    // Field 2 is "abc", not numeric.
+    // Should fallback to writing original value.
+    let input = "10\tabc\t30\n";
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["bin", "--width", "10", "-f", "2"])
+        .run();
+
+    assert_eq!(stdout.as_bytes(), input.as_bytes());
+}
+
+#[test]
+fn bin_new_name_append_mode_non_numeric() {
+    let input = "10\tabc\t30\n";
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["bin", "--width", "10", "-f", "2", "--new-name", "binned"])
+        .run();
+
+    assert_eq!(stdout.as_bytes(), b"10\tabc\t30\t\n");
+}
+
+#[test]
+fn bin_field_index_too_large() {
+    let (stdout, _) = TvaCmd::new()
+        .stdin("10\t20\n")
+        .args(&["bin", "--width", "10", "-f", "10"])
+        .run();
+    assert_eq!(stdout, "10\t20\n");
+}
