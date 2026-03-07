@@ -818,3 +818,12 @@ fn append_header_handling_with_source_tempfiles() {
     let expected = format!("SRC\th1\th2\n{}\t1\t2\n{}\t3\t4\n", name1, name2);
     assert_eq!(stdout, expected);
 }
+
+#[test]
+fn append_line_buffered() {
+    let (stdout, _) = TvaCmd::new()
+        .stdin("a\tb\n1\t2\n")
+        .args(&["append", "--line-buffered"])
+        .run();
+    assert_eq!(stdout, "a\tb\n1\t2\n");
+}

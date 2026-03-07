@@ -230,3 +230,30 @@ fn filter_label_basic() {
     assert_eq!(lines[2], "2\t15\tY");
     assert_eq!(lines[3], "3\t8\tN");
 }
+
+#[test]
+fn filter_error_label_values_format() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["filter", "--label-values", "PASS"])
+        .stdin("id\n1")
+        .run_fail();
+    assert!(stderr.contains("label-values must be PASS:FAIL"));
+}
+
+#[test]
+fn filter_error_delimiter_length() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["filter", "--delimiter", "TAB"])
+        .stdin("id\n1")
+        .run_fail();
+    assert!(stderr.contains("delimiter must be a single character"));
+}
+
+#[test]
+fn filter_error_label_conflict_count() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["filter", "--label", "tag", "--count"])
+        .stdin("id\n1")
+        .run_fail();
+    assert!(stderr.contains("--label conflicts with --count"));
+}

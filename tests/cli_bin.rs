@@ -261,3 +261,21 @@ fn bin_field_index_too_large() {
         .run();
     assert_eq!(stdout, "10\t20\n");
 }
+
+#[test]
+fn bin_field_skip_logic() {
+    // This test ensures the field skipping logic (L158-164) is exercised.
+    // We request field 3 (idx 2).
+    // The input has 3 columns: 10\t20\t30.
+    // The loop runs for i in 0..1 (skipping 1 tab).
+    // It should successfully skip and find the 3rd column.
+    let input = "10\t20\t30\n";
+    let expected = "10\t20\t30\t30\n"; // (30-0)/10 = 3 -> 3*10 = 30
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["bin", "--width", "10", "-f", "3", "--new-name", "bin"])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
