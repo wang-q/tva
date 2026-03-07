@@ -132,3 +132,59 @@ fn from_xlsx_error_non_existent_file() {
         .run_fail();
     assert!(stderr.contains("Failed to open file"));
 }
+
+#[test]
+fn from_xlsx_sheet_not_found_error() -> Result<(), Box<dyn std::error::Error>> {
+    let file = Builder::new().suffix(".xlsx").tempfile()?;
+    let file_path = file.path().to_str().unwrap();
+
+    let mut workbook = Workbook::new();
+    let _ = workbook.add_worksheet().set_name("Sheet1")?;
+    workbook.save(file_path)?;
+
+    let (_, stderr) = TvaCmd::new()
+        .args(&["from", "xlsx", "--sheet", "NonExistent", file_path])
+        .run_fail();
+
+    assert!(stderr.contains("Failed to read sheet 'NonExistent'"));
+
+    Ok(())
+}
+
+#[test]
+fn from_xlsx_data_types() -> Result<(), Box<dyn std::error::Error>> {
+    let file = Builder::new().suffix(".xlsx").tempfile()?;
+    let file_path = file.path().to_str().unwrap();
+
+    let mut workbook = Workbook::new();
+    let worksheet = workbook.add_worksheet();
+
+    // Row 0: Various types
+    worksheet.write_string(0, 0, "String")?;
+    worksheet.write_number(0, 1, 123.45)?;
+    worksheet.write_boolean(0, 2, true)?;
+    worksheet.write_boolean(0, 3, false)?;
+
+    // Row 1: Empty handling
+    // Empty string
+    worksheet.write_string(1, 0, "")?;
+    // Explicit empty
+    worksheet.write_string(1, 2, "AfterEmpty")?;
+
+    workbook.save(file_path)?;
+
+    let (stdout, _) = TvaCmd::new().args(&["from", "xlsx", file_path]).run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+
+    // Row 0: String, 123.45, true, false
+    assert!(lines[0].contains("String"));
+    assert!(lines[0].contains("123.45"));
+    assert!(lines[0].contains("true"));
+    assert!(lines[0].contains("false"));
+
+    // Row 1: "", "", "AfterEmpty"
+    assert!(lines[1].contains("AfterEmpty"));
+
+    Ok(())
+}
