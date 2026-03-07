@@ -1,6 +1,5 @@
 use crate::libs::tsv::fields::{parse_field_list_with_header_preserve_order, Header};
 use crate::libs::tsv::reader::TsvReader;
-use crate::libs::tsv::record::TsvRecord;
 use crate::libs::tsv::split::TsvSplitter;
 use clap::*;
 use std::collections::HashMap;
@@ -101,46 +100,26 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader = TsvReader::new(input.reader);
-        let mut header_record = TsvRecord::new();
         let mut header: Option<Header> = None;
 
         // If header flag is set, read the first line as header
         if has_header {
-            let mut has_record = false;
-            // Only read one record
-            reader
-                .for_each_record(|rec| {
-                    header_record.parse_line(rec, b'\t');
-                    has_record = true;
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::Interrupted,
-                        "Stop iteration",
-                    ))
-                })
-                .or_else(|e| {
-                    if e.kind() == std::io::ErrorKind::Interrupted {
-                        Ok(())
-                    } else {
-                        Err(e)
+            if let Some(header_line) = reader.read_header()? {
+                // Write header only for the first file
+                if !header_written {
+                    writer.write_all(&header_line)?;
+                    writer.write_all(b"\n")?;
+                    if line_buffered {
+                        writer.flush()?;
                     }
-                })?;
+                    header_written = true;
+                }
 
-            if !has_record {
+                let header_str = std::str::from_utf8(&header_line)?;
+                header = Some(Header::from_line(header_str, '\t'));
+            } else {
                 continue; // Empty file
             }
-
-            // Write header only for the first file
-            if !header_written {
-                writer.write_all(header_record.as_line())?;
-                writer.write_all(b"\n")?;
-                if line_buffered {
-                    writer.flush()?;
-                }
-                header_written = true;
-            }
-
-            let header_str = std::str::from_utf8(header_record.as_line())?;
-            header = Some(Header::from_line(header_str, '\t'));
         }
 
         // Identify which columns need to be filled.
@@ -149,9 +128,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         for spec in &field_specs {
             let indices =
                 parse_field_list_with_header_preserve_order(spec, header.as_ref(), '\t')
-                    .map_err(|e| {
-                        std::io::Error::new(std::io::ErrorKind::InvalidInput, e)
-                    })?;
+                    .map_err(|e| anyhow::anyhow!(e))?;
 
             for idx in indices {
                 // idx is 1-based, convert to 0-based
