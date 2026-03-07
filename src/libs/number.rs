@@ -143,4 +143,36 @@ mod tests {
         assert_eq!(format_float(f64::NEG_INFINITY, Some(2)), "-inf");
         assert_eq!(format_float(1.23456, None), "1.23456");
     }
+
+    #[test]
+    fn test_trim_bytes() {
+        // Tests L12-13 and L15-16: trim_bytes whitespace handling
+        assert_eq!(trim_bytes(b"  123  "), b"123");
+        assert_eq!(trim_bytes(b"\t123\n"), b"123");
+        assert_eq!(trim_bytes(b"123"), b"123");
+        assert_eq!(trim_bytes(b"   "), b""); // All whitespace
+        assert_eq!(trim_bytes(b""), b""); // Empty
+    }
+
+    #[test]
+    fn test_fast_parse_f64_empty() {
+        // Tests L30-31: fast_parse_f64 empty input check
+        assert_eq!(fast_parse_f64(b""), None);
+        assert_eq!(fast_parse_f64(b"   "), None); // Trimmed becomes empty
+    }
+
+    #[test]
+    fn test_format_float_trimming() {
+        // Tests L99-100: format_float trailing zero trimming logic
+        // Case 1: "10.50" -> "10.5" (L99 executed, L100 not)
+        assert_eq!(format_float(10.5, Some(2)), "10.5");
+
+        // Case 2: "10.00" -> "10." -> "10" (L99 executed, L100 executed)
+        assert_eq!(format_float(10.0, Some(2)), "10");
+
+        // Case 3: "10" (no dot) -> "10" (L99 not reached because contains('.') is false?)
+        // Wait, format!("{:.1$}", 10.0, 0) gives "10".
+        // If precision is 0, format! might output integer string without dot.
+        assert_eq!(format_float(10.123, Some(0)), "10");
+    }
 }

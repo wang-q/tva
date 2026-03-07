@@ -29,6 +29,16 @@ git diff v0.2.2 HEAD -- "*.rs" "*.md" > gitdiff.txt
 
 ---
 
+## code coverage
+
+```bash
+rustup component add llvm-tools
+cargo install cargo-llvm-cov
+
+# 生成覆盖率报告
+cargo llvm-cov --html
+```
+
 ## 深度技术分析
 
 ### 参考项目: rust-csv
