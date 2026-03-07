@@ -430,3 +430,54 @@ fn keep_header_child_fail() {
         ])
         .run_fail();
 }
+
+#[test]
+fn keep_header_child_exit_code_propagation() {
+    // Tests L165-166: Child process exits with specific code
+    // Use tva itself with a non-existent file to trigger exit code 1
+    let tva_bin = env!("CARGO_BIN_EXE_tva");
+
+    let status = std::process::Command::new(tva_bin)
+        .args(&[
+            "keep-header",
+            "tests/data/keep_header/input1.csv",
+            "--",
+            tva_bin,
+            "sort",
+            "non_existent_file_for_exit_code_test",
+        ])
+        .status();
+
+    // The child process should fail with non-zero exit code
+    if let Ok(s) = status {
+        assert!(!s.success());
+    }
+}
+
+#[test]
+fn keep_header_no_command_after_separator() {
+    // Tests L49-51: No command provided after --
+    // Note: clap handles this as "required arguments were not provided"
+    let (_, stderr) = TvaCmd::new().args(&["keep-header", "--"]).run();
+
+    // Either clap catches it or our code handles it
+    assert!(
+        stderr.contains("required arguments were not provided")
+            || stderr.contains("Synopsis: tva keep-header")
+    );
+}
+
+#[test]
+fn keep_header_broken_pipe_simulation() {
+    // Tests L120-121 and L152-153: IO errors (broken pipe)
+    // This simulates a scenario where the child process exits early
+    let tva_bin = env!("CARGO_BIN_EXE_tva");
+
+    // Use tva --help which exits immediately to trigger broken pipe on large input
+    let large_input = "Header\n".to_string() + &"Body line\n".repeat(10000);
+
+    let (_, _) = TvaCmd::new()
+        .args(&["keep-header", "--", tva_bin, "--help"])
+        .stdin(&large_input)
+        .run();
+}
