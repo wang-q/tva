@@ -91,3 +91,42 @@ fn check_file_open_error() {
 
     assert!(stderr.contains("could not open"));
 }
+
+#[test]
+fn check_lossy_utf8_error_display() {
+    // Tests L41: eprintln!("  {}", String::from_utf8_lossy(record));
+
+    // First line has 3 fields.
+    // Second line has 2 fields (with invalid UTF-8).
+    // We need second line to have DIFFERENT number of fields to trigger error printing.
+    let input = b"col1\tcol2\tcol3\n\xFF\tval2\n"; // \xFF is invalid UTF-8
+
+    let temp = TempDir::new().unwrap();
+    let file_path = temp.path().join("invalid_utf8.tsv");
+    fs::write(&file_path, input).unwrap();
+
+    let (_, stderr) = TvaCmd::new()
+        .args(&["check", file_path.to_str().unwrap()])
+        .run_fail();
+
+    // Should contain replacement character for \xFF
+    assert!(stderr.contains("\u{FFFD}"));
+    assert!(stderr.contains("line 2 (2 fields)"));
+    assert!(stderr.contains("expected 3"));
+}
+
+#[test]
+fn check_multiple_files_consistent() {
+    // Test multiple files that ARE consistent (L25 loop continuation)
+    let temp = TempDir::new().unwrap();
+    let file1 = temp.path().join("f1.tsv");
+    let file2 = temp.path().join("f2.tsv");
+    fs::write(&file1, "a\tb\n1\t2\n").unwrap();
+    fs::write(&file2, "3\t4\n5\t6\n").unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["check", file1.to_str().unwrap(), file2.to_str().unwrap()])
+        .run();
+
+    assert!(stdout.contains("4 lines, 2 fields"));
+}
