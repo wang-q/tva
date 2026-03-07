@@ -95,6 +95,31 @@ mod tests {
         assert!(item1 == item3);
         assert!(item1 <= item3);
         assert!(item1 >= item3);
+
+        // Test Ord explicitly to cover cmp() (L44-47)
+        assert_eq!(item1.cmp(&item2), Ordering::Less);
+        assert_eq!(item2.cmp(&item1), Ordering::Greater);
+        assert_eq!(item1.cmp(&item3), Ordering::Equal);
+
+        // Test NaN handling in cmp (fallback to Equal)
+        // Although in standard f64 PartialOrd, NaN != NaN.
+        // partial_cmp(NaN, NaN) returns None.
+        // unwrap_or(Equal) should return Equal.
+        let item_nan1 = WeightedItem {
+            key: f64::NAN,
+            record: vec![],
+            original_index: 3,
+        };
+        let item_nan2 = WeightedItem {
+            key: f64::NAN,
+            record: vec![],
+            original_index: 4,
+        };
+        assert_eq!(item_nan1.cmp(&item_nan2), Ordering::Equal);
+
+        // Compare normal with NaN
+        // partial_cmp(1.0, NaN) -> None -> Equal
+        assert_eq!(item1.cmp(&item_nan1), Ordering::Equal);
     }
 
     #[test]

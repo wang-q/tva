@@ -114,6 +114,69 @@ mod tests {
         // Each line should have random value prefix
         assert!(lines[0].contains('\t'));
     }
+    #[test]
+    fn test_inorder_sampler_edge_cases() {
+        // Test empty
+        let mut sampler = InorderSampler {
+            k: 2,
+            rows: Vec::new(),
+        };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+        sampler.finalize(&mut writer, &mut rng, false).unwrap();
+        assert!(writer.is_empty()); // L142-143
+
+        // Test k >= n
+        let mut sampler = InorderSampler {
+            k: 5,
+            rows: Vec::new(),
+        };
+        sampler.process(b"1", &mut writer, &mut rng).unwrap();
+        sampler.process(b"2", &mut writer, &mut rng).unwrap();
+        writer.clear();
+        sampler.finalize(&mut writer, &mut rng, false).unwrap(); // L145-149
+        let s = String::from_utf8(writer).unwrap();
+        let lines: Vec<&str> = s.lines().collect();
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0], "1");
+        assert_eq!(lines[1], "2");
+    }
+
+    #[test]
+    fn test_replacement_sampler_edge_cases() {
+        // Test k=0
+        let mut sampler = ReplacementSampler {
+            k: 0,
+            rows: Vec::new(),
+        };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+        sampler.process(b"1", &mut writer, &mut rng).unwrap();
+        sampler.finalize(&mut writer, &mut rng, false).unwrap();
+        assert!(writer.is_empty()); // L189-190
+
+        // Test empty rows
+        let mut sampler = ReplacementSampler {
+            k: 5,
+            rows: Vec::new(),
+        };
+        writer.clear();
+        sampler.finalize(&mut writer, &mut rng, false).unwrap();
+        assert!(writer.is_empty()); // L189-190
+    }
+
+    #[test]
+    fn test_compat_random_sampler_edge_cases() {
+        // Test empty
+        let mut sampler = CompatRandomSampler {
+            k: 5,
+            rows: Vec::new(),
+        };
+        let mut rng = RapidRng::new(123);
+        let mut writer = Vec::new();
+        sampler.finalize(&mut writer, &mut rng, false).unwrap();
+        assert!(writer.is_empty()); // L225-226
+    }
 }
 
 pub struct InorderSampler {
