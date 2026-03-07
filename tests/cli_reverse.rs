@@ -253,50 +253,17 @@ fn reverse_header_only_no_newline() {
 #[test]
 fn reverse_mmap_fallback() {
     // Tests lines 138-152 in reverse.rs: fallback when mmap fails
-    // We can simulate this by using /dev/zero or similar special file if on linux,
-    // but on windows/cross-platform it's harder to force mmap fail on a regular file.
-    // However, we can use a small file and rely on the fact that mmap might not be used
-    // or we can try to use a directory or something that fails mmap but passes File::open?
-    // No, File::open on directory works but read might behave differently.
-    // A reliable way to trigger mmap failure but successful read is tricky in pure CLI tests
-    // without mocking.
-    // But we can try using a 0-length file?
-    // Mmap on 0-length file usually succeeds or returns empty mmap.
-    //
-    // Another approach: use a file in a virtual filesystem like /proc/self/cmdline on Linux.
-    // On Windows?
-    // Maybe we can just trust the code coverage report or use a mock if possible.
-    //
-    // Wait, mmap fails for 0-length files on some platforms/implementations?
-    // Let's try 0-length file first, but that goes to "data.is_empty()" check early.
-    //
-    // What if we try to read a file that is locked or special?
-    //
-    // Let's try to test the logic by manually invoking the function if we were unit testing,
-    // but here we are CLI testing.
-    //
-    // Actually, on many systems, mmaping a file of size 0 might return error or empty.
-    // If it returns error, we hit the fallback.
-    // Let's try an empty file.
+    // We force this using the hidden --no-mmap flag
+    let input = "1\n2\n3\n";
+    let expected = "3\n2\n1\n";
 
     let temp_dir = tempfile::tempdir().unwrap();
-    let file_path = temp_dir.path().join("empty_file.tsv");
-    fs::write(&file_path, "").unwrap();
+    let file_path = temp_dir.path().join("fallback.tsv");
+    fs::write(&file_path, input).unwrap();
 
     let (stdout, _) = TvaCmd::new()
-        .args(&["reverse", file_path.to_str().unwrap()])
+        .args(&["reverse", "--no-mmap", file_path.to_str().unwrap()])
         .run();
 
-    assert_eq!(stdout, "");
-
-    // To really hit the fallback read logic (and not just empty mmap),
-    // we need something that fails mmap.
-    // For now, let's just add the empty file test which might hit that path depending on impl.
-    //
-    // A better way might be to use a very large file? No.
-    //
-    // Let's assume the user just wants a test that *might* cover it, or accepts that
-    // simulating mmap failure is hard.
-    // We will add a test with empty file and a test with small file (normal path).
-    // The fallback logic is standard read_to_end.
+    assert_eq!(stdout, expected);
 }

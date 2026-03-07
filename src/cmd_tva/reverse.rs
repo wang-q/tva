@@ -29,6 +29,13 @@ pub fn make_subcommand() -> Command {
                 .default_value("stdout")
                 .help("Output filename. [stdout] for screen"),
         )
+        .arg(
+            Arg::new("no-mmap")
+                .long("no-mmap")
+                .action(ArgAction::SetTrue)
+                .hide(true)
+                .help("Disable memory mapping (for testing)"),
+        )
 }
 
 fn process_buffer(
@@ -107,6 +114,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let header_mode = args.get_flag("header");
+    let no_mmap = args.get_flag("no-mmap");
     let mut header_printed = false;
 
     for infile in infiles {
@@ -123,10 +131,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             process_buffer(&mut writer, &buf, b'\n', header_mode, &mut header_printed)?;
         } else {
             let file = File::open(&infile)?;
-            // Attempt mmap
-            let mmap = unsafe { Mmap::map(&file) };
 
-            match mmap {
+            // Attempt mmap
+            let mmap_res = if no_mmap {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "mmap disabled",
+                ))
+            } else {
+                unsafe { Mmap::map(&file) }
+            };
+
+            match mmap_res {
                 Ok(mmap) => {
                     // We read backwards.
                     // madvise(MADV_SEQUENTIAL) might assume forward.
