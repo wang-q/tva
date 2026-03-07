@@ -1620,3 +1620,186 @@ fn sample_gen_random_inorder_key_reordered() {
 
     assert_eq!(val1, val2);
 }
+
+#[test]
+fn sample_outfile_option() {
+    let input = "a\nb\n";
+    let temp_dir = tempfile::tempdir().unwrap();
+    let output_path = temp_dir.path().join("output.tsv");
+
+    TvaCmd::new()
+        .args(&[
+            "sample",
+            "--num",
+            "2",
+            "--static-seed",
+            "--outfile",
+            output_path.to_str().unwrap(),
+        ])
+        .stdin(input)
+        .run();
+
+    let content = std::fs::read_to_string(&output_path).unwrap();
+    let lines: Vec<&str> = content.lines().collect();
+    assert_eq!(lines.len(), 2);
+    assert!(lines.contains(&"a"));
+    assert!(lines.contains(&"b"));
+}
+
+#[test]
+fn sample_gen_random_inorder_random_seed() {
+    // Should produce different results on subsequent runs (highly likely)
+    let input = "a\n";
+
+    // Run 1
+    let (stdout1, _) = TvaCmd::new()
+        .args(&["sample", "--gen-random-inorder"])
+        .stdin(input)
+        .run();
+
+    // Run 2
+    let (stdout2, _) = TvaCmd::new()
+        .args(&["sample", "--gen-random-inorder"])
+        .stdin(input)
+        .run();
+
+    // The random value is the first column.
+    // Wait, with 1 line, it's just "VAL\ta".
+    // If we run it twice, VAL should be different.
+    assert_ne!(stdout1, stdout2);
+}
+
+#[test]
+fn sample_gen_random_inorder_explicit_seed() {
+    let input = "a\n";
+    let seed = "12345";
+
+    let (stdout1, _) = TvaCmd::new()
+        .args(&["sample", "--gen-random-inorder", "--seed-value", seed])
+        .stdin(input)
+        .run();
+
+    let (stdout2, _) = TvaCmd::new()
+        .args(&["sample", "--gen-random-inorder", "--seed-value", seed])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout1, stdout2);
+}
+
+#[test]
+fn sample_gen_random_inorder_empty_lines() {
+    let input = "a\n\nb\n";
+    // Should output:
+    // VAL\ta
+    //
+    // VAL\tb
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "--gen-random-inorder", "--static-seed"])
+        .stdin(input)
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // lines() skips empty lines if they are just newline? No, lines() yields empty string for "\n\n".
+    // "a\n\nb\n" -> ["a", "", "b"]
+    // Output should be similar structure.
+
+    // Check if we have an empty line
+    assert!(lines.contains(&""));
+    assert_eq!(lines.len(), 3);
+}
+
+#[test]
+fn sample_gen_random_inorder_key_fields_no_header() {
+    // Test logic when no header but key fields are used (by index)
+    // L420-424 logic
+    let input = "A\t1\nA\t2\n";
+
+    // Key field 1 (A).
+    // Both lines have same key "A". Should get same random value.
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--gen-random-inorder",
+            "--key-fields",
+            "1",
+            "--static-seed",
+        ])
+        .stdin(input)
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 2);
+
+    let val1 = lines[0].split('\t').next().unwrap();
+    let val2 = lines[1].split('\t').next().unwrap();
+
+    assert_eq!(val1, val2);
+}
+
+#[test]
+fn sample_gen_random_inorder_key_fields_invalid_no_header() {
+    // Should fail with InvalidInput
+    let input = "A\t1\n";
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "sample",
+            "--gen-random-inorder",
+            "--key-fields",
+            "name_without_header",
+        ])
+        .stdin(input)
+        .run_fail();
+
+    // Error message might vary depending on field parsing logic.
+    // "field name `name_without_header` requires header in `name_without_header`"
+    assert!(stderr.contains("requires header"));
+}
+
+#[test]
+fn sample_bernoulli_basic() {
+    // L537-543: prob < 1.0, no key fields.
+    // p=0.5. Input 10 lines.
+    let input: String = (0..10)
+        .map(|i| format!("line{}", i))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "-p", "0.5", "--static-seed"])
+        .stdin(input)
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // With static seed, should be deterministic.
+    // Just check it runs and produces output.
+    assert!(!lines.is_empty());
+    assert!(lines.len() <= 10);
+}
+
+#[test]
+fn sample_standard_empty_lines() {
+    // L618-620
+    let input = "a\n\nb\n";
+    // Sampling 2 lines.
+    // Empty lines are usually skipped or preserved?
+    // Code says: if record.is_empty() { writer.write_all(b"\n")?; return Ok(()); }
+    // So they are preserved in output immediately, NOT counted towards sample?
+    // Wait, run_standard_sampling logic:
+    // It iterates records. If empty, writes newline and returns Ok.
+    // So it bypasses the sampler.
+    // So if I ask for -n 2, and have empty lines, do they count? No.
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sample", "-n", "2", "--static-seed"])
+        .stdin(input)
+        .run();
+
+    // Output should contain "a", "b", and the empty line.
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert!(lines.contains(&""));
+    assert!(lines.contains(&"a"));
+    assert!(lines.contains(&"b"));
+}
