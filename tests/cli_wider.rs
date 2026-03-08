@@ -687,6 +687,7 @@ fn wider_empty_file() {
 #[test]
 fn wider_count_no_values_from() {
     // Test count operation doesn't require --values-from (covers L227-228)
+    // Note: without --id-cols, code uses default ID columns logic (all except names)
     let input = "
 ID	name
 A	X
@@ -703,8 +704,6 @@ B	0	1
             "wider",
             "--names-from",
             "name",
-            "--id-cols",
-            "ID",
             "--op",
             "count",
             "--values-fill",
