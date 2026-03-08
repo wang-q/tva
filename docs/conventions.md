@@ -6,42 +6,19 @@ This document defines the naming and behavior conventions for parameters shared 
 
 Headers are the column name rows in data files. Different commands have different header processing requirements, but parameter naming should remain consistent.
 
-### Basic Parameters
+*   **Basic Parameters**
+    - `--header` / `-H`: Enable header processing (default: disabled)
+    - `--header-lines N`: Specify first N lines as header (default: 1)
+    - `--header-comments`: Treat lines starting with `#` as part of header
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `--header` / `-H` | Enable header processing | disabled |
-| `--header-lines N` | Specify first N lines as header | 1 |
-| `--header-comments` | Treat lines starting with `#` as part of header | disabled |
+*   **Header Detection Rules**
+    - If `--header-lines N` is specified: take first N lines as header
+    - If `--header-comments` is enabled: take all `#` lines + the next line as header
+    - Default: take the first non-empty line as header
 
-### Header Detection Rules
-
-When `--header` is enabled, headers are detected in the following order:
-
-1. If `--header-lines N` is specified: take first N lines as header
-2. If `--header-comments` is enabled: take all `#` lines + the next line as header
-3. Default: take the first non-empty line as header
-
-### Special Commands
-
-#### `split`
-
-`split` needs to distinguish between input and output header strategies:
-
-| Parameter | Description |
-|-----------|-------------|
-| `--header-in-out` | Input has header, output files also write header (default) |
-| `--header-in-only` | Input has header, but output files do not write header |
-
-Note: `--header` is an alias for `--header-in-out`.
-
-#### `keep-header`
-
-`keep-header` focuses on preserving headers and passing them to subcommands:
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `--lines N` / `-n` | Specify number of header lines | 1 |
+*   **Special Commands**
+    - `split`: Uses `--header-in-out` (input has header, output writes header, default) or `--header-in-only` (input has header, output does not write header). `--header` is an alias for `--header-in-out`.
+    - `keep-header`: Uses `--lines N` / `-n` to specify number of header lines (default: 1)
 
 ## Input/Output Conventions
 

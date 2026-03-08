@@ -103,47 +103,47 @@ pub fn detect_header(data: &[u8], config: &HeaderConfig) -> DetectedHeader {
         while pos < data.len() {
             let line_end = find_line_end(data, pos);
             let line = &data[pos..line_end];
-            
+
             // Remove trailing '\r' for Windows line endings
             let line = if line.ends_with(b"\r") {
                 &line[..line.len() - 1]
             } else {
                 line
             };
-            
+
             if !line.is_empty() {
                 break;
             }
-            
+
             // Move past the newline
             pos = line_end;
             if pos < data.len() && data[pos] == b'\n' {
                 pos += 1;
             }
         }
-        
+
         // Now collect exactly config.lines non-empty lines
         while line_count < config.lines && pos < data.len() {
             let line_end = find_line_end(data, pos);
             let line = &data[pos..line_end];
-            
+
             // Remove trailing '\r' for Windows line endings
             let line = if line.ends_with(b"\r") {
                 &line[..line.len() - 1]
             } else {
                 line
             };
-            
+
             lines.push(line.to_vec());
             line_count += 1;
-            
+
             // Move past the newline
             pos = line_end;
             if pos < data.len() && data[pos] == b'\n' {
                 pos += 1;
             }
         }
-        
+
         return DetectedHeader {
             lines,
             bytes_consumed: pos,
@@ -158,7 +158,7 @@ pub fn detect_header(data: &[u8], config: &HeaderConfig) -> DetectedHeader {
 
         let line_end = find_line_end(data, pos);
         let line = &data[pos..line_end];
-        
+
         // Remove trailing '\r'
         let line = if line.ends_with(b"\r") {
             &line[..line.len() - 1]
@@ -365,10 +365,10 @@ mod tests {
     fn test_handler_process_first_line() {
         let config = HeaderConfig::new().enabled();
         let mut handler = HeaderHandler::new(config);
-        
+
         assert!(handler.process_first_line(b"col1\tcol2").unwrap());
         assert_eq!(handler.header(), Some(b"col1\tcol2".as_slice()));
-        
+
         // Second file's first line should not be treated as header
         handler.end_of_file();
         assert!(!handler.process_first_line(b"val1\tval2").unwrap());
