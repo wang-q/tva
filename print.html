@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-63efd688.js";
+            window.path_to_searchindex_js = "searchindex-acaf8ee7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -2129,8 +2129,8 @@ Mega Gadget     $29.99  /buy/gadget
 <li>
 <p><strong>Header Detection Modes</strong> (mutually exclusive)</p>
 <ul>
-<li><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode - take the first non-empty line as header (contains column names)</li>
-<li><code>--header-lines N</code>: <strong>LinesN</strong> mode - take exactly N non-empty lines as header</li>
+<li><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode - take the first line as header (contains column names), even if empty</li>
+<li><code>--header-lines N</code>: <strong>LinesN</strong> mode - take exactly N lines as header (including empty lines)</li>
 <li><code>--header-hash</code>: <strong>HashLines</strong> mode - take all consecutive <code>#</code> lines as header (metadata only)</li>
 <li><code>--header-hash1</code>: <strong>HashLines1</strong> mode - take <code>#</code> lines plus the next line as header (contains column names)</li>
 </ul>
@@ -2147,7 +2147,7 @@ Mega Gadget     $29.99  /buy/gadget
 </li>
 <li>Mode behavior:
 <ul>
-<li><code>FirstLine</code>: <code>lines</code> is empty, <code>column_names_line</code> is the first non-empty line</li>
+<li><code>FirstLine</code>: <code>lines</code> is empty, <code>column_names_line</code> is the first line</li>
 <li><code>LinesN(n)</code>: <code>lines</code> contains first n lines, <code>column_names_line</code> is the nth line</li>
 <li><code>HashLines</code>: <code>lines</code> contains <code>#</code> lines, <code>column_names_line</code> is None</li>
 <li><code>HashLines1</code>: <code>lines</code> contains <code>#</code> lines + column names, <code>column_names_line</code> is the column names line</li>
@@ -2161,6 +2161,11 @@ Mega Gadget     $29.99  /buy/gadget
 <li><code>split</code>: Uses <code>--header-in-out</code> (input has header, output writes header, default) or <code>--header-in-only</code> (input has header, output does not write header). <code>--header</code> is an alias for <code>--header-in-out</code>.</li>
 <li><code>keep-header</code>: Uses <code>--lines N</code> / <code>-n</code> to specify number of header lines (default: 1)</li>
 </ul>
+</li>
+<li>
+<p><strong>Commands by Header Mode Support</strong></p>
+<p><strong>FirstLine and HashLines1 modes</strong> (modes that provide column names): <code>select</code></p>
+<p><strong>All four modes</strong> (FirstLine, LinesN, HashLines, HashLines1): <code>blank</code>, <code>filter</code></p>
 </li>
 </ul>
 <h2 id="inputoutput-conventions"><a class="header" href="#inputoutput-conventions">Input/Output Conventions</a></h2>
@@ -2272,35 +2277,38 @@ must be escaped with <code>\</code>.</li>
 <p>Serious errors return non-zero exit codes.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="select"><a class="header" href="#select">select</a></h1>
-<p>Reads TSV data from files or standard input and writes selected fields to
-standard output.</p>
-<p>Fields can be specified by number or, when a header line is present, by field
-name. Field numbers are 1-based and support ranges, for example <code>1,3-5</code>. When
-<code>--header</code> is set, field names from the first header line can be used in the
-field list.</p>
-<p>Input:</p>
-<ul>
-<li>If no input files are given, or an input file is <code>stdin</code>, data is read from
-standard input.</li>
-<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
-</ul>
-<p>Selection:</p>
+<p>Selects and reorders TSV fields.</p>
+<p>Behavior:</p>
 <ul>
 <li>One of <code>--fields</code>/<code>-f</code> or <code>--exclude</code>/<code>-e</code> is required.</li>
 <li><code>--fields</code>/<code>-f</code> keeps only the listed fields, in the order given.</li>
 <li><code>--exclude</code>/<code>-e</code> drops the listed fields and keeps all others.</li>
-<li>In header mode, field names and numeric indices can be mixed.</li>
+<li>Use <code>--rest</code> to control where unlisted fields appear in the output.</li>
 </ul>
-<p>Field Syntax:</p>
+<p>Input:</p>
 <ul>
-<li>Field lists support 1-based indices, ranges (<code>1-3,5-7</code>), header names, name
-ranges (<code>run-user_time</code>), and wildcards (<code>*_time</code>).</li>
-<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
 </ul>
 <p>Output:</p>
 <ul>
 <li>By default, output is written to standard output.</li>
 <li>Use <code>--outfile</code> to write to a file instead.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
+<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header (even if empty).
+The header is written once at the top of the output.</li>
+<li><code>--header-hash1</code>: Treats consecutive ‘#’ lines plus the next line as header.
+The next line (column names) is written once at the top of the output.</li>
+<li>In header mode, field names from the header can be used in field lists.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li>Field lists support 1-based indices, ranges (<code>1-3,5-7</code>), header names, name
+ranges (<code>run-user_time</code>), and wildcards (<code>*_time</code>).</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
 </ul>
 <p>Examples:</p>
 <ol>
@@ -2406,12 +2414,6 @@ changing input order.</li>
 <ul>
 <li>Reads from files or standard input; multiple files are processed as one stream.</li>
 <li>Files ending in <code>.gz</code> are transparently decompressed.</li>
-</ul>
-<p>Header behavior:</p>
-<ul>
-<li><code>--header</code> / <code>-H</code>: Treats the first non-empty line of the input as a header.
-The header is written once at the top of the output. Tests are applied only
-to data rows.</li>
 </ul>
 <p>Tests and logic:</p>
 <ul>
