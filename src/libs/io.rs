@@ -353,6 +353,21 @@ impl FileWriterManager {
         }
     }
 
+    /// Returns the output directory.
+    pub fn dir(&self) -> &Path {
+        &self.dir
+    }
+
+    /// Marks the given indices as already initialized.
+    ///
+    /// This is useful when appending to existing files - the manager
+    /// will append instead of creating new files for these indices.
+    pub fn mark_initialized(&mut self, indices: &[usize]) {
+        for &idx in indices {
+            self.initialized.insert(idx);
+        }
+    }
+
     /// Gets a writer for the specified file index.
     ///
     /// If the writer is already open, returns the existing writer.
@@ -398,6 +413,68 @@ impl FileWriterManager {
 
         self.initialized.insert(idx);
         self.writers.insert(idx, BufWriter::new(file));
+
+        Ok(self.writers.get_mut(&idx).unwrap())
+    }
+
+    /// Gets a writer for the specified file index, with optional header writing.
+    ///
+    /// Similar to `get_writer`, but writes a header line when creating a new file
+    /// (not appending to an existing one).
+    ///
+    /// # Arguments
+    ///
+    /// * `idx` - The file index (used to construct filename)
+    /// * `prefix` - Filename prefix
+    /// * `suffix` - Filename suffix
+    /// * `header` - Optional header line to write when creating a new file
+    pub fn get_writer_with_header(
+        &mut self,
+        idx: usize,
+        prefix: &str,
+        suffix: &str,
+        header: Option<&[u8]>,
+    ) -> io::Result<&mut BufWriter<File>> {
+        // Check if already open
+        if self.writers.contains_key(&idx) {
+            // Move to end (MRU) if using LRU logic
+            if self.max_open > 0 {
+                if let Some((_, v)) = self.writers.shift_remove_entry(&idx) {
+                    self.writers.insert(idx, v);
+                }
+            }
+            return Ok(self.writers.get_mut(&idx).unwrap());
+        }
+
+        // Evict LRU if at capacity
+        if self.max_open > 0 && self.writers.len() >= self.max_open {
+            self.writers.shift_remove_index(0);
+        }
+
+        // Open the file
+        let filename = format!("{}{}{}", prefix, idx, suffix);
+        let path = self.dir.join(&filename);
+        let is_append = self.initialized.contains(&idx);
+        let existed = path.exists();
+
+        let file = if is_append {
+            OpenOptions::new().create(true).append(true).open(&path)?
+        } else {
+            File::create(&path)?
+        };
+
+        let mut writer = BufWriter::new(file);
+
+        // Write header if provided and we're creating a new file (not appending)
+        if let Some(h) = header {
+            if !(is_append && existed) {
+                writer.write_all(h)?;
+                writer.write_all(b"\n")?;
+            }
+        }
+
+        self.initialized.insert(idx);
+        self.writers.insert(idx, writer);
 
         Ok(self.writers.get_mut(&idx).unwrap())
     }

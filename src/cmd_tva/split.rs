@@ -1,9 +1,7 @@
 use clap::*;
-use indexmap::IndexMap;
 use rapidhash::{rapidhash, RapidRng};
-use std::collections::HashSet;
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufWriter, Write};
+use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub fn make_subcommand() -> Command {
@@ -125,154 +123,20 @@ pub fn make_subcommand() -> Command {
         )
 }
 
-struct SplitConfig<'a> {
-    dir: &'a Path,
-    prefix: &'a str,
-    suffix: &'a str,
-    digit_width: usize,
-    append: bool,
-    header_in_out: bool,
-    header_in_only: bool,
-    delimiter: u8,
-}
-
 fn arg_error(msg: &str) -> ! {
     eprintln!("tva split: {}", msg);
     std::process::exit(1);
 }
 
-struct SplitOutput {
-    writer: Box<dyn Write>,
-    #[allow(dead_code)]
-    header_written: bool,
-}
-
 fn format_index(idx0: usize, digit_width: usize) -> String {
-    let index = idx0; // 0-based indexing
     if digit_width == 0 {
-        index.to_string()
+        idx0.to_string()
     } else {
-        format!("{:0width$}", index, width = digit_width)
+        format!("{:0width$}", idx0, width = digit_width)
     }
 }
 
-fn open_output_file(
-    config: &SplitConfig,
-    idx0: usize,
-    header_line: Option<&[u8]>,
-    force_append: bool,
-) -> anyhow::Result<(Box<dyn Write>, bool)> {
-    let index_str = format_index(idx0, config.digit_width);
-    let filename = format!("{}{}{}", config.prefix, index_str, config.suffix);
-    let path = config.dir.join(filename);
-    let existed = path.exists();
 
-    if existed && !force_append && !config.append {
-        return Err(anyhow::anyhow!(
-            "tva split: output file already exists: {} (use --append/-a to append)",
-            path.display()
-        ));
-    }
-
-    let is_append = config.append || force_append;
-    let file: Box<dyn Write> = if is_append {
-        Box::new(BufWriter::new(
-            OpenOptions::new().create(true).append(true).open(&path)?,
-        ))
-    } else {
-        Box::new(BufWriter::new(File::create(&path)?))
-    };
-
-    let mut writer = file;
-    let mut header_written = false;
-
-    if config.header_in_out {
-        if let Some(header) = header_line {
-            if !(is_append && existed) {
-                writer.write_all(header)?;
-                writer.write_all(b"\n")?;
-                header_written = true;
-            } else {
-                header_written = true;
-            }
-        }
-    }
-
-    Ok((writer, header_written))
-}
-
-struct WriterManager<'a> {
-    config: &'a SplitConfig<'a>,
-    writers: IndexMap<usize, SplitOutput>,
-    initialized_indices: HashSet<usize>,
-    max_open: usize,
-}
-
-impl<'a> WriterManager<'a> {
-    fn new(config: &'a SplitConfig<'a>, max_open: usize) -> Self {
-        Self {
-            config,
-            writers: IndexMap::new(),
-            initialized_indices: HashSet::new(),
-            max_open,
-        }
-    }
-
-    fn get_writer(
-        &mut self,
-        idx: usize,
-        header_line: Option<&[u8]>,
-    ) -> anyhow::Result<&mut SplitOutput> {
-        if self.writers.contains_key(&idx) {
-            // Move to end (MRU) if using LRU logic (max_open > 0)
-            if self.max_open > 0 {
-                if let Some((_, v)) = self.writers.shift_remove_entry(&idx) {
-                    self.writers.insert(idx, v);
-                }
-            }
-            return Ok(self.writers.get_mut(&idx).unwrap());
-        }
-
-        if self.max_open > 0 && self.writers.len() >= self.max_open {
-            // Remove LRU (first item)
-            self.writers.shift_remove_index(0);
-        }
-
-        let force_append = self.initialized_indices.contains(&idx);
-        let (writer, header_written) =
-            open_output_file(self.config, idx, header_line, force_append)?;
-
-        self.initialized_indices.insert(idx);
-        self.writers.insert(
-            idx,
-            SplitOutput {
-                writer,
-                header_written,
-            },
-        );
-
-        Ok(self.writers.get_mut(&idx).unwrap())
-    }
-}
-
-fn key_bucket(
-    record: &[u8],
-    indices: &[usize],
-    num_files: usize,
-    delimiter: u8,
-) -> usize {
-    // Use KeyExtractor from libs to extract key and compute hash
-    use crate::libs::tsv::key::KeyExtractor;
-
-    let mut extractor = KeyExtractor::new(Some(indices.to_vec()), false, false);
-    let key = extractor.extract(record, delimiter).unwrap_or_else(|_| {
-        // If extraction fails, use empty key
-        crate::libs::tsv::key::ParsedKey::Ref(b"")
-    });
-
-    let h = rapidhash(key.as_ref());
-    (h % (num_files as u64)) as usize
-}
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
@@ -390,27 +254,52 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
     });
 
-    let config = SplitConfig {
-        dir: &dir_path,
-        prefix: &prefix,
-        suffix: &suffix,
-        digit_width,
-        append,
-        header_in_out,
-        header_in_only,
-        delimiter,
-    };
+    // Create KeyExtractor once for key-based splitting
+    let mut key_extractor = key_indices.as_ref().map(|indices| {
+        crate::libs::tsv::key::KeyExtractor::new(Some(indices.clone()), false, false)
+    });
 
     if lines_per_file > 0 {
-        split_by_line_count(&infiles, &config, lines_per_file)?;
+        split_by_line_count(
+            &infiles,
+            &dir_path,
+            &prefix,
+            &suffix,
+            digit_width,
+            header_in_out,
+            header_in_only,
+            lines_per_file,
+            append,
+        )?;
     } else {
-        let mut manager = WriterManager::new(&config, max_open_files);
+        let mut manager =
+            crate::libs::io::FileWriterManager::new(&dir_path, max_open_files);
+
+        // In append mode, mark existing files as initialized
+        if append {
+            let existing_indices: Vec<usize> = (0..num_files)
+                .filter(|&i| {
+                    let filename =
+                        format!("{}{}{}", prefix, format_index(i, digit_width), suffix);
+                    dir_path.join(&filename).exists()
+                })
+                .collect();
+            manager.mark_initialized(&existing_indices);
+        }
+
         split_randomly(
             &infiles,
             &mut manager,
+            &prefix,
+            &suffix,
+            digit_width,
+            header_in_out,
+            header_in_only,
             num_files,
-            key_indices.as_deref(),
+            key_extractor.as_mut(),
             &mut rng,
+            delimiter,
+            append,
         )?;
     }
 
@@ -419,14 +308,20 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
 fn split_by_line_count(
     infiles: &[String],
-    config: &SplitConfig,
+    dir: &Path,
+    prefix: &str,
+    suffix: &str,
+    digit_width: usize,
+    header_in_out: bool,
+    header_in_only: bool,
     lines_per_file: u64,
+    append: bool,
 ) -> anyhow::Result<()> {
     let mut header_line: Option<Vec<u8>> = None;
     let mut global_header_captured = false;
 
     let mut current_idx0: usize = 0;
-    let mut current_writer: Option<Box<dyn Write>> = None;
+    let mut current_writer: Option<std::io::BufWriter<std::fs::File>> = None;
     let mut current_lines: u64 = 0;
 
     for input in crate::libs::io::raw_input_sources(infiles)? {
@@ -443,7 +338,7 @@ fn split_by_line_count(
                 return Ok(());
             }
 
-            if (config.header_in_out || config.header_in_only) && is_first_line_of_file {
+            if (header_in_out || header_in_only) && is_first_line_of_file {
                 is_first_line_of_file = false;
                 if !global_header_captured {
                     header_line = Some(record.to_vec());
@@ -455,13 +350,42 @@ fn split_by_line_count(
             is_first_line_of_file = false;
 
             if current_writer.is_none() || current_lines >= lines_per_file {
-                let (writer, _) = open_output_file(
-                    config,
-                    current_idx0,
-                    header_line.as_deref(),
-                    false,
-                )
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                // Close previous writer
+                if let Some(mut w) = current_writer.take() {
+                    w.flush()?;
+                }
+
+                // Open new file
+                let filename = format!("{}{}{}", prefix, format_index(current_idx0, digit_width), suffix);
+                let path = dir.join(&filename);
+                let existed = path.exists();
+
+                // Check for existing file (only for first file when not appending)
+                if existed && !append && current_idx0 == 0 {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::AlreadyExists,
+                        format!(
+                            "tva split: output file already exists: {} (use --append/-a to append)",
+                            path.display()
+                        ),
+                    ));
+                }
+
+                let file = if append && existed {
+                    std::fs::OpenOptions::new().create(true).append(true).open(&path)?
+                } else {
+                    std::fs::File::create(&path)?
+                };
+                let mut writer = std::io::BufWriter::new(file);
+
+                // Write header if needed (only for new files, not when appending)
+                if header_in_out && !(append && existed) {
+                    if let Some(h) = header_line.as_ref() {
+                        writer.write_all(h)?;
+                        writer.write_all(b"\n")?;
+                    }
+                }
+
                 current_writer = Some(writer);
                 current_lines = 0;
                 current_idx0 += 1;
@@ -476,15 +400,27 @@ fn split_by_line_count(
         })?;
     }
 
+    // Flush final writer
+    if let Some(mut w) = current_writer {
+        w.flush()?;
+    }
+
     Ok(())
 }
 
 fn split_randomly(
     infiles: &[String],
-    manager: &mut WriterManager,
+    manager: &mut crate::libs::io::FileWriterManager,
+    prefix: &str,
+    suffix: &str,
+    digit_width: usize,
+    header_in_out: bool,
+    header_in_only: bool,
     num_files: usize,
-    key_indices: Option<&[usize]>,
+    mut key_extractor: Option<&mut crate::libs::tsv::key::KeyExtractor>,
     rng: &mut Option<RapidRng>,
+    delimiter: u8,
+    append: bool,
 ) -> anyhow::Result<()> {
     if num_files == 0 {
         return Err(anyhow::anyhow!(
@@ -494,6 +430,7 @@ fn split_randomly(
 
     let mut header_line: Option<Vec<u8>> = None;
     let mut global_header_captured = false;
+    let mut checked_existing = false;
 
     for input in crate::libs::io::raw_input_sources(infiles)? {
         let mut reader =
@@ -502,10 +439,8 @@ fn split_randomly(
 
         reader.for_each_record(|record| {
             // Treat empty lines as data (will be assigned to a file).
-            // If this happens before the header, it's considered data before header (malformed TSV),
-            // but we process it as regular data to be safe.
             if !record.is_empty()
-                && (manager.config.header_in_out || manager.config.header_in_only)
+                && (header_in_out || header_in_only)
                 && is_first_line_of_file
             {
                 is_first_line_of_file = false;
@@ -516,15 +451,15 @@ fn split_randomly(
                 return Ok(());
             }
 
-            // `is_first_line_of_file` tracks whether we have seen the first *non-empty* line (header).
-            // If we encounter empty lines before header, they are treated as data, but `is_first_line_of_file`
-            // remains true so we can still capture the real header when it arrives.
             if !record.is_empty() {
                 is_first_line_of_file = false;
             }
 
-            let idx0 = if let Some(indices) = key_indices {
-                key_bucket(record, indices, num_files, manager.config.delimiter)
+            let idx0 = if let Some(extractor) = key_extractor.as_mut() {
+                let key = extractor.extract(record, delimiter).unwrap_or_else(|_| {
+                    crate::libs::tsv::key::ParsedKey::Ref(b"")
+                });
+                (rapidhash(key.as_ref()) % (num_files as u64)) as usize
             } else {
                 let r = rng
                     .as_mut()
@@ -533,15 +468,39 @@ fn split_randomly(
                 (r as usize) % num_files
             };
 
-            let output = manager
-                .get_writer(idx0, header_line.as_deref())
+            // Check for existing files on first write (lazy check, only if not appending)
+            if !checked_existing && !append {
+                checked_existing = true;
+                for i in 0..num_files {
+                    let filename = format!("{}{}{}", prefix, format_index(i, digit_width), suffix);
+                    let path = manager.dir().join(&filename);
+                    if path.exists() {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::AlreadyExists,
+                            format!(
+                                "tva split: output file already exists: {} (use --append/-a to append)",
+                                path.display()
+                            ),
+                        ));
+                    }
+                }
+            }
+
+            let writer = manager
+                .get_writer_with_header(
+                    idx0,
+                    prefix,
+                    suffix,
+                    if header_in_out { header_line.as_deref() } else { None },
+                )
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
-            output.writer.write_all(record)?;
-            output.writer.write_all(b"\n")?;
+            writer.write_all(record)?;
+            writer.write_all(b"\n")?;
             Ok(())
         })?;
     }
 
+    manager.flush_all()?;
     Ok(())
 }
