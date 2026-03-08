@@ -144,3 +144,174 @@ pub fn build_header_config(
 
     Ok(config)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::{Arg, Command};
+
+    fn create_test_command() -> Command {
+        Command::new("test")
+            .args(header_args())
+            .arg(Arg::new("other").long("other"))
+    }
+
+    #[test]
+    fn test_header_config_default() {
+        let cmd = create_test_command();
+        let matches = cmd.try_get_matches_from(["test"]).unwrap();
+        let config = build_header_config(&matches, false).unwrap();
+
+        assert!(!config.enabled);
+        assert!(matches!(
+            config.mode,
+            crate::libs::tsv::header::HeaderMode::FirstLine
+        ));
+    }
+
+    #[test]
+    fn test_header_config_firstline() {
+        let cmd = create_test_command();
+        let matches = cmd.try_get_matches_from(["test", "--header"]).unwrap();
+        let config = build_header_config(&matches, false).unwrap();
+
+        assert!(config.enabled);
+        assert!(matches!(
+            config.mode,
+            crate::libs::tsv::header::HeaderMode::FirstLine
+        ));
+    }
+
+    #[test]
+    fn test_header_config_firstline_short() {
+        let cmd = create_test_command();
+        let matches = cmd.try_get_matches_from(["test", "-H"]).unwrap();
+        let config = build_header_config(&matches, false).unwrap();
+
+        assert!(config.enabled);
+        assert!(matches!(
+            config.mode,
+            crate::libs::tsv::header::HeaderMode::FirstLine
+        ));
+    }
+
+    #[test]
+    fn test_header_config_lines_n() {
+        let cmd = create_test_command();
+        let matches = cmd
+            .try_get_matches_from(["test", "--header-lines", "3"])
+            .unwrap();
+        let config = build_header_config(&matches, false).unwrap();
+
+        assert!(config.enabled);
+        assert!(matches!(
+            config.mode,
+            crate::libs::tsv::header::HeaderMode::LinesN(3)
+        ));
+    }
+
+    #[test]
+    fn test_header_config_hash_lines() {
+        let cmd = create_test_command();
+        let matches = cmd.try_get_matches_from(["test", "--header-hash"]).unwrap();
+        let config = build_header_config(&matches, false).unwrap();
+
+        assert!(config.enabled);
+        assert!(matches!(
+            config.mode,
+            crate::libs::tsv::header::HeaderMode::HashLines
+        ));
+    }
+
+    #[test]
+    fn test_header_config_hash_lines1() {
+        let cmd = create_test_command();
+        let matches = cmd
+            .try_get_matches_from(["test", "--header-hash1"])
+            .unwrap();
+        let config = build_header_config(&matches, false).unwrap();
+
+        assert!(config.enabled);
+        assert!(matches!(
+            config.mode,
+            crate::libs::tsv::header::HeaderMode::HashLines1
+        ));
+    }
+
+    #[test]
+    fn test_header_config_conflicting_options_header_and_hash1() {
+        // Test --header and --header-hash1 conflict
+        let cmd = create_test_command();
+        let matches = cmd
+            .try_get_matches_from(["test", "--header", "--header-hash1"])
+            .unwrap();
+        let result = build_header_config(&matches, false);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("only one of"));
+    }
+
+    #[test]
+    fn test_header_config_conflicting_options_hash_and_hash1() {
+        // Test --header-hash and --header-hash1 conflict
+        let cmd = create_test_command();
+        let matches = cmd
+            .try_get_matches_from(["test", "--header-hash", "--header-hash1"])
+            .unwrap();
+        let result = build_header_config(&matches, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_header_config_conflicting_options_header_and_lines() {
+        // Test --header and --header-lines conflict
+        let cmd = create_test_command();
+        let matches = cmd
+            .try_get_matches_from(["test", "--header", "--header-lines", "2"])
+            .unwrap();
+        let result = build_header_config(&matches, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_header_config_lines_n_zero_error() {
+        let cmd = create_test_command();
+        let matches = cmd
+            .try_get_matches_from(["test", "--header-lines", "0"])
+            .unwrap();
+        let result = build_header_config(&matches, false);
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("positive number"));
+    }
+
+    #[test]
+    fn test_header_args_with_columns() {
+        let args = header_args_with_columns();
+
+        // Should have exactly 2 args
+        assert_eq!(args.len(), 2);
+
+        // Check --header is present
+        let header_arg = args.iter().find(|a| a.get_id().as_str() == "header");
+        assert!(header_arg.is_some());
+
+        // Check --header-hash1 is present
+        let hash1_arg = args.iter().find(|a| a.get_id().as_str() == "header-hash1");
+        assert!(hash1_arg.is_some());
+
+        // --header-lines and --header-hash should NOT be present
+        let lines_arg = args.iter().find(|a| a.get_id().as_str() == "header-lines");
+        assert!(lines_arg.is_none());
+
+        let hash_arg = args.iter().find(|a| a.get_id().as_str() == "header-hash");
+        assert!(hash_arg.is_none());
+    }
+
+    #[test]
+    fn test_header_arg_basic() {
+        let arg = header_arg_basic();
+
+        assert_eq!(arg.get_id().as_str(), "header");
+        assert!(arg.get_short() == Some('H'));
+    }
+}
