@@ -28,8 +28,10 @@ Headers are the column name rows in data files. Different commands have differen
     - `keep-header`: Uses `--lines N` / `-n` to specify number of header lines (default: 1)
 
 *   **Commands by Header Mode Support**
-    - `select`: Supports `--header` / `-H` and `--header-hash1` (modes that provide column names for field resolution)
-    - `filter`: Supports all four modes (`--header`, `--header-lines`, `--header-hash`, `--header-hash1`); field name resolution is optional (numeric indices always work)
+
+    **FirstLine and HashLines1 modes** (modes that provide column names): `select`
+
+    **All four modes** (FirstLine, LinesN, HashLines, HashLines1): `blank`, `filter`
 
 ## Input/Output Conventions
 
