@@ -151,11 +151,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 };
 
                 // Get column names bytes
-                let column_names_bytes: Vec<u8> = header_info
-                    .column_names_line
-                    .clone()
-                    .or_else(|| header_info.lines.last().cloned())
-                    .unwrap_or_default();
+                // For HashLines1 mode, column_names_line must exist; otherwise skip
+                let column_names_bytes: Vec<u8> = match header_info.column_names_line {
+                    Some(line) => line,
+                    None => {
+                        // No column names line found (e.g., HashLines1 with only hash lines)
+                        // Skip this file as we can't parse field names
+                        continue;
+                    }
+                };
 
                 // Parse header for field resolution
                 let line_str = String::from_utf8_lossy(&column_names_bytes);

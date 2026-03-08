@@ -719,3 +719,62 @@ fn select_fields_and_exclude_no_conflict() {
 "
     );
 }
+
+#[test]
+fn select_with_header_hash1_mode() {
+    // Test HashLines1 mode: # comments + next line as column names
+    let input = "# Comment 1\n# Comment 2\ncol1\tcol2\tcol3\n1\t2\t3\n4\t5\t6\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "--header-hash1", "-f", "col1,col3"])
+        .stdin(input)
+        .run();
+    // Should use col1,col2,col3 as header and select col1 and col3
+    assert_eq!(stdout, "col1\tcol3\n1\t3\n4\t6\n");
+}
+
+#[test]
+fn select_with_header_hash1_mode_exclude() {
+    // Test HashLines1 mode with --exclude
+    let input = "# Metadata\nname\tage\tcity\nAlice\t30\tNYC\nBob\t25\tLA\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "--header-hash1", "-e", "age"])
+        .stdin(input)
+        .run();
+    // Should exclude 'age' column
+    assert_eq!(stdout, "name\tcity\nAlice\tNYC\nBob\tLA\n");
+}
+
+#[test]
+fn select_with_header_hash1_mode_by_index() {
+    // Test HashLines1 mode using field indices (no header parsing needed)
+    let input = "# Comment\nA\tB\tC\n1\t2\t3\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "--header-hash1", "-f", "3,1"])
+        .stdin(input)
+        .run();
+    // Should select 3rd and 1st fields
+    assert_eq!(stdout, "C\tA\n3\t1\n");
+}
+
+#[test]
+fn select_header_hash1_with_multiple_hash_lines() {
+    // Test with multiple # lines
+    let input = "# File: data.tsv\n# Author: test\n# Date: 2024\nx\ty\tz\n10\t20\t30\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "--header-hash1", "-f", "y"])
+        .stdin(input)
+        .run();
+    assert_eq!(stdout, "y\n20\n");
+}
+
+#[test]
+fn select_header_hash1_no_column_names_line() {
+    // Test when there's no data after hash lines (edge case)
+    let input = "# Comment only\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["select", "--header-hash1", "-f", "1"])
+        .stdin(input)
+        .run();
+    // No column names line found, should produce no output
+    assert_eq!(stdout, "");
+}
