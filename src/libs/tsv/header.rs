@@ -2,24 +2,34 @@
 //!
 //! Provides unified header processing logic for all tva commands.
 
+/// Header detection mode. The four modes are mutually exclusive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeaderMode {
+    /// Use the first non-empty line as header (default).
+    FirstLine,
+    /// Use exactly N non-empty lines as header.
+    FixedLines(usize),
+    /// Use consecutive hash lines (starting with '#') as header.
+    HashLines,
+    /// Use consecutive hash lines plus the next line as header (for extracting column names).
+    Hash1,
+}
+
 /// Configuration for header detection.
 #[derive(Debug, Clone)]
 pub struct HeaderConfig {
     /// Whether header processing is enabled.
     pub enabled: bool,
-    /// Number of lines to treat as header (0 = auto-detect).
-    pub lines: usize,
-    /// Whether to include comment lines (starting with '#') as part of header.
-    pub include_comments: bool,
+    /// The header detection mode.
+    pub mode: HeaderMode,
 }
 
 impl HeaderConfig {
-    /// Creates a new header config with default settings (disabled).
+    /// Creates a new header config with default settings (disabled, FirstLine mode).
     pub fn new() -> Self {
         Self {
             enabled: false,
-            lines: 1,
-            include_comments: false,
+            mode: HeaderMode::FirstLine,
         }
     }
 
@@ -29,17 +39,27 @@ impl HeaderConfig {
         self
     }
 
-    /// Sets the number of header lines.
-    pub fn lines(mut self, n: usize) -> Self {
-        self.lines = n;
+    /// Sets the mode to FirstLine (use first non-empty line as header).
+    pub fn first_line(mut self) -> Self {
+        self.mode = HeaderMode::FirstLine;
         self
     }
 
-    /// Enables including comment lines as header.
-    /// Also sets lines to 0 (auto-detect) to allow collecting all comment lines.
-    pub fn include_comments(mut self) -> Self {
-        self.include_comments = true;
-        self.lines = 0; // Auto-detect mode when including comments
+    /// Sets the mode to FixedLines (use exactly N lines as header).
+    pub fn fixed_lines(mut self, n: usize) -> Self {
+        self.mode = HeaderMode::FixedLines(n);
+        self
+    }
+
+    /// Sets the mode to HashLines (use consecutive '#' lines as header).
+    pub fn hash_lines(mut self) -> Self {
+        self.mode = HeaderMode::HashLines;
+        self
+    }
+
+    /// Sets the mode to Hash1 (use consecutive '#' lines + next line as header).
+    pub fn hash1(mut self) -> Self {
+        self.mode = HeaderMode::Hash1;
         self
     }
 }
@@ -93,64 +113,19 @@ pub fn detect_header(data: &[u8], config: &HeaderConfig) -> DetectedHeader {
         };
     }
 
+    match config.mode {
+        HeaderMode::FirstLine => detect_first_line_header(data),
+        HeaderMode::FixedLines(n) => detect_fixed_lines_header(data, n),
+        HeaderMode::HashLines => detect_hash_lines_header(data, false),
+        HeaderMode::Hash1 => detect_hash_lines_header(data, true),
+    }
+}
+
+/// Detects header using FirstLine mode: first non-empty line is the header.
+fn detect_first_line_header(data: &[u8]) -> DetectedHeader {
     let mut lines = Vec::new();
     let mut pos = 0;
-    let mut line_count = 0;
 
-    // If fixed lines specified, take exactly that many non-empty lines
-    if config.lines > 0 {
-        // First, skip any leading empty lines
-        while pos < data.len() {
-            let line_end = find_line_end(data, pos);
-            let line = &data[pos..line_end];
-
-            // Remove trailing '\r' for Windows line endings
-            let line = if line.ends_with(b"\r") {
-                &line[..line.len() - 1]
-            } else {
-                line
-            };
-
-            if !line.is_empty() {
-                break;
-            }
-
-            // Move past the newline
-            pos = line_end;
-            if pos < data.len() && data[pos] == b'\n' {
-                pos += 1;
-            }
-        }
-
-        // Now collect exactly config.lines non-empty lines
-        while line_count < config.lines && pos < data.len() {
-            let line_end = find_line_end(data, pos);
-            let line = &data[pos..line_end];
-
-            // Remove trailing '\r' for Windows line endings
-            let line = if line.ends_with(b"\r") {
-                &line[..line.len() - 1]
-            } else {
-                line
-            };
-
-            lines.push(line.to_vec());
-            line_count += 1;
-
-            // Move past the newline
-            pos = line_end;
-            if pos < data.len() && data[pos] == b'\n' {
-                pos += 1;
-            }
-        }
-
-        return DetectedHeader {
-            lines,
-            bytes_consumed: pos,
-        };
-    }
-
-    // Auto-detect: skip empty lines, then collect header
     loop {
         if pos >= data.len() {
             break;
@@ -159,7 +134,113 @@ pub fn detect_header(data: &[u8], config: &HeaderConfig) -> DetectedHeader {
         let line_end = find_line_end(data, pos);
         let line = &data[pos..line_end];
 
-        // Remove trailing '\r'
+        // Remove trailing '\r' for Windows line endings
+        let line = if line.ends_with(b"\r") {
+            &line[..line.len() - 1]
+        } else {
+            line
+        };
+
+        // Move past this line for next iteration
+        let next_pos = if line_end < data.len() && data[line_end] == b'\n' {
+            line_end + 1
+        } else {
+            line_end
+        };
+
+        // Skip empty lines at the beginning
+        if line.is_empty() {
+            pos = next_pos;
+            continue;
+        }
+
+        // First non-empty line is the header
+        lines.push(line.to_vec());
+        pos = next_pos;
+        break;
+    }
+
+    DetectedHeader {
+        lines,
+        bytes_consumed: pos,
+    }
+}
+
+/// Detects header using FixedLines mode: exactly N non-empty lines are the header.
+fn detect_fixed_lines_header(data: &[u8], n: usize) -> DetectedHeader {
+    let mut lines = Vec::new();
+    let mut pos = 0;
+    let mut line_count = 0;
+
+    // First, skip any leading empty lines
+    while pos < data.len() {
+        let line_end = find_line_end(data, pos);
+        let line = &data[pos..line_end];
+
+        // Remove trailing '\r' for Windows line endings
+        let line = if line.ends_with(b"\r") {
+            &line[..line.len() - 1]
+        } else {
+            line
+        };
+
+        if !line.is_empty() {
+            break;
+        }
+
+        // Move past the newline
+        pos = line_end;
+        if pos < data.len() && data[pos] == b'\n' {
+            pos += 1;
+        }
+    }
+
+    // Now collect exactly n non-empty lines
+    while line_count < n && pos < data.len() {
+        let line_end = find_line_end(data, pos);
+        let line = &data[pos..line_end];
+
+        // Remove trailing '\r' for Windows line endings
+        let line = if line.ends_with(b"\r") {
+            &line[..line.len() - 1]
+        } else {
+            line
+        };
+
+        lines.push(line.to_vec());
+        line_count += 1;
+
+        // Move past the newline
+        pos = line_end;
+        if pos < data.len() && data[pos] == b'\n' {
+            pos += 1;
+        }
+    }
+
+    DetectedHeader {
+        lines,
+        bytes_consumed: pos,
+    }
+}
+
+/// Detects header using HashLines or HashLinesPlusOne mode.
+///
+/// When `include_next_line` is false: only consecutive '#' lines are the header.
+/// When `include_next_line` is true: consecutive '#' lines + the next line are the header.
+fn detect_hash_lines_header(data: &[u8], include_next_line: bool) -> DetectedHeader {
+    let mut lines = Vec::new();
+    let mut pos = 0;
+    let mut collected_next_line = false;
+
+    loop {
+        if pos >= data.len() {
+            break;
+        }
+
+        let line_end = find_line_end(data, pos);
+        let line = &data[pos..line_end];
+
+        // Remove trailing '\r' for Windows line endings
         let line = if line.ends_with(b"\r") {
             &line[..line.len() - 1]
         } else {
@@ -179,23 +260,22 @@ pub fn detect_header(data: &[u8], config: &HeaderConfig) -> DetectedHeader {
             continue;
         }
 
-        // Check if it's a comment line
-        let is_comment = line.starts_with(b"#");
+        // Check if it's a hash line (starts with '#')
+        let is_hash = line.starts_with(b"#");
 
-        if is_comment {
-            if config.include_comments {
-                // Collect comment lines as part of header
-                lines.push(line.to_vec());
-                pos = next_pos;
-                // Continue to collect more comments or the actual header
-            } else {
-                // Comment but include_comments is false - this is data
-                break;
-            }
-        } else {
-            // First non-empty, non-comment line is the header
+        if is_hash {
+            // Collect hash lines as part of header
             lines.push(line.to_vec());
             pos = next_pos;
+            // Continue to collect more hash lines
+        } else if include_next_line && !collected_next_line {
+            // First non-hash line is also part of header (column names)
+            lines.push(line.to_vec());
+            pos = next_pos;
+            collected_next_line = true;
+            break;
+        } else {
+            // Not a hash line and we don't need to collect it
             break;
         }
     }
@@ -261,17 +341,46 @@ impl HeaderHandler {
             return Ok(false);
         }
 
-        // Check if it's a comment line
-        let is_comment = line.starts_with(b"#");
-
         if !self.config.enabled {
             return Ok(false);
         }
 
-        // If include_comments is enabled, comment lines are part of header
-        if is_comment && self.config.include_comments {
+        match self.config.mode {
+            HeaderMode::FirstLine => self.process_first_line_mode(line),
+            HeaderMode::FixedLines(n) => self.process_fixed_lines_mode(line, n),
+            HeaderMode::HashLines => self.process_hash_lines_mode(line, false),
+            HeaderMode::Hash1 => self.process_hash_lines_mode(line, true),
+        }
+    }
+
+    fn process_first_line_mode(&mut self, line: &[u8]) -> anyhow::Result<bool> {
+        // First non-empty line is the header
+        if self.is_first_file {
+            self.captured_header = Some(line.to_vec());
+            self.is_first_file = false;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn process_fixed_lines_mode(&mut self, line: &[u8], _n: usize) -> anyhow::Result<bool> {
+        // For streaming, FixedLines mode captures the first line as header
+        // (full N-line handling would require buffering)
+        if self.is_first_file {
+            self.captured_header = Some(line.to_vec());
+            self.is_first_file = false;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn process_hash_lines_mode(&mut self, line: &[u8], include_next_line: bool) -> anyhow::Result<bool> {
+        let is_hash = line.starts_with(b"#");
+
+        if is_hash {
+            // Hash lines are part of header
             if self.is_first_file {
-                // Capture comment line
+                // Capture hash line
                 if self.captured_header.is_none() {
                     self.captured_header = Some(Vec::new());
                 }
@@ -282,22 +391,23 @@ impl HeaderHandler {
                     h.extend_from_slice(line);
                 }
             }
-            return Ok(true);
-        }
-
-        // If it's a comment but include_comments is disabled, treat as data
-        if is_comment {
-            return Ok(false);
-        }
-
-        // First non-comment line
-        if self.is_first_file {
-            self.captured_header = Some(line.to_vec());
+            Ok(true)
+        } else if include_next_line && self.is_first_file {
+            // First non-hash line is also part of header (column names)
+            if let Some(ref mut h) = self.captured_header {
+                if !h.is_empty() {
+                    h.push(b'\n');
+                }
+                h.extend_from_slice(line);
+            } else {
+                self.captured_header = Some(line.to_vec());
+            }
             self.is_first_file = false;
-            return Ok(true);
+            Ok(true)
+        } else {
+            // Not a hash line and we don't need to collect it
+            Ok(false)
         }
-
-        Ok(false)
     }
 
     /// Marks the end of the first file.
@@ -321,7 +431,7 @@ mod tests {
 
     #[test]
     fn test_header_fixed_lines() {
-        let config = HeaderConfig::new().enabled().lines(2);
+        let config = HeaderConfig::new().enabled().fixed_lines(2);
         let data = b"# comment\ncol1\tcol2\nval1\tval2\n";
         let result = detect_header(data, &config);
         assert!(result.has_header());
@@ -331,8 +441,21 @@ mod tests {
     }
 
     #[test]
-    fn test_header_with_comments() {
-        let config = HeaderConfig::new().enabled().include_comments();
+    fn test_header_with_hash_lines() {
+        // HashLines mode: only '#' lines are header
+        let config = HeaderConfig::new().enabled().hash_lines();
+        let data = b"# comment 1\n# comment 2\ncol1\tcol2\nval1\tval2\n";
+        let result = detect_header(data, &config);
+        assert!(result.has_header());
+        assert_eq!(result.lines.len(), 2);
+        assert_eq!(result.lines[0], b"# comment 1");
+        assert_eq!(result.lines[1], b"# comment 2");
+    }
+
+    #[test]
+    fn test_header_with_hash1() {
+        // Hash1 mode: '#' lines + next line are header (for column names)
+        let config = HeaderConfig::new().enabled().hash1();
         let data = b"# comment 1\n# comment 2\ncol1\tcol2\nval1\tval2\n";
         let result = detect_header(data, &config);
         assert!(result.has_header());
