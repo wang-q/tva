@@ -7,6 +7,7 @@ Behavior:
 *   Replaces the value in the target field with the bin start (lower bound).
 *   Formula: `floor((value - min) / width) * width + min`.
 *   Use `--new-name` to append as a new column instead of replacing.
+*   Commonly used with `stats --groupby` to compute statistics per bin.
 
 Input:
 *   Reads from files or standard input.
