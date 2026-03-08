@@ -498,4 +498,203 @@ mod tests {
         handler.end_of_file();
         assert!(!handler.process_first_line(b"val1\tval2").unwrap());
     }
+
+    // Additional tests for coverage
+
+    #[test]
+    fn test_header_config_default() {
+        let config: HeaderConfig = Default::default();
+        assert!(!config.enabled);
+        assert!(matches!(config.mode, HeaderMode::FirstLine));
+    }
+
+    #[test]
+    fn test_detected_header_as_bytes_single() {
+        let header = DetectedHeader {
+            lines: vec![b"col1\tcol2".to_vec()],
+            bytes_consumed: 10,
+        };
+        assert_eq!(header.as_bytes(), b"col1\tcol2");
+    }
+
+    #[test]
+    fn test_detected_header_as_bytes_multiple() {
+        let header = DetectedHeader {
+            lines: vec![b"# comment".to_vec(), b"col1\tcol2".to_vec()],
+            bytes_consumed: 20,
+        };
+        assert_eq!(header.as_bytes(), b"# comment\ncol1\tcol2");
+    }
+
+    #[test]
+    fn test_detected_header_as_bytes_empty() {
+        let header = DetectedHeader {
+            lines: vec![],
+            bytes_consumed: 0,
+        };
+        assert!(header.as_bytes().is_empty());
+    }
+
+    #[test]
+    fn test_first_line_header_empty_data() {
+        let config = HeaderConfig::new().enabled().first_line();
+        let data = b"";
+        let result = detect_header(data, &config);
+        assert!(!result.has_header());
+        assert_eq!(result.bytes_consumed, 0);
+    }
+
+    #[test]
+    fn test_first_line_header_only_empty_lines() {
+        let config = HeaderConfig::new().enabled().first_line();
+        let data = b"\n\n\n";
+        let result = detect_header(data, &config);
+        assert!(!result.has_header());
+        assert_eq!(result.bytes_consumed, 3); // Consumed all empty lines
+    }
+
+    #[test]
+    fn test_lines_n_header_with_leading_empty_lines() {
+        let config = HeaderConfig::new().enabled().lines_n(2);
+        let data = b"\n\n# comment\ncol1\tcol2\ndata\n";
+        let result = detect_header(data, &config);
+        assert!(result.has_header());
+        assert_eq!(result.lines.len(), 2);
+        assert_eq!(result.lines[0], b"# comment");
+        assert_eq!(result.lines[1], b"col1\tcol2");
+    }
+
+    #[test]
+    fn test_lines_n_header_insufficient_lines() {
+        let config = HeaderConfig::new().enabled().lines_n(3);
+        let data = b"line1\nline2\n";
+        let result = detect_header(data, &config);
+        assert!(result.has_header());
+        assert_eq!(result.lines.len(), 2); // Only 2 lines available
+    }
+
+    #[test]
+    fn test_hash_lines_no_hash_found() {
+        let config = HeaderConfig::new().enabled().hash_lines();
+        let data = b"col1\tcol2\ndata\n";
+        let result = detect_header(data, &config);
+        assert!(!result.has_header());
+        assert_eq!(result.bytes_consumed, 0);
+    }
+
+    #[test]
+    fn test_hash_lines1_no_data_after_hash() {
+        let config = HeaderConfig::new().enabled().hash_lines1();
+        let data = b"# comment only\n";
+        let result = detect_header(data, &config);
+        assert!(result.has_header());
+        assert_eq!(result.lines.len(), 1);
+        assert_eq!(result.lines[0], b"# comment only");
+    }
+
+    #[test]
+    fn test_hash_lines_with_leading_empty() {
+        let config = HeaderConfig::new().enabled().hash_lines();
+        let data = b"\n\n# comment\ndata\n";
+        let result = detect_header(data, &config);
+        assert!(result.has_header());
+        assert_eq!(result.lines.len(), 1);
+        assert_eq!(result.lines[0], b"# comment");
+    }
+
+    #[test]
+    fn test_handler_disabled() {
+        let config = HeaderConfig::new(); // disabled
+        let mut handler = HeaderHandler::new(config);
+
+        assert!(!handler.is_enabled());
+        assert!(!handler.should_output_header());
+        assert!(!handler.process_first_line(b"col1\tcol2").unwrap());
+        assert!(handler.header().is_none());
+    }
+
+    #[test]
+    fn test_handler_empty_line() {
+        let config = HeaderConfig::new().enabled();
+        let mut handler = HeaderHandler::new(config);
+
+        // Empty lines should not be treated as header
+        assert!(!handler.process_first_line(b"").unwrap());
+        assert!(handler.header().is_none());
+    }
+
+    #[test]
+    fn test_handler_hash_lines_mode() {
+        let config = HeaderConfig::new().enabled().hash_lines();
+        let mut handler = HeaderHandler::new(config);
+
+        // First hash line
+        assert!(handler.process_first_line(b"# comment 1").unwrap());
+        // Second hash line
+        assert!(handler.process_first_line(b"# comment 2").unwrap());
+        // Non-hash line is data
+        assert!(!handler.process_first_line(b"col1\tcol2").unwrap());
+
+        assert!(handler.should_output_header());
+        assert_eq!(handler.header(), Some(b"# comment 1\n# comment 2".as_slice()));
+    }
+
+    #[test]
+    fn test_handler_hash_lines1_mode() {
+        let config = HeaderConfig::new().enabled().hash_lines1();
+        let mut handler = HeaderHandler::new(config);
+
+        // Hash lines are header
+        assert!(handler.process_first_line(b"# comment").unwrap());
+        // First non-hash line is also header (column names)
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        // Subsequent lines are data
+        assert!(!handler.process_first_line(b"val1\tval2").unwrap());
+
+        assert_eq!(handler.header(), Some(b"# comment\ncol1\tcol2".as_slice()));
+    }
+
+    #[test]
+    fn test_handler_hash_lines1_no_hash() {
+        let config = HeaderConfig::new().enabled().hash_lines1();
+        let mut handler = HeaderHandler::new(config);
+
+        // No hash lines, first line is column names
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert!(!handler.process_first_line(b"val1\tval2").unwrap());
+
+        assert_eq!(handler.header(), Some(b"col1\tcol2".as_slice()));
+    }
+
+    #[test]
+    fn test_handler_second_file_hash_lines() {
+        let config = HeaderConfig::new().enabled().hash_lines();
+        let mut handler = HeaderHandler::new(config);
+
+        // First file
+        assert!(handler.process_first_line(b"# comment").unwrap());
+        handler.end_of_file();
+
+        // Second file - hash lines should be consumed but not captured
+        assert!(handler.process_first_line(b"# another comment").unwrap());
+        assert_eq!(handler.header(), Some(b"# comment".as_slice()));
+    }
+
+    #[test]
+    fn test_detect_header_crlf() {
+        let config = HeaderConfig::new().enabled().first_line();
+        let data = b"col1\tcol2\r\nval1\tval2\r\n";
+        let result = detect_header(data, &config);
+        assert!(result.has_header());
+        assert_eq!(result.lines[0], b"col1\tcol2"); // \r removed
+    }
+
+    #[test]
+    fn test_detect_header_no_final_newline() {
+        let config = HeaderConfig::new().enabled().first_line();
+        let data = b"col1\tcol2"; // No newline at end
+        let result = detect_header(data, &config);
+        assert!(result.has_header());
+        assert_eq!(result.lines[0], b"col1\tcol2");
+    }
 }
