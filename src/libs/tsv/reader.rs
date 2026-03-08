@@ -734,4 +734,150 @@ mod tests {
         assert_eq!(err.kind(), std::io::ErrorKind::Other);
         assert!(err.to_string().contains("Simulated read error"));
     }
+
+    #[test]
+    fn test_read_header_empty_file() {
+        let data = b"";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header = reader.read_header().unwrap();
+        assert!(header.is_none());
+    }
+
+    #[test]
+    fn test_read_header_first_line_empty_lines_only() {
+        // File with only empty lines - read_header returns first empty line
+        // because it doesn't skip empty lines (unlike read_header_mode with FirstLine)
+        let data = b"\n\n\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header = reader.read_header().unwrap();
+        // read_header returns the first line (even if empty)
+        assert!(header.is_some());
+        assert!(header.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_read_header_lines_n_empty_file() {
+        use crate::libs::tsv::header::HeaderMode;
+
+        let data = b"";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header_info = reader.read_header_mode(HeaderMode::LinesN(3)).unwrap();
+        assert!(header_info.is_none());
+    }
+
+    #[test]
+    fn test_read_header_lines_n_insufficient_lines() {
+        use crate::libs::tsv::header::HeaderMode;
+
+        // Only 2 lines but requesting 3
+        let data = b"line1\nline2\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header_info = reader.read_header_mode(HeaderMode::LinesN(3)).unwrap();
+        // Should return what we have
+        assert!(header_info.is_some());
+        assert_eq!(header_info.unwrap().lines.len(), 2);
+    }
+
+    #[test]
+    fn test_read_header_hash_lines_only_empty() {
+        use crate::libs::tsv::header::HeaderMode;
+
+        // File with only empty lines before hash lines
+        let data = b"\n\n# Comment\ndata\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header_info = reader.read_header_mode(HeaderMode::HashLines).unwrap();
+        assert!(header_info.is_some());
+        assert_eq!(header_info.unwrap().lines.len(), 1);
+    }
+
+    #[test]
+    fn test_read_header_hash_lines1_only_hash() {
+        use crate::libs::tsv::header::HeaderMode;
+
+        // Only hash lines, no column names
+        let data = b"# Comment 1\n# Comment 2\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header_info = reader.read_header_mode(HeaderMode::HashLines1).unwrap();
+        assert!(header_info.is_some());
+        // Should have 2 hash lines but no column_names_line
+        let info = header_info.unwrap();
+        assert_eq!(info.lines.len(), 2);
+        assert!(info.column_names_line.is_none());
+    }
+
+    #[test]
+    fn test_copy_remainder_empty() {
+        let data = b"line1\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        // Read everything
+        let _ = reader.read_header().unwrap();
+
+        // Copy remainder (should be empty)
+        let mut output = Vec::new();
+        let count = reader.copy_remainder_to(&mut output).unwrap();
+
+        assert_eq!(count, 0);
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn test_for_each_record_with_refill() {
+        // Test that buffer refilling works correctly
+        let data = b"line1\nline2\nline3\nline4\nline5\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::with_capacity(cursor, 16); // Small buffer
+
+        let mut records = Vec::new();
+        reader
+            .for_each_record(|rec| {
+                records.push(rec.to_vec());
+                Ok(())
+            })
+            .unwrap();
+
+        assert_eq!(records.len(), 5);
+        assert_eq!(records[0], b"line1");
+        assert_eq!(records[4], b"line5");
+    }
+
+    #[test]
+    fn test_read_header_mode_lines_n_single_line() {
+        use crate::libs::tsv::header::HeaderMode;
+
+        let data = b"col1\tcol2\nval1\tval2\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header_info = reader
+            .read_header_mode(HeaderMode::LinesN(1))
+            .unwrap()
+            .unwrap();
+        assert_eq!(header_info.lines.len(), 1);
+        assert_eq!(header_info.column_names_line, Some(b"col1\tcol2".to_vec()));
+
+        // Verify data follows
+        let mut records = Vec::new();
+        reader
+            .for_each_record(|rec| {
+                records.push(rec.to_vec());
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0], b"val1\tval2");
+    }
 }
