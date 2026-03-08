@@ -391,9 +391,10 @@ pub fn build_tests(
 mod tests {
     use super::*;
     use crate::libs::filter::config::{
-        FilterConfig, NumericOp, PendingByteLen, PendingCharLen,
+        FilterConfig, NumericOp, NumericProp, PendingByteLen, PendingCharLen,
         PendingFieldFieldAbsDiff, PendingFieldFieldNumeric, PendingFieldFieldRelDiff,
-        PendingNumeric, PendingRegex,
+        PendingFieldFieldStr, PendingNumeric, PendingNumericProp, PendingRegex,
+        PendingStrEq, PendingStrCmp, PendingSubstr,
     };
 
     #[test]
@@ -543,5 +544,326 @@ mod tests {
         let result = build_tests(None, '\t', spec_config);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("unsupported op for reldiff"));
+    }
+
+    // Tests for successful build paths (not just error cases)
+
+    #[test]
+    fn test_build_tests_empty() {
+        let mut config = FilterConfig::default();
+        config.empty_specs.push("1".to_string());
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::Empty { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_not_empty() {
+        let mut config = FilterConfig::default();
+        config.not_empty_specs.push("1".to_string());
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::NotEmpty { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_blank() {
+        let mut config = FilterConfig::default();
+        config.blank_specs.push("1".to_string());
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::Blank { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_not_blank() {
+        let mut config = FilterConfig::default();
+        config.not_blank_specs.push("1".to_string());
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::NotBlank { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_numeric() {
+        let mut config = FilterConfig::default();
+        config.numeric_specs.push(PendingNumeric {
+            spec: "1:10".to_string(),
+            op: NumericOp::Gt,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::NumericCmp { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_str_cmp() {
+        let mut config = FilterConfig::default();
+        config.str_cmp_specs.push(PendingStrCmp {
+            spec: "1:abc".to_string(),
+            op: NumericOp::Eq,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::StrCmp { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_char_len() {
+        let mut config = FilterConfig::default();
+        config.char_len_specs.push(PendingCharLen {
+            spec: "1:5".to_string(),
+            op: NumericOp::Ge,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::CharLenCmp { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_byte_len() {
+        let mut config = FilterConfig::default();
+        config.byte_len_specs.push(PendingByteLen {
+            spec: "1:10".to_string(),
+            op: NumericOp::Lt,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::ByteLenCmp { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_numeric_prop() {
+        let mut config = FilterConfig::default();
+        config.numeric_prop_specs.push(PendingNumericProp {
+            spec: "1".to_string(),
+            prop: NumericProp::IsNumeric,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::NumericPropTest { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_str_eq() {
+        let mut config = FilterConfig::default();
+        config.str_eq_specs.push(PendingStrEq {
+            spec: "1:test".to_string(),
+            case_insensitive: false,
+            negated: false,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::StrEq { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_str_eq_negated() {
+        let mut config = FilterConfig::default();
+        config.str_eq_specs.push(PendingStrEq {
+            spec: "1:test".to_string(),
+            case_insensitive: true,
+            negated: true,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::StrNe { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_substr() {
+        let mut config = FilterConfig::default();
+        config.substr_specs.push(PendingSubstr {
+            spec: "1:abc".to_string(),
+            case_insensitive: false,
+            negated: false,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::StrIn { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_substr_negated() {
+        let mut config = FilterConfig::default();
+        config.substr_specs.push(PendingSubstr {
+            spec: "1:abc".to_string(),
+            case_insensitive: true,
+            negated: true,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::StrIn { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_regex() {
+        let mut config = FilterConfig::default();
+        config.regex_specs.push(PendingRegex {
+            spec: "1:^[a-z]+$".to_string(),
+            case_insensitive: false,
+            negated: false,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::Regex { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_regex_case_insensitive() {
+        let mut config = FilterConfig::default();
+        config.regex_specs.push(PendingRegex {
+            spec: "1:test".to_string(),
+            case_insensitive: true,
+            negated: false,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::Regex { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_ff_numeric() {
+        let mut config = FilterConfig::default();
+        config.ff_numeric_specs.push(PendingFieldFieldNumeric {
+            spec: "1:2".to_string(),
+            op: NumericOp::Eq,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::FieldFieldNumericCmp { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_ff_str() {
+        let mut config = FilterConfig::default();
+        config.ff_str_specs.push(PendingFieldFieldStr {
+            spec: "1:2".to_string(),
+            case_insensitive: false,
+            negated: false,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::FieldFieldStrCmp { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_ff_absdiff() {
+        let mut config = FilterConfig::default();
+        config.ff_absdiff_specs.push(PendingFieldFieldAbsDiff {
+            spec: "1:2:0.5".to_string(),
+            op: NumericOp::Le,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::FieldFieldAbsDiffCmp { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_ff_reldiff() {
+        let mut config = FilterConfig::default();
+        config.ff_reldiff_specs.push(PendingFieldFieldRelDiff {
+            spec: "1:2:0.1".to_string(),
+            op: NumericOp::Gt,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 1);
+        assert!(matches!(tests[0], TestKind::FieldFieldRelDiffCmp { .. }));
+    }
+
+    #[test]
+    fn test_build_tests_multiple_specs() {
+        let mut config = FilterConfig::default();
+        config.empty_specs.push("1".to_string());
+        config.numeric_specs.push(PendingNumeric {
+            spec: "2:10".to_string(),
+            op: NumericOp::Gt,
+        });
+        config.str_eq_specs.push(PendingStrEq {
+            spec: "3:test".to_string(),
+            case_insensitive: false,
+            negated: false,
+        });
+        let spec_config = config.as_spec_config();
+        let tests = build_tests(None, '\t', spec_config).unwrap();
+        assert_eq!(tests.len(), 3);
+    }
+
+    #[test]
+    fn test_build_tests_numeric_empty_field_error() {
+        let mut config = FilterConfig::default();
+        config.numeric_specs.push(PendingNumeric {
+            spec: ":10".to_string(), // Empty field list
+            op: NumericOp::Gt,
+        });
+        let spec_config = config.as_spec_config();
+        let result = build_tests(None, '\t', spec_config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("cannot be empty"));
+    }
+
+    #[test]
+    fn test_build_tests_ff_str_mismatched_fields() {
+        let mut config = FilterConfig::default();
+        config.ff_str_specs.push(PendingFieldFieldStr {
+            spec: "1:2,3".to_string(), // 1 field vs 2 fields
+            case_insensitive: false,
+            negated: false,
+        });
+        let spec_config = config.as_spec_config();
+        let result = build_tests(None, '\t', spec_config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("mismatched field list"));
+    }
+
+    #[test]
+    fn test_build_tests_all_numeric_ops() {
+        use NumericOp::*;
+
+        for op in [Gt, Ge, Lt, Le, Eq, Ne] {
+            let mut config = FilterConfig::default();
+            config.numeric_specs.push(PendingNumeric {
+                spec: "1:10".to_string(),
+                op,
+            });
+            let spec_config = config.as_spec_config();
+            let tests = build_tests(None, '\t', spec_config).unwrap();
+            assert_eq!(tests.len(), 1);
+        }
+    }
+
+    #[test]
+    fn test_build_tests_all_numeric_props() {
+        use NumericProp::*;
+
+        for prop in [IsNumeric, IsFinite, IsNaN, IsInfinity] {
+            let mut config = FilterConfig::default();
+            config.numeric_prop_specs.push(PendingNumericProp {
+                spec: "1".to_string(),
+                prop,
+            });
+            let spec_config = config.as_spec_config();
+            let tests = build_tests(None, '\t', spec_config).unwrap();
+            assert_eq!(tests.len(), 1);
+        }
     }
 }

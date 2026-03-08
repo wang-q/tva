@@ -623,4 +623,442 @@ mod tests {
         let test_empty = TestKind::Empty { fields: vec![] };
         assert_eq!(test_empty.max_field_index(), 0);
     }
+
+    // Additional tests for coverage
+
+    #[test]
+    fn test_empty() {
+        let test = TestKind::Empty { fields: vec![1] };
+        assert!(test.eval_row(&row(&[""])));
+        assert!(!test.eval_row(&row(&["abc"])));
+
+        // Missing field
+        let test = TestKind::Empty { fields: vec![2] };
+        assert!(test.eval_row(&row(&["abc"])));
+    }
+
+    #[test]
+    fn test_not_empty() {
+        let test = TestKind::NotEmpty { fields: vec![1] };
+        assert!(!test.eval_row(&row(&[""])));
+        assert!(test.eval_row(&row(&["abc"])));
+
+        // Missing field
+        let test = TestKind::NotEmpty { fields: vec![2] };
+        assert!(!test.eval_row(&row(&["abc"])));
+    }
+
+    #[test]
+    fn test_blank() {
+        let test = TestKind::Blank { fields: vec![1] };
+        assert!(test.eval_row(&row(&[""])));
+        assert!(test.eval_row(&row(&["   "])));
+        assert!(!test.eval_row(&row(&["abc"])));
+
+        // Missing field
+        let test = TestKind::Blank { fields: vec![2] };
+        assert!(test.eval_row(&row(&["abc"])));
+    }
+
+    #[test]
+    fn test_not_blank() {
+        let test = TestKind::NotBlank { fields: vec![1] };
+        assert!(!test.eval_row(&row(&[""])));
+        assert!(!test.eval_row(&row(&["   "])));
+        assert!(test.eval_row(&row(&["abc"])));
+
+        // Missing field
+        let test = TestKind::NotBlank { fields: vec![2] };
+        assert!(!test.eval_row(&row(&["abc"])));
+    }
+
+    #[test]
+    fn test_numeric_cmp_all_ops() {
+        use NumericOp::*;
+
+        for (op, expected_pass, expected_fail) in [
+            (Gt, "11", "9"),
+            (Ge, "10", "9"),
+            (Lt, "9", "11"),
+            (Le, "10", "11"),
+            (Eq, "10", "9"),
+            (Ne, "9", "10"),
+        ] {
+            let test = TestKind::NumericCmp {
+                fields: vec![1],
+                op,
+                value: 10.0,
+            };
+            assert!(test.eval_row(&row(&[expected_pass])), "{:?} should pass", op);
+            assert!(!test.eval_row(&row(&[expected_fail])), "{:?} should fail", op);
+        }
+    }
+
+    #[test]
+    fn test_char_len_cmp() {
+        let test = TestKind::CharLenCmp {
+            fields: vec![1],
+            op: NumericOp::Ge,
+            value: 3.0,
+        };
+        assert!(test.eval_row(&row(&["abc"])));
+        assert!(!test.eval_row(&row(&["ab"])));
+
+        // Test with unicode
+        let test = TestKind::CharLenCmp {
+            fields: vec![1],
+            op: NumericOp::Eq,
+            value: 2.0,
+        };
+        assert!(test.eval_row(&row(&["éà"]))); // 2 graphemes
+    }
+
+    #[test]
+    fn test_byte_len_cmp() {
+        let test = TestKind::ByteLenCmp {
+            fields: vec![1],
+            op: NumericOp::Ge,
+            value: 3.0,
+        };
+        assert!(test.eval_row(&row(&["abc"])));
+        assert!(!test.eval_row(&row(&["ab"])));
+
+        // Missing field
+        let test = TestKind::ByteLenCmp {
+            fields: vec![2],
+            op: NumericOp::Ge,
+            value: 0.0,
+        };
+        assert!(test.eval_row(&row(&["abc"]))); // empty slice has len 0
+    }
+
+    #[test]
+    fn test_numeric_prop_all_props() {
+        // IsNumeric
+        let test = TestKind::NumericPropTest {
+            fields: vec![1],
+            prop: NumericProp::IsNumeric,
+        };
+        assert!(test.eval_row(&row(&["10.5"])));
+        assert!(!test.eval_row(&row(&["abc"])));
+
+        // IsFinite
+        let test = TestKind::NumericPropTest {
+            fields: vec![1],
+            prop: NumericProp::IsFinite,
+        };
+        assert!(test.eval_row(&row(&["10.5"])));
+        assert!(!test.eval_row(&row(&["inf"])));
+
+        // IsNaN
+        let test = TestKind::NumericPropTest {
+            fields: vec![1],
+            prop: NumericProp::IsNaN,
+        };
+        assert!(!test.eval_row(&row(&["10.5"])));
+        assert!(test.eval_row(&row(&["nan"])));
+
+        // IsInfinity
+        let test = TestKind::NumericPropTest {
+            fields: vec![1],
+            prop: NumericProp::IsInfinity,
+        };
+        assert!(!test.eval_row(&row(&["10.5"])));
+        assert!(test.eval_row(&row(&["inf"])));
+    }
+
+    #[test]
+    fn test_str_eq() {
+        let test = TestKind::StrEq {
+            fields: vec![1],
+            value: "foo".to_string(),
+            case_insensitive: false,
+        };
+        assert!(test.eval_row(&row(&["foo"])));
+        assert!(!test.eval_row(&row(&["FOO"])));
+
+        // Missing field
+        let test = TestKind::StrEq {
+            fields: vec![2],
+            value: "foo".to_string(),
+            case_insensitive: false,
+        };
+        assert!(!test.eval_row(&row(&["foo"])));
+    }
+
+    #[test]
+    fn test_str_ne() {
+        let test = TestKind::StrNe {
+            fields: vec![1],
+            value: "foo".to_string(),
+            case_insensitive: false,
+        };
+        assert!(!test.eval_row(&row(&["foo"])));
+        assert!(test.eval_row(&row(&["bar"])));
+    }
+
+    #[test]
+    fn test_str_cmp_all_ops() {
+        use NumericOp::*;
+
+        // Test each op individually with correct expectations
+        // Gt: field > value
+        let test = TestKind::StrCmp {
+            fields: vec![1],
+            op: Gt,
+            value: "a".to_string(),
+        };
+        assert!(test.eval_row(&row(&["b"])), "Gt should pass when field > value");
+        assert!(!test.eval_row(&row(&["a"])), "Gt should fail when field == value");
+
+        // Ge: field >= value
+        let test = TestKind::StrCmp {
+            fields: vec![1],
+            op: Ge,
+            value: "b".to_string(),
+        };
+        assert!(test.eval_row(&row(&["b"])), "Ge should pass when field == value");
+        assert!(test.eval_row(&row(&["c"])), "Ge should pass when field > value");
+        assert!(!test.eval_row(&row(&["a"])), "Ge should fail when field < value");
+
+        // Lt: field < value
+        let test = TestKind::StrCmp {
+            fields: vec![1],
+            op: Lt,
+            value: "b".to_string(),
+        };
+        assert!(test.eval_row(&row(&["a"])), "Lt should pass when field < value");
+        assert!(!test.eval_row(&row(&["b"])), "Lt should fail when field == value");
+
+        // Le: field <= value
+        let test = TestKind::StrCmp {
+            fields: vec![1],
+            op: Le,
+            value: "b".to_string(),
+        };
+        assert!(test.eval_row(&row(&["b"])), "Le should pass when field == value");
+        assert!(test.eval_row(&row(&["a"])), "Le should pass when field < value");
+        assert!(!test.eval_row(&row(&["c"])), "Le should fail when field > value");
+
+        // Eq: field == value
+        let test = TestKind::StrCmp {
+            fields: vec![1],
+            op: Eq,
+            value: "a".to_string(),
+        };
+        assert!(test.eval_row(&row(&["a"])), "Eq should pass when field == value");
+        assert!(!test.eval_row(&row(&["b"])), "Eq should fail when field != value");
+
+        // Ne: field != value
+        let test = TestKind::StrCmp {
+            fields: vec![1],
+            op: Ne,
+            value: "a".to_string(),
+        };
+        assert!(test.eval_row(&row(&["b"])), "Ne should pass when field != value");
+        assert!(!test.eval_row(&row(&["a"])), "Ne should fail when field == value");
+
+        // Missing field
+        let test = TestKind::StrCmp {
+            fields: vec![2],
+            op: NumericOp::Eq,
+            value: "a".to_string(),
+        };
+        assert!(!test.eval_row(&row(&["a"])));
+    }
+
+    #[test]
+    fn test_str_in() {
+        // Positive case
+        let test = TestKind::StrIn {
+            fields: vec![1],
+            value: "foo".to_string(),
+            case_insensitive: false,
+            negated: false,
+        };
+        assert!(test.eval_row(&row(&["foobar"])));
+        assert!(!test.eval_row(&row(&["bar"])));
+
+        // Negated
+        let test = TestKind::StrIn {
+            fields: vec![1],
+            value: "foo".to_string(),
+            case_insensitive: false,
+            negated: true,
+        };
+        assert!(!test.eval_row(&row(&["foobar"])));
+        assert!(test.eval_row(&row(&["bar"])));
+
+        // Case insensitive
+        let test = TestKind::StrIn {
+            fields: vec![1],
+            value: "FOO".to_string(),
+            case_insensitive: true,
+            negated: false,
+        };
+        assert!(test.eval_row(&row(&["foobar"])));
+    }
+
+    #[test]
+    fn test_regex() {
+        let test = TestKind::Regex {
+            fields: vec![1],
+            regex: regex::Regex::new("^[a-z]+$").unwrap(),
+            negated: false,
+        };
+        assert!(test.eval_row(&row(&["abc"])));
+        assert!(!test.eval_row(&row(&["ABC"])));
+    }
+
+    #[test]
+    fn test_ff_numeric_cmp_all_ops() {
+        use NumericOp::*;
+
+        for op in [Gt, Ge, Lt, Le, Eq, Ne] {
+            let test = TestKind::FieldFieldNumericCmp {
+                left_fields: vec![1],
+                right_fields: vec![2],
+                op,
+            };
+            // Both fields exist
+            assert!(test.eval_row(&row(&["10", "10"])) || !test.eval_row(&row(&["10", "10"])));
+        }
+    }
+
+    #[test]
+    fn test_ff_str_cmp() {
+        // Equal
+        let test = TestKind::FieldFieldStrCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            case_insensitive: false,
+            negated: false,
+        };
+        assert!(test.eval_row(&row(&["foo", "foo"])));
+        assert!(!test.eval_row(&row(&["foo", "bar"])));
+
+        // Negated
+        let test = TestKind::FieldFieldStrCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            case_insensitive: false,
+            negated: true,
+        };
+        assert!(!test.eval_row(&row(&["foo", "foo"])));
+        assert!(test.eval_row(&row(&["foo", "bar"])));
+
+        // Case insensitive
+        let test = TestKind::FieldFieldStrCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            case_insensitive: true,
+            negated: false,
+        };
+        assert!(test.eval_row(&row(&["foo", "FOO"])));
+
+        // Mismatched lengths
+        let test = TestKind::FieldFieldStrCmp {
+            left_fields: vec![1],
+            right_fields: vec![2, 3],
+            case_insensitive: false,
+            negated: false,
+        };
+        assert!(!test.eval_row(&row(&["foo", "foo", "foo"])));
+    }
+
+    #[test]
+    fn test_ff_absdiff_cmp() {
+        // Le
+        let test = TestKind::FieldFieldAbsDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Le,
+            value: 5.0,
+        };
+        assert!(test.eval_row(&row(&["10", "12"]))); // diff=2 <= 5
+        assert!(!test.eval_row(&row(&["10", "20"]))); // diff=10 > 5
+
+        // Gt
+        let test = TestKind::FieldFieldAbsDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Gt,
+            value: 5.0,
+        };
+        assert!(test.eval_row(&row(&["10", "20"]))); // diff=10 > 5
+
+        // Same field
+        let test = TestKind::FieldFieldAbsDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![1],
+            op: NumericOp::Le,
+            value: 0.0,
+        };
+        assert!(test.eval_row(&row(&["10"]))); // diff=0 <= 0
+
+        // Mismatched lengths
+        let test = TestKind::FieldFieldAbsDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2, 3],
+            op: NumericOp::Le,
+            value: 5.0,
+        };
+        assert!(!test.eval_row(&row(&["10", "12", "12"])));
+
+        // Invalid number
+        let test = TestKind::FieldFieldAbsDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Le,
+            value: 5.0,
+        };
+        assert!(!test.eval_row(&row(&["abc", "12"])));
+    }
+
+    #[test]
+    fn test_ff_reldiff_cmp() {
+        // Le
+        let test = TestKind::FieldFieldRelDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Le,
+            value: 0.1,
+        };
+        assert!(test.eval_row(&row(&["100", "101"]))); // rel_diff ~0.01 <= 0.1
+
+        // Gt
+        let test = TestKind::FieldFieldRelDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2],
+            op: NumericOp::Gt,
+            value: 0.1,
+        };
+        assert!(test.eval_row(&row(&["100", "120"]))); // rel_diff=0.2 > 0.1
+
+        // Same field (diff=0)
+        let test = TestKind::FieldFieldRelDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![1],
+            op: NumericOp::Le,
+            value: 0.0,
+        };
+        assert!(test.eval_row(&row(&["10"]))); // 0 <= 0
+
+        // Mismatched lengths
+        let test = TestKind::FieldFieldRelDiffCmp {
+            left_fields: vec![1],
+            right_fields: vec![2, 3],
+            op: NumericOp::Le,
+            value: 0.1,
+        };
+        assert!(!test.eval_row(&row(&["10", "11", "11"])));
+    }
+
+    #[test]
+    fn test_eval_helper() {
+        // Test the eval helper method
+        let test = TestKind::Empty { fields: vec![1] };
+        assert!(test.eval(&[""]));
+        assert!(!test.eval(&["abc"]));
+    }
 }

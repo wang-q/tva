@@ -337,4 +337,136 @@ mod tests {
         let out_str = String::from_utf8(output).unwrap();
         assert_eq!(out_str, "1\n2\n");
     }
+
+    #[test]
+    fn test_filter_line_buffered() {
+        let file = create_temp_file("1\n2\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.line_buffered = true;
+        // No specs - match all
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        assert_eq!(out_str, "1\n2\n");
+    }
+
+    #[test]
+    fn test_filter_header_without_label() {
+        let file = create_temp_file("ID\tValue\n1\t10\n2\t30\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.has_header = true;
+        // label_header is None - should write header without label column
+
+        // Spec: Value > 20
+        config.numeric_specs.push(PendingNumeric {
+            spec: "Value:20".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        // Header should be written without label
+        assert_eq!(out_str, "ID\tValue\n2\t30\n");
+    }
+
+    #[test]
+    fn test_filter_header_only_file() {
+        // File with only header, no data rows
+        let file = create_temp_file("ID\tValue\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.has_header = true;
+        config.numeric_specs.push(PendingNumeric {
+            spec: "Value:20".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        // Only header should be output
+        assert_eq!(out_str, "ID\tValue\n");
+    }
+
+    #[test]
+    fn test_filter_count_only_with_match() {
+        let file = create_temp_file("1\t10\n2\t20\n3\t30\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.count_only = true;
+        // Spec: 2:10 (col 2 > 10) -> matches 20, 30
+        config.numeric_specs.push(PendingNumeric {
+            spec: "2:10".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        assert_eq!(out_str, "2\n");
+    }
+
+    #[test]
+    fn test_filter_count_only_no_match() {
+        let file = create_temp_file("1\t10\n2\t20\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.count_only = true;
+        // Spec: 2:100 (col 2 > 100) -> no matches
+        config.numeric_specs.push(PendingNumeric {
+            spec: "2:100".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        assert_eq!(out_str, "0\n");
+    }
+
+    #[test]
+    fn test_filter_label_header_line_buffered() {
+        let file = create_temp_file("ID\tValue\n1\t10\n2\t30\n");
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut config = FilterConfig::default();
+        config.delimiter = '\t';
+        config.has_header = true;
+        config.label_header = Some("Label".to_string());
+        config.label_pass_val = "PASS".to_string();
+        config.label_fail_val = "FAIL".to_string();
+        config.line_buffered = true;
+
+        // Spec: Value > 20
+        config.numeric_specs.push(PendingNumeric {
+            spec: "Value:20".to_string(),
+            op: NumericOp::Gt,
+        });
+
+        let mut output = Vec::new();
+        run_filter(&[path], &mut output, config).unwrap();
+
+        let out_str = String::from_utf8(output).unwrap();
+        let expected = "ID\tValue\tLabel\n1\t10\tFAIL\n2\t30\tPASS\n";
+        assert_eq!(out_str, expected);
+    }
 }
