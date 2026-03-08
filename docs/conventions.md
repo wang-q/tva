@@ -12,6 +12,17 @@ Headers are the column name rows in data files. Different commands have differen
     - `--header-hash`: **HashLines** mode - take all consecutive `#` lines as header (metadata only)
     - `--header-hash1`: **HashLines1** mode - take `#` lines plus the next line as header (contains column names)
 
+*   **Library Implementation**
+    - Use `TsvReader::read_header_mode(mode)` to read headers according to the specified mode.
+    - Returns `HeaderInfo` containing:
+        - `lines: Vec<Vec<u8>>` - all header lines (including column names line if applicable)
+        - `column_names_line: Option<Vec<u8>>` - the line containing column names (if mode provides it)
+    - Mode behavior:
+        - `FirstLine`: `lines` is empty, `column_names_line` is the first non-empty line
+        - `LinesN(n)`: `lines` contains first n lines, `column_names_line` is the nth line
+        - `HashLines`: `lines` contains `#` lines, `column_names_line` is None
+        - `HashLines1`: `lines` contains `#` lines + column names, `column_names_line` is the column names line
+
 *   **Special Commands**
     - `split`: Uses `--header-in-out` (input has header, output writes header, default) or `--header-in-only` (input has header, output does not write header). `--header` is an alias for `--header-in-out`.
     - `keep-header`: Uses `--lines N` / `-n` to specify number of header lines (default: 1)
