@@ -136,8 +136,6 @@ fn format_index(idx0: usize, digit_width: usize) -> String {
     }
 }
 
-
-
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),

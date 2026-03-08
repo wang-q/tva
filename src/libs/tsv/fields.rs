@@ -1,7 +1,7 @@
 //! Common field list parsing utilities shared across tva commands.
 //!
 //! Field lists are used to refer to columns by index or by name. The shared
-//! syntax is documented in [`FIELD_SYNTAX_HELP`].
+//! syntax is documented in [`super::FIELD_SYNTAX_HELP`].
 //!
 //! Basic numeric-only parsing:
 //!
@@ -24,8 +24,6 @@
 
 use intspan::IntSpan;
 use std::collections::HashMap;
-
-pub const FIELD_SYNTAX_HELP: &str = include_str!("../../../docs/help/fields.md");
 
 pub fn fields_to_ints(s: &str) -> IntSpan {
     let mut ints = IntSpan::new();
