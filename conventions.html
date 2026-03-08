@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-90ae6a9b.js";
+            window.path_to_searchindex_js = "searchindex-63efd688.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -192,6 +192,26 @@
 <li><code>--header-lines N</code>: <strong>LinesN</strong> mode - take exactly N non-empty lines as header</li>
 <li><code>--header-hash</code>: <strong>HashLines</strong> mode - take all consecutive <code>#</code> lines as header (metadata only)</li>
 <li><code>--header-hash1</code>: <strong>HashLines1</strong> mode - take <code>#</code> lines plus the next line as header (contains column names)</li>
+</ul>
+</li>
+<li>
+<p><strong>Library Implementation</strong></p>
+<ul>
+<li>Use <code>TsvReader::read_header_mode(mode)</code> to read headers according to the specified mode.</li>
+<li>Returns <code>HeaderInfo</code> containing:
+<ul>
+<li><code>lines: Vec&lt;Vec&lt;u8&gt;&gt;</code> - all header lines (including column names line if applicable)</li>
+<li><code>column_names_line: Option&lt;Vec&lt;u8&gt;&gt;</code> - the line containing column names (if mode provides it)</li>
+</ul>
+</li>
+<li>Mode behavior:
+<ul>
+<li><code>FirstLine</code>: <code>lines</code> is empty, <code>column_names_line</code> is the first non-empty line</li>
+<li><code>LinesN(n)</code>: <code>lines</code> contains first n lines, <code>column_names_line</code> is the nth line</li>
+<li><code>HashLines</code>: <code>lines</code> contains <code>#</code> lines, <code>column_names_line</code> is None</li>
+<li><code>HashLines1</code>: <code>lines</code> contains <code>#</code> lines + column names, <code>column_names_line</code> is the column names line</li>
+</ul>
+</li>
 </ul>
 </li>
 <li>
