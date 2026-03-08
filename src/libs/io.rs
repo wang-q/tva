@@ -32,9 +32,9 @@
 
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use flate2::read::MultiGzDecoder;
 
@@ -307,13 +307,117 @@ pub fn writer(output: &str) -> io::Result<Box<dyn Write>> {
     Ok(writer)
 }
 
+/// A manager for multiple output file writers with LRU eviction.
+///
+/// This is useful when writing to many output files simultaneously,
+/// but you want to limit the number of open file handles.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::Write;
+/// use tva::libs::io::FileWriterManager;
+/// use tempfile::TempDir;
+///
+/// let dir = TempDir::new().unwrap();
+/// let mut manager = FileWriterManager::new(dir.path(), 2);
+///
+/// // Write to file 0
+/// let w = manager.get_writer(0, "file_", ".txt").unwrap();
+/// writeln!(w, "hello").unwrap();
+///
+/// // Write to file 1
+/// let w = manager.get_writer(1, "file_", ".txt").unwrap();
+/// writeln!(w, "world").unwrap();
+/// ```
+pub struct FileWriterManager {
+    dir: PathBuf,
+    writers: indexmap::IndexMap<usize, BufWriter<File>>,
+    initialized: std::collections::HashSet<usize>,
+    max_open: usize,
+}
+
+impl FileWriterManager {
+    /// Creates a new FileWriterManager.
+    ///
+    /// # Arguments
+    ///
+    /// * `dir` - The directory where output files will be created
+    /// * `max_open` - Maximum number of files to keep open (0 = unlimited)
+    pub fn new(dir: &Path, max_open: usize) -> Self {
+        Self {
+            dir: dir.to_path_buf(),
+            writers: indexmap::IndexMap::new(),
+            initialized: std::collections::HashSet::new(),
+            max_open,
+        }
+    }
+
+    /// Gets a writer for the specified file index.
+    ///
+    /// If the writer is already open, returns the existing writer.
+    /// If not, opens the file (creating if necessary, appending if previously opened).
+    ///
+    /// # Arguments
+    ///
+    /// * `idx` - The file index (used to construct filename)
+    /// * `prefix` - Filename prefix
+    /// * `suffix` - Filename suffix
+    pub fn get_writer(
+        &mut self,
+        idx: usize,
+        prefix: &str,
+        suffix: &str,
+    ) -> io::Result<&mut BufWriter<File>> {
+        // Check if already open
+        if self.writers.contains_key(&idx) {
+            // Move to end (MRU) if using LRU logic
+            if self.max_open > 0 {
+                if let Some((_, v)) = self.writers.shift_remove_entry(&idx) {
+                    self.writers.insert(idx, v);
+                }
+            }
+            return Ok(self.writers.get_mut(&idx).unwrap());
+        }
+
+        // Evict LRU if at capacity
+        if self.max_open > 0 && self.writers.len() >= self.max_open {
+            self.writers.shift_remove_index(0);
+        }
+
+        // Open the file
+        let filename = format!("{}{}{}", prefix, idx, suffix);
+        let path = self.dir.join(&filename);
+        let is_append = self.initialized.contains(&idx);
+
+        let file = if is_append {
+            OpenOptions::new().create(true).append(true).open(&path)?
+        } else {
+            File::create(&path)?
+        };
+
+        self.initialized.insert(idx);
+        self.writers.insert(idx, BufWriter::new(file));
+
+        Ok(self.writers.get_mut(&idx).unwrap())
+    }
+
+    /// Flushes all open writers.
+    pub fn flush_all(&mut self) -> io::Result<()> {
+        for (_, writer) in &mut self.writers {
+            writer.flush()?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use flate2::write::GzEncoder;
     use flate2::Compression;
     use std::io::Write;
-    use tempfile::NamedTempFile;
+    use tempfile::{NamedTempFile, TempDir};
 
     #[test]
     fn test_is_stdin_name() {
@@ -498,5 +602,82 @@ mod tests {
         assert!(result.is_err());
         let err = result.err().unwrap();
         assert!(err.to_string().contains("tva: could not create"));
+    }
+
+    #[test]
+    fn test_file_writer_manager_basic() {
+        let dir = TempDir::new().unwrap();
+        let mut manager = FileWriterManager::new(dir.path(), 0); // unlimited
+
+        // Write to file 0
+        let w = manager.get_writer(0, "file_", ".txt").unwrap();
+        writeln!(w, "hello").unwrap();
+
+        // Write to file 1
+        let w = manager.get_writer(1, "file_", ".txt").unwrap();
+        writeln!(w, "world").unwrap();
+
+        // Flush all
+        manager.flush_all().unwrap();
+
+        // Verify content
+        let content0 = std::fs::read_to_string(dir.path().join("file_0.txt")).unwrap();
+        assert_eq!(content0, "hello\n");
+
+        let content1 = std::fs::read_to_string(dir.path().join("file_1.txt")).unwrap();
+        assert_eq!(content1, "world\n");
+    }
+
+    #[test]
+    fn test_file_writer_manager_lru() {
+        let dir = TempDir::new().unwrap();
+        let mut manager = FileWriterManager::new(dir.path(), 2); // max 2 open files
+
+        // Write to files 0, 1, 2 (0 should be evicted when 2 is opened)
+        let w = manager.get_writer(0, "f", ".txt").unwrap();
+        writeln!(w, "file0").unwrap();
+
+        let w = manager.get_writer(1, "f", ".txt").unwrap();
+        writeln!(w, "file1").unwrap();
+
+        let w = manager.get_writer(2, "f", ".txt").unwrap();
+        writeln!(w, "file2").unwrap();
+
+        // Access file 0 again (should reopen)
+        let w = manager.get_writer(0, "f", ".txt").unwrap();
+        writeln!(w, "more").unwrap();
+
+        manager.flush_all().unwrap();
+
+        // Verify all content
+        let content0 = std::fs::read_to_string(dir.path().join("f0.txt")).unwrap();
+        assert_eq!(content0, "file0\nmore\n");
+
+        let content1 = std::fs::read_to_string(dir.path().join("f1.txt")).unwrap();
+        assert_eq!(content1, "file1\n");
+
+        let content2 = std::fs::read_to_string(dir.path().join("f2.txt")).unwrap();
+        assert_eq!(content2, "file2\n");
+    }
+
+    #[test]
+    fn test_file_writer_manager_reopen() {
+        let dir = TempDir::new().unwrap();
+        let mut manager = FileWriterManager::new(dir.path(), 0);
+
+        // Write to file 0
+        let w = manager.get_writer(0, "out_", ".tsv").unwrap();
+        writeln!(w, "line1").unwrap();
+
+        // Close and reopen (should append)
+        manager.writers.clear(); // Force close
+
+        let w = manager.get_writer(0, "out_", ".tsv").unwrap();
+        writeln!(w, "line2").unwrap();
+
+        manager.flush_all().unwrap();
+
+        let content = std::fs::read_to_string(dir.path().join("out_0.tsv")).unwrap();
+        assert_eq!(content, "line1\nline2\n");
     }
 }
