@@ -2,6 +2,7 @@ pub mod append;
 pub mod bin;
 pub mod blank;
 pub mod check;
+pub mod common;
 pub mod fill;
 pub mod filter;
 pub mod r#from;

@@ -230,7 +230,6 @@ fn detect_lines_n_header(data: &[u8], n: usize) -> DetectedHeader {
 fn detect_hash_lines_header(data: &[u8], include_next_line: bool) -> DetectedHeader {
     let mut lines = Vec::new();
     let mut pos = 0;
-    let mut collected_next_line = false;
 
     loop {
         if pos >= data.len() {
@@ -268,11 +267,10 @@ fn detect_hash_lines_header(data: &[u8], include_next_line: bool) -> DetectedHea
             lines.push(line.to_vec());
             pos = next_pos;
             // Continue to collect more hash lines
-        } else if include_next_line && !collected_next_line {
+        } else if include_next_line {
             // First non-hash line is also part of header (column names)
             lines.push(line.to_vec());
             pos = next_pos;
-            collected_next_line = true;
             break;
         } else {
             // Not a hash line and we don't need to collect it
@@ -374,7 +372,11 @@ impl HeaderHandler {
         Ok(false)
     }
 
-    fn process_hash_lines_mode(&mut self, line: &[u8], include_next_line: bool) -> anyhow::Result<bool> {
+    fn process_hash_lines_mode(
+        &mut self,
+        line: &[u8],
+        include_next_line: bool,
+    ) -> anyhow::Result<bool> {
         let is_hash = line.starts_with(b"#");
 
         if is_hash {

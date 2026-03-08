@@ -2,7 +2,9 @@ use clap::*;
 use std::collections::HashSet;
 use std::ops::Range;
 
+use crate::cmd_tva::common::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
+
 use crate::libs::tsv::select;
 use crate::libs::tsv::select::SelectPlan;
 
@@ -38,13 +40,7 @@ pub fn make_subcommand() -> Command {
                 .num_args(1)
                 .help("Output location for fields not included in --fields"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Treat the first line of each file as a header; only the first header is output"),
-        )
+        .args(header_args_with_columns())
         .arg(
             Arg::new("delimiter")
                 .long("delimiter")
@@ -109,7 +105,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
     }
 
-    let has_header = args.get_flag("header");
+    // Build HeaderConfig from arguments
+    let header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+    let has_header = header_config.enabled;
 
     let delimiter_str = args
         .get_one::<String>("delimiter")
@@ -138,64 +137,85 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
 
         if has_header {
-            if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
-                if !header_written {
-                    let line_str = String::from_utf8_lossy(&header_bytes);
-                    let header = crate::libs::tsv::fields::Header::from_line(
-                        &line_str, delimiter,
-                    );
-
-                    // Resolve fields if not yet resolved
-                    if field_indices.is_none() {
-                        if let Some(ref spec) = fields_spec {
-                            field_indices = Some(
-                                crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
-                                    spec,
-                                    Some(&header),
-                                    delimiter,
-                                )
-                                .map_err(map_io_err)?,
-                            );
-                        }
-                    }
-
-                    // Resolve exclude if not yet resolved
-                    if exclude_indices.is_none() {
-                        if let Some(ref spec) = exclude_spec {
-                            let indices =
-                                crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
-                                    spec,
-                                    Some(&header),
-                                    delimiter,
-                                )
-                                .map_err(map_io_err)?;
-                            exclude_set = Some(indices.iter().copied().collect());
-                            exclude_indices = Some(indices);
-                        }
-                    }
-
-                    // Check conflicts
-                    if let (Some(ref f), Some(ref e)) = (&field_indices, &exclude_set) {
-                        check_conflicts(f, e);
-                    }
-
-                    let empty_vec = Vec::new();
-                    let f_indices = field_indices.as_ref().unwrap_or(&empty_vec);
-
-                    select::write_with_rest(
-                        &mut writer,
-                        &header_bytes,
-                        delim_byte,
-                        f_indices,
-                        exclude_set.as_ref(),
-                        rest_mode,
-                    )
+            if !header_written {
+                // First file: read header using the configured mode
+                // header_config.mode defaults to FirstLine even when not explicitly enabled
+                let header_result = tsv_reader
+                    .read_header_mode(header_config.mode)
                     .map_err(map_io_err)?;
 
-                    header_written = true;
+                // If no header found, skip this file (no output for empty input)
+                let header_info = match header_result {
+                    Some(info) => info,
+                    None => continue,
+                };
+
+                // Get column names bytes
+                let column_names_bytes: Vec<u8> = header_info
+                    .column_names_line
+                    .clone()
+                    .or_else(|| header_info.lines.last().cloned())
+                    .unwrap_or_default();
+
+                // Parse header for field resolution
+                let line_str = String::from_utf8_lossy(&column_names_bytes);
+                let header =
+                    crate::libs::tsv::fields::Header::from_line(&line_str, delimiter);
+
+                // Resolve fields if not yet resolved
+                if field_indices.is_none() {
+                    if let Some(ref spec) = fields_spec {
+                        field_indices = Some(
+                            crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
+                                spec,
+                                Some(&header),
+                                delimiter,
+                            )
+                            .map_err(map_io_err)?,
+                        );
+                    }
                 }
+
+                // Resolve exclude if not yet resolved
+                if exclude_indices.is_none() {
+                    if let Some(ref spec) = exclude_spec {
+                        let indices =
+                            crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
+                                spec,
+                                Some(&header),
+                                delimiter,
+                            )
+                            .map_err(map_io_err)?;
+                        exclude_set = Some(indices.iter().copied().collect());
+                        exclude_indices = Some(indices);
+                    }
+                }
+
+                // Check conflicts
+                if let (Some(ref f), Some(ref e)) = (&field_indices, &exclude_set) {
+                    check_conflicts(f, e);
+                }
+
+                let empty_vec = Vec::new();
+                let f_indices = field_indices.as_ref().unwrap_or(&empty_vec);
+
+                // Write output header (only column names line, not all header lines)
+                select::write_with_rest(
+                    &mut writer,
+                    &column_names_bytes,
+                    delim_byte,
+                    f_indices,
+                    exclude_set.as_ref(),
+                    rest_mode,
+                )
+                .map_err(map_io_err)?;
+
+                header_written = true;
             } else {
-                continue;
+                // Subsequent files: skip their header using the same mode
+                let _ = tsv_reader
+                    .read_header_mode(header_config.mode)
+                    .map_err(map_io_err)?;
             }
         }
 

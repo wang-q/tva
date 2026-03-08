@@ -221,7 +221,7 @@ fn select_from_empty_file_with_header() {
         ])
         .run();
 
-    assert_eq!(stdout, "\n");
+    assert_eq!(stdout, "");
 }
 
 #[test]
