@@ -147,21 +147,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 .iter()
                 .enumerate()
                 .map(|(j, value)| {
-                    // Don't touch first row
-                    if i == 0 {
-                        value.to_string()
-                    } else if is_fmt
+                    // Only format numeric values in data rows (not header) when --fmt is enabled
+                    let formatted_num = (is_fmt
+                        && i > 0
                         && j < is_numeric_column.len()
-                        && is_numeric_column[j]
-                    {
-                        if let Ok(num) = value.parse::<f64>() {
-                            crate::libs::number::format_number(num, opt_digits)
-                        } else {
-                            value.to_string()
-                        }
-                    } else {
-                        value.to_string()
-                    }
+                        && is_numeric_column[j])
+                        .then(|| value.parse::<f64>().ok())
+                        .flatten()
+                        .map(|num| crate::libs::number::format_number(num, opt_digits));
+                    formatted_num.unwrap_or_else(|| value.to_string())
                 })
                 .collect();
             table += format!("| {} |\n", formatted_row.join(" | ")).as_str();
