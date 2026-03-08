@@ -18,7 +18,9 @@ pub fn run_filter<W: Write>(
     let delim_bytes = config.delimiter.encode_utf8(&mut delim_buf).as_bytes();
     let delim_byte = config.delimiter as u8;
 
-    let tests_without_header: Option<Vec<TestKind>> = if config.has_header {
+    let has_header = config.header_config.enabled;
+
+    let tests_without_header: Option<Vec<TestKind>> = if has_header {
         None
     } else {
         Some(
@@ -38,37 +40,83 @@ pub fn run_filter<W: Write>(
         let mut max_field_for_rows = max_field_without_header;
         let mut ends: Vec<usize> = Vec::new();
 
-        if config.has_header {
-            if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
-                let header_line =
-                    std::str::from_utf8(&header_bytes).map_err(map_io_err)?;
-                let header = crate::libs::tsv::fields::Header::from_line(
-                    header_line,
-                    config.delimiter,
-                );
+        if has_header {
+            // Use read_header_mode to support all header modes
+            let header_result = tsv_reader
+                .read_header_mode(config.header_config.mode)
+                .map_err(map_io_err)?;
 
-                if !header_written && !config.count_only {
-                    if let Some(ref lbl) = config.label_header {
-                        writer.write_all(&header_bytes)?;
-                        writer.write_all(delim_bytes)?;
-                        writer.write_all(lbl.as_bytes())?;
-                        writer.write_all(b"\n")?;
-                    } else {
-                        writer.write_all(&header_bytes)?;
-                        writer.write_all(b"\n")?;
+            if let Some(header_info) = header_result {
+                // Get the column names line for field name resolution
+                if let Some(column_names_bytes) = header_info.column_names_line {
+                    let header_line =
+                        std::str::from_utf8(&column_names_bytes).map_err(map_io_err)?;
+                    let header = crate::libs::tsv::fields::Header::from_line(
+                        header_line,
+                        config.delimiter,
+                    );
+
+                    if !header_written && !config.count_only {
+                        // Write the column names line (not all header lines for simplicity)
+                        if let Some(ref lbl) = config.label_header {
+                            writer.write_all(&column_names_bytes)?;
+                            writer.write_all(delim_bytes)?;
+                            writer.write_all(lbl.as_bytes())?;
+                            writer.write_all(b"\n")?;
+                        } else {
+                            writer.write_all(&column_names_bytes)?;
+                            writer.write_all(b"\n")?;
+                        }
+                        if config.line_buffered {
+                            writer.flush()?;
+                        }
+                        header_written = true;
                     }
-                    if config.line_buffered {
-                        writer.flush()?;
+
+                    let tests = build_tests(
+                        Some(&header),
+                        config.delimiter,
+                        config.as_spec_config(),
+                    )
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                    max_field_for_rows =
+                        tests.iter().map(|t| t.max_field_index()).max().unwrap_or(0);
+                    tests_with_header = Some(tests);
+                } else {
+                    // HashLines mode: no column names line, but we still need to process data
+                    // Use numeric field indices (no header for field name resolution)
+                    let tests =
+                        build_tests(None, config.delimiter, config.as_spec_config())
+                            .map_err(|e| anyhow::anyhow!(e))?;
+                    max_field_for_rows =
+                        tests.iter().map(|t| t.max_field_index()).max().unwrap_or(0);
+                    tests_with_header = Some(tests);
+
+                    // Write the last hash line as header if present
+                    if !header_written && !config.count_only {
+                        if let Some(last_hash_line) = header_info.lines.last() {
+                            if let Some(ref lbl) = config.label_header {
+                                writer.write_all(last_hash_line)?;
+                                writer.write_all(delim_bytes)?;
+                                writer.write_all(lbl.as_bytes())?;
+                                writer.write_all(b"\n")?;
+                            } else {
+                                writer.write_all(last_hash_line)?;
+                                writer.write_all(b"\n")?;
+                            }
+                            if config.line_buffered {
+                                writer.flush()?;
+                            }
+                            header_written = true;
+                        }
                     }
-                    header_written = true;
                 }
-
-                let tests = build_tests(
-                    Some(&header),
-                    config.delimiter,
-                    config.as_spec_config(),
-                )
-                .map_err(|e| anyhow::anyhow!(e))?;
+            } else {
+                // No header found (e.g., HashLines mode with no hash lines)
+                // Fall back to no-header mode for this file
+                // Build tests without header for this file
+                let tests = build_tests(None, config.delimiter, config.as_spec_config())
+                    .map_err(|e| anyhow::anyhow!(e))?;
                 max_field_for_rows =
                     tests.iter().map(|t| t.max_field_index()).max().unwrap_or(0);
                 tests_with_header = Some(tests);
@@ -76,7 +124,7 @@ pub fn run_filter<W: Write>(
         }
 
         tsv_reader.for_each_record(|record| {
-            let tests: &[TestKind] = if config.has_header {
+            let tests: &[TestKind] = if has_header {
                 match tests_with_header.as_ref() {
                     Some(v) => v.as_slice(),
                     None => return Ok(()),
@@ -170,6 +218,7 @@ pub fn run_filter<W: Write>(
 mod tests {
     use super::*;
     use crate::libs::filter::config::{NumericOp, PendingNumeric};
+    use crate::libs::tsv::header::HeaderConfig;
     use tempfile::NamedTempFile;
 
     // Helper to create a temp file
@@ -206,7 +255,7 @@ mod tests {
 
         let mut config = FilterConfig::default();
         config.delimiter = '\t';
-        config.has_header = true;
+        config.header_config = HeaderConfig::new().enabled();
         // Spec: Value:20 (Value > 20)
         config.numeric_specs.push(PendingNumeric {
             spec: "Value:20".to_string(),
@@ -300,7 +349,7 @@ mod tests {
 
         let mut config = FilterConfig::default();
         config.delimiter = '\t';
-        config.has_header = true;
+        config.header_config = HeaderConfig::new().enabled();
         config.label_header = Some("Label".to_string());
         config.label_pass_val = "PASS".to_string();
         config.label_fail_val = "FAIL".to_string();
@@ -362,7 +411,7 @@ mod tests {
 
         let mut config = FilterConfig::default();
         config.delimiter = '\t';
-        config.has_header = true;
+        config.header_config = HeaderConfig::new().enabled();
         // label_header is None - should write header without label column
 
         // Spec: Value > 20
@@ -387,7 +436,7 @@ mod tests {
 
         let mut config = FilterConfig::default();
         config.delimiter = '\t';
-        config.has_header = true;
+        config.header_config = HeaderConfig::new().enabled();
         config.numeric_specs.push(PendingNumeric {
             spec: "Value:20".to_string(),
             op: NumericOp::Gt,
@@ -450,7 +499,7 @@ mod tests {
 
         let mut config = FilterConfig::default();
         config.delimiter = '\t';
-        config.has_header = true;
+        config.header_config = HeaderConfig::new().enabled();
         config.label_header = Some("Label".to_string());
         config.label_pass_val = "PASS".to_string();
         config.label_fail_val = "FAIL".to_string();

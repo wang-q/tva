@@ -160,6 +160,7 @@ impl<R: Read> TsvReader<R> {
         let mut lines = Vec::new();
         let mut column_names = None;
         let mut found_hash = false;
+        let mut first_non_hash_line: Option<Vec<u8>> = None;
 
         let res = self.for_each_record(|record| {
             if record.starts_with(b"#") {
@@ -174,21 +175,24 @@ impl<R: Read> TsvReader<R> {
                 // Non-empty line that's not a hash line
                 if !found_hash {
                     // No hash lines found - not a valid hash header
-                    return Err(io::Error::new(
-                        io::ErrorKind::Interrupted,
-                        "No hash lines",
-                    ));
+                    // Remember this line so we can restore it to the buffer
+                    first_non_hash_line = Some(record.to_vec());
+                    return Err(io::Error::new(io::ErrorKind::Other, "No hash lines"));
                 }
-                // Hash lines ended - stop here for HashLines mode
-                // (for HashLines1, we already handled above)
-                return Err(io::Error::new(
-                    io::ErrorKind::Interrupted,
-                    "Hash lines ended",
-                ));
+                // Hash lines ended - remember this line and stop
+                // Don't use Interrupted here because for_each_record will skip the line
+                first_non_hash_line = Some(record.to_vec());
+                return Err(io::Error::new(io::ErrorKind::Other, "Hash lines ended"));
             }
             // Empty lines are skipped
             Ok(())
         });
+
+        // Note: When for_each_record returns an error (not Interrupted),
+        // self.pos is NOT advanced past the current line. This means the next
+        // for_each_record call will re-read the same line. This is the desired
+        // behavior for HashLines mode - the first non-hash line should be
+        // processed as data, not skipped.
 
         match res {
             Ok(_) => {
@@ -211,7 +215,19 @@ impl<R: Read> TsvReader<R> {
                     }))
                 }
             }
-            Err(e) => Err(e),
+            Err(e) => {
+                // For "Hash lines ended" error, we still return the header info
+                if e.kind() == io::ErrorKind::Other && lines.is_empty() {
+                    Ok(None)
+                } else if e.kind() == io::ErrorKind::Other {
+                    Ok(Some(HeaderInfo {
+                        lines,
+                        column_names_line: column_names,
+                    }))
+                } else {
+                    Err(e)
+                }
+            }
         }
     }
 
@@ -591,11 +607,10 @@ mod tests {
                 Ok(())
             })
             .unwrap();
-        // Note: Due to how for_each_record handles Interrupted, the first non-hash line
-        // (col1	col2) is consumed as part of detecting header end. So we only see val1	val2.
-        // This is a known limitation of the current implementation.
-        assert_eq!(records.len(), 1);
-        assert_eq!(records[0], b"val1\tval2");
+        // After fix: the first non-hash line is restored to buffer, so we see both lines
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0], b"col1\tcol2");
+        assert_eq!(records[1], b"val1\tval2");
     }
 
     #[test]
@@ -651,8 +666,108 @@ mod tests {
         let header_info = reader.read_header_mode(HeaderMode::HashLines).unwrap();
         assert!(header_info.is_none());
 
-        // But HashLines1 should still work (it collects hash lines + next line)
-        // Actually no - if no hash lines, it should return None
+        // Verify that data is still readable after HashLines returns None
+        // The first line should NOT be consumed
+        let mut records = Vec::new();
+        reader
+            .for_each_record(|rec| {
+                records.push(rec.to_vec());
+                Ok(())
+            })
+            .unwrap();
+        // Both lines should be readable since no hash lines were found
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0], b"col1\tcol2");
+        assert_eq!(records[1], b"val1\tval2");
+    }
+
+    #[test]
+    fn test_read_header_mode_hash_lines_with_empty_lines() {
+        use crate::libs::tsv::header::HeaderMode;
+
+        // Hash lines with empty lines interspersed
+        let data = b"# Comment 1\n\n# Comment 2\n\ncol1\tcol2\nval1\tval2\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header_info = reader
+            .read_header_mode(HeaderMode::HashLines)
+            .unwrap()
+            .unwrap();
+        // Empty lines are skipped, so we should have 2 hash lines
+        assert_eq!(header_info.lines.len(), 2);
+        assert_eq!(header_info.lines[0], b"# Comment 1");
+        assert_eq!(header_info.lines[1], b"# Comment 2");
+        assert_eq!(header_info.column_names_line, None);
+
+        // Verify data lines follow
+        let mut records = Vec::new();
+        reader
+            .for_each_record(|rec| {
+                records.push(rec.to_vec());
+                Ok(())
+            })
+            .unwrap();
+        // Empty lines are skipped during header detection but may not be in data
+        // We should see: col1\tcol2, val1\tval2 (empty lines may be skipped)
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0], b"col1\tcol2");
+        assert_eq!(records[1], b"val1\tval2");
+    }
+
+    #[test]
+    fn test_read_header_mode_hash_lines_only_hash() {
+        use crate::libs::tsv::header::HeaderMode;
+
+        // File with only hash lines (no data)
+        let data = b"# Comment 1\n# Comment 2\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let header_info = reader
+            .read_header_mode(HeaderMode::HashLines)
+            .unwrap()
+            .unwrap();
+        assert_eq!(header_info.lines.len(), 2);
+        assert_eq!(header_info.lines[0], b"# Comment 1");
+        assert_eq!(header_info.lines[1], b"# Comment 2");
+        assert_eq!(header_info.column_names_line, None);
+
+        // No data lines should follow
+        let mut records = Vec::new();
+        reader
+            .for_each_record(|rec| {
+                records.push(rec.to_vec());
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(records.len(), 0);
+    }
+
+    #[test]
+    fn test_read_header_mode_hash_lines1_no_hash() {
+        use crate::libs::tsv::header::HeaderMode;
+
+        // File without hash lines for HashLines1 mode
+        let data = b"col1\tcol2\nval1\tval2\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        // HashLines1 should return None if no hash lines found
+        let header_info = reader.read_header_mode(HeaderMode::HashLines1).unwrap();
+        assert!(header_info.is_none());
+
+        // All data should still be readable
+        let mut records = Vec::new();
+        reader
+            .for_each_record(|rec| {
+                records.push(rec.to_vec());
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0], b"col1\tcol2");
+        assert_eq!(records[1], b"val1\tval2");
     }
 
     #[test]

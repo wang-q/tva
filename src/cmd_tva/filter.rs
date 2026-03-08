@@ -1,5 +1,6 @@
 use clap::*;
 
+use crate::cmd_tva::common::{build_header_config, header_args};
 use crate::libs::filter::{
     FilterConfig, NumericOp, NumericProp, PendingByteLen, PendingCharLen,
     PendingFieldFieldAbsDiff, PendingFieldFieldNumeric, PendingFieldFieldRelDiff,
@@ -25,13 +26,7 @@ pub fn make_subcommand() -> Command {
                 .default_value("stdout")
                 .help("Output filename. [stdout] for screen"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Treat the first non-empty line as a header; header is always written"),
-        )
+        .args(header_args())
         .arg(
             Arg::new("delimiter")
                 .long("delimiter")
@@ -66,12 +61,9 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("Enable line-buffered output (flush after each line)"),
         )
-        .arg(
-            Arg::new("label")
-                .long("label")
-                .num_args(1)
-                .help("Label matched records instead of filtering; provides the header name"),
-        )
+        .arg(Arg::new("label").long("label").num_args(1).help(
+            "Label matched records instead of filtering; provides the header name",
+        ))
         .arg(
             Arg::new("label-values")
                 .long("label-values")
@@ -274,7 +266,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None => vec!["stdin".to_string()],
     };
 
-    let has_header = args.get_flag("header");
+    // Build HeaderConfig from arguments
+    let header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+
     let use_or = args.get_flag("or");
     let invert = args.get_flag("invert");
     let count_only = args.get_flag("count");
@@ -473,7 +468,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let config = FilterConfig {
         delimiter,
-        has_header,
+        header_config,
         use_or,
         invert,
         count_only,

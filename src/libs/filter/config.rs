@@ -1,3 +1,5 @@
+use crate::libs::tsv::header::HeaderConfig;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NumericOp {
     Gt,
@@ -83,7 +85,7 @@ pub struct PendingFieldFieldRelDiff {
 #[derive(Default)]
 pub struct FilterConfig {
     pub delimiter: char,
-    pub has_header: bool,
+    pub header_config: HeaderConfig,
     pub use_or: bool,
     pub invert: bool,
     pub count_only: bool,
@@ -161,7 +163,7 @@ mod tests {
         let config = FilterConfig::default();
 
         assert_eq!(config.delimiter, '\0');
-        assert_eq!(config.has_header, false);
+        assert_eq!(config.header_config.enabled, false);
         assert_eq!(config.use_or, false);
         assert_eq!(config.invert, false);
         assert_eq!(config.count_only, false);
