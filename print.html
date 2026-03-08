@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2e83e0e4.js";
+            window.path_to_searchindex_js = "searchindex-90ae6a9b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -2125,53 +2125,24 @@ Mega Gadget     $29.99  /buy/gadget
 <p>This document defines the naming and behavior conventions for parameters shared across tva subcommands to ensure a consistent user experience.</p>
 <h2 id="header-handling"><a class="header" href="#header-handling">Header Handling</a></h2>
 <p>Headers are the column name rows in data files. Different commands have different header processing requirements, but parameter naming should remain consistent.</p>
-<h3 id="basic-parameters"><a class="header" href="#basic-parameters">Basic Parameters</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
-</thead>
-<tbody>
-<tr><td><code>--header</code> / <code>-H</code></td><td>Enable header processing</td><td>disabled</td></tr>
-<tr><td><code>--header-lines N</code></td><td>Specify first N lines as header</td><td>1</td></tr>
-<tr><td><code>--header-comments</code></td><td>Treat lines starting with <code>#</code> as part of header</td><td>disabled</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="header-detection-rules"><a class="header" href="#header-detection-rules">Header Detection Rules</a></h3>
-<p>When <code>--header</code> is enabled, headers are detected in the following order:</p>
-<ol>
-<li>If <code>--header-lines N</code> is specified: take first N lines as header</li>
-<li>If <code>--header-comments</code> is enabled: take all <code>#</code> lines + the next line as header</li>
-<li>Default: take the first non-empty line as header</li>
-</ol>
-<h3 id="special-commands"><a class="header" href="#special-commands">Special Commands</a></h3>
-<h4 id="split-1"><a class="header" href="#split-1"><code>split</code></a></h4>
-<p><code>split</code> needs to distinguish between input and output header strategies:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Parameter</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>--header-in-out</code></td><td>Input has header, output files also write header (default)</td></tr>
-<tr><td><code>--header-in-only</code></td><td>Input has header, but output files do not write header</td></tr>
-</tbody>
-</table>
-</div>
-<p>Note: <code>--header</code> is an alias for <code>--header-in-out</code>.</p>
-<h4 id="keep-header-1"><a class="header" href="#keep-header-1"><code>keep-header</code></a></h4>
-<p><code>keep-header</code> focuses on preserving headers and passing them to subcommands:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
-</thead>
-<tbody>
-<tr><td><code>--lines N</code> / <code>-n</code></td><td>Specify number of header lines</td><td>1</td></tr>
-</tbody>
-</table>
-</div>
+<ul>
+<li>
+<p><strong>Header Detection Modes</strong> (mutually exclusive)</p>
+<ul>
+<li><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode - take the first non-empty line as header (contains column names)</li>
+<li><code>--header-lines N</code>: <strong>LinesN</strong> mode - take exactly N non-empty lines as header</li>
+<li><code>--header-hash</code>: <strong>HashLines</strong> mode - take all consecutive <code>#</code> lines as header (metadata only)</li>
+<li><code>--header-hash1</code>: <strong>HashLines1</strong> mode - take <code>#</code> lines plus the next line as header (contains column names)</li>
+</ul>
+</li>
+<li>
+<p><strong>Special Commands</strong></p>
+<ul>
+<li><code>split</code>: Uses <code>--header-in-out</code> (input has header, output writes header, default) or <code>--header-in-only</code> (input has header, output does not write header). <code>--header</code> is an alias for <code>--header-in-out</code>.</li>
+<li><code>keep-header</code>: Uses <code>--lines N</code> / <code>-n</code> to specify number of header lines (default: 1)</li>
+</ul>
+</li>
+</ul>
 <h2 id="inputoutput-conventions"><a class="header" href="#inputoutput-conventions">Input/Output Conventions</a></h2>
 <h3 id="parameter-naming"><a class="header" href="#parameter-naming">Parameter Naming</a></h3>
 <div class="table-wrapper">
@@ -2887,7 +2858,7 @@ Field delimiter to use when adding the source column. Default: TAB.</li>
 <li>Use –outfile to write to a file instead.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="split-2"><a class="header" href="#split-2">split</a></h1>
+<h1 id="split-1"><a class="header" href="#split-1">split</a></h1>
 <p>Splits tab-separated values (TSV) rows into multiple output files.</p>
 <p>Modes:</p>
 <ul>
@@ -3205,7 +3176,7 @@ cat input1.tsv | tva nl</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="keep-header-2"><a class="header" href="#keep-header-2">keep-header</a></h1>
+<h1 id="keep-header-1"><a class="header" href="#keep-header-1">keep-header</a></h1>
 <p>Runs an external command in a header-aware fashion. The first line of each
 input file is treated as a header. The first header line is written to standard
 output unchanged. All remaining lines (from all files) are sent to the given
