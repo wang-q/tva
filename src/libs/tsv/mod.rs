@@ -9,8 +9,10 @@
 //! - **Select**: High-performance field selection logic.
 //! - **Split**: SIMD-accelerated line splitting.
 //! - **Key**: Key extraction for grouping and joining.
+//! - **Header**: Header detection and handling.
 
 pub mod fields;
+pub mod header;
 pub mod key;
 pub mod reader;
 pub mod record;

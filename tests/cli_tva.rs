@@ -12,10 +12,10 @@ fn help_fields_flag() {
     // Tests L60-63: --help-fields flag
     let (stdout, _) = TvaCmd::new().args(&["--help-fields"]).run();
 
-    // Output starts with "# Field Syntax"
-    assert!(stdout.contains("Field Syntax"));
+    // Output starts with "# tva Common Conventions"
+    assert!(stdout.contains("Common Conventions"));
+    assert!(stdout.contains("Field Selection Syntax"));
     assert!(stdout.contains("1-based Indexing"));
-    assert!(stdout.contains("Wildcards"));
 }
 
 #[test]
