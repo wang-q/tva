@@ -5,9 +5,9 @@
 /// Header detection mode. The four modes are mutually exclusive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeaderMode {
-    /// Use the first non-empty line as header (default).
+    /// Use the first line as header (default), even if empty.
     FirstLine,
-    /// Use exactly N non-empty lines as header.
+    /// Use exactly N lines as header (including empty lines).
     LinesN(usize),
     /// Use consecutive hash lines (starting with '#') as header.
     HashLines,
@@ -39,13 +39,13 @@ impl HeaderConfig {
         self
     }
 
-    /// Sets the mode to FirstLine (use first non-empty line as header).
+    /// Sets the mode to FirstLine (use first line as header, even if empty).
     pub fn first_line(mut self) -> Self {
         self.mode = HeaderMode::FirstLine;
         self
     }
 
-    /// Sets the mode to LinesN (use exactly N lines as header).
+    /// Sets the mode to LinesN (use exactly N lines as header, including empty lines).
     pub fn lines_n(mut self, n: usize) -> Self {
         self.mode = HeaderMode::LinesN(n);
         self
@@ -121,16 +121,12 @@ pub fn detect_header(data: &[u8], config: &HeaderConfig) -> DetectedHeader {
     }
 }
 
-/// Detects header using FirstLine mode: first non-empty line is the header.
+/// Detects header using FirstLine mode: first line is the header, even if empty.
 fn detect_first_line_header(data: &[u8]) -> DetectedHeader {
     let mut lines = Vec::new();
     let mut pos = 0;
 
-    loop {
-        if pos >= data.len() {
-            break;
-        }
-
+    if pos < data.len() {
         let line_end = find_line_end(data, pos);
         let line = &data[pos..line_end];
 
@@ -142,22 +138,14 @@ fn detect_first_line_header(data: &[u8]) -> DetectedHeader {
         };
 
         // Move past this line for next iteration
-        let next_pos = if line_end < data.len() && data[line_end] == b'\n' {
+        pos = if line_end < data.len() && data[line_end] == b'\n' {
             line_end + 1
         } else {
             line_end
         };
 
-        // Skip empty lines at the beginning
-        if line.is_empty() {
-            pos = next_pos;
-            continue;
-        }
-
-        // First non-empty line is the header
+        // First line is the header (even if empty)
         lines.push(line.to_vec());
-        pos = next_pos;
-        break;
     }
 
     DetectedHeader {
@@ -166,36 +154,13 @@ fn detect_first_line_header(data: &[u8]) -> DetectedHeader {
     }
 }
 
-/// Detects header using LinesN mode: exactly N non-empty lines are the header.
+/// Detects header using LinesN mode: exactly N lines are the header (including empty lines).
 fn detect_lines_n_header(data: &[u8], n: usize) -> DetectedHeader {
     let mut lines = Vec::new();
     let mut pos = 0;
     let mut line_count = 0;
 
-    // First, skip any leading empty lines
-    while pos < data.len() {
-        let line_end = find_line_end(data, pos);
-        let line = &data[pos..line_end];
-
-        // Remove trailing '\r' for Windows line endings
-        let line = if line.ends_with(b"\r") {
-            &line[..line.len() - 1]
-        } else {
-            line
-        };
-
-        if !line.is_empty() {
-            break;
-        }
-
-        // Move past the newline
-        pos = line_end;
-        if pos < data.len() && data[pos] == b'\n' {
-            pos += 1;
-        }
-    }
-
-    // Now collect exactly n non-empty lines
+    // Collect exactly n lines (including empty lines)
     while line_count < n && pos < data.len() {
         let line_end = find_line_end(data, pos);
         let line = &data[pos..line_end];
@@ -253,7 +218,7 @@ fn detect_hash_lines_header(data: &[u8], include_next_line: bool) -> DetectedHea
             line_end
         };
 
-        // Skip empty lines at the beginning
+        // Skip leading empty lines - they're not part of hash-based header
         if line.is_empty() && lines.is_empty() {
             pos = next_pos;
             continue;
@@ -302,15 +267,22 @@ pub struct HeaderHandler {
     config: HeaderConfig,
     captured_header: Option<Vec<u8>>,
     is_first_file: bool,
+    /// For LinesN mode: remaining lines to collect as header
+    lines_n_remaining: usize,
 }
 
 impl HeaderHandler {
     /// Creates a new header handler with the given config.
     pub fn new(config: HeaderConfig) -> Self {
+        let lines_n_remaining = match config.mode {
+            HeaderMode::LinesN(n) => n,
+            _ => 0,
+        };
         Self {
             config,
             captured_header: None,
             is_first_file: true,
+            lines_n_remaining,
         }
     }
 
@@ -334,7 +306,9 @@ impl HeaderHandler {
     /// Returns `Ok(true)` if the line was consumed as header,
     /// `Ok(false)` if the line should be processed as data.
     pub fn process_first_line(&mut self, line: &[u8]) -> anyhow::Result<bool> {
-        // Skip empty lines - they're not header
+        // Empty lines are treated as data (not header)
+        // Note: This differs from detect_header() which treats empty lines as valid header
+        // This is intentional for streaming mode where we don't know if there are more lines
         if line.is_empty() {
             return Ok(false);
         }
@@ -352,7 +326,7 @@ impl HeaderHandler {
     }
 
     fn process_first_line_mode(&mut self, line: &[u8]) -> anyhow::Result<bool> {
-        // First non-empty line is the header
+        // First line is the header (empty lines are already filtered by process_first_line)
         if self.is_first_file {
             self.captured_header = Some(line.to_vec());
             self.is_first_file = false;
@@ -362,13 +336,23 @@ impl HeaderHandler {
     }
 
     fn process_lines_n_mode(&mut self, line: &[u8], _n: usize) -> anyhow::Result<bool> {
-        // For streaming, LinesN mode captures the first line as header
-        // (full N-line handling would require buffering)
-        if self.is_first_file {
-            self.captured_header = Some(line.to_vec());
-            self.is_first_file = false;
+        // For streaming, LinesN mode captures the first N lines as header from the first file
+        if !self.is_first_file {
+            // Not the first file, don't collect header
+            return Ok(false);
+        }
+        if self.lines_n_remaining > 0 {
+            if let Some(ref mut h) = self.captured_header {
+                h.push(b'\n');
+                h.extend_from_slice(line);
+            } else {
+                self.captured_header = Some(line.to_vec());
+            }
+            self.lines_n_remaining -= 1;
             return Ok(true);
         }
+        // Header collection complete
+        self.is_first_file = false;
         Ok(false)
     }
 
@@ -415,6 +399,10 @@ impl HeaderHandler {
     /// Marks the end of the first file.
     pub fn end_of_file(&mut self) {
         self.is_first_file = false;
+        // Reset lines_n_remaining for subsequent files
+        if let HeaderMode::LinesN(n) = self.config.mode {
+            self.lines_n_remaining = n;
+        }
     }
 }
 
@@ -478,12 +466,14 @@ mod tests {
     }
 
     #[test]
-    fn test_header_skip_empty_lines() {
+    fn test_header_first_line_with_empty_lines() {
+        // FirstLine mode now takes the first line even if empty
         let config = HeaderConfig::new().enabled();
         let data = b"\n\ncol1\tcol2\nval1\tval2\n";
         let result = detect_header(data, &config);
         assert!(result.has_header());
-        assert_eq!(result.lines[0], b"col1\tcol2");
+        // First line is empty
+        assert_eq!(result.lines[0], b"");
     }
 
     #[test]
@@ -546,22 +536,27 @@ mod tests {
 
     #[test]
     fn test_first_line_header_only_empty_lines() {
+        // FirstLine mode takes the first line even if empty
         let config = HeaderConfig::new().enabled().first_line();
         let data = b"\n\n\n";
         let result = detect_header(data, &config);
-        assert!(!result.has_header());
-        assert_eq!(result.bytes_consumed, 3); // Consumed all empty lines
+        // Now we have a header (the first empty line)
+        assert!(result.has_header());
+        assert_eq!(result.lines[0], b""); // First line is empty
+        assert_eq!(result.bytes_consumed, 1); // Only consumed first line
     }
 
     #[test]
     fn test_lines_n_header_with_leading_empty_lines() {
+        // LinesN mode now takes the first N lines (including empty lines)
         let config = HeaderConfig::new().enabled().lines_n(2);
         let data = b"\n\n# comment\ncol1\tcol2\ndata\n";
         let result = detect_header(data, &config);
         assert!(result.has_header());
         assert_eq!(result.lines.len(), 2);
-        assert_eq!(result.lines[0], b"# comment");
-        assert_eq!(result.lines[1], b"col1\tcol2");
+        // First two lines are empty
+        assert_eq!(result.lines[0], b"");
+        assert_eq!(result.lines[1], b"");
     }
 
     #[test]

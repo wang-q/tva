@@ -96,11 +96,9 @@ impl<R: Read> TsvReader<R> {
     fn read_header_first_line(&mut self) -> io::Result<Option<HeaderInfo>> {
         let mut column_names = None;
         let res = self.for_each_record(|record| {
-            if !record.is_empty() {
-                column_names = Some(record.to_vec());
-                return Err(io::Error::new(io::ErrorKind::Interrupted, "Stop"));
-            }
-            Ok(())
+            // Take the first line as header (even if empty)
+            column_names = Some(record.to_vec());
+            Err(io::Error::new(io::ErrorKind::Interrupted, "Stop"))
         });
 
         match res {
@@ -540,9 +538,10 @@ mod tests {
     }
 
     #[test]
-    fn test_read_header_mode_first_line_skips_empty() {
+    fn test_read_header_mode_first_line_with_empty() {
         use crate::libs::tsv::header::HeaderMode;
 
+        // FirstLine mode now takes the first line even if empty
         let data = b"\n\ncol1\tcol2\nval1\tval2\n";
         let cursor = Cursor::new(data);
         let mut reader = TsvReader::new(cursor);
@@ -551,7 +550,21 @@ mod tests {
             .read_header_mode(HeaderMode::FirstLine)
             .unwrap()
             .unwrap();
-        assert_eq!(header_info.column_names_line, Some(b"col1\tcol2".to_vec()));
+        // First line is empty
+        assert_eq!(header_info.column_names_line, Some(b"".to_vec()));
+
+        // Verify remaining data lines
+        let mut records = Vec::new();
+        reader
+            .for_each_record(|rec| {
+                records.push(rec.to_vec());
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(records.len(), 3);
+        assert_eq!(records[0], b"");
+        assert_eq!(records[1], b"col1\tcol2");
+        assert_eq!(records[2], b"val1\tval2");
     }
 
     #[test]

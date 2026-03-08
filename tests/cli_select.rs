@@ -211,6 +211,8 @@ fn select_from_empty_file_without_header() {
 
 #[test]
 fn select_from_empty_file_with_header() {
+    // File contains a single empty line (just \n)
+    // FirstLine mode takes the first line as header, even if empty
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "select",
@@ -221,7 +223,8 @@ fn select_from_empty_file_with_header() {
         ])
         .run();
 
-    assert_eq!(stdout, "");
+    // Output is an empty line (the header), no data rows
+    assert_eq!(stdout, "\n");
 }
 
 #[test]

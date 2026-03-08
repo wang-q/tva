@@ -36,17 +36,19 @@ fn filter_header_short_flag() {
 }
 
 #[test]
-fn filter_header_firstline_skip_empty_lines() {
-    // Empty lines at the beginning should be skipped
+fn filter_header_firstline_with_empty_lines() {
+    // FirstLine mode now takes the first line even if empty
     let input = "\n\ncol1\tcol2\n1\ta\n2\tb\n";
     let (stdout, _) = TvaCmd::new()
         .args(&["filter", "--header", "--str-eq", "2:a"])
         .stdin(input)
         .run();
 
+    // First line is empty, so it's treated as header (no column names for field resolution)
+    // Uses numeric field index 2 for filtering
     let lines: Vec<&str> = stdout.lines().collect();
     assert_eq!(lines.len(), 2);
-    assert_eq!(lines[0], "col1\tcol2");
+    assert_eq!(lines[0], ""); // Empty header line
     assert_eq!(lines[1], "1\ta");
 }
 

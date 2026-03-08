@@ -7,8 +7,8 @@ This document defines the naming and behavior conventions for parameters shared 
 Headers are the column name rows in data files. Different commands have different header processing requirements, but parameter naming should remain consistent.
 
 *   **Header Detection Modes** (mutually exclusive)
-    - `--header` / `-H`: **FirstLine** mode - take the first non-empty line as header (contains column names)
-    - `--header-lines N`: **LinesN** mode - take exactly N non-empty lines as header
+    - `--header` / `-H`: **FirstLine** mode - take the first line as header (contains column names), even if empty
+    - `--header-lines N`: **LinesN** mode - take exactly N lines as header (including empty lines)
     - `--header-hash`: **HashLines** mode - take all consecutive `#` lines as header (metadata only)
     - `--header-hash1`: **HashLines1** mode - take `#` lines plus the next line as header (contains column names)
 
@@ -18,7 +18,7 @@ Headers are the column name rows in data files. Different commands have differen
         - `lines: Vec<Vec<u8>>` - all header lines (including column names line if applicable)
         - `column_names_line: Option<Vec<u8>>` - the line containing column names (if mode provides it)
     - Mode behavior:
-        - `FirstLine`: `lines` is empty, `column_names_line` is the first non-empty line
+        - `FirstLine`: `lines` is empty, `column_names_line` is the first line
         - `LinesN(n)`: `lines` contains first n lines, `column_names_line` is the nth line
         - `HashLines`: `lines` contains `#` lines, `column_names_line` is None
         - `HashLines1`: `lines` contains `#` lines + column names, `column_names_line` is the column names line
@@ -26,6 +26,10 @@ Headers are the column name rows in data files. Different commands have differen
 *   **Special Commands**
     - `split`: Uses `--header-in-out` (input has header, output writes header, default) or `--header-in-only` (input has header, output does not write header). `--header` is an alias for `--header-in-out`.
     - `keep-header`: Uses `--lines N` / `-n` to specify number of header lines (default: 1)
+
+*   **Commands by Header Mode Support**
+    - `select`: Supports `--header` / `-H` and `--header-hash1` (modes that provide column names for field resolution)
+    - `filter`: Supports all four modes (`--header`, `--header-lines`, `--header-hash`, `--header-hash1`); field name resolution is optional (numeric indices always work)
 
 ## Input/Output Conventions
 
