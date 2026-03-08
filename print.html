@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ad6630cc.js";
+            window.path_to_searchindex_js = "searchindex-2e83e0e4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-d9050e99.js"></script>
+        <script src="toc-a6c0a49a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -410,7 +410,7 @@ Copyright by Qiang Wang.</p>
 <h2 id="common-behavior--syntax"><a class="header" href="#common-behavior--syntax">Common Behavior &amp; Syntax</a></h2>
 <p><code>tva</code> tools share a consistent set of behaviors and syntax conventions, making them easy to learn and combine.</p>
 <h3 id="field-syntax"><a class="header" href="#field-syntax">Field Syntax</a></h3>
-<p>All tools use a unified syntax to identify fields (columns). See <a href="#field-syntax-2">Field Syntax Documentation</a> for details.</p>
+<p>All tools use a unified syntax to identify fields (columns). See <a href="help/fields.html">Field Syntax Documentation</a> for details.</p>
 <ul>
 <li><strong>Index</strong>: <code>1</code> (first column), <code>2</code> (second column).</li>
 <li><strong>Range</strong>: <code>1-3</code> (columns 1, 2, 3).</li>
@@ -813,7 +813,7 @@ print('Plot saved to benchmark_plot.png')
 <li><strong><code>sample</code></strong>: Randomly selects a subset of rows.</li>
 </ul>
 <h2 id="field-syntax-1"><a class="header" href="#field-syntax-1">Field Syntax</a></h2>
-<p>All tools use a unified syntax to identify fields (columns). See <a href="#field-syntax-2">Field Syntax Documentation</a> for details.</p>
+<p>All tools use a unified syntax to identify fields (columns). See <a href="help/fields.html">Field Syntax Documentation</a> for details.</p>
 <h2 id="select-column-selection"><a class="header" href="#select-column-selection"><code>select</code> (Column Selection)</a></h2>
 <p>The <code>select</code> command allows you to keep only specific columns and reorder them.</p>
 <h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
@@ -2121,6 +2121,165 @@ Mega Gadget     $29.99  /buy/gadget
 <pre><code class="language-bash">tva from html -q "meta[name='description'] attr{content}" index.html
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="tva-common-conventions"><a class="header" href="#tva-common-conventions">tva Common Conventions</a></h1>
+<p>This document defines the naming and behavior conventions for parameters shared across tva subcommands to ensure a consistent user experience.</p>
+<h2 id="header-handling"><a class="header" href="#header-handling">Header Handling</a></h2>
+<p>Headers are the column name rows in data files. Different commands have different header processing requirements, but parameter naming should remain consistent.</p>
+<h3 id="basic-parameters"><a class="header" href="#basic-parameters">Basic Parameters</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+</thead>
+<tbody>
+<tr><td><code>--header</code> / <code>-H</code></td><td>Enable header processing</td><td>disabled</td></tr>
+<tr><td><code>--header-lines N</code></td><td>Specify first N lines as header</td><td>1</td></tr>
+<tr><td><code>--header-comments</code></td><td>Treat lines starting with <code>#</code> as part of header</td><td>disabled</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="header-detection-rules"><a class="header" href="#header-detection-rules">Header Detection Rules</a></h3>
+<p>When <code>--header</code> is enabled, headers are detected in the following order:</p>
+<ol>
+<li>If <code>--header-lines N</code> is specified: take first N lines as header</li>
+<li>If <code>--header-comments</code> is enabled: take all <code>#</code> lines + the next line as header</li>
+<li>Default: take the first non-empty line as header</li>
+</ol>
+<h3 id="special-commands"><a class="header" href="#special-commands">Special Commands</a></h3>
+<h4 id="split-1"><a class="header" href="#split-1"><code>split</code></a></h4>
+<p><code>split</code> needs to distinguish between input and output header strategies:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Parameter</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>--header-in-out</code></td><td>Input has header, output files also write header (default)</td></tr>
+<tr><td><code>--header-in-only</code></td><td>Input has header, but output files do not write header</td></tr>
+</tbody>
+</table>
+</div>
+<p>Note: <code>--header</code> is an alias for <code>--header-in-out</code>.</p>
+<h4 id="keep-header-1"><a class="header" href="#keep-header-1"><code>keep-header</code></a></h4>
+<p><code>keep-header</code> focuses on preserving headers and passing them to subcommands:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+</thead>
+<tbody>
+<tr><td><code>--lines N</code> / <code>-n</code></td><td>Specify number of header lines</td><td>1</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="inputoutput-conventions"><a class="header" href="#inputoutput-conventions">Input/Output Conventions</a></h2>
+<h3 id="parameter-naming"><a class="header" href="#parameter-naming">Parameter Naming</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Parameter Name</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Single file input</td><td><code>infile</code></td><td>Positional argument</td></tr>
+<tr><td>Multiple file input</td><td><code>infiles</code></td><td>Positional argument, supports multiple</td></tr>
+<tr><td>Output file</td><td><code>--outfile</code> / <code>-o</code></td><td>Optional, defaults to stdout</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="special-values"><a class="header" href="#special-values">Special Values</a></h3>
+<ul>
+<li><code>stdin</code> or <code>-</code>: Read from standard input</li>
+<li><code>stdout</code>: Output to standard output (used with <code>--outfile</code>)</li>
+</ul>
+<h2 id="field-selection-syntax"><a class="header" href="#field-selection-syntax">Field Selection Syntax</a></h2>
+<p>Commands that support field selection (e.g., <code>select</code>, <code>filter</code>, <code>sort</code>) use a unified field syntax.</p>
+<ul>
+<li>
+<p><strong>1-based Indexing</strong></p>
+<ul>
+<li>Fields are numbered starting from 1 (following Unix <code>cut</code>/<code>awk</code> convention).</li>
+<li>Example: <code>1,3,5</code> selects the 1st, 3rd, and 5th columns.</li>
+</ul>
+</li>
+<li>
+<p><strong>Field Names</strong></p>
+<ul>
+<li>Requires the <code>--header</code> flag (or command-specific header option).</li>
+<li>Names are case-sensitive.</li>
+<li>Example: <code>date,user_id</code> selects columns named “date” and “user_id”.</li>
+</ul>
+</li>
+<li>
+<p><strong>Ranges</strong></p>
+<ul>
+<li>Numeric Ranges: <code>start-end</code>. Example: <code>2-4</code> selects columns 2, 3, and 4.</li>
+<li>Name Ranges: <code>start_col-end_col</code>. Selects all columns from <code>start_col</code> to
+<code>end_col</code> inclusive, based on their order in the header.</li>
+<li>Reverse Ranges: <code>5-3</code> is automatically treated as <code>3-5</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>Wildcards</strong></p>
+<ul>
+<li><code>*</code> matches any sequence of characters in a field name.</li>
+<li>Example: <code>user_*</code> selects <code>user_id</code>, <code>user_name</code>, etc.</li>
+<li>Example: <code>*_time</code> selects <code>start_time</code>, <code>end_time</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>Escaping</strong></p>
+<ul>
+<li>Special characters in field names (like space, comma, colon, dash, star)
+must be escaped with <code>\</code>.</li>
+<li>Example: <code>Order\ ID</code> selects the column “Order ID”.</li>
+<li>Example: <code>run\:id</code> selects “run:id”.</li>
+</ul>
+</li>
+<li>
+<p><strong>Exclusion</strong></p>
+<ul>
+<li>Negative selection is typically handled via a separate flag (e.g.,
+<code>--exclude</code> in <code>select</code>), but uses the same field syntax.</li>
+</ul>
+</li>
+</ul>
+<h2 id="numeric-parameter-conventions"><a class="header" href="#numeric-parameter-conventions">Numeric Parameter Conventions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Parameter</th><th>Description</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>--lines N</code> / <code>-n</code></td><td>Specify line count</td><td><code>--lines 100</code></td></tr>
+<tr><td><code>--fields N</code> / <code>-f</code></td><td>Specify fields</td><td><code>--fields 1,2,3</code></td></tr>
+<tr><td><code>--delimiter</code></td><td>Field delimiter</td><td><code>--delimiter ','</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="random-and-sampling"><a class="header" href="#random-and-sampling">Random and Sampling</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Parameter</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>--seed N</code></td><td>Specify random seed for reproducibility</td></tr>
+<tr><td><code>--static-seed</code></td><td>Use fixed default seed</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="boolean-flags"><a class="header" href="#boolean-flags">Boolean Flags</a></h2>
+<p>Boolean flags use <code>--flag</code> to enable, without a value:</p>
+<ul>
+<li><code>--header</code> not <code>--header true</code></li>
+<li><code>--append</code> / <code>-a</code> not <code>--append true</code></li>
+</ul>
+<h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
+<p>All commands follow the same error output format:</p>
+<pre><code>tva &lt;command&gt;: &lt;error message&gt;
+</code></pre>
+<p>Serious errors return non-zero exit codes.</p>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="select"><a class="header" href="#select">select</a></h1>
 <p>Reads TSV data from files or standard input and writes selected fields to
 standard output.</p>
@@ -2728,7 +2887,7 @@ Field delimiter to use when adding the source column. Default: TAB.</li>
 <li>Use –outfile to write to a file instead.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="split-1"><a class="header" href="#split-1">split</a></h1>
+<h1 id="split-2"><a class="header" href="#split-2">split</a></h1>
 <p>Splits tab-separated values (TSV) rows into multiple output files.</p>
 <p>Modes:</p>
 <ul>
@@ -3046,7 +3205,7 @@ cat input1.tsv | tva nl</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="keep-header-1"><a class="header" href="#keep-header-1">keep-header</a></h1>
+<h1 id="keep-header-2"><a class="header" href="#keep-header-2">keep-header</a></h1>
 <p>Runs an external command in a header-aware fashion. The first line of each
 input file is treated as a header. The first header line is written to standard
 output unchanged. All remaining lines (from all files) are sent to the given
@@ -3081,60 +3240,6 @@ tva keep-header data1.tsv data2.tsv – sort -t $‘\t’ -k2,2n</p>
 cat data.tsv | tva keep-header – grep red</p>
 </li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="field-syntax-2"><a class="header" href="#field-syntax-2">Field Syntax</a></h1>
-<p>All tools use a unified syntax to identify fields (columns). This syntax allows
-selecting fields by index, name, range, or wildcard.</p>
-<ul>
-<li>1-based Indexing</li>
-</ul>
-<ul>
-<li>Fields are numbered starting from 1 (following Unix <code>cut</code>/<code>awk</code> convention).</li>
-<li>Example: <code>1,3,5</code> selects the 1st, 3rd, and 5th columns.</li>
-</ul>
-<ul>
-<li>
-<p>Field Names</p>
-<ul>
-<li>Requires the <code>--header</code> flag (or command-specific header option).</li>
-<li>Names are case-sensitive.</li>
-<li>Example: <code>date,user_id</code> selects columns named “date” and “user_id”.</li>
-</ul>
-</li>
-<li>
-<p>Ranges</p>
-<ul>
-<li>Numeric Ranges: <code>start-end</code>. Example: <code>2-4</code> selects columns 2, 3, and 4.</li>
-<li>Name Ranges: <code>start_col-end_col</code>. Selects all columns from <code>start_col</code> to
-<code>end_col</code> inclusive, based on their order in the header.</li>
-<li>Reverse Ranges: <code>5-3</code> is automatically treated as <code>3-5</code>.</li>
-</ul>
-</li>
-<li>
-<p>Wildcards</p>
-<ul>
-<li><code>*</code> matches any sequence of characters in a field name.</li>
-<li>Example: <code>user_*</code> selects <code>user_id</code>, <code>user_name</code>, etc.</li>
-<li>Example: <code>*_time</code> selects <code>start_time</code>, <code>end_time</code>.</li>
-</ul>
-</li>
-<li>
-<p>Escaping</p>
-<ul>
-<li>Special characters in field names (like space, comma, colon, dash, star)
-must be escaped with <code>\</code>.</li>
-<li>Example: <code>Order\ ID</code> selects the column “Order ID”.</li>
-<li>Example: <code>run\:id</code> selects “run:id”.</li>
-</ul>
-</li>
-<li>
-<p>Exclusion</p>
-<ul>
-<li>Negative selection is typically handled via a separate flag (e.g.,
-<code>--exclude</code> in <code>select</code>), but uses the same field syntax.</li>
-</ul>
-</li>
-</ul>
 
                     </main>
 
