@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-acaf8ee7.js";
+            window.path_to_searchindex_js = "searchindex-e4cfe8fc.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -2163,6 +2163,13 @@ Mega Gadget     $29.99  /buy/gadget
 </ul>
 </li>
 <li>
+<p><strong>Multi-file Header Behavior</strong></p>
+<ul>
+<li>When using multiple input files with header mode enabled, the header from the first file is read and written to output.</li>
+<li>Headers from subsequent files are skipped.</li>
+</ul>
+</li>
+<li>
 <p><strong>Commands by Header Mode Support</strong></p>
 <p><strong>FirstLine and HashLines1 modes</strong> (modes that provide column names): <code>select</code></p>
 <p><strong>All four modes</strong> (FirstLine, LinesN, HashLines, HashLines1): <code>blank</code>, <code>filter</code></p>
@@ -2546,20 +2553,31 @@ from standard input.</li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="bin"><a class="header" href="#bin">bin</a></h1>
-<p>Discretize numeric values into bins. Useful for creating histograms or grouping
+<p>Discretizes numeric values into bins. Useful for creating histograms or grouping
 continuous data.</p>
-<p>Replaces the value in the target field with the bin start (lower bound).
-Formula: <code>floor((value - min) / width) * width + min</code></p>
+<p>Behavior:</p>
+<ul>
+<li>Replaces the value in the target field with the bin start (lower bound).</li>
+<li>Formula: <code>floor((value - min) / width) * width + min</code>.</li>
+<li>Use <code>--new-name</code> to append as a new column instead of replacing.</li>
+<li>Commonly used with <code>stats --groupby</code> to compute statistics per bin.</li>
+</ul>
 <p>Input:</p>
 <ul>
-<li>If no input files are given, or an input file is ‘stdin’, data is read
-from standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
 </ul>
 <p>Header behavior:</p>
 <ul>
+<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header (even if empty).
+The header is written once at the top of the output.</li>
 <li>When using multiple files with <code>--header</code>, the header from the first file is
 used, and headers from subsequent files are skipped.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li>The <code>--field</code> argument accepts a 1-based index or a header name (when using
+<code>--header</code>).</li>
 </ul>
 <p>Examples:</p>
 <ol>
@@ -2568,7 +2586,7 @@ used, and headers from subsequent files are skipped.</li>
 <code>tva bin --width 10 --field 2 file.tsv</code></p>
 </li>
 <li>
-<p>Bin a column, aligning bins to start at 5 (e.g., 5-15, 15-25):
+<p>Bin a column, aligning bins to start at 5:
 <code>tva bin --width 10 --min 5 --field 2 file.tsv</code></p>
 </li>
 <li>

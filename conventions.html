@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-acaf8ee7.js";
+            window.path_to_searchindex_js = "searchindex-e4cfe8fc.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -219,6 +219,13 @@
 <ul>
 <li><code>split</code>: Uses <code>--header-in-out</code> (input has header, output writes header, default) or <code>--header-in-only</code> (input has header, output does not write header). <code>--header</code> is an alias for <code>--header-in-out</code>.</li>
 <li><code>keep-header</code>: Uses <code>--lines N</code> / <code>-n</code> to specify number of header lines (default: 1)</li>
+</ul>
+</li>
+<li>
+<p><strong>Multi-file Header Behavior</strong></p>
+<ul>
+<li>When using multiple input files with header mode enabled, the header from the first file is read and written to output.</li>
+<li>Headers from subsequent files are skipped.</li>
 </ul>
 </li>
 <li>
