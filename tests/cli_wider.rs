@@ -660,3 +660,86 @@ A\tX\t8
         .run();
     assert!(stdout_cv.contains("A\t0.848"));
 }
+
+#[test]
+fn wider_missing_values_from_error() {
+    // Test --values-from required for non-count operations (covers L146-147)
+    let (_, stderr) = TvaCmd::new()
+        .args(&["wider", "--names-from", "key", "--op", "sum"])
+        .stdin("ID\tkey\tval\nA\tk1\t10\n")
+        .run_fail();
+
+    assert!(stderr.contains("--values-from is required"));
+}
+
+#[test]
+fn wider_empty_file() {
+    // Test empty file handling (covers L180-181)
+    let (stdout, _) = TvaCmd::new()
+        .args(&["wider", "--names-from", "key", "--values-from", "val"])
+        .stdin("")
+        .run();
+
+    // Empty input produces empty output (or just newline)
+    assert!(stdout.is_empty() || stdout == "\n");
+}
+
+#[test]
+fn wider_count_no_values_from() {
+    // Test count operation doesn't require --values-from (covers L227-228)
+    let input = "
+ID	name
+A	X
+A	X
+B	Y
+";
+    let expected = "
+ID	X	Y
+A	2	0
+B	0	1
+";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "wider",
+            "--names-from",
+            "name",
+            "--id-cols",
+            "ID",
+            "--op",
+            "count",
+            "--values-fill",
+            "0",
+        ])
+        .stdin(input.trim())
+        .run();
+
+    assert_eq!(stdout.trim(), expected.trim());
+}
+
+#[test]
+fn wider_multi_column_names_from_error() {
+    // Test multi-column --names-from error (covers L196-199)
+    let (_, stderr) = TvaCmd::new()
+        .args(&["wider", "--names-from", "1,2", "--values-from", "3"])
+        .stdin(
+            "A	B	C
+1	2	3\n",
+        )
+        .run_fail();
+
+    assert!(stderr.contains("only single column supported for --names-from"));
+}
+
+#[test]
+fn wider_multi_column_values_from_error() {
+    // Test multi-column --values-from error (covers L207-210)
+    let (_, stderr) = TvaCmd::new()
+        .args(&["wider", "--names-from", "1", "--values-from", "2,3"])
+        .stdin(
+            "A	B	C
+1	2	3\n",
+        )
+        .run_fail();
+
+    assert!(stderr.contains("only single column supported for --values-from"));
+}
