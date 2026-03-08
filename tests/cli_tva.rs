@@ -19,6 +19,18 @@ fn help_fields_flag() {
 }
 
 #[test]
+fn help_headers_flag() {
+    // Tests L68-75: --help-headers flag
+    let (stdout, _) = TvaCmd::new().args(&["--help-headers"]).run();
+
+    // Output is the Header Handling section from conventions.md
+    assert!(stdout.contains("Header Handling"));
+    assert!(stdout.contains("Header Detection Modes"));
+    assert!(stdout.contains("FirstLine"));
+    assert!(stdout.contains("HashLines1"));
+}
+
+#[test]
 fn command_invalid() -> anyhow::Result<()> {
     let mut cmd = cargo_bin_cmd!("tva");
     cmd.arg("foobar");
