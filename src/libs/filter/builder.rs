@@ -394,7 +394,7 @@ mod tests {
         FilterConfig, NumericOp, NumericProp, PendingByteLen, PendingCharLen,
         PendingFieldFieldAbsDiff, PendingFieldFieldNumeric, PendingFieldFieldRelDiff,
         PendingFieldFieldStr, PendingNumeric, PendingNumericProp, PendingRegex,
-        PendingStrEq, PendingStrCmp, PendingSubstr,
+        PendingStrCmp, PendingStrEq, PendingSubstr,
     };
 
     #[test]

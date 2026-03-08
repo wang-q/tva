@@ -636,7 +636,10 @@ mod tests {
         assert!(!handler.process_first_line(b"col1\tcol2").unwrap());
 
         assert!(handler.should_output_header());
-        assert_eq!(handler.header(), Some(b"# comment 1\n# comment 2".as_slice()));
+        assert_eq!(
+            handler.header(),
+            Some(b"# comment 1\n# comment 2".as_slice())
+        );
     }
 
     #[test]

@@ -689,8 +689,16 @@ mod tests {
                 op,
                 value: 10.0,
             };
-            assert!(test.eval_row(&row(&[expected_pass])), "{:?} should pass", op);
-            assert!(!test.eval_row(&row(&[expected_fail])), "{:?} should fail", op);
+            assert!(
+                test.eval_row(&row(&[expected_pass])),
+                "{:?} should pass",
+                op
+            );
+            assert!(
+                !test.eval_row(&row(&[expected_fail])),
+                "{:?} should fail",
+                op
+            );
         }
     }
 
@@ -808,8 +816,14 @@ mod tests {
             op: Gt,
             value: "a".to_string(),
         };
-        assert!(test.eval_row(&row(&["b"])), "Gt should pass when field > value");
-        assert!(!test.eval_row(&row(&["a"])), "Gt should fail when field == value");
+        assert!(
+            test.eval_row(&row(&["b"])),
+            "Gt should pass when field > value"
+        );
+        assert!(
+            !test.eval_row(&row(&["a"])),
+            "Gt should fail when field == value"
+        );
 
         // Ge: field >= value
         let test = TestKind::StrCmp {
@@ -817,9 +831,18 @@ mod tests {
             op: Ge,
             value: "b".to_string(),
         };
-        assert!(test.eval_row(&row(&["b"])), "Ge should pass when field == value");
-        assert!(test.eval_row(&row(&["c"])), "Ge should pass when field > value");
-        assert!(!test.eval_row(&row(&["a"])), "Ge should fail when field < value");
+        assert!(
+            test.eval_row(&row(&["b"])),
+            "Ge should pass when field == value"
+        );
+        assert!(
+            test.eval_row(&row(&["c"])),
+            "Ge should pass when field > value"
+        );
+        assert!(
+            !test.eval_row(&row(&["a"])),
+            "Ge should fail when field < value"
+        );
 
         // Lt: field < value
         let test = TestKind::StrCmp {
@@ -827,8 +850,14 @@ mod tests {
             op: Lt,
             value: "b".to_string(),
         };
-        assert!(test.eval_row(&row(&["a"])), "Lt should pass when field < value");
-        assert!(!test.eval_row(&row(&["b"])), "Lt should fail when field == value");
+        assert!(
+            test.eval_row(&row(&["a"])),
+            "Lt should pass when field < value"
+        );
+        assert!(
+            !test.eval_row(&row(&["b"])),
+            "Lt should fail when field == value"
+        );
 
         // Le: field <= value
         let test = TestKind::StrCmp {
@@ -836,9 +865,18 @@ mod tests {
             op: Le,
             value: "b".to_string(),
         };
-        assert!(test.eval_row(&row(&["b"])), "Le should pass when field == value");
-        assert!(test.eval_row(&row(&["a"])), "Le should pass when field < value");
-        assert!(!test.eval_row(&row(&["c"])), "Le should fail when field > value");
+        assert!(
+            test.eval_row(&row(&["b"])),
+            "Le should pass when field == value"
+        );
+        assert!(
+            test.eval_row(&row(&["a"])),
+            "Le should pass when field < value"
+        );
+        assert!(
+            !test.eval_row(&row(&["c"])),
+            "Le should fail when field > value"
+        );
 
         // Eq: field == value
         let test = TestKind::StrCmp {
@@ -846,8 +884,14 @@ mod tests {
             op: Eq,
             value: "a".to_string(),
         };
-        assert!(test.eval_row(&row(&["a"])), "Eq should pass when field == value");
-        assert!(!test.eval_row(&row(&["b"])), "Eq should fail when field != value");
+        assert!(
+            test.eval_row(&row(&["a"])),
+            "Eq should pass when field == value"
+        );
+        assert!(
+            !test.eval_row(&row(&["b"])),
+            "Eq should fail when field != value"
+        );
 
         // Ne: field != value
         let test = TestKind::StrCmp {
@@ -855,8 +899,14 @@ mod tests {
             op: Ne,
             value: "a".to_string(),
         };
-        assert!(test.eval_row(&row(&["b"])), "Ne should pass when field != value");
-        assert!(!test.eval_row(&row(&["a"])), "Ne should fail when field == value");
+        assert!(
+            test.eval_row(&row(&["b"])),
+            "Ne should pass when field != value"
+        );
+        assert!(
+            !test.eval_row(&row(&["a"])),
+            "Ne should fail when field == value"
+        );
 
         // Missing field
         let test = TestKind::StrCmp {
@@ -921,7 +971,10 @@ mod tests {
                 op,
             };
             // Both fields exist
-            assert!(test.eval_row(&row(&["10", "10"])) || !test.eval_row(&row(&["10", "10"])));
+            assert!(
+                test.eval_row(&row(&["10", "10"]))
+                    || !test.eval_row(&row(&["10", "10"]))
+            );
         }
     }
 

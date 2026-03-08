@@ -951,4 +951,147 @@ mod tests {
         update_cell(&mut count, "", OpKind::Count); // Should count empty
         assert_eq!(count.result(OpKind::Count), "2");
     }
+
+    #[test]
+    fn test_default_impl() {
+        // Test Default trait implementation
+        let cell: Cell = Default::default();
+        assert!(matches!(cell, Cell::Empty));
+    }
+
+    #[test]
+    fn test_update_else_branches() {
+        // Test Count with wrong cell type (triggers else branch)
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "5", OpKind::Count);
+        assert_eq!(cell.result(OpKind::Count), "1");
+
+        // Test MissingCount with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "", OpKind::MissingCount);
+        assert_eq!(cell.result(OpKind::MissingCount), "1");
+
+        // Test NotMissingCount with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "val", OpKind::NotMissingCount);
+        assert_eq!(cell.result(OpKind::NotMissingCount), "1");
+
+        // Test Sum with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "10", OpKind::Sum);
+        assert_eq!(cell.result(OpKind::Sum), "10");
+
+        // Test Min with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "5", OpKind::Min);
+        assert_eq!(cell.result(OpKind::Min), "5");
+
+        // Test Max with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "5", OpKind::Max);
+        assert_eq!(cell.result(OpKind::Max), "5");
+
+        // Test Mean with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "10", OpKind::Mean);
+        assert_eq!(cell.result(OpKind::Mean), "10");
+
+        // Test GeoMean with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "4", OpKind::GeoMean);
+        assert_eq!(cell.result(OpKind::GeoMean), "4");
+
+        // Test HarmMean with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "2", OpKind::HarmMean);
+        assert_eq!(cell.result(OpKind::HarmMean), "2");
+
+        // Test Variance with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "5", OpKind::Variance);
+        assert_eq!(cell.result(OpKind::Variance), "NaN"); // single value
+
+        // Test Range with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "5", OpKind::Range);
+        assert_eq!(cell.result(OpKind::Range), "0");
+
+        // Test Median with wrong cell type
+        let mut cell = Cell::Strings(vec!["test".to_string()]);
+        update_cell(&mut cell, "5", OpKind::Median);
+        assert_eq!(cell.result(OpKind::Median), "5");
+
+        // Test First with wrong cell type
+        let mut cell = Cell::Value(10.0);
+        update_cell(&mut cell, "A", OpKind::First);
+        assert_eq!(cell.result(OpKind::First), "A");
+
+        // Test Last with wrong cell type
+        let mut cell = Cell::Value(10.0);
+        update_cell(&mut cell, "B", OpKind::Last);
+        assert_eq!(cell.result(OpKind::Last), "B");
+
+        // Test Mode with wrong cell type
+        let mut cell = Cell::Value(10.0);
+        update_cell(&mut cell, "X", OpKind::Mode);
+        assert_eq!(cell.result(OpKind::Mode), "X");
+    }
+
+    #[test]
+    fn test_result_unmatched_ops() {
+        // Test Cell::Values with unmatched OpKind
+        let cell = Cell::Values(vec![1.0, 2.0, 3.0]);
+        assert_eq!(cell.result(OpKind::Sum), ""); // Sum not matched in Values
+
+        // Test Cell::Strings with unmatched OpKind
+        let cell = Cell::Strings(vec!["A".to_string()]);
+        assert_eq!(cell.result(OpKind::Mean), ""); // Mean not matched in Strings
+    }
+
+    #[test]
+    fn test_collapse_with_duplicates() {
+        // Test Collapse with duplicate values
+        let mut cell = Cell::new(OpKind::Collapse);
+        update_cell(&mut cell, "A", OpKind::Collapse);
+        update_cell(&mut cell, "A", OpKind::Collapse); // Duplicate
+        update_cell(&mut cell, "B", OpKind::Collapse);
+        let result = cell.result(OpKind::Collapse);
+        assert!(result.contains("A"));
+        assert!(result.contains("B"));
+    }
+
+    #[test]
+    fn test_rand_with_empty_cell() {
+        // Test Rand with Cell::Empty
+        let cell = Cell::Empty;
+        assert_eq!(cell.result(OpKind::Rand), "");
+    }
+
+    #[test]
+    fn test_mode_count_empty() {
+        // Test ModeCount with empty cell
+        let cell = Cell::Empty;
+        assert_eq!(cell.result(OpKind::ModeCount), "");
+    }
+
+    #[test]
+    fn test_nunique_empty() {
+        // Test NUnique with empty cell
+        let cell = Cell::Empty;
+        assert_eq!(cell.result(OpKind::NUnique), "");
+    }
+
+    #[test]
+    fn test_unique_empty() {
+        // Test Unique with empty cell
+        let cell = Cell::Empty;
+        assert_eq!(cell.result(OpKind::Unique), "");
+    }
+
+    #[test]
+    fn test_collapse_empty() {
+        // Test Collapse with empty cell
+        let cell = Cell::Empty;
+        assert_eq!(cell.result(OpKind::Collapse), "");
+    }
 }
