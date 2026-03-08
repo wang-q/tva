@@ -53,3 +53,33 @@ pub fn extract_markdown_section(content: &str, section_name: &str) -> String {
     // Extract the section
     content[start..start + needle.len() + end_offset].to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_markdown_section_found() {
+        let content = "## Section A\nContent A\n## Section B\nContent B";
+        let result = extract_markdown_section(content, "Section A");
+        assert!(result.contains("## Section A"));
+        assert!(result.contains("Content A"));
+        assert!(!result.contains("Section B"));
+    }
+
+    #[test]
+    fn test_extract_markdown_section_not_found() {
+        let content = "## Section A\nContent A";
+        let result = extract_markdown_section(content, "NonExistent");
+        assert_eq!(result, "# NonExistent\n\nDocumentation not found.\n");
+    }
+
+    #[test]
+    fn test_extract_markdown_section_last_section() {
+        // Section at the end with no following section
+        let content = "## Section A\nContent A\n## Section B\nContent B";
+        let result = extract_markdown_section(content, "Section B");
+        assert!(result.contains("## Section B"));
+        assert!(result.contains("Content B"));
+    }
+}
