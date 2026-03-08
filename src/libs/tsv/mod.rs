@@ -28,6 +28,12 @@ pub static FIELD_SYNTAX_HELP: std::sync::LazyLock<String> =
         extract_markdown_section(CONVENTIONS_FULL, "Field Selection Syntax")
     });
 
+/// Help text for header handling, extracted from docs/conventions.md.
+pub static HEADER_HELP: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| {
+        extract_markdown_section(CONVENTIONS_FULL, "Header Handling")
+    });
+
 /// Extracts a section from a markdown document by its header.
 ///
 /// Finds the section starting with `## {section_name}` and returns everything

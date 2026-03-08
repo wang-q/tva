@@ -8,9 +8,9 @@ Headers are the column name rows in data files. Different commands have differen
 
 *   **Header Detection Modes** (mutually exclusive)
     - `--header` / `-H`: **FirstLine** mode - take the first non-empty line as header (contains column names)
-    - `--header-lines N`: **FixedLines(N)** mode - take exactly N non-empty lines as header
+    - `--header-lines N`: **LinesN** mode - take exactly N non-empty lines as header
     - `--header-hash`: **HashLines** mode - take all consecutive `#` lines as header (metadata only)
-    - `--header-hash1`: **Hash1** mode - take `#` lines plus the next line as header (contains column names)
+    - `--header-hash1`: **HashLines1** mode - take `#` lines plus the next line as header (contains column names)
 
 *   **Special Commands**
     - `split`: Uses `--header-in-out` (input has header, output writes header, default) or `--header-in-only` (input has header, output does not write header). `--header` is an alias for `--header-in-out`.

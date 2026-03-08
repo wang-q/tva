@@ -18,6 +18,12 @@ fn main() -> anyhow::Result<()> {
                 .action(ArgAction::SetTrue)
                 .help("Print help on field syntax and exit"),
         )
+        .arg(
+            Arg::new("help-headers")
+                .long("help-headers")
+                .action(ArgAction::SetTrue)
+                .help("Print help on header handling and exit"),
+        )
         .subcommand(cmd_tva::append::make_subcommand())
         .subcommand(cmd_tva::bin::make_subcommand())
         .subcommand(cmd_tva::blank::make_subcommand())
@@ -59,6 +65,12 @@ fn main() -> anyhow::Result<()> {
     if matches.get_flag("help-fields") {
         use tva::libs::tsv::FIELD_SYNTAX_HELP;
         println!("{}", *FIELD_SYNTAX_HELP);
+        return Ok(());
+    }
+
+    if matches.get_flag("help-headers") {
+        use tva::libs::tsv::HEADER_HELP;
+        println!("{}", *HEADER_HELP);
         return Ok(());
     }
 

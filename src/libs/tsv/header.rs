@@ -8,11 +8,11 @@ pub enum HeaderMode {
     /// Use the first non-empty line as header (default).
     FirstLine,
     /// Use exactly N non-empty lines as header.
-    FixedLines(usize),
+    LinesN(usize),
     /// Use consecutive hash lines (starting with '#') as header.
     HashLines,
     /// Use consecutive hash lines plus the next line as header (for extracting column names).
-    Hash1,
+    HashLines1,
 }
 
 /// Configuration for header detection.
@@ -45,9 +45,9 @@ impl HeaderConfig {
         self
     }
 
-    /// Sets the mode to FixedLines (use exactly N lines as header).
-    pub fn fixed_lines(mut self, n: usize) -> Self {
-        self.mode = HeaderMode::FixedLines(n);
+    /// Sets the mode to LinesN (use exactly N lines as header).
+    pub fn lines_n(mut self, n: usize) -> Self {
+        self.mode = HeaderMode::LinesN(n);
         self
     }
 
@@ -57,9 +57,9 @@ impl HeaderConfig {
         self
     }
 
-    /// Sets the mode to Hash1 (use consecutive '#' lines + next line as header).
-    pub fn hash1(mut self) -> Self {
-        self.mode = HeaderMode::Hash1;
+    /// Sets the mode to HashLines1 (use consecutive '#' lines + next line as header).
+    pub fn hash_lines1(mut self) -> Self {
+        self.mode = HeaderMode::HashLines1;
         self
     }
 }
@@ -115,9 +115,9 @@ pub fn detect_header(data: &[u8], config: &HeaderConfig) -> DetectedHeader {
 
     match config.mode {
         HeaderMode::FirstLine => detect_first_line_header(data),
-        HeaderMode::FixedLines(n) => detect_fixed_lines_header(data, n),
+        HeaderMode::LinesN(n) => detect_lines_n_header(data, n),
         HeaderMode::HashLines => detect_hash_lines_header(data, false),
-        HeaderMode::Hash1 => detect_hash_lines_header(data, true),
+        HeaderMode::HashLines1 => detect_hash_lines_header(data, true),
     }
 }
 
@@ -166,8 +166,8 @@ fn detect_first_line_header(data: &[u8]) -> DetectedHeader {
     }
 }
 
-/// Detects header using FixedLines mode: exactly N non-empty lines are the header.
-fn detect_fixed_lines_header(data: &[u8], n: usize) -> DetectedHeader {
+/// Detects header using LinesN mode: exactly N non-empty lines are the header.
+fn detect_lines_n_header(data: &[u8], n: usize) -> DetectedHeader {
     let mut lines = Vec::new();
     let mut pos = 0;
     let mut line_count = 0;
@@ -347,9 +347,9 @@ impl HeaderHandler {
 
         match self.config.mode {
             HeaderMode::FirstLine => self.process_first_line_mode(line),
-            HeaderMode::FixedLines(n) => self.process_fixed_lines_mode(line, n),
+            HeaderMode::LinesN(n) => self.process_lines_n_mode(line, n),
             HeaderMode::HashLines => self.process_hash_lines_mode(line, false),
-            HeaderMode::Hash1 => self.process_hash_lines_mode(line, true),
+            HeaderMode::HashLines1 => self.process_hash_lines_mode(line, true),
         }
     }
 
@@ -363,8 +363,8 @@ impl HeaderHandler {
         Ok(false)
     }
 
-    fn process_fixed_lines_mode(&mut self, line: &[u8], _n: usize) -> anyhow::Result<bool> {
-        // For streaming, FixedLines mode captures the first line as header
+    fn process_lines_n_mode(&mut self, line: &[u8], _n: usize) -> anyhow::Result<bool> {
+        // For streaming, LinesN mode captures the first line as header
         // (full N-line handling would require buffering)
         if self.is_first_file {
             self.captured_header = Some(line.to_vec());
@@ -430,8 +430,8 @@ mod tests {
     }
 
     #[test]
-    fn test_header_fixed_lines() {
-        let config = HeaderConfig::new().enabled().fixed_lines(2);
+    fn test_header_lines_n() {
+        let config = HeaderConfig::new().enabled().lines_n(2);
         let data = b"# comment\ncol1\tcol2\nval1\tval2\n";
         let result = detect_header(data, &config);
         assert!(result.has_header());
@@ -453,9 +453,9 @@ mod tests {
     }
 
     #[test]
-    fn test_header_with_hash1() {
-        // Hash1 mode: '#' lines + next line are header (for column names)
-        let config = HeaderConfig::new().enabled().hash1();
+    fn test_header_with_hash_lines1() {
+        // HashLines1 mode: '#' lines + next line are header (for column names)
+        let config = HeaderConfig::new().enabled().hash_lines1();
         let data = b"# comment 1\n# comment 2\ncol1\tcol2\nval1\tval2\n";
         let result = detect_header(data, &config);
         assert!(result.has_header());
