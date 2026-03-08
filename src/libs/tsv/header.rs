@@ -700,4 +700,70 @@ mod tests {
         assert!(result.has_header());
         assert_eq!(result.lines[0], b"col1\tcol2");
     }
+
+    #[test]
+    fn test_lines_n_with_crlf() {
+        // Test Windows line endings (\r\n) in LinesN mode
+        let config = HeaderConfig::new().enabled().lines_n(2);
+        let data = b"# comment\r\ncol1\tcol2\r\ndata\r\n";
+        let result = detect_header(data, &config);
+        assert!(result.has_header());
+        assert_eq!(result.lines.len(), 2);
+        assert_eq!(result.lines[0], b"# comment"); // \r removed
+        assert_eq!(result.lines[1], b"col1\tcol2"); // \r removed
+    }
+
+    #[test]
+    fn test_hash_lines_with_crlf() {
+        // Test Windows line endings (\r\n) in HashLines mode
+        let config = HeaderConfig::new().enabled().hash_lines();
+        let data = b"# comment1\r\n# comment2\r\ndata\r\n";
+        let result = detect_header(data, &config);
+        assert!(result.has_header());
+        assert_eq!(result.lines.len(), 2);
+        assert_eq!(result.lines[0], b"# comment1"); // \r removed
+        assert_eq!(result.lines[1], b"# comment2"); // \r removed
+    }
+
+    #[test]
+    fn test_handler_lines_n_second_file() {
+        let config = HeaderConfig::new().enabled().lines_n(2);
+        let mut handler = HeaderHandler::new(config);
+
+        // First file - capture header
+        assert!(handler.process_first_line(b"line1").unwrap());
+        handler.end_of_file();
+
+        // Second file - should not treat as header
+        assert!(!handler.process_first_line(b"data1").unwrap());
+    }
+
+    #[test]
+    fn test_handler_hash_lines_second_file_non_hash() {
+        let config = HeaderConfig::new().enabled().hash_lines();
+        let mut handler = HeaderHandler::new(config);
+
+        // First file
+        assert!(handler.process_first_line(b"# comment").unwrap());
+        handler.end_of_file();
+
+        // Second file - non-hash line should be data
+        assert!(!handler.process_first_line(b"data").unwrap());
+    }
+
+    #[test]
+    fn test_handler_hash_lines1_second_file() {
+        let config = HeaderConfig::new().enabled().hash_lines1();
+        let mut handler = HeaderHandler::new(config);
+
+        // First file
+        assert!(handler.process_first_line(b"# comment").unwrap());
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        handler.end_of_file();
+
+        // Second file - hash lines should be consumed but not captured
+        assert!(handler.process_first_line(b"# another comment").unwrap());
+        // Non-hash line is data
+        assert!(!handler.process_first_line(b"val1\tval2").unwrap());
+    }
 }
