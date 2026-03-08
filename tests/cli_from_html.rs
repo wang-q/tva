@@ -392,3 +392,42 @@ fn from_html_col_attr_invalid_syntax() {
         .run_fail();
     assert!(stderr.contains("Invalid attr{} syntax"));
 }
+
+#[test]
+fn from_html_table_with_colgroup() {
+    // Test table with colgroup (covers L232-236 _ => {} branch)
+    let html = "<table><colgroup><col span=\"2\"></colgroup><tr><td>A</td><td>B</td></tr></table>";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "html", "--table"])
+        .stdin(html)
+        .run();
+    assert_eq!(normalize_newlines(&stdout), "A\tB\n");
+}
+
+#[test]
+fn from_html_table_row_with_comment() {
+    // Test row with comment node (covers L258-259 _ => {} branch)
+    let html = "<table><tr><td>A</td><!-- comment --><td>B</td></tr></table>";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["from", "html", "--table"])
+        .stdin(html)
+        .run();
+    assert_eq!(normalize_newlines(&stdout), "A\tB\n");
+}
+
+#[test]
+fn from_html_col_attr_paren_invalid_syntax() {
+    // Test invalid attr() syntax without closing paren (covers L358-359)
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "from",
+            "html",
+            "--row",
+            "div",
+            "--col",
+            "Name:attr(href", // Missing closing )
+            "tests/data/from_html/basic.html",
+        ])
+        .run_fail();
+    assert!(stderr.contains("Invalid attr() syntax"));
+}

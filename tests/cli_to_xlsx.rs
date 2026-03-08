@@ -187,3 +187,33 @@ fn to_xlsx_conditional_formatting_ge_bt() {
 
     assert!(outfile_path.exists());
 }
+
+#[test]
+fn to_xlsx_invalid_utf8_field() {
+    // Test handling of invalid UTF-8 bytes in TSV field (covers L203-212)
+    let temp_dir = tempfile::tempdir().unwrap();
+    let infile_path = temp_dir.path().join("data.tsv");
+
+    // Create TSV with invalid UTF-8 bytes (0xFF is not valid UTF-8)
+    let content = b"Hello\tWorld\nInvalid\t\xFF\xFE\n";
+    std::fs::write(&infile_path, content).unwrap();
+
+    let outfile_path = temp_dir.path().join("out.xlsx");
+
+    TvaCmd::new()
+        .args(&[
+            "to",
+            "xlsx",
+            infile_path.to_str().unwrap(),
+            "--outfile",
+            outfile_path.to_str().unwrap(),
+        ])
+        .run();
+
+    assert!(outfile_path.exists());
+
+    // Verify the file can be opened
+    let mut workbook = open_workbook_auto(outfile_path.to_str().unwrap()).unwrap();
+    let range = workbook.worksheet_range("data").unwrap();
+    assert!(range.height() > 0);
+}

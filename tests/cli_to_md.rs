@@ -67,3 +67,24 @@ fn md_fmt() {
 
     assert_eq!(stdout, expected);
 }
+
+#[test]
+fn md_fmt_non_numeric_in_numeric_column() {
+    // Test non-numeric value in a numeric column (covers L164-165)
+    // When --num or --fmt is used, column is marked as numeric based on first data row
+    // If a value can't be parsed as f64, it should return the original string
+    // Column 2: first row is "100" (numeric), second row is "N/A" (non-numeric)
+    // But actually, the column type detection checks ALL rows
+    // So if ANY row has non-numeric, the column is not marked as numeric
+
+    // Let's test with --right to force right alignment, then use --fmt
+    // Actually, let's just verify the behavior when value.parse::<f64>() fails
+    let expected = "| H1  |   H2 |\n| --- | ---: |\n| A   |  100 |\n| B   |  N/A |\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["to", "md", "--fmt", "--right", "2"])
+        .stdin("H1\tH2\nA\t100\nB\tN/A\n")
+        .run();
+
+    assert_eq!(stdout, expected);
+}

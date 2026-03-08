@@ -46,3 +46,25 @@ fn to_csv_file() {
 
     assert_eq!(stdout, "a,b\n1,2\n");
 }
+
+#[test]
+fn to_csv_invalid_delimiter_length() {
+    // Test multi-byte delimiter error (covers L48-49)
+    let (_, stderr) = TvaCmd::new()
+        .args(&["to", "csv", "--delimiter", ",,"])
+        .stdin("a\tb\n")
+        .run_fail();
+
+    assert!(stderr.contains("delimiter must be a single byte"));
+}
+
+#[test]
+fn to_csv_invalid_delimiter_word() {
+    // Test word delimiter error (covers L48-49)
+    let (_, stderr) = TvaCmd::new()
+        .args(&["to", "csv", "--delimiter", "comma"])
+        .stdin("a\tb\n")
+        .run_fail();
+
+    assert!(stderr.contains("delimiter must be a single byte"));
+}
