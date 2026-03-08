@@ -6,11 +6,6 @@ Input:
 *   Reads from files or standard input; multiple files are processed as one stream.
 *   Files ending in `.gz` are transparently decompressed.
 
-Header behavior:
-*   `--header` / `-H`: Treats the first non-empty line of the input as a header.
-    The header is written once at the top of the output. Tests are applied only
-    to data rows.
-
 Tests and logic:
 *   Multiple tests can be specified. By default, all tests must pass (logical AND).
 *   Use `--or` to require that at least one test passes (logical OR).

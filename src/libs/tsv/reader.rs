@@ -77,8 +77,8 @@ impl<R: Read> TsvReader<R> {
     /// - `Err(e)` - I/O error occurred
     ///
     /// # Modes
-    /// - `FirstLine`: First non-empty line is the column names
-    /// - `LinesN(n)`: First n non-empty lines (last one is column names)
+    /// - `FirstLine`: First line is the header (even if empty)
+    /// - `LinesN(n)`: First n lines are the header (including empty lines)
     /// - `HashLines`: Consecutive '#' lines (no column names)
     /// - `HashLines1`: Consecutive '#' lines + next line (column names)
     pub fn read_header_mode(
