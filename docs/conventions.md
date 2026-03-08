@@ -27,6 +27,10 @@ Headers are the column name rows in data files. Different commands have differen
     - `split`: Uses `--header-in-out` (input has header, output writes header, default) or `--header-in-only` (input has header, output does not write header). `--header` is an alias for `--header-in-out`.
     - `keep-header`: Uses `--lines N` / `-n` to specify number of header lines (default: 1)
 
+*   **Multi-file Header Behavior**
+    - When using multiple input files with header mode enabled, the header from the first file is read and written to output.
+    - Headers from subsequent files are skipped.
+
 *   **Commands by Header Mode Support**
 
     **FirstLine and HashLines1 modes** (modes that provide column names): `select`
