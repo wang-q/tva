@@ -79,7 +79,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 Data::Bool(b) => b.to_string(),
                 Data::Error(e) => format!("{:?}", e),
                 Data::DateTime(f) => f.to_string(),
-                _ => String::new(), // Handle other variants if any
+                // Defensive: for forward compatibility if calamine adds new Data variants
+                _ => String::new(),
             };
 
             writer.write_all(val.as_bytes())?;

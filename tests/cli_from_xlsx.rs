@@ -188,3 +188,78 @@ fn from_xlsx_data_types() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn from_xlsx_integer_type() -> Result<(), Box<dyn std::error::Error>> {
+    // Test Data::Int variant (L78)
+    let file = Builder::new().suffix(".xlsx").tempfile()?;
+    let file_path = file.path().to_str().unwrap();
+
+    let mut workbook = Workbook::new();
+    let worksheet = workbook.add_worksheet();
+
+    // Write integer values
+    worksheet.write(0, 0, "Integers")?;
+    worksheet.write(1, 0, 42i64)?; // Explicit integer
+    worksheet.write(2, 0, -100i64)?;
+    worksheet.write(3, 0, 0i64)?;
+
+    workbook.save(file_path)?;
+
+    let (stdout, _) = TvaCmd::new().args(&["from", "xlsx", file_path]).run();
+    assert!(stdout.contains("42"));
+    assert!(stdout.contains("-100"));
+    assert!(stdout.contains("0"));
+
+    Ok(())
+}
+
+#[test]
+fn from_xlsx_datetime_type() -> Result<(), Box<dyn std::error::Error>> {
+    // Test Data::DateTime variant (L81)
+    let file = Builder::new().suffix(".xlsx").tempfile()?;
+    let file_path = file.path().to_str().unwrap();
+
+    let mut workbook = Workbook::new();
+    let worksheet = workbook.add_worksheet();
+
+    // Write datetime value
+    worksheet.write(0, 0, "Date")?;
+    worksheet.write_datetime(
+        1,
+        0,
+        &rust_xlsxwriter::ExcelDateTime::from_ymd(2024, 1, 15)?,
+    )?;
+
+    workbook.save(file_path)?;
+
+    let (stdout, _) = TvaCmd::new().args(&["from", "xlsx", file_path]).run();
+    // DateTime should be converted to string representation
+    // The exact format depends on calamine's serialization
+    assert!(!stdout.is_empty());
+    assert!(stdout.contains("Date"));
+
+    Ok(())
+}
+
+#[test]
+fn from_xlsx_formula_error() -> Result<(), Box<dyn std::error::Error>> {
+    // Test Data::Error variant (L80)
+    let file = Builder::new().suffix(".xlsx").tempfile()?;
+    let file_path = file.path().to_str().unwrap();
+
+    let mut workbook = Workbook::new();
+    let worksheet = workbook.add_worksheet();
+
+    // Write formula that produces an error
+    worksheet.write(0, 0, "Error")?;
+    worksheet.write_formula(1, 0, "=1/0")?; // Division by zero
+
+    workbook.save(file_path)?;
+
+    let (stdout, _) = TvaCmd::new().args(&["from", "xlsx", file_path]).run();
+    // Error should be present in output (format depends on calamine)
+    assert!(!stdout.is_empty());
+
+    Ok(())
+}

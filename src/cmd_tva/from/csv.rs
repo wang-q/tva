@@ -179,6 +179,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     loop {
         match csv_reader.read_byte_record(&mut record) {
             Ok(true) => {
+                // Defensive: csv crate typically skips empty lines, but handle just in case
                 if record.is_empty() {
                     writer.write_all(b"\n")?;
                     continue;
@@ -203,6 +204,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             Ok(false) => break,
             Err(err) => {
                 let pos = err.position();
+                // Defensive: position may be None for certain errors (e.g., pre-read errors)
                 let line_info = if let Some(pos) = pos {
                     format!(" at line {}", pos.line())
                 } else {
