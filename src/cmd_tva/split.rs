@@ -255,54 +255,22 @@ impl<'a> WriterManager<'a> {
     }
 }
 
-fn parse_key_fields(spec: &str) -> Vec<usize> {
-    crate::libs::tsv::fields::parse_numeric_field_list(spec)
-        .unwrap_or_else(|e| arg_error(&e))
-}
-
 fn key_bucket(
     record: &[u8],
     indices: &[usize],
     num_files: usize,
     delimiter: u8,
 ) -> usize {
-    // Avoid allocating strings. Use zero-copy parsing.
-    let mut key_buffer = Vec::new();
-    let mut iter = memchr::memchr_iter(delimiter, record);
-    let mut last_pos = 0;
-    let mut field_idx = 1;
-    let mut next_tab = iter.next();
+    // Use KeyExtractor from libs to extract key and compute hash
+    use crate::libs::tsv::key::KeyExtractor;
 
-    let mut first = true;
+    let mut extractor = KeyExtractor::new(Some(indices.to_vec()), false, false);
+    let key = extractor.extract(record, delimiter).unwrap_or_else(|_| {
+        // If extraction fails, use empty key
+        crate::libs::tsv::key::ParsedKey::Ref(b"")
+    });
 
-    for &target_idx in indices {
-        // Advance to target_idx
-        while field_idx < target_idx {
-            if let Some(pos) = next_tab {
-                last_pos = pos + 1;
-                next_tab = iter.next();
-                field_idx += 1;
-            } else {
-                // End of record
-                break;
-            }
-        }
-
-        if !first {
-            key_buffer.push(b'\t'); // Internal key delimiter is always TAB? Or user delimiter?
-                                    // tsv-uniq usually uses TAB as internal separator for multi-field keys.
-                                    // Stick to TAB for consistency unless we want delimiter-agnostic key.
-        }
-        first = false;
-
-        if field_idx == target_idx {
-            let end = next_tab.unwrap_or(record.len());
-            key_buffer.extend_from_slice(&record[last_pos..end]);
-        }
-        // If field_idx > target_idx (not found), push empty string (do nothing)
-    }
-
-    let h = rapidhash(&key_buffer);
+    let h = rapidhash(key.as_ref());
     (h % (num_files as u64)) as usize
 }
 
@@ -329,34 +297,30 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .get_one::<String>("suffix")
         .cloned()
         .unwrap_or_else(|| ".tsv".to_string());
-    let digit_width = if let Some(w) = args.get_one::<usize>("digit-width") {
-        if *w == 0
-            && args.value_source("digit-width")
-                == Some(clap::parser::ValueSource::DefaultValue)
-        {
-            if lines_per_file > 0 {
-                3
-            } else if num_files > 0 {
-                if num_files == 1 {
-                    1
-                } else {
-                    let n = num_files as f64;
-                    let w = n.log10().ceil() as usize;
-                    if w == 0 {
-                        1
-                    } else {
-                        w
-                    }
-                }
-            } else {
+    // Calculate default digit width based on mode when user doesn't specify
+    let digit_width = args
+        .get_one::<usize>("digit-width")
+        .copied()
+        .map(|w| {
+            if w != 0 {
+                // User explicitly specified a non-zero value
+                w
+            } else if args.value_source("digit-width")
+                != Some(clap::parser::ValueSource::DefaultValue)
+            {
+                // User explicitly specified 0 (disable padding)
                 0
+            } else {
+                // Default value: auto-calculate based on mode
+                match (lines_per_file, num_files) {
+                    (_, 1) => 1,
+                    (0, n) if n > 1 => ((n as f64).log10().ceil() as usize).max(1),
+                    (l, 0) if l > 0 => 3, // lines-per-file mode: default 3 digits
+                    _ => 0,
+                }
             }
-        } else {
-            *w
-        }
-    } else {
-        0
-    };
+        })
+        .unwrap_or(0);
     let append = args.get_flag("append");
     let static_seed = args.get_flag("static-seed");
     let seed_value = args.get_one::<u64>("seed-value").cloned().unwrap_or(0);
@@ -415,15 +379,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None
     };
 
-    let key_indices = if let Some(spec) = key_fields_spec {
+    let key_indices = key_fields_spec.and_then(|spec| {
         if spec.trim().is_empty() {
             None
         } else {
-            Some(parse_key_fields(&spec))
+            Some(
+                crate::libs::tsv::fields::parse_numeric_field_list(&spec)
+                    .unwrap_or_else(|e| arg_error(&e)),
+            )
         }
-    } else {
-        None
-    };
+    });
 
     let config = SplitConfig {
         dir: &dir_path,
