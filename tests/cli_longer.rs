@@ -425,3 +425,129 @@ E\tQ3\t15
 
     assert_eq!(stdout, expected);
 }
+
+#[test]
+fn longer_multi_names_to_without_sep_or_pattern() {
+    // Test error when multiple names-to provided without --names-sep or --names-pattern (covers L90-93)
+    // Note: --names-to accepts multiple values (num_args(1..))
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "longer",
+            "--cols",
+            "2-3",
+            "--names-to",
+            "col1",
+            "col2", // Two separate arguments
+        ])
+        .stdin("ID\tA\tB\n1\t2\t3\n")
+        .run_fail();
+
+    assert!(stderr.contains("names-sep") || stderr.contains("names-pattern"));
+}
+
+#[test]
+fn longer_empty_file_skip() {
+    // Test empty file handling (covers L107-108)
+    let input1 = "ID\tA\tB\n1\ta\tb\n";
+    let input2 = ""; // Empty file
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file1 = temp_dir.path().join("file1.tsv");
+    let file2 = temp_dir.path().join("file2.tsv");
+    std::fs::write(&file1, input1).unwrap();
+    std::fs::write(&file2, input2).unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "longer",
+            file1.to_str().unwrap(),
+            file2.to_str().unwrap(),
+            "--cols",
+            "2-3",
+        ])
+        .run();
+
+    // Should process file1 and skip empty file2
+    assert!(stdout.contains("1\tA\ta"));
+}
+
+#[test]
+fn longer_pattern_no_match_fallback() {
+    // Test pattern fallback when regex doesn't match (covers L183-187)
+    let input = "\
+ID	col_A	col_B
+1	2	3
+";
+    // Pattern expects "new_" prefix which doesn't exist
+    let expected = "\
+ID	diagnosis	gender_age	value
+1\tcol_A\t\t2
+1\tcol_B\t\t3
+";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "longer",
+            "--cols",
+            "2-3",
+            "--names-pattern",
+            "new_?(.*)_(.*)",
+            "--names-to",
+            "diagnosis",
+            "gender_age",
+        ])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn longer_empty_lines_in_data() {
+    // Test handling of empty lines in data (covers L217-218)
+    let input = "\
+ID	A	B
+1	a	b
+
+2	c	d
+";
+    let expected = "\
+ID	name	value
+1	A	a
+1	B	b
+2	A	c
+2	B	d
+";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["longer", "--cols", "2-3"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn longer_field_out_of_bounds() {
+    // Test handling when accessing field beyond row length (covers L231-232)
+    // This can happen with ragged rows
+    let input = "\
+ID	A	B
+1	a
+2	a	b	c
+";
+    let expected = "\
+ID	name	value
+1	A	a
+1	B	
+2	A	a
+2	B	b
+";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["longer", "--cols", "2-3"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, expected);
+}
