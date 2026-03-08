@@ -17,6 +17,7 @@
 - [Import (from)](from.md)
 - [Export (to)](to.md)
 - [CSS Selectors](selectors.md)
+- [Common Conventions](conventions.md)
 
 # Command Reference
 - [select](help/select.md)
@@ -45,4 +46,3 @@
 - [check](help/check.md)
 - [nl](help/nl.md)
 - [keep-header](help/keep_header.md)
-- [Field Syntax](help/fields.md)

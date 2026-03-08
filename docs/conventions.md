@@ -1,0 +1,125 @@
+# tva Common Conventions
+
+This document defines the naming and behavior conventions for parameters shared across tva subcommands to ensure a consistent user experience.
+
+## Header Handling
+
+Headers are the column name rows in data files. Different commands have different header processing requirements, but parameter naming should remain consistent.
+
+### Basic Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `--header` / `-H` | Enable header processing | disabled |
+| `--header-lines N` | Specify first N lines as header | 1 |
+| `--header-comments` | Treat lines starting with `#` as part of header | disabled |
+
+### Header Detection Rules
+
+When `--header` is enabled, headers are detected in the following order:
+
+1. If `--header-lines N` is specified: take first N lines as header
+2. If `--header-comments` is enabled: take all `#` lines + the next line as header
+3. Default: take the first non-empty line as header
+
+### Special Commands
+
+#### `split`
+
+`split` needs to distinguish between input and output header strategies:
+
+| Parameter | Description |
+|-----------|-------------|
+| `--header-in-out` | Input has header, output files also write header (default) |
+| `--header-in-only` | Input has header, but output files do not write header |
+
+Note: `--header` is an alias for `--header-in-out`.
+
+#### `keep-header`
+
+`keep-header` focuses on preserving headers and passing them to subcommands:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `--lines N` / `-n` | Specify number of header lines | 1 |
+
+## Input/Output Conventions
+
+### Parameter Naming
+
+| Type | Parameter Name | Description |
+|------|----------------|-------------|
+| Single file input | `infile` | Positional argument |
+| Multiple file input | `infiles` | Positional argument, supports multiple |
+| Output file | `--outfile` / `-o` | Optional, defaults to stdout |
+
+### Special Values
+
+- `stdin` or `-`: Read from standard input
+- `stdout`: Output to standard output (used with `--outfile`)
+
+## Field Selection Syntax
+
+Commands that support field selection (e.g., `select`, `filter`, `sort`) use a unified field syntax.
+
+*   **1-based Indexing**
+    - Fields are numbered starting from 1 (following Unix `cut`/`awk` convention).
+    - Example: `1,3,5` selects the 1st, 3rd, and 5th columns.
+
+*   **Field Names**
+    - Requires the `--header` flag (or command-specific header option).
+    - Names are case-sensitive.
+    - Example: `date,user_id` selects columns named "date" and "user_id".
+
+*   **Ranges**
+    - Numeric Ranges: `start-end`. Example: `2-4` selects columns 2, 3, and 4.
+    - Name Ranges: `start_col-end_col`. Selects all columns from `start_col` to
+      `end_col` inclusive, based on their order in the header.
+    - Reverse Ranges: `5-3` is automatically treated as `3-5`.
+
+*   **Wildcards**
+    - `*` matches any sequence of characters in a field name.
+    - Example: `user_*` selects `user_id`, `user_name`, etc.
+    - Example: `*_time` selects `start_time`, `end_time`.
+
+*   **Escaping**
+    - Special characters in field names (like space, comma, colon, dash, star)
+      must be escaped with `\`.
+    - Example: `Order\ ID` selects the column "Order ID".
+    - Example: `run\:id` selects "run:id".
+
+*   **Exclusion**
+    - Negative selection is typically handled via a separate flag (e.g.,
+      `--exclude` in `select`), but uses the same field syntax.
+
+## Numeric Parameter Conventions
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `--lines N` / `-n` | Specify line count | `--lines 100` |
+| `--fields N` / `-f` | Specify fields | `--fields 1,2,3` |
+| `--delimiter` | Field delimiter | `--delimiter ','` |
+
+## Random and Sampling
+
+| Parameter | Description |
+|-----------|-------------|
+| `--seed N` | Specify random seed for reproducibility |
+| `--static-seed` | Use fixed default seed |
+
+## Boolean Flags
+
+Boolean flags use `--flag` to enable, without a value:
+
+- `--header` not `--header true`
+- `--append` / `-a` not `--append true`
+
+## Error Handling
+
+All commands follow the same error output format:
+
+```
+tva <command>: <error message>
+```
+
+Serious errors return non-zero exit codes.
