@@ -279,33 +279,3 @@ fn blank_empty_file_handling() {
     // Second file -> write header, write data.
     assert_eq!(stdout, "h1\th2\n1\t2\n");
 }
-
-#[test]
-fn blank_header_lines_n_mode() {
-    // Test --header-lines N mode (LinesN mode)
-    // LinesN mode includes all N lines in 'lines', column_names_line is None
-    let input = "# comment 1\n# comment 2\ncol1\tcol2\n1\t2\n1\t3\n";
-    // Output: first 3 lines as header (lines), then data with blanking
-    let expected = "# comment 1\n# comment 2\ncol1\tcol2\n1\t2\n\t3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .stdin(input)
-        .args(&["blank", "--header-lines", "3", "--field", "1"])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn blank_header_hash_mode() {
-    // Test --header-hash mode (HashLines mode)
-    let input = "# comment 1\n# comment 2\ncol1\tcol2\n1\t2\n1\t3\n";
-    let expected = "# comment 1\n# comment 2\ncol1\tcol2\n1\t2\n\t3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .stdin(input)
-        .args(&["blank", "--header-hash", "--field", "1"])
-        .run();
-
-    assert_eq!(stdout, expected);
-}

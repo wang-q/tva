@@ -1,4 +1,4 @@
-//! Common utilities shared across tva commands.
+//! Header-related CLI argument handling utilities.
 
 use crate::libs::tsv::header::HeaderConfig;
 use clap::{Arg, ArgAction};

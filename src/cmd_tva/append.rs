@@ -2,7 +2,7 @@ use clap::*;
 use std::io::Write;
 use std::path::Path;
 
-use crate::cmd_tva::common::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
 
 use crate::libs::tsv::reader::TsvReader;

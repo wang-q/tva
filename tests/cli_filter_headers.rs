@@ -80,82 +80,6 @@ fn filter_header_firstline_with_label() {
 }
 
 // ============================================================================
-// Tests for --header-lines (LinesN mode)
-// ============================================================================
-
-#[test]
-fn filter_header_lines_n_basic() {
-    let input = "header1\nheader2\ncol1\tcol2\n1\ta\n2\tb\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["filter", "--header-lines", "2", "--str-eq", "2:a"])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    // Only the last header line (col1\tcol2) is written as header
-    assert_eq!(lines.len(), 2);
-    assert_eq!(lines[0], "header2");
-    assert_eq!(lines[1], "1\ta");
-}
-
-#[test]
-fn filter_header_lines_n_with_count() {
-    let input = "h1\nh2\ncol1\tcol2\n1\ta\n2\tb\n3\ta\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "filter",
-            "--header-lines",
-            "2",
-            "--count",
-            "--str-eq",
-            "2:a",
-        ])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout.trim(), "2");
-}
-
-// ============================================================================
-// Tests for --header-hash (HashLines mode)
-// ============================================================================
-
-#[test]
-fn filter_header_hash_basic() {
-    // HashLines mode: captures hash lines as header, but no column names
-    // Uses numeric field indices for filtering
-    // Writes the last hash line as header output
-    let input = "# comment 1\n# comment 2\n1\ta\n2\tb\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["filter", "--header-hash", "--str-eq", "2:a"])
-        .stdin(input)
-        .run();
-
-    // HashLines mode: hash lines are header, last hash line is written
-    // Data rows are filtered using numeric field indices
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 2);
-    assert_eq!(lines[0], "# comment 2");
-    assert_eq!(lines[1], "1\ta");
-}
-
-#[test]
-fn filter_header_hash_no_hash_lines() {
-    // No hash lines - no header detected, behaves like no header mode
-    let input = "1\ta\n2\tb\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["filter", "--header-hash", "--str-eq", "2:a"])
-        .stdin(input)
-        .run();
-
-    // No hash lines found, so behaves like no header
-    // All lines treated as data, filter applied, no header output
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 1);
-    assert_eq!(lines[0], "1\ta");
-}
-
-// ============================================================================
 // Tests for --header-hash1 (HashLines1 mode)
 // ============================================================================
 
@@ -207,8 +131,7 @@ fn filter_header_conflicting_options_error() {
         .args(&[
             "filter",
             "--header",
-            "--header-lines",
-            "2",
+            "--header-hash1",
             "--str-eq",
             "2:a",
         ])

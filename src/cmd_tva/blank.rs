@@ -1,4 +1,4 @@
-use crate::cmd_tva::common::{build_header_config, header_args};
+use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::tsv::fields::{parse_field_list_with_header_preserve_order, Header};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::split::TsvSplitter;
@@ -25,7 +25,7 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::Append)
                 .required(true),
         )
-        .args(header_args())
+        .args(header_args_with_columns())
         .arg(
             Arg::new("ignore-case")
                 .short('i')
