@@ -2,6 +2,31 @@
 
 ## Unreleased - ReleaseDate
 
+### Added
+
+#### Header Handling
+- **Unified Header Detection Modes**: Introduced four header detection modes across multiple commands:
+    - `--header` / `-H`: FirstLine mode - treats the first line as column names.
+    - `--header-hash1`: HashLines1 mode - treats consecutive `#` lines plus the next line as header, with graceful fallback to FirstLine mode if no `#` lines exist.
+    - `--header-lines N`: LinesN mode - treats up to N lines as header without extracting column names.
+    - `--header-hash`: HashLines mode - treats all consecutive `#` lines as header metadata only.
+- **Commands with full header mode support** (4 modes: `--header`, `--header-lines`, `--header-hash`, `--header-hash1`): `check`, `slice`, `sort`.
+- **Commands with column-names header support** (2 modes: `--header`, `--header-hash1`): `append`, `bin`, `blank`, `fill`, `filter`, `join`, `longer`, `nl`, `reverse`, `select`, `stats`, `uniq`, `wider`.
+- **New CLI utilities**: Added `header_args_with_columns()` and `header_args()` in `libs/cli.rs` for consistent header argument handling.
+- **`tva --help-headers`**: Added global flag to display detailed header mode documentation.
+
+#### Documentation
+- **Common Conventions**: Added `docs/conventions.md` documenting shared parameter naming, header handling, I/O conventions, and field selection syntax across all commands.
+- **Updated Help Text Style Guide**: Standardized help documentation format with consistent section ordering and formatting.
+
+### Changed
+
+#### Refactoring
+- **Header handling**: Migrated all applicable commands to use the new `TsvReader::read_header_mode()` API for consistent header processing.
+
+#### Testing
+- **Expanded test coverage**: Added comprehensive tests for header modes across multiple commands.
+
 ## 0.2.3 - 2026-03-02
 
 ### Added
