@@ -1,3 +1,4 @@
+use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::tsv::fields::{parse_field_list_with_header_preserve_order, Header};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::split::TsvSplitter;
@@ -45,13 +46,7 @@ pub fn make_subcommand() -> Command {
                 .value_parser(["down"])
                 .default_value("down"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Treat the first line as a header"),
-        )
+        .args(header_args_with_columns())
         .arg(
             Arg::new("outfile")
                 .short('o')
@@ -74,8 +69,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None => vec!["stdin".to_string()],
     };
     let outfile = args.get_one::<String>("outfile").unwrap();
-    let has_header = args.get_flag("header");
     let line_buffered = args.get_flag("line-buffered");
+
+    // Build HeaderConfig from arguments
+    let header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
 
     let na_str = args
         .get_one::<String>("na")
@@ -102,21 +100,36 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut reader = TsvReader::new(input.reader);
         let mut header: Option<Header> = None;
 
-        // If header flag is set, read the first line as header
-        if has_header {
-            if let Some(header_line) = reader.read_header()? {
+        // If header is enabled, read header according to the configured mode
+        if header_config.enabled {
+            let header_result = reader
+                .read_header_mode(header_config.mode)
+                .map_err(|e| anyhow::anyhow!(e))?;
+
+            if let Some(header_info) = header_result {
                 // Write header only for the first file
                 if !header_written {
-                    writer.write_all(&header_line)?;
-                    writer.write_all(b"\n")?;
+                    // Write all header lines (hash lines, or LinesN lines)
+                    for line in &header_info.lines {
+                        writer.write_all(line)?;
+                        writer.write_all(b"\n")?;
+                    }
+                    // For modes that provide column names, also write the column names line
+                    if let Some(ref column_names) = header_info.column_names_line {
+                        writer.write_all(column_names)?;
+                        writer.write_all(b"\n")?;
+                    }
                     if line_buffered {
                         writer.flush()?;
                     }
                     header_written = true;
                 }
 
-                let header_str = std::str::from_utf8(&header_line)?;
-                header = Some(Header::from_line(header_str, '\t'));
+                // Get column names for field resolution if available
+                if let Some(column_names_bytes) = header_info.column_names_line {
+                    let header_str = std::str::from_utf8(&column_names_bytes)?;
+                    header = Some(Header::from_line(header_str, '\t'));
+                }
             } else {
                 continue; // Empty file
             }

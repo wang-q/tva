@@ -128,13 +128,7 @@ fn filter_header_hash1_with_label() {
 fn filter_header_conflicting_options_error() {
     let input = "col1\tcol2\n1\ta\n";
     let (stdout, stderr) = TvaCmd::new()
-        .args(&[
-            "filter",
-            "--header",
-            "--header-hash1",
-            "--str-eq",
-            "2:a",
-        ])
+        .args(&["filter", "--header", "--header-hash1", "--str-eq", "2:a"])
         .stdin(input)
         .run();
 

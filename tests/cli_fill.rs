@@ -197,3 +197,35 @@ fn fill_multi_file_header_handling() {
 
     assert_eq!(stdout, "h1\th2\n1\t0\n2\t0\n");
 }
+
+#[test]
+fn fill_header_hash1_with_comments() {
+    // Test --header-hash1 mode with hash comment lines
+    // Covers lines 114-115: writing header_info.lines
+    let input = "# comment 1\n# comment 2\ncol1\tcol2\n1\t\n\t20\n";
+    let expected = "# comment 1\n# comment 2\ncol1\tcol2\n1\t\n1\t20\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["fill", "--header-hash1", "--field", "1,2"])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn fill_first_row_is_na_no_prev() {
+    // Test when first data row has NA value and there's no previous value
+    // Covers line 179: writing original NA value when no previous value exists
+    let input = "col1\tcol2\n\t10\n20\t\n";
+    // Row 1: col1 is empty (NA), no previous -> stays empty; col2 = 10
+    // Row 2: col1 = 20; col2 is empty (NA), fill with 10
+    let expected = "col1\tcol2\n\t10\n20\t10\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["fill", "--header", "--field", "1,2"])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
