@@ -13,7 +13,7 @@ Headers are the column name rows in data files. Different commands have differen
 
 **Header Detection Modes** (mutually exclusive):
 
-*   **Modes that provide column names**:
+*   **Modes that provide column names** (`header_args_with_columns()`):
 
     *   `--header` / `-H`: **FirstLine** mode
         - Takes the first line as column names.
@@ -25,9 +25,9 @@ Headers are the column name rows in data files. Different commands have differen
         - **Graceful degradation**: If no `#` lines exist, uses the first line as column names (behaves like `--header`).
         - `lines` contains only `#` lines (empty if no `#` lines); column names line is stored separately.
 
-    Most commands using these modes.
+    Commands using these modes: `append`, `bin`, `blank`, `fill`, `filter`, `join`, `longer`, `nl`, `reverse`, `select`, `stats`, `uniq`, `wider`.
 
-*   **Modes that don't provide column names**:
+*   **Modes that don't provide column names** (`header_args()`):
 
     *   `--header-lines N`: **LinesN** mode
         - Takes up to N lines as header (fewer if file is shorter).
@@ -57,6 +57,8 @@ Headers are the column name rows in data files. Different commands have differen
 
 *   `split`: Uses `--header-in-out` (input has header, output writes header, default) or `--header-in-only` (input has header, output does not write header). `--header` is an alias for `--header-in-out`.
 *   `keep-header`: Uses `--lines N` / `-n` to specify number of header lines (default: 1)
+*   `sample`: Uses simple `--header` / `-H` flag (treats first non-empty line as header)
+*   `transpose`: Does not support header modes (processes all lines as data)
 
 **Multi-file Header Behavior:**
 
