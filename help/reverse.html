@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-738a0ee0.js";
+            window.path_to_searchindex_js = "../searchindex-f08626ea.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-a6c0a49a.js"></script>
@@ -188,6 +188,12 @@
 <li>Supports plain text and gzipped (<code>.gz</code>) TSV files.</li>
 <li>Reads from stdin if no input file is given.</li>
 </ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports <code>--header</code> / <code>-H</code> (FirstLine mode) and <code>--header-hash1</code> (HashLines1 mode).
+See <code>tva --help-headers</code> for details.</li>
+<li>The header is written once at the top of the output, followed by reversed data lines.</li>
+</ul>
 <p>Examples:</p>
 <ol>
 <li>
@@ -197,6 +203,10 @@
 <li>
 <p>Reverse a file, keeping the header at the top:
 <code>tva reverse --header file.tsv</code></p>
+</li>
+<li>
+<p>Reverse a file with hash comment lines and column names:
+<code>tva reverse --header-hash1 file.tsv</code></p>
 </li>
 </ol>
 

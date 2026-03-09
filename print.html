@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-738a0ee0.js";
+            window.path_to_searchindex_js = "searchindex-f08626ea.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -2174,7 +2174,7 @@ Mega Gadget     $29.99  /buy/gadget
 </ul>
 </li>
 </ul>
-<p>Commands using these modes: <code>check</code>.</p>
+<p>Commands using these modes: <code>check</code>, <code>slice</code>, <code>sort</code>.</p>
 </li>
 </ul>
 <p><strong>Library Implementation:</strong></p>
@@ -2373,6 +2373,20 @@ or exclude them (Drop Mode).</p>
 <li>Row indices are 1-based.</li>
 <li>Multiple ranges can be specified with multiple <code>-r</code>/<code>--rows</code> flags.</li>
 </ul>
+<p>Range syntax:</p>
+<ul>
+<li><code>N</code> - Single row (e.g., <code>5</code> means row 5).</li>
+<li><code>N-M</code> - Row range from N to M (e.g., <code>10-20</code>).</li>
+<li><code>N-</code> - From row N to end of file (e.g., <code>10-</code>).</li>
+<li><code>-M</code> - From row 1 to row M (e.g., <code>-5</code> is equivalent to <code>1-5</code>).</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports all four header modes. See <code>tva --help-headers</code> for details.</li>
+<li>When header is enabled, header lines are preserved in the output and row
+indices refer to absolute line numbers (including header lines).</li>
+<li>For example, with <code>--header-lines 3</code>, the first data row is row 4.</li>
+</ul>
 <p>Examples:</p>
 <ol>
 <li>
@@ -2382,6 +2396,14 @@ or exclude them (Drop Mode).</p>
 <li>
 <p>Keep rows 1-5 and 10-15:
 <code>tva slice -r 1-5 -r 10-15 file.tsv</code></p>
+</li>
+<li>
+<p>Keep first 5 rows (shorthand):
+<code>tva slice -r -5 file.tsv</code></p>
+</li>
+<li>
+<p>Keep from row 10 to end:
+<code>tva slice -r 10- file.tsv</code></p>
 </li>
 <li>
 <p>Drop row 5 (exclude it):
@@ -2398,6 +2420,10 @@ or exclude them (Drop Mode).</p>
 <li>
 <p>Preview with header (Keep rows 100-110 plus header):
 <code>tva slice -H -r 100-110 file.tsv</code></p>
+</li>
+<li>
+<p>Keep rows with multi-line header (first 3 lines are header):
+<code>tva slice --header-lines 3 -r 5-10 file.tsv</code></p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -2504,6 +2530,12 @@ numeric mode.</li>
 <li>Supports plain text and gzipped (<code>.gz</code>) TSV files.</li>
 <li>Reads from stdin if no input file is given.</li>
 </ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports <code>--header</code> / <code>-H</code> (FirstLine mode) and <code>--header-hash1</code> (HashLines1 mode).
+See <code>tva --help-headers</code> for details.</li>
+<li>The header is written once at the top of the output, followed by reversed data lines.</li>
+</ul>
 <p>Examples:</p>
 <ol>
 <li>
@@ -2513,6 +2545,10 @@ numeric mode.</li>
 <li>
 <p>Reverse a file, keeping the header at the top:
 <code>tva reverse --header file.tsv</code></p>
+</li>
+<li>
+<p>Reverse a file with hash comment lines and column names:
+<code>tva reverse --header-hash1 file.tsv</code></p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
