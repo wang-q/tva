@@ -1,5 +1,7 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::tsv::fields::{self, Header};
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
+use crate::libs::tsv::reader::TsvReader;
 use ahash::RandomState;
 use clap::*;
 use std::collections::HashMap;
@@ -104,26 +106,27 @@ fn arg_error(msg: &str) -> ! {
     std::process::exit(1);
 }
 
+/// Parse field specification for join keys.
+/// Returns (is_whole_line, field_indices).
 fn parse_join_field_spec(
-    spec_opt: Option<String>,
-    header: Option<&crate::libs::tsv::fields::Header>,
+    spec_opt: Option<&str>,
+    header: Option<&Header>,
     delimiter: char,
 ) -> (bool, Option<Vec<usize>>) {
-    let spec = spec_opt.unwrap_or_else(|| "0".to_string());
+    let spec = spec_opt.unwrap_or("0");
     let trimmed = spec.trim();
     if trimmed == "0" {
         return (true, None);
     }
-    let indices = crate::libs::tsv::fields::parse_field_list_with_header(
-        trimmed, header, delimiter,
-    )
-    .unwrap_or_else(|e| arg_error(&e));
+    let indices = fields::parse_field_list_with_header(trimmed, header, delimiter)
+        .unwrap_or_else(|e| arg_error(&e));
     (false, Some(indices))
 }
 
+/// Parse field specification for append fields.
 fn parse_append_field_spec(
-    spec_opt: Option<String>,
-    header: Option<&crate::libs::tsv::fields::Header>,
+    spec_opt: Option<&str>,
+    header: Option<&Header>,
     delimiter: char,
 ) -> Option<Vec<usize>> {
     let spec = spec_opt?;
@@ -131,10 +134,9 @@ fn parse_append_field_spec(
     if trimmed.is_empty() {
         return None;
     }
-    let indices = crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
-        trimmed, header, delimiter,
-    )
-    .unwrap_or_else(|e| arg_error(&e));
+    let indices =
+        fields::parse_field_list_with_header_preserve_order(trimmed, header, delimiter)
+            .unwrap_or_else(|e| arg_error(&e));
     if indices.is_empty() {
         None
     } else {
@@ -142,8 +144,17 @@ fn parse_append_field_spec(
     }
 }
 
-// Extracts values to append.
-// We store them as a single byte string with delimiters, to avoid Vec<String> overhead.
+/// Count fields in a line.
+fn count_fields(line: &[u8], delimiter: u8) -> usize {
+    if line.is_empty() {
+        0
+    } else {
+        line.iter().filter(|&&b| b == delimiter).count() + 1
+    }
+}
+
+/// Extracts values to append from a line.
+/// Values are stored as a single byte string with delimiters to avoid Vec<String> overhead.
 fn extract_values(
     line: &[u8],
     delimiter: u8,
@@ -151,11 +162,7 @@ fn extract_values(
     ranges_buf: &mut Vec<Range<usize>>,
 ) -> Vec<u8> {
     if let Err(idx) = plan.extract_ranges(line, delimiter, ranges_buf) {
-        let n = if line.is_empty() {
-            0
-        } else {
-            line.iter().filter(|&&b| b == delimiter).count() + 1
-        };
+        let n = count_fields(line, delimiter);
         eprintln!(
             "tva join: line has {} fields, but append index {} is out of range",
             n, idx
@@ -177,6 +184,53 @@ fn extract_values(
     values
 }
 
+/// Build the append header suffix from filter header and append indices.
+fn build_append_header_suffix(
+    append_indices: Option<&Vec<usize>>,
+    filter_header: Option<&Header>,
+    delimiter: char,
+    prefix: &str,
+) -> Option<String> {
+    let idxs = append_indices?;
+    let fh = filter_header?;
+
+    let mut s = String::new();
+    for idx in idxs {
+        let pos = idx - 1;
+        // Note: Index out of range check is done in extract_values when processing data
+        s.push(delimiter);
+        if prefix.is_empty() {
+            if pos < fh.fields.len() {
+                s.push_str(&fh.fields[pos]);
+            }
+        } else {
+            s.push_str(prefix);
+            if pos < fh.fields.len() {
+                s.push_str(&fh.fields[pos]);
+            }
+        }
+    }
+    Some(s)
+}
+
+/// Build the fill value for unmatched records in write-all mode.
+fn build_write_all_fill(
+    write_all_value: Option<&str>,
+    append_count: usize,
+    delimiter: u8,
+) -> Option<Vec<u8>> {
+    let fill = write_all_value?;
+    if append_count == 0 {
+        return Some(Vec::new());
+    }
+    let mut s = Vec::with_capacity(append_count * (fill.len() + 1));
+    for _ in 0..append_count {
+        s.push(delimiter);
+        s.extend_from_slice(fill.as_bytes());
+    }
+    Some(s)
+}
+
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer =
         crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
@@ -187,12 +241,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let filter_file = args.get_one::<String>("filter-file").unwrap().to_string();
-    let key_fields_spec: Option<String> = args.get_one::<String>("key-fields").cloned();
-    let data_fields_spec: Option<String> =
-        args.get_one::<String>("data-fields").cloned();
-    let append_fields_spec: Option<String> =
-        args.get_one::<String>("append-fields").cloned();
-    let write_all_value: Option<String> = args.get_one::<String>("write-all").cloned();
+    let key_fields_spec = args.get_one::<String>("key-fields").map(|s| s.as_str());
+    let data_fields_spec = args.get_one::<String>("data-fields").map(|s| s.as_str());
+    let append_fields_spec = args.get_one::<String>("append-fields").map(|s| s.as_str());
+    let write_all_value = args.get_one::<String>("write-all").map(|s| s.as_str());
 
     // Build HeaderConfig from arguments
     let header_config =
@@ -204,11 +256,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let delimiter_str = args
         .get_one::<String>("delimiter")
-        .cloned()
-        .unwrap_or_else(|| "\t".to_string());
+        .map(|s| s.as_str())
+        .unwrap_or("\t");
     let mut chars = delimiter_str.chars();
     let delimiter_char = chars.next().unwrap_or('\t');
-    let delimiter = delimiter_char as u8; // Assume single byte delimiter for now
+    let delimiter = delimiter_char as u8;
     if chars.next().is_some() || delimiter_str.len() > 1 {
         arg_error(&format!(
             "delimiter must be a single character, got `{}`",
@@ -216,50 +268,47 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         ));
     }
 
+    // Validate argument combinations
     if exclude && append_fields_spec.is_some() {
         arg_error("--exclude cannot be used with --append-fields");
     }
-
     if exclude && write_all_value.is_some() {
         arg_error("--write-all cannot be used with --exclude");
     }
-
     if write_all_value.is_some() && append_fields_spec.is_none() {
         arg_error("--write-all requires --append-fields");
     }
-
-    if filter_file == "-" && (infiles.len() == 1 && infiles[0] == "stdin") {
+    if filter_file == "-" && infiles.len() == 1 && infiles[0] == "stdin" {
         arg_error("data file is required when filter-file is '-'");
     }
 
-    // 1. Process Filter File
-    let mut filter_reader = crate::libs::tsv::reader::TsvReader::new(
-        crate::libs::io::raw_reader(&filter_file)?,
-    );
+    let prefix = args
+        .get_one::<String>("prefix")
+        .map(|s| s.as_str())
+        .unwrap_or("");
+    if !header_config.enabled && !prefix.is_empty() {
+        arg_error("--prefix requires --header");
+    }
 
-    let mut filter_header: Option<crate::libs::tsv::fields::Header> = None;
+    // ============================================================
+    // Phase 1: Process Filter File
+    // ============================================================
+    let mut filter_reader = TsvReader::new(crate::libs::io::raw_reader(&filter_file)?);
+
+    // Read filter file header if enabled
+    let mut filter_header: Option<Header> = None;
     if header_config.enabled {
-        let header_result = filter_reader
-            .read_header_mode(header_config.mode)
-            .map_err(|e| anyhow::anyhow!(e))?;
-
-        if let Some(header_info) = header_result {
-            // Get column names for field resolution if available
-            if let Some(column_names_bytes) = header_info.column_names_line {
-                let header_line = String::from_utf8_lossy(&column_names_bytes);
-                filter_header = Some(crate::libs::tsv::fields::Header::from_line(
-                    &header_line,
-                    delimiter_char,
-                ));
+        if let Some(header_info) = filter_reader.read_header_mode(header_config.mode)? {
+            if let Some(ref column_names) = header_info.column_names_line {
+                let header_str = std::str::from_utf8(column_names)?;
+                filter_header = Some(Header::from_line(header_str, delimiter_char));
             }
         }
     }
 
-    let (filter_key_whole_line, filter_key_indices) = parse_join_field_spec(
-        key_fields_spec.clone(),
-        filter_header.as_ref(),
-        delimiter_char,
-    );
+    // Parse filter file field specifications
+    let (filter_key_whole_line, filter_key_indices) =
+        parse_join_field_spec(key_fields_spec, filter_header.as_ref(), delimiter_char);
     let append_indices = parse_append_field_spec(
         append_fields_spec,
         filter_header.as_ref(),
@@ -267,31 +316,36 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     );
     let append_count = append_indices.as_ref().map(|v| v.len()).unwrap_or(0);
 
+    // Build append header suffix for output
+    let append_header_suffix = build_append_header_suffix(
+        append_indices.as_ref(),
+        filter_header.as_ref(),
+        delimiter_char,
+        prefix,
+    );
+    let write_all_fill = build_write_all_fill(write_all_value, append_count, delimiter);
+
+    // Initialize key extractor and append plan
     let mut filter_key_extractor =
         KeyExtractor::new(filter_key_indices.clone(), false, true);
     let append_plan = append_indices
         .as_ref()
         .map(|idxs| crate::libs::tsv::select::SelectPlan::new(idxs));
 
-    // Map: Key -> Appended Values (as bytes)
+    // Build filter hash map: Key -> Appended Values
     let mut filter_map: HashMap<KeyBuffer, Vec<u8>, RandomState> =
         HashMap::with_hasher(RandomState::new());
-    let mut ranges_buf: Vec<Range<usize>> = Vec::new(); // Reusable buffer for ranges for append values
+    let mut ranges_buf: Vec<Range<usize>> = Vec::new();
 
     filter_reader.for_each_record(|line| {
         if line.is_empty() {
             return Ok(());
         }
 
-        let key_result = filter_key_extractor.extract(line, delimiter);
-        let key = match key_result {
+        let key = match filter_key_extractor.extract(line, delimiter) {
             Ok(k) => k,
             Err(idx) => {
-                let n = if line.is_empty() {
-                    0
-                } else {
-                    line.iter().filter(|&&b| b == delimiter).count() + 1
-                };
+                let n = count_fields(line, delimiter);
                 eprintln!(
                     "tva join: line has {} fields, but key index {} is out of range",
                     n, idx
@@ -309,9 +363,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         if let Some(existing) = filter_map.get_mut(key.as_ref()) {
             if !allow_duplicate_keys && *existing != values {
-                eprintln!(
-                    "tva join: duplicate key with different append values found in filter file"
-                );
+                eprintln!("tva join: duplicate key with different append values found in filter file");
                 std::process::exit(1);
             }
             if allow_duplicate_keys {
@@ -323,98 +375,37 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         Ok(())
     })?;
 
-    // 2. Process Data Files
+    // ============================================================
+    // Phase 2: Process Data Files
+    // ============================================================
     let mut header_written = false;
-    let prefix = args
-        .get_one::<String>("prefix")
-        .cloned()
-        .unwrap_or_default();
-
-    if !header_config.enabled && !prefix.is_empty() {
-        arg_error("--prefix requires --header");
-    }
-
-    let mut data_key_indices_len = 0; // For validation
     let mut data_key_extractor: Option<KeyExtractor> = None;
 
-    // Pre-calculate append header part
-    let append_header_suffix = if let Some(idxs) = append_indices.as_ref() {
-        if let Some(ref fh) = filter_header {
-            let mut s = String::new();
-            for idx in idxs {
-                let pos = *idx - 1;
-                if pos >= fh.fields.len() {
-                    eprintln!(
-                        "tva join: append index {} is out of range for filter header",
-                        idx
-                    );
-                    std::process::exit(1);
-                }
-                s.push(delimiter_char);
-                if prefix.is_empty() {
-                    s.push_str(&fh.fields[pos]);
-                } else {
-                    s.push_str(&prefix);
-                    s.push_str(&fh.fields[pos]);
-                }
-            }
-            Some(s)
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    let write_all_fill = write_all_value.as_ref().map(|fill| {
-        let mut s = Vec::new();
-        if append_count > 0 {
-            for _ in 0..append_count {
-                s.push(delimiter);
-                s.extend_from_slice(fill.as_bytes());
-            }
-        }
-        s
-    });
-
     for input in crate::libs::io::raw_input_sources(&infiles)? {
-        // Use 512KB buffer for data reader
-        let mut reader =
-            crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
+        let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
 
         // Process header if enabled
         if header_config.enabled {
-            let header_result = reader
-                .read_header_mode(header_config.mode)
-                .map_err(|e| anyhow::anyhow!(e))?;
+            let header_result = reader.read_header_mode(header_config.mode)?;
 
             if let Some(header_info) = header_result {
-                // Always re-parse header for each file to handle potentially different column orders
-                let effective_data_spec =
-                    data_fields_spec.clone().or_else(|| key_fields_spec.clone());
+                // Parse data file header for field resolution (for each file, to handle different column orders)
+                if let Some(ref column_names) = header_info.column_names_line {
+                    let header_str = std::str::from_utf8(column_names)?;
+                    let data_header = Header::from_line(header_str, delimiter_char);
+                    let effective_data_spec = data_fields_spec.or(key_fields_spec);
 
-                // Parse column names for field resolution if available
-                if let Some(ref column_names_bytes) = header_info.column_names_line {
-                    let header_str = String::from_utf8_lossy(column_names_bytes);
                     let (data_key_whole_line, indices) = parse_join_field_spec(
                         effective_data_spec,
-                        Some(&crate::libs::tsv::fields::Header::from_line(
-                            &header_str,
-                            delimiter_char,
-                        )),
+                        Some(&data_header),
                         delimiter_char,
                     );
-                    if let Some(ref idxs) = indices {
-                        data_key_indices_len = idxs.len();
-                    } else {
-                        data_key_indices_len = 0; // not really 0, but implicit
-                    }
-                    data_key_extractor = Some(KeyExtractor::new(indices, false, true));
 
                     // Validate key lengths match
                     if !filter_key_whole_line && !data_key_whole_line {
-                        let fk_len = filter_key_indices.as_ref().unwrap().len();
-                        let dk_len = data_key_indices_len;
+                        let fk_len =
+                            filter_key_indices.as_ref().map(|v| v.len()).unwrap_or(0);
+                        let dk_len = indices.as_ref().map(|v| v.len()).unwrap_or(0);
                         if fk_len != dk_len {
                             eprintln!(
                                 "tva join: different number of key-fields and data-fields in file {}",
@@ -423,27 +414,27 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             std::process::exit(1);
                         }
                     }
+
+                    data_key_extractor = Some(KeyExtractor::new(indices, false, true));
                 }
 
+                // Write header only for the first file
                 if !header_written {
                     // Write all header lines (hash lines, or LinesN lines)
                     for line in &header_info.lines {
                         writer.write_all(line)?;
                         writer.write_all(b"\n")?;
                     }
-                    // For modes that provide column names, also write the column names line
-                    // Only write if column_names is not empty (to handle empty files with just a newline)
+                    // Write column names line with append suffix
                     if let Some(ref column_names) = header_info.column_names_line {
                         if !column_names.is_empty() {
                             writer.write_all(column_names)?;
-                            // Append header suffix if present
                             if let Some(ref suffix) = append_header_suffix {
                                 writer.write_all(suffix.as_bytes())?;
                             }
                             writer.write_all(b"\n")?;
                         }
                     }
-
                     if line_buffered {
                         writer.flush()?;
                     }
@@ -456,19 +447,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         // Initialize extractor for headerless files if not set
         if data_key_extractor.is_none() {
-            let effective_data_spec =
-                data_fields_spec.clone().or_else(|| key_fields_spec.clone());
+            let effective_data_spec = data_fields_spec.or(key_fields_spec);
             let (data_key_whole_line, indices) =
-                parse_join_field_spec(effective_data_spec.clone(), None, delimiter_char);
+                parse_join_field_spec(effective_data_spec, None, delimiter_char);
 
-            if let Some(ref idxs) = indices {
-                data_key_indices_len = idxs.len();
-            }
-            data_key_extractor = Some(KeyExtractor::new(indices, false, true));
-
+            // Validate key lengths match
             if !filter_key_whole_line && !data_key_whole_line {
-                let fk_len = filter_key_indices.as_ref().unwrap().len();
-                let dk_len = data_key_indices_len;
+                let fk_len = filter_key_indices.as_ref().map(|v| v.len()).unwrap_or(0);
+                let dk_len = indices.as_ref().map(|v| v.len()).unwrap_or(0);
                 if fk_len != dk_len {
                     eprintln!(
                         "tva join: different number of key-fields and data-fields"
@@ -476,7 +462,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     std::process::exit(1);
                 }
             }
+
+            data_key_extractor = Some(KeyExtractor::new(indices, false, true));
         }
+
+        // Get a reference to the extractor (unwrap is safe here)
+        let extractor = data_key_extractor
+            .as_mut()
+            .expect("data_key_extractor should be initialized");
 
         // Process data records
         reader.for_each_record(|line| {
@@ -484,18 +477,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 return Ok(());
             }
 
-            let key_result = data_key_extractor
-                .as_mut()
-                .unwrap()
-                .extract(line, delimiter);
-            let key = match key_result {
+            let key = match extractor.extract(line, delimiter) {
                 Ok(k) => k,
                 Err(idx) => {
-                    let n = if line.is_empty() {
-                        0
-                    } else {
-                        line.iter().filter(|&&b| b == delimiter).count() + 1
-                    };
+                    let n = count_fields(line, delimiter);
                     eprintln!(
                         "tva join: line has {} fields, but key index {} is out of range",
                         n, idx
