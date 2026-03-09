@@ -125,18 +125,18 @@ impl<R: Read> TsvReader<R> {
                 if lines.is_empty() {
                     Ok(None)
                 } else {
-                    let column_names = lines.last().unwrap().clone();
+                    // LinesN mode: lines contains all N lines, column_names_line is None
                     Ok(Some(HeaderInfo {
                         lines,
-                        column_names_line: Some(column_names),
+                        column_names_line: None,
                     }))
                 }
             }
             Err(e) if e.kind() == io::ErrorKind::Interrupted => {
-                let column_names = lines.last().unwrap().clone();
+                // LinesN mode: lines contains all N lines, column_names_line is None
                 Ok(Some(HeaderInfo {
                     lines,
-                    column_names_line: Some(column_names),
+                    column_names_line: None,
                 }))
             }
             Err(e) => Err(e),
@@ -586,7 +586,8 @@ mod tests {
         assert_eq!(header_info.lines[0], b"comment1");
         assert_eq!(header_info.lines[1], b"comment2");
         assert_eq!(header_info.lines[2], b"col1\tcol2");
-        assert_eq!(header_info.column_names_line, Some(b"col1\tcol2".to_vec()));
+        // LinesN mode: column_names_line is None
+        assert_eq!(header_info.column_names_line, None);
 
         let mut records = Vec::new();
         reader
@@ -1000,7 +1001,8 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(header_info.lines.len(), 1);
-        assert_eq!(header_info.column_names_line, Some(b"col1\tcol2".to_vec()));
+        // LinesN mode: column_names_line is None
+        assert_eq!(header_info.column_names_line, None);
 
         // Verify data follows
         let mut records = Vec::new();

@@ -199,13 +199,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 let header_info = match header_result {
                     Some(info) => info,
-                    None => continue,
+                    None => continue, // Empty file, skip to next
                 };
 
-                let column_names_bytes: Vec<u8> = match header_info.column_names_line {
-                    Some(line) => line,
-                    None => continue,
-                };
+                // Note: column_names_line is always Some for FirstLine and HashLines1 modes
+                // (the only modes supported by append command)
+                let column_names_bytes = header_info.column_names_line.unwrap();
 
                 header_written = true;
                 if track_source {

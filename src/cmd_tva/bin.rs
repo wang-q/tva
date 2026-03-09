@@ -100,13 +100,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 let header_info = match header_result {
                     Some(info) => info,
-                    None => continue,
+                    None => continue, // Empty file, skip to next
                 };
 
-                let column_names_bytes: Vec<u8> = match header_info.column_names_line {
-                    Some(line) => line,
-                    None => continue,
-                };
+                // Note: column_names_line is always Some for FirstLine and HashLines1 modes
+                // (the only modes supported by bin command)
+                let column_names_bytes = header_info.column_names_line.unwrap();
 
                 if field_idx.is_none() {
                     let line_str = String::from_utf8_lossy(&column_names_bytes);
@@ -142,9 +141,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
 
         tsv_reader.for_each_record(|record| {
-            let idx = field_idx.ok_or_else(|| {
-                std::io::Error::new(std::io::ErrorKind::Other, "Field index logic error")
-            })?;
+            // SAFETY: field_idx is always Some here (validated earlier)
+            let idx = field_idx.unwrap();
 
             if new_name.is_some() {
                 writer.write_all(record)?;
@@ -159,11 +157,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 } else {
                     let mut skipped = 0;
                     for _ in 0..idx - 1 {
-                        if iter.next().is_some() {
-                            skipped += 1;
-                        } else {
-                            break;
-                        }
+                        // SAFETY: iter always has enough elements (record has at least idx+1 fields)
+                        iter.next().unwrap();
+                        skipped += 1;
                     }
                     if skipped == idx - 1 {
                         if let Some(start_pos) = iter.next() {

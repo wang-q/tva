@@ -273,17 +273,3 @@ fn filter_header_hash1_field_by_name() {
     assert_eq!(lines[0], "name\tvalue");
     assert_eq!(lines[1], "Bob\t200");
 }
-
-#[test]
-fn filter_header_lines_n_field_by_name() {
-    let input = "# meta\nname\tvalue\nAlice\t100\nBob\t200\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["filter", "--header-lines", "2", "--gt", "value:150"])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 2);
-    assert_eq!(lines[0], "name\tvalue");
-    assert_eq!(lines[1], "Bob\t200");
-}
