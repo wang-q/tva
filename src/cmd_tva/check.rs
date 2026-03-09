@@ -1,5 +1,8 @@
 use clap::*;
 
+use crate::cmd_tva::common::{build_header_config, header_args};
+use crate::libs::io::map_io_err;
+
 pub fn make_subcommand() -> Command {
     Command::new("check")
         .about("Checks TSV table structure for consistent field counts")
@@ -10,6 +13,7 @@ pub fn make_subcommand() -> Command {
                 .index(1)
                 .help("Input TSV file(s) to check (default: stdin)"),
         )
+        .args(header_args())
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
@@ -18,15 +22,44 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None => vec!["stdin".to_string()],
     };
 
+    let header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+    let has_header = header_config.enabled;
+
     let mut total_lines: u64 = 0;
+    let mut total_data_lines: u64 = 0;
     let mut expected_fields: Option<usize> = None;
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
 
+        if has_header {
+            let header_result = reader
+                .read_header_mode(header_config.mode)
+                .map_err(map_io_err)?;
+
+            if let Some(header_info) = header_result {
+                if let Some(column_names_line) = header_info.column_names_line {
+                    // Count fields in header line
+                    let header_fields = if column_names_line.is_empty() {
+                        0
+                    } else {
+                        memchr::memchr_iter(b'\t', &column_names_line).count() + 1
+                    };
+
+                    if expected_fields.is_none() {
+                        expected_fields = Some(header_fields);
+                    }
+
+                    total_lines += header_info.lines.len() as u64;
+                }
+            }
+        }
+
         reader.for_each_record(|record| {
             total_lines += 1;
+            total_data_lines += 1;
 
             let fields = if record.is_empty() {
                 0
@@ -56,7 +89,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     match expected_fields {
         Some(fields) => {
-            println!("{} lines, {} fields", total_lines, fields);
+            if has_header {
+                println!(
+                    "{} lines total, {} data lines, {} fields",
+                    total_lines, total_data_lines, fields
+                );
+            } else {
+                println!("{} lines, {} fields", total_lines, fields);
+            }
         }
         None => {
             println!("0 lines, 0 fields");

@@ -35,7 +35,7 @@ Headers are the column name rows in data files. Different commands have differen
 
     **FirstLine and HashLines1 modes** (modes that provide column names): `append`, `bin`, `select`
 
-    **All four modes** (FirstLine, LinesN, HashLines, HashLines1): `blank`, `filter`
+    **All four modes** (FirstLine, LinesN, HashLines, HashLines1): `blank`, `check`, `filter`
 
 ## Input/Output Conventions
 
