@@ -1,8 +1,10 @@
 use crate::libs::aggregation::OpKind;
 use crate::libs::cell::Cell;
+use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::fields;
 use crate::libs::tsv::fields::Header;
+use crate::libs::tsv::header::HeaderConfig;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::Row;
 use clap::*;
@@ -23,12 +25,12 @@ pub fn make_subcommand() -> Command {
             Arg::new("names-from")
                 .long("names-from")
                 .required(true)
-                .help("Column(s) containing the new column headers"),
+                .help("Column containing the new column headers (currently only single column supported)"),
         )
         .arg(
             Arg::new("values-from")
                 .long("values-from")
-                .help("Column(s) containing the data values"),
+                .help("Column containing the data values (currently only single column supported)"),
         )
         .arg(
             Arg::new("id-cols")
@@ -66,6 +68,7 @@ pub fn make_subcommand() -> Command {
                 ])
                 .help("Aggregation operation to perform on value column"),
         )
+        .args(header_args_with_columns())
 }
 
 struct WiderConfig {
@@ -138,7 +141,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         "mode" => OpKind::Mode,
         "stdev" => OpKind::Stdev,
         "variance" => OpKind::Variance,
-        _ => unreachable!(),
+        _ => anyhow::bail!("Unsupported operation: {}", op_str),
     };
 
     let values_from = args.get_one::<String>("values-from").cloned();
@@ -155,10 +158,20 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         op,
     };
 
+    // Build HeaderConfig from arguments
+    // wider defaults to header enabled (FirstLine mode) for backward compatibility
+    let mut header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+
+    // If no header mode is specified, default to FirstLine mode (backward compatibility)
+    if !header_config.enabled {
+        header_config = HeaderConfig::new().enabled().first_line();
+    }
+
     let mut state = ProcessState::new();
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
-        process_file(input, &config, &mut state)?;
+        process_file(input, &config, &mut state, &header_config)?;
     }
 
     write_output(&mut writer, &state, &config)?;
@@ -170,18 +183,30 @@ fn process_file(
     input: crate::libs::io::InputSourceRaw,
     config: &WiderConfig,
     state: &mut ProcessState,
+    header_config: &HeaderConfig,
 ) -> anyhow::Result<()> {
     let mut tsv_reader = TsvReader::with_capacity(input.reader, 512 * 1024);
 
-    // Read header
-    let header_bytes = if let Some(h) = tsv_reader.read_header().map_err(map_io_err)? {
+    // Read header according to the configured mode
+    let header_result = tsv_reader
+        .read_header_mode(header_config.mode)
+        .map_err(|e| anyhow::anyhow!(e))?;
+
+    let header_info = if let Some(h) = header_result {
         h
     } else {
-        return Ok(());
+        return Ok(()); // Empty file
     };
 
-    let line_str = String::from_utf8_lossy(&header_bytes);
-    let header = Header::from_line(&line_str, '\t');
+    // Get column names from header if available
+    let header = if let Some(ref column_names_bytes) = header_info.column_names_line {
+        let line_str = String::from_utf8_lossy(column_names_bytes);
+        Header::from_line(&line_str, '\t')
+    } else {
+        // No column names available (e.g., LinesN or HashLines mode)
+        // We can't resolve field names, so return an error if field names are used
+        Header::from_line("", '\t')
+    };
     let header_fields = &header.fields;
 
     if !state.header_processed {
