@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a39cbe75.js";
+            window.path_to_searchindex_js = "searchindex-b04c4342.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -2125,55 +2125,85 @@ Mega Gadget     $29.99  /buy/gadget
 <p>This document defines the naming and behavior conventions for parameters shared across tva subcommands to ensure a consistent user experience.</p>
 <h2 id="header-handling"><a class="header" href="#header-handling">Header Handling</a></h2>
 <p>Headers are the column name rows in data files. Different commands have different header processing requirements, but parameter naming should remain consistent.</p>
+<p><strong>Quick Selection:</strong></p>
+<ul>
+<li>Need column names for field references? Use <code>--header</code> (standard TSV) or <code>--header-hash1</code> (TSV with comments).</li>
+<li>Just skip header lines? Use <code>--header-lines N</code> (first N lines) or <code>--header-hash</code> (comment lines only).</li>
+</ul>
+<p><strong>Header Detection Modes</strong> (mutually exclusive):</p>
 <ul>
 <li>
-<p><strong>Header Detection Modes</strong> (mutually exclusive)</p>
+<p><strong>Modes that provide column names</strong>:</p>
 <ul>
-<li><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode - take the first line as header (contains column names)</li>
-<li><code>--header-lines N</code>: <strong>LinesN</strong> mode - take exactly N lines as header</li>
-<li><code>--header-hash</code>: <strong>HashLines</strong> mode - take all consecutive <code>#</code> lines as header (metadata only)</li>
-<li><code>--header-hash1</code>: <strong>HashLines1</strong> mode - take <code>#</code> lines plus the next line as header (contains column names)</li>
+<li>
+<p><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode</p>
+<ul>
+<li>Takes the first line as column names.</li>
+<li>Simplest mode for standard TSV files.</li>
+<li><code>lines</code> is empty, <code>column_names_line</code> is the first line.</li>
 </ul>
 </li>
 <li>
-<p><strong>Library Implementation</strong></p>
+<p><code>--header-hash1</code>: <strong>HashLines1</strong> mode</p>
 <ul>
-<li>Use <code>TsvReader::read_header_mode(mode)</code> to read headers according to the specified mode.</li>
-<li>Returns <code>HeaderInfo</code> containing:
+<li>Takes consecutive <code>#</code> lines plus the next line as header.</li>
+<li><strong>Graceful degradation</strong>: If no <code>#</code> lines exist, uses the first line as column names (behaves like <code>--header</code>).</li>
+<li><code>lines</code> contains only <code>#</code> lines (empty if no <code>#</code> lines); column names line is stored separately.</li>
+</ul>
+</li>
+</ul>
+<p>Commands using these modes: <code>append</code>, <code>bin</code>, <code>select</code>.</p>
+</li>
+<li>
+<p><strong>Modes that don’t provide column names</strong>:</p>
 <ul>
-<li><code>lines: Vec&lt;Vec&lt;u8&gt;&gt;</code> - all header lines (including column names line if applicable)</li>
-<li><code>column_names_line: Option&lt;Vec&lt;u8&gt;&gt;</code> - the line containing column names (if mode provides it)</li>
+<li>
+<p><code>--header-lines N</code>: <strong>LinesN</strong> mode</p>
+<ul>
+<li>Takes up to N lines as header (fewer if file is shorter).</li>
+<li>Does not extract column names.</li>
+<li><code>lines</code> contains up to n lines, <code>column_names_line</code> is None.</li>
+</ul>
+</li>
+<li>
+<p><code>--header-hash</code>: <strong>HashLines</strong> mode</p>
+<ul>
+<li>Takes all consecutive <code>#</code> lines as header (metadata only).</li>
+<li>No column names line is extracted.</li>
+<li><code>lines</code> contains <code>#</code> lines, <code>column_names_line</code> is None.</li>
+</ul>
+</li>
+</ul>
+<p>Commands using these modes: <code>blank</code>, <code>check</code>, <code>filter</code>.</p>
+</li>
+</ul>
+<p><strong>Library Implementation:</strong></p>
+<ul>
+<li>Use <code>TsvReader::read_header_mode(mode)</code> to read headers.</li>
+<li>Returns <code>HeaderInfo { lines, column_names_line }</code> where:
+<ul>
+<li><code>lines</code>: all header lines read from input</li>
+<li><code>column_names_line</code>: the line containing column names (None if mode doesn’t provide column names)</li>
 </ul>
 </li>
 <li>Mode behavior:
 <ul>
 <li><code>FirstLine</code>: <code>lines</code> is empty, <code>column_names_line</code> is the first line</li>
-<li><code>LinesN(n)</code>: <code>lines</code> contains first n lines, <code>column_names_line</code> is the nth line</li>
-<li><code>HashLines</code>: <code>lines</code> contains <code>#</code> lines, <code>column_names_line</code> is None</li>
-<li><code>HashLines1</code>: <code>lines</code> contains <code>#</code> lines + column names, <code>column_names_line</code> is the column names line</li>
+<li><code>LinesN(n)</code>: <code>lines</code> contains up to n lines read, <code>column_names_line</code> is None</li>
+<li><code>HashLines</code>: <code>lines</code> contains all consecutive <code>#</code> lines, <code>column_names_line</code> is None</li>
+<li><code>HashLines1</code>: <code>lines</code> contains only <code>#</code> lines (empty if no <code>#</code> lines), <code>column_names_line</code> is the column names line</li>
 </ul>
 </li>
 </ul>
-</li>
-<li>
-<p><strong>Special Commands</strong></p>
+<p><strong>Special Commands:</strong></p>
 <ul>
 <li><code>split</code>: Uses <code>--header-in-out</code> (input has header, output writes header, default) or <code>--header-in-only</code> (input has header, output does not write header). <code>--header</code> is an alias for <code>--header-in-out</code>.</li>
 <li><code>keep-header</code>: Uses <code>--lines N</code> / <code>-n</code> to specify number of header lines (default: 1)</li>
 </ul>
-</li>
-<li>
-<p><strong>Multi-file Header Behavior</strong></p>
+<p><strong>Multi-file Header Behavior:</strong></p>
 <ul>
 <li>When using multiple input files with header mode enabled, the header from the first file is read and written to output.</li>
 <li>Headers from subsequent files are skipped.</li>
-</ul>
-</li>
-<li>
-<p><strong>Commands by Header Mode Support</strong></p>
-<p><strong>FirstLine and HashLines1 modes</strong> (modes that provide column names): <code>append</code>, <code>bin</code>, <code>select</code></p>
-<p><strong>All four modes</strong> (FirstLine, LinesN, HashLines, HashLines1): <code>blank</code>, <code>check</code>, <code>filter</code></p>
-</li>
 </ul>
 <h2 id="inputoutput-conventions"><a class="header" href="#inputoutput-conventions">Input/Output Conventions</a></h2>
 <h3 id="parameter-naming"><a class="header" href="#parameter-naming">Parameter Naming</a></h3>
