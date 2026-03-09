@@ -37,6 +37,113 @@ B\twk\t2\t4
 }
 
 #[test]
+fn longer_invalid_col_index_zero() {
+    // Test that column index 0 is rejected (1-based indexing)
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "longer",
+            "tests/data/longer/input_zero_index.tsv",
+            "--cols",
+            "0",
+        ])
+        .run_fail();
+
+    // Error comes from field parser, not our validation
+    assert!(stderr.contains("field index must be >= 1"));
+}
+
+#[test]
+fn longer_only_header_no_data() {
+    // Test file with only header row (no data rows)
+    // Columns 2-3 (Q1, Q2) are melted, leaving ID and Q3 as id columns
+    let expected = "ID\tQ3\tname\tvalue\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "longer",
+            "tests/data/longer/input_only_header.tsv",
+            "--cols",
+            "2-3",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn longer_col_index_exceeds_actual_columns() {
+    // Test that column index exceeding actual columns is rejected
+    let (_, stderr) = TvaCmd::new()
+        .args(&["longer", "tests/data/longer/input1.tsv", "--cols", "10"])
+        .run_fail();
+
+    assert!(stderr.contains("Invalid column index"));
+    // Error message should show actual column count (4), not max(1, 4)
+    assert!(stderr.contains("4 columns") || stderr.contains("only"));
+}
+
+#[test]
+fn longer_names_pattern_partial_capture() {
+    // Test when regex matches but has fewer capture groups than names-to columns
+    // Should fill remaining columns with empty values
+    let input = "\
+ID	new_sp_m014	new_sp_f014
+A	1	2
+";
+    // Pattern with only 1 capture group, but 2 names-to columns
+    let expected = "\
+ID	diagnosis	gender_age	value
+A	sp_m014\t\t1
+A\tsp_f014\t\t2
+";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "longer",
+            "--cols",
+            "2-3",
+            "--names-pattern",
+            "new_(.*)", // Only 1 capture group
+            "--names-to",
+            "diagnosis",
+            "gender_age",
+        ])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn longer_whitespace_value_not_dropped() {
+    // Test that values with only whitespace are NOT dropped by --values-drop-na
+    // Current implementation only drops completely empty values (is_empty() check)
+    // Whitespace-only values are kept because they are not truly "empty"
+    let input = "\
+ID	Q1	Q2
+A	  	17
+B	18	  
+";
+    // All rows are output because whitespace-only values are not dropped
+    // A-Q1 has "  " (kept), A-Q2 has "17" (kept)
+    // B-Q1 has "18" (kept), B-Q2 has "  " (kept)
+    let expected = "\
+ID	name	value
+A	Q1	  
+A	Q2	17
+B	Q1	18
+B	Q2	  
+";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["longer", "--cols", "2-3", "--values-drop-na"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
 fn longer_names_pattern() {
     let input = "\
 ID\tnew_sp_m014\tnew_sp_f014

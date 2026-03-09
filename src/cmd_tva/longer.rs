@@ -1,5 +1,8 @@
+use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::tsv::fields;
 use crate::libs::tsv::fields::Header;
+use crate::libs::tsv::header::HeaderConfig;
+use crate::libs::tsv::reader::TsvReader;
 use clap::*;
 use regex::Regex;
 use std::collections::HashSet;
@@ -56,6 +59,7 @@ pub fn make_subcommand() -> Command {
                 .long("names-prefix")
                 .help("A string to remove from the start of each variable name"),
         )
+        .args(header_args_with_columns())
         .arg(
             Arg::new("outfile")
                 .long("outfile")
@@ -76,11 +80,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let cols_spec = args.get_one::<String>("cols").unwrap();
-    let names_to: Vec<&String> = args.get_many::<String>("names-to").unwrap().collect();
+    let names_to: Vec<&str> = args
+        .get_many::<String>("names-to")
+        .unwrap()
+        .map(|s| s.as_str())
+        .collect();
     let values_to = args.get_one::<String>("values-to").unwrap();
     let drop_na = args.get_flag("values-drop-na");
-    let names_prefix = args.get_one::<String>("names-prefix");
-    let names_sep = args.get_one::<String>("names-sep");
+    let names_prefix = args.get_one::<String>("names-prefix").map(|s| s.as_str());
+    let names_sep = args.get_one::<String>("names-sep").map(|s| s.as_str());
     let names_pattern = args
         .get_one::<String>("names-pattern")
         .map(|s| Regex::new(s))
@@ -92,28 +100,48 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         ));
     }
 
+    // Build HeaderConfig from arguments
+    // longer defaults to header enabled (FirstLine mode) for backward compatibility
+    let mut header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+
+    // If no header mode is specified, default to FirstLine mode (backward compatibility)
+    if !header_config.enabled {
+        header_config = HeaderConfig::new().enabled().first_line();
+    }
+
     let mut melt_indices: Option<Vec<usize>> = None;
     let mut id_indices: Option<Vec<usize>> = None;
     // Pre-computed bytes for the "name" column(s) for each melt index
-    // Each entry corresponds to a melt_index and contains the tab-joined name columns as bytes
     let mut melt_name_bytes: Option<Vec<Vec<u8>>> = None;
+    let mut header_written = false;
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
-        let mut reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
+        let mut reader = TsvReader::new(input.reader);
+        let mut current_header_fields: Vec<String> = Vec::new();
 
-        // Read header
-        let header_bytes_opt = reader.read_header()?;
-        if header_bytes_opt.is_none() {
-            continue;
+        // Process header if enabled
+        if header_config.enabled {
+            let header_result = reader.read_header_mode(header_config.mode)?;
+
+            if let Some(header_info) = header_result {
+                // Parse column names from header
+                if let Some(ref column_names) = header_info.column_names_line {
+                    let header_str = std::str::from_utf8(column_names)?;
+                    current_header_fields =
+                        header_str.split('\t').map(|s| s.to_string()).collect();
+                }
+
+                // Mark header as written (for longer, we generate a new header)
+                if !header_written {
+                    header_written = true;
+                }
+            } else {
+                continue; // Empty file
+            }
         }
-        let header_bytes = header_bytes_opt.unwrap();
-        let current_header_fields: Vec<String> = String::from_utf8_lossy(&header_bytes)
-            .trim_end_matches(&['\r', '\n'][..])
-            .split('\t')
-            .map(|s| s.to_string())
-            .collect();
 
-        // Initialize indices from the first file
+        // Initialize indices from the first file (only once)
         if melt_indices.is_none() {
             let header = Header::from_fields(current_header_fields.clone());
 
@@ -122,44 +150,49 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     .map_err(|e| anyhow::anyhow!(e))?;
 
             // Check if any index is out of bounds
-            let max_idx = current_header_fields.len();
+            let column_count = current_header_fields.len();
+            if column_count == 0 {
+                return Err(anyhow::anyhow!("Input file has no columns"));
+            }
             for &idx in &melt_indices_1based {
-                if idx > max_idx {
+                if idx == 0 || idx > column_count {
                     return Err(anyhow::anyhow!(
                         "Invalid column index {}: input file has only {} columns",
                         idx,
-                        max_idx
+                        column_count
                     ));
                 }
             }
 
-            let m_indices: Vec<usize> =
+            let melt_indices_local: Vec<usize> =
                 melt_indices_1based.iter().map(|&i| i - 1).collect();
-            let melt_set: HashSet<usize> = m_indices.iter().cloned().collect();
+            let melt_set: HashSet<usize> = melt_indices_local.iter().cloned().collect();
 
             // Identify id columns (those not in melt_indices)
-            let mut i_indices: Vec<usize> = Vec::new();
+            let mut id_indices_local: Vec<usize> = Vec::new();
             for i in 0..current_header_fields.len() {
                 if !melt_set.contains(&i) {
-                    i_indices.push(i);
+                    id_indices_local.push(i);
                 }
             }
 
-            // Write new header
-            let mut new_header_fields: Vec<String> =
-                Vec::with_capacity(i_indices.len() + names_to.len() + 1);
-            for &i in &i_indices {
-                new_header_fields.push(current_header_fields[i].clone());
+            // Write new header (only for the first file with header enabled)
+            if header_config.enabled {
+                let mut new_header_fields: Vec<String> =
+                    Vec::with_capacity(id_indices_local.len() + names_to.len() + 1);
+                for &i in &id_indices_local {
+                    new_header_fields.push(current_header_fields[i].clone());
+                }
+                for name in &names_to {
+                    new_header_fields.push(name.to_string());
+                }
+                new_header_fields.push(values_to.clone());
+                writeln!(writer, "{}", new_header_fields.join("\t"))?;
             }
-            for name in &names_to {
-                new_header_fields.push(name.to_string());
-            }
-            new_header_fields.push(values_to.clone());
-            writeln!(writer, "{}", new_header_fields.join("\t"))?;
 
             // Pre-calculate name column bytes for each melt index
-            let mut name_bytes_vec = Vec::with_capacity(m_indices.len());
-            for &idx in &m_indices {
+            let mut name_bytes_vec = Vec::with_capacity(melt_indices_local.len());
+            for &idx in &melt_indices_local {
                 let mut name_part = current_header_fields[idx].as_str();
                 if let Some(prefix) = names_prefix {
                     if let Some(stripped) = name_part.strip_prefix(prefix) {
@@ -168,7 +201,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
 
                 let mut computed_name = String::new();
-                if let Some(regex) = &names_pattern {
+                if let Some(ref regex) = names_pattern {
                     if let Some(caps) = regex.captures(name_part) {
                         for i in 1..=names_to.len() {
                             if i > 1 {
@@ -201,15 +234,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 name_bytes_vec.push(computed_name.into_bytes());
             }
 
-            melt_indices = Some(m_indices);
-            id_indices = Some(i_indices);
+            melt_indices = Some(melt_indices_local);
+            id_indices = Some(id_indices_local);
             melt_name_bytes = Some(name_bytes_vec);
         }
 
-        let m_indices = melt_indices.as_ref().unwrap();
-        let i_indices = id_indices.as_ref().unwrap();
+        // Skip data processing if we haven't initialized indices (shouldn't happen)
+        let melt_indices_ref = match melt_indices.as_ref() {
+            Some(v) => v,
+            None => continue,
+        };
+        let id_indices_ref = id_indices.as_ref().unwrap();
         let name_bytes = melt_name_bytes.as_ref().unwrap();
-        let mut field_buf: Vec<usize> = Vec::with_capacity(current_header_fields.len());
+        let mut field_buf: Vec<usize> = Vec::with_capacity(64);
 
         // Process remaining rows
         reader.for_each_record(|line| {
@@ -240,7 +277,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             };
 
             // Iterate over melt columns
-            for (k, &melt_idx) in m_indices.iter().enumerate() {
+            for (k, &melt_idx) in melt_indices_ref.iter().enumerate() {
                 let value = get_field(melt_idx);
 
                 if drop_na && value.is_empty() {
@@ -248,7 +285,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
 
                 // Write ID columns
-                for (j, &id_idx) in i_indices.iter().enumerate() {
+                for (j, &id_idx) in id_indices_ref.iter().enumerate() {
                     if j > 0 {
                         writer.write_all(b"\t")?;
                     }
@@ -256,7 +293,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
 
                 // If we wrote ID columns, add tab separator
-                if !i_indices.is_empty() {
+                if !id_indices_ref.is_empty() {
                     writer.write_all(b"\t")?;
                 }
 
