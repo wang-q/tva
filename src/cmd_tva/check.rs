@@ -43,13 +43,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 // Count header lines (hash lines or LinesN lines)
                 total_lines += header_info.lines.len() as u64;
 
-                // For modes that provide column names, count fields and use as expected
-                if let Some(column_names_line) = header_info.column_names_line {
+                // For modes that provide column names, also count the column names line
+                if let Some(ref column_names_line) = header_info.column_names_line {
+                    total_lines += 1;
+
                     // Count fields in column names line
                     let header_fields = if column_names_line.is_empty() {
                         0
                     } else {
-                        memchr::memchr_iter(b'\t', &column_names_line).count() + 1
+                        memchr::memchr_iter(b'\t', column_names_line).count() + 1
                     };
 
                     if expected_fields.is_none() {

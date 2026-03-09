@@ -130,3 +130,120 @@ fn check_multiple_files_consistent() {
 
     assert!(stdout.contains("4 lines, 2 fields"));
 }
+
+#[test]
+fn check_with_header_firstline() {
+    // Test --header (FirstLine mode)
+    let input = "col1\tcol2\tcol3\n1\t2\t3\n4\t5\t6\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["check", "--header"])
+        .run();
+
+    // Should count header line (1) + data lines (2) = 3 total
+    assert!(stdout.contains("3 lines total, 2 data lines, 3 fields"));
+}
+
+#[test]
+fn check_with_header_lines_n() {
+    // Test --header-lines N (LinesN mode)
+    let input = "# comment\ncol1\tcol2\n1\t2\n3\t4\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["check", "--header-lines", "2"])
+        .run();
+
+    // Should count 2 header lines and report fields from first data row
+    assert!(stdout.contains("4 lines total, 2 data lines"));
+}
+
+#[test]
+fn check_with_header_hash() {
+    // Test --header-hash (HashLines mode)
+    let input = "# comment 1\n# comment 2\n1\t2\t3\n4\t5\t6\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["check", "--header-hash"])
+        .run();
+
+    // Should count hash lines and report fields from first data row
+    assert!(stdout.contains("4 lines total, 2 data lines"));
+}
+
+#[test]
+fn check_with_header_hash1() {
+    // Test --header-hash1 (HashLines1 mode)
+    let input = "# comment\ncol1\tcol2\tcol3\n1\t2\t3\n4\t5\t6\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["check", "--header-hash1"])
+        .run();
+
+    // Should count hash line + column names line
+    assert!(stdout.contains("4 lines total, 2 data lines, 3 fields"));
+}
+
+#[test]
+fn check_empty_file_with_header() {
+    // Test empty file with --header (header_result is None)
+    let (stdout, _) = TvaCmd::new().stdin("").args(&["check", "--header"]).run();
+
+    assert!(stdout.contains("0 lines, 0 fields"));
+}
+
+#[test]
+fn check_multiple_files_with_header() {
+    // Test multiple files with header mode
+    let temp = TempDir::new().unwrap();
+    let file1 = temp.path().join("f1.tsv");
+    let file2 = temp.path().join("f2.tsv");
+    fs::write(&file1, "col1\tcol2\n1\t2\n").unwrap();
+    fs::write(&file2, "col1\tcol2\n3\t4\n").unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "check",
+            "--header",
+            file1.to_str().unwrap(),
+            file2.to_str().unwrap(),
+        ])
+        .run();
+
+    // Should count headers from both files
+    assert!(stdout.contains("4 lines total, 2 data lines, 2 fields"));
+}
+
+#[test]
+fn check_header_field_mismatch() {
+    // Test header with different field count than data
+    let input = "col1\tcol2\tcol3\n1\t2\n";
+
+    let (_, stderr) = TvaCmd::new()
+        .stdin(input)
+        .args(&["check", "--header"])
+        .run_fail();
+
+    assert!(stderr.contains("line 2 (2 fields)"));
+    assert!(stderr.contains("expected 3"));
+}
+
+#[test]
+fn check_header_empty_column_names() {
+    // Test header with empty column names line (edge case)
+    // Empty header line means 0 fields expected, data has 2 fields
+    // This should fail because field count doesn't match
+    let input = "\n1\t2\n";
+
+    let (_, stderr) = TvaCmd::new()
+        .stdin(input)
+        .args(&["check", "--header"])
+        .run_fail();
+
+    // Should report error: line 2 has 2 fields but expected 0
+    assert!(stderr.contains("line 2 (2 fields)"));
+    assert!(stderr.contains("expected 0"));
+}
