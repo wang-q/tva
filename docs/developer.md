@@ -36,7 +36,7 @@ rustup component add llvm-tools
 cargo install cargo-llvm-cov
 
 # 生成覆盖率报告
-cargo llvm-cov --html
+cargo llvm-cov
 ```
 
 使用 `cargo llvm-cov` 生成覆盖率报告，找出需要提升测试覆盖率的代码路径，供我分析。

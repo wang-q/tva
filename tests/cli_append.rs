@@ -876,3 +876,63 @@ input3x5\tpqx\tpqy\tpqz
 
     assert_eq!(stdout, expected);
 }
+
+#[test]
+fn append_header_hash1() {
+    let expected = "field1\tfield2\tfield3\nabc\tdef\tghi\njkl\tmno\tpqr\n123\t456\t789\nxy1\txy2\txy3\npqx\tpqy\tpqz\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--header-hash1",
+            "tests/data/append/input3x2.tsv",
+            "tests/data/append/input3x5.tsv",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn append_header_lines_n() {
+    let expected = "field1\tfield2\tfield3\nabc\tdef\tghi\njkl\tmno\tpqr\n123\t456\t789\nxy1\txy2\txy3\npqx\tpqy\tpqz\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--header-lines",
+            "1",
+            "tests/data/append/input3x2.tsv",
+            "tests/data/append/input3x5.tsv",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn append_multiple_files_mixed_headers() {
+    use tempfile::TempDir;
+    use std::fs;
+
+    let temp = TempDir::new().unwrap();
+    let file1 = temp.path().join("f1.tsv");
+    let file2 = temp.path().join("f2.tsv");
+    
+    // File 1 with hash header
+    fs::write(&file1, "# Comment\nfield1\tfield2\tfield3\nabc\tdef\tghi\n").unwrap();
+    // File 2 with regular header
+    fs::write(&file2, "field1\tfield2\tfield3\njkl\tmno\tpqr\n").unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "append",
+            "--header-hash1",
+            file1.to_str().unwrap(),
+            file2.to_str().unwrap(),
+        ])
+        .run();
+
+    let expected = "field1\tfield2\tfield3\nabc\tdef\tghi\njkl\tmno\tpqr\n";
+    assert_eq!(stdout, expected);
+}

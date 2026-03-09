@@ -2,7 +2,7 @@ use clap::*;
 use std::io::Write;
 use std::path::Path;
 
-use crate::cmd_tva::common::{build_header_config, header_args_with_columns};
+use crate::cmd_tva::common::{build_header_config, header_args};
 use crate::libs::io::map_io_err;
 
 use crate::libs::tsv::reader::TsvReader;
@@ -23,7 +23,7 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("Enable line-buffered output (flush after each line)"),
         )
-        .args(header_args_with_columns())
+        .args(header_args())
         .arg(
             Arg::new("track-source")
                 .long("track-source")
@@ -199,7 +199,21 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 let header_info = match header_result {
                     Some(info) => info,
-                    None => continue,
+                    None => {
+                        // For HashLines1 or LinesN mode, if no header found, try to read first line as header
+                        match header_config.mode {
+                            crate::libs::tsv::header::HeaderMode::HashLines1 | crate::libs::tsv::header::HeaderMode::LinesN(_) => {
+                                let first_line_result = reader.read_header_mode(crate::libs::tsv::header::HeaderMode::FirstLine).map_err(map_io_err)?;
+                                match first_line_result {
+                                    Some(info) => info,
+                                    None => continue,
+                                }
+                            }
+                            _ => {
+                                continue;
+                            }
+                        }
+                    }
                 };
 
                 let column_names_bytes: Vec<u8> = match header_info.column_names_line {
@@ -221,9 +235,24 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     writer.flush()?;
                 }
             } else {
-                let _ = reader
+                // For subsequent files, skip the header
+                let header_result = reader
                     .read_header_mode(header_config.mode)
                     .map_err(map_io_err)?;
+                
+                // If no header found in HashLines1 mode, try to skip first line
+                if header_result.is_none() {
+                    match header_config.mode {
+                        crate::libs::tsv::header::HeaderMode::HashLines1 => {
+                            let _ = reader.read_header_mode(crate::libs::tsv::header::HeaderMode::FirstLine).map_err(map_io_err)?;
+                        }
+                        crate::libs::tsv::header::HeaderMode::LinesN(_) => {
+                            // For LinesN mode, if no header found, try to skip first line
+                            let _ = reader.read_header_mode(crate::libs::tsv::header::HeaderMode::FirstLine).map_err(map_io_err)?;
+                        }
+                        _ => {}
+                    }
+                }
             }
         }
 

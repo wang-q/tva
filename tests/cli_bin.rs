@@ -279,3 +279,73 @@ fn bin_field_skip_logic() {
 
     assert_eq!(stdout, expected);
 }
+
+#[test]
+fn bin_header_hash1() -> anyhow::Result<()> {
+    let input = "# This is a comment\n# Another comment\nPrice\n10.5\n25.0\n";
+    let expected = "Price\n10\n20\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .stdin(input)
+        .args(&["bin", "--header-hash1", "--width", "10", "--field", "Price"])
+        .run();
+
+    assert_eq!(stdout.replace("\r\n", "\n"), expected);
+    Ok(())
+}
+
+#[test]
+fn bin_empty_file() -> anyhow::Result<()> {
+    let (stdout, _) = TvaCmd::new()
+        .stdin("")
+        .args(&["bin", "--width", "10", "--field", "1"])
+        .run();
+
+    assert_eq!(stdout, "");
+    Ok(())
+}
+
+#[test]
+fn bin_field_not_found_with_hash1() -> anyhow::Result<()> {
+    let input = "# Comment\nPrice\n10.5\n";
+
+    let (_, stderr) = TvaCmd::new()
+        .stdin(input)
+        .args(&["bin", "--header-hash1", "--width", "10", "--field", "NonExistentField"])
+        .run_fail();
+
+    assert!(stderr.contains("Field 'NonExistentField' not found in header"));
+    Ok(())
+}
+
+#[test]
+fn bin_multiple_files_mixed_headers() -> anyhow::Result<()> {
+    use tempfile::TempDir;
+    use std::fs;
+
+    let temp = TempDir::new()?;
+    let file1 = temp.path().join("f1.tsv");
+    let file2 = temp.path().join("f2.tsv");
+    
+    // File 1 with hash header
+    fs::write(&file1, "# Comment\nValue\n10.5\n15.2\n")?;
+    // File 2 with regular header
+    fs::write(&file2, "Value\n25.7\n30.1\n")?;
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "bin",
+            "--header-hash1",
+            "--width",
+            "10",
+            "--field",
+            "Value",
+            file1.to_str().unwrap(),
+            file2.to_str().unwrap(),
+        ])
+        .run();
+
+    let expected = "Value\n10\n10\n20\n30\n";
+    assert_eq!(stdout.replace("\r\n", "\n"), expected);
+    Ok(())
+}
