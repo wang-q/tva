@@ -167,3 +167,184 @@ fn slice_empty_ranges_behavior() {
         .run();
     assert_eq!(stdout3, "1\n"); // Header kept, rest dropped
 }
+
+// Tests for different header modes
+
+#[test]
+fn slice_header_lines_n_mode() {
+    // --header-lines N: Treat exactly N non-empty lines as header
+    let input = "# Comment 1\n# Comment 2\nCol1\tCol2\nData1\tData2\nData3\tData4\n";
+
+    // Keep rows 4-5 (Data1, Data2 and Data3, Data4), header is first 3 lines
+    // Line numbers: 1:#Comment1, 2:#Comment2, 3:Col1\tCol2, 4:Data1, 5:Data2, ...
+    let expected = "# Comment 1\n# Comment 2\nCol1\tCol2\nData3\tData4\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "--header-lines", "3", "-r", "5"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn slice_header_hash_mode() {
+    // --header-hash: Treat consecutive '#' lines as header
+    let input = "# Comment 1\n# Comment 2\nCol1\tCol2\nData1\tData2\nData3\tData4\n";
+
+    // Header is lines 1-2 (# comments), line 3 is column names, data starts at line 4
+    // Keep row 4 (Data1 line) with header
+    let expected = "# Comment 1\n# Comment 2\nData1\tData2\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "--header-hash", "-r", "4"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn slice_header_hash1_mode() {
+    // --header-hash1: Treat '#' lines plus next line as header (for column names)
+    let input = "# Comment 1\n# Comment 2\nCol1\tCol2\nData1\tData2\nData3\tData4\n";
+
+    // Header is lines 1-3 (# comments + column names line), data starts at line 4
+    // Keep row 4 (Data1 line) with header
+    let expected = "# Comment 1\n# Comment 2\nCol1\tCol2\nData1\tData2\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "--header-hash1", "-r", "4"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn slice_header_lines_n_with_invert() {
+    // Test --header-lines with --invert (drop mode)
+    let input = "Header1\nHeader2\nData1\nData2\nData3\n";
+
+    // Header is lines 1-2, drop rows 1-3 (Header1, Header2, Data1), keep Data2, Data3
+    // But since we have header mode, header should be preserved
+    let expected = "Header1\nHeader2\nData3\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "--header-lines", "2", "-r", "3-4", "--invert"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+#[test]
+fn slice_header_hash_with_multiple_ranges() {
+    // Test --header-hash with multiple ranges
+    // Note: --header-hash only treats '#' lines as header, column names line is data
+    let input = "# Comment\nCol1\tCol2\nRow1\nRow2\nRow3\nRow4\n";
+
+    // Header is line 1 (# Comment), column names line 2 is DATA, data rows are 3-6
+    // Keep rows 3 and 5 (Row1 and Row3) with header
+    let expected = "# Comment\nRow1\nRow3\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["slice", "--header-hash", "-r", "3", "-r", "5"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, expected);
+}
+
+// Multi-file input tests
+
+#[test]
+fn slice_multi_file_input() {
+    // Test reading from multiple files
+    let file1_content = "1\n2\n3\n";
+    let file2_content = "4\n5\n6\n";
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file1_path = temp_dir.path().join("file1.tsv");
+    let file2_path = temp_dir.path().join("file2.tsv");
+
+    std::fs::write(&file1_path, file1_content).unwrap();
+    std::fs::write(&file2_path, file2_content).unwrap();
+
+    // Keep rows 1-2 from each file
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "slice",
+            "-r",
+            "1-2",
+            file1_path.to_str().unwrap(),
+            file2_path.to_str().unwrap(),
+        ])
+        .run();
+
+    // Each file processed independently with its own line numbering
+    // File 1: rows 1, 2 -> "1\n2\n"
+    // File 2: rows 1, 2 -> "4\n5\n"
+    assert_eq!(stdout, "1\n2\n4\n5\n");
+}
+
+#[test]
+fn slice_multi_file_with_header() {
+    // Test multi-file input with header - header should only be written once
+    let file1_content = "Header\nData1\nData2\n";
+    let file2_content = "Header\nData3\nData4\n";
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file1_path = temp_dir.path().join("file1.tsv");
+    let file2_path = temp_dir.path().join("file2.tsv");
+
+    std::fs::write(&file1_path, file1_content).unwrap();
+    std::fs::write(&file2_path, file2_content).unwrap();
+
+    // Keep row 2 (first data row) from each file, with header
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "slice",
+            "-H",
+            "-r",
+            "2",
+            file1_path.to_str().unwrap(),
+            file2_path.to_str().unwrap(),
+        ])
+        .run();
+
+    // Header should appear only once, then Data1 from file1 and Data3 from file2
+    assert_eq!(stdout, "Header\nData1\nData3\n");
+    assert_eq!(
+        stdout.matches("Header").count(),
+        1,
+        "Header should appear exactly once"
+    );
+}
+
+#[test]
+fn slice_outfile_option() {
+    // Test --outfile option
+    let input = "1\n2\n3\n4\n5\n";
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let output_path = temp_dir.path().join("output.tsv");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "slice",
+            "-r",
+            "2-3",
+            "--outfile",
+            output_path.to_str().unwrap(),
+        ])
+        .stdin(input)
+        .run();
+
+    // stdout should be empty when using --outfile
+    assert_eq!(stdout, "");
+
+    // Check output file content
+    let output_content = std::fs::read_to_string(&output_path).unwrap();
+    assert_eq!(output_content, "2\n3\n");
+}

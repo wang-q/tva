@@ -1,3 +1,4 @@
+use crate::libs::cli::{build_header_config, header_args};
 use clap::*;
 use std::io::Write;
 
@@ -26,13 +27,7 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("Invert selection: drop selected rows instead of keeping them"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Always preserve the first line (header)"),
-        )
+        .args(header_args())
         .arg(
             Arg::new("outfile")
                 .long("outfile")
@@ -98,7 +93,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let invert = args.get_flag("invert");
-    let keep_header = args.get_flag("header");
+
+    // Build HeaderConfig from arguments
+    let header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
 
     let mut ranges = Vec::new();
     if let Some(values) = args.get_many::<String>("rows") {
@@ -117,20 +115,46 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
-        let mut line_num = 0;
+        let mut line_num;
+        let mut header_lines_count = 0;
+
+        // If header is enabled, read header according to the configured mode
+        if header_config.enabled {
+            let header_result = reader
+                .read_header_mode(header_config.mode)
+                .map_err(|e| anyhow::anyhow!(e))?;
+
+            if let Some(header_info) = header_result {
+                // Count header lines to adjust line numbers
+                // This ensures row indices in ranges refer to absolute line numbers
+                header_lines_count = header_info.lines.len();
+                if header_info.column_names_line.is_some() {
+                    header_lines_count += 1;
+                }
+
+                // Write header only for the first file
+                if !header_written {
+                    // Write all header lines (hash lines, or LinesN lines)
+                    for line in &header_info.lines {
+                        writer.write_all(line)?;
+                        writer.write_all(b"\n")?;
+                    }
+                    // For modes that provide column names, also write the column names line
+                    if let Some(ref column_names) = header_info.column_names_line {
+                        writer.write_all(column_names)?;
+                        writer.write_all(b"\n")?;
+                    }
+                    header_written = true;
+                }
+            }
+        }
+
+        // Initialize line_num to header_lines_count so that data rows
+        // have correct absolute line numbers
+        line_num = header_lines_count;
 
         reader.for_each_record(|record| {
             line_num += 1;
-
-            // Always keep header if requested
-            if line_num == 1 && keep_header {
-                if !header_written {
-                    writer.write_all(record)?;
-                    writer.write_all(b"\n")?;
-                    header_written = true;
-                }
-                return Ok(());
-            }
 
             // Check if current line is in any range
             let mut in_range = false;
