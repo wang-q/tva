@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f08626ea.js";
+            window.path_to_searchindex_js = "searchindex-049a590a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -2133,7 +2133,7 @@ Mega Gadget     $29.99  /buy/gadget
 <p><strong>Header Detection Modes</strong> (mutually exclusive):</p>
 <ul>
 <li>
-<p><strong>Modes that provide column names</strong>:</p>
+<p><strong>Modes that provide column names</strong> (<code>header_args_with_columns()</code>):</p>
 <ul>
 <li>
 <p><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode</p>
@@ -2152,10 +2152,10 @@ Mega Gadget     $29.99  /buy/gadget
 </ul>
 </li>
 </ul>
-<p>Most commands using these modes.</p>
+<p>Commands using these modes: <code>append</code>, <code>bin</code>, <code>blank</code>, <code>fill</code>, <code>filter</code>, <code>join</code>, <code>longer</code>, <code>nl</code>, <code>reverse</code>, <code>select</code>, <code>stats</code>, <code>uniq</code>, <code>wider</code>.</p>
 </li>
 <li>
-<p><strong>Modes that don’t provide column names</strong>:</p>
+<p><strong>Modes that don’t provide column names</strong> (<code>header_args()</code>):</p>
 <ul>
 <li>
 <p><code>--header-lines N</code>: <strong>LinesN</strong> mode</p>
@@ -2199,6 +2199,8 @@ Mega Gadget     $29.99  /buy/gadget
 <ul>
 <li><code>split</code>: Uses <code>--header-in-out</code> (input has header, output writes header, default) or <code>--header-in-only</code> (input has header, output does not write header). <code>--header</code> is an alias for <code>--header-in-out</code>.</li>
 <li><code>keep-header</code>: Uses <code>--lines N</code> / <code>-n</code> to specify number of header lines (default: 1)</li>
+<li><code>sample</code>: Uses simple <code>--header</code> / <code>-H</code> flag (treats first non-empty line as header)</li>
+<li><code>transpose</code>: Does not support header modes (processes all lines as data)</li>
 </ul>
 <p><strong>Multi-file Header Behavior:</strong></p>
 <ul>
