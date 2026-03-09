@@ -25,7 +25,7 @@ Headers are the column name rows in data files. Different commands have differen
         - **Graceful degradation**: If no `#` lines exist, uses the first line as column names (behaves like `--header`).
         - `lines` contains only `#` lines (empty if no `#` lines); column names line is stored separately.
 
-    Commands using these modes: `append`, `bin`, `blank`, `fill`, `filter`, `join`, `select`.
+    Most commands using these modes.
 
 *   **Modes that don't provide column names**:
 

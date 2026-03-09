@@ -41,7 +41,7 @@ cargo llvm-cov
 
 使用 `cargo llvm-cov` 生成覆盖率报告，找出需要提升测试覆盖率的代码路径，供我分析。
 
-XXX 的测试覆盖度很低，使用 `cargo llvm-cov` 生成覆盖率报告，找出需要提升的地方.
+XXX 的测试覆盖度不高，使用 `cargo llvm-cov` 生成覆盖率报告，找出需要提升的地方.
 
 ## 深度技术分析
 
