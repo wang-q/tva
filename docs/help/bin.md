@@ -14,9 +14,12 @@ Input:
 *   Files ending in `.gz` are transparently decompressed.
 
 Header behavior:
+*   Supports `--header` / `-H` and `--header-hash1` modes.
 *   `--header` / `-H`: Treats the first line of the input as a header (even if empty).
     The header is written once at the top of the output.
-*   When using multiple files with `--header`, the header from the first file is
+*   `--header-hash1`: Treats consecutive '#' lines plus the next line as header.
+    The next line (column names) is written once at the top of the output.
+*   When using multiple files with header mode enabled, the header from the first file is
     used, and headers from subsequent files are skipped.
 
 Field syntax:

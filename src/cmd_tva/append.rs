@@ -2,6 +2,9 @@ use clap::*;
 use std::io::Write;
 use std::path::Path;
 
+use crate::cmd_tva::common::{build_header_config, header_args_with_columns};
+use crate::libs::io::map_io_err;
+
 use crate::libs::tsv::reader::TsvReader;
 
 pub fn make_subcommand() -> Command {
@@ -20,13 +23,7 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("Enable line-buffered output (flush after each line)"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Treat the first line of each input as a header; only the first header is output"),
-        )
+        .args(header_args_with_columns())
         .arg(
             Arg::new("track-source")
                 .long("track-source")
@@ -90,7 +87,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let line_buffered = args.get_flag("line-buffered");
 
-    let mut has_header = args.get_flag("header");
     let mut track_source = args.get_flag("track-source");
     let source_header = args.get_one::<String>("source-header").cloned();
 
@@ -99,9 +95,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         track_source = true;
     }
     if source_header.is_some() {
-        has_header = true;
         track_source = true;
     }
+
+    // If source-header is provided, we need to enable header mode
+    let header_config = if source_header.is_some() {
+        // Create a default header config with FirstLine mode
+        let config = crate::libs::tsv::header::HeaderConfig::new();
+        config.enabled().first_line()
+    } else {
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?
+    };
+    let has_header = header_config.enabled || source_header.is_some();
 
     let delimiter_str = args
         .get_one::<String>("delimiter")
@@ -187,22 +192,38 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let label_bytes = label.as_bytes();
 
         if has_header {
-            if let Some(header) = reader.read_header()? {
-                if !header_written {
-                    header_written = true;
-                    if track_source {
-                        writer.write_all(source_header_name.as_bytes())?;
-                        writer.write_all(&[delimiter as u8])?;
-                        writer.write_all(&header)?;
-                        writer.write_all(b"\n")?;
-                    } else {
-                        writer.write_all(&header)?;
-                        writer.write_all(b"\n")?;
-                    }
-                    if line_buffered {
-                        writer.flush()?;
-                    }
+            if !header_written {
+                let header_result = reader
+                    .read_header_mode(header_config.mode)
+                    .map_err(map_io_err)?;
+
+                let header_info = match header_result {
+                    Some(info) => info,
+                    None => continue,
+                };
+
+                let column_names_bytes: Vec<u8> = match header_info.column_names_line {
+                    Some(line) => line,
+                    None => continue,
+                };
+
+                header_written = true;
+                if track_source {
+                    writer.write_all(source_header_name.as_bytes())?;
+                    writer.write_all(&[delimiter as u8])?;
+                    writer.write_all(&column_names_bytes)?;
+                    writer.write_all(b"\n")?;
+                } else {
+                    writer.write_all(&column_names_bytes)?;
+                    writer.write_all(b"\n")?;
                 }
+                if line_buffered {
+                    writer.flush()?;
+                }
+            } else {
+                let _ = reader
+                    .read_header_mode(header_config.mode)
+                    .map_err(map_io_err)?;
             }
         }
 

@@ -4,9 +4,13 @@ Concatenates tab-separated values (TSV) files, similar to Unix `cat`, but with
 header awareness and optional source tracking.
 
 Header behavior:
-*   --header / -H
-    Treats the first line of each input as a header. Only the header from the
-    first input is written; later headers are skipped.
+*   Supports `--header` / `-H` and `--header-hash1` modes.
+*   `--header` / `-H`: Treats the first non-empty line of each input as a header.
+    Only the header from the first input is written; later headers are skipped.
+*   `--header-hash1`: Treats consecutive '#' lines plus the next line as header.
+    Only the header from the first input is written; later headers are skipped.
+*   When using multiple files with header mode enabled, the header from the first file is
+    used, and headers from subsequent files are skipped.
 
 Source tracking:
 *   --track-source / -t

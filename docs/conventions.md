@@ -7,8 +7,8 @@ This document defines the naming and behavior conventions for parameters shared 
 Headers are the column name rows in data files. Different commands have different header processing requirements, but parameter naming should remain consistent.
 
 *   **Header Detection Modes** (mutually exclusive)
-    - `--header` / `-H`: **FirstLine** mode - take the first line as header (contains column names), even if empty
-    - `--header-lines N`: **LinesN** mode - take exactly N lines as header (including empty lines)
+    - `--header` / `-H`: **FirstLine** mode - take the first line as header (contains column names)
+    - `--header-lines N`: **LinesN** mode - take exactly N lines as header
     - `--header-hash`: **HashLines** mode - take all consecutive `#` lines as header (metadata only)
     - `--header-hash1`: **HashLines1** mode - take `#` lines plus the next line as header (contains column names)
 
@@ -33,7 +33,7 @@ Headers are the column name rows in data files. Different commands have differen
 
 *   **Commands by Header Mode Support**
 
-    **FirstLine and HashLines1 modes** (modes that provide column names): `select`
+    **FirstLine and HashLines1 modes** (modes that provide column names): `append`, `bin`, `select`
 
     **All four modes** (FirstLine, LinesN, HashLines, HashLines1): `blank`, `filter`
 

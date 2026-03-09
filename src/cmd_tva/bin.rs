@@ -1,7 +1,11 @@
-use crate::libs::tsv::fields::Header;
-use crate::libs::tsv::reader::TsvReader;
 use clap::*;
 use std::io::Write;
+
+use crate::cmd_tva::common::{build_header_config, header_args_with_columns};
+use crate::libs::io::map_io_err;
+
+use crate::libs::tsv::fields::Header;
+use crate::libs::tsv::reader::TsvReader;
 
 pub fn make_subcommand() -> Command {
     Command::new("bin")
@@ -34,7 +38,7 @@ pub fn make_subcommand() -> Command {
                 .short('m')
                 .default_value("0.0")
                 .value_parser(value_parser!(f64))
-                .help("Alignment/Offset (bin start)"),
+                .help("Bin alignment origin (bin edges align to min + n*width)"),
         )
         .arg(
             Arg::new("new-name")
@@ -42,13 +46,7 @@ pub fn make_subcommand() -> Command {
                 .num_args(1)
                 .help("Append as new column with this name (instead of replacing)"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Input has header"),
-        )
+        .args(header_args_with_columns())
         .arg(
             Arg::new("outfile")
                 .long("outfile")
@@ -74,21 +72,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
     let min = *args.get_one::<f64>("min").unwrap();
     let field_str = args.get_one::<String>("field").unwrap();
-    let header = args.get_flag("header");
     let new_name = args.get_one::<String>("new-name");
 
-    // Pre-check: if field is not numeric, header is required
-    let is_numeric_field = field_str.chars().all(|c| c.is_ascii_digit());
-    if !is_numeric_field && !header {
-        return Err(anyhow::anyhow!(
-            "Field name '{}' requires --header",
-            field_str
-        ));
-    }
+    let header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+    let has_header = header_config.enabled;
 
     let mut header_written = false;
     let mut field_idx: Option<usize> = None;
-    // If field is numeric, we can parse it now
+
+    // Pre-check: if field is numeric, we can parse it now
     if let Ok(idx) = field_str.parse::<usize>() {
         if idx == 0 {
             return Err(anyhow::anyhow!("Field index must be >= 1"));
@@ -97,45 +90,57 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
-        let mut reader = TsvReader::new(input.reader);
-        let mut is_first_line = true;
+        let mut tsv_reader = TsvReader::with_capacity(input.reader, 512 * 1024);
 
-        reader.for_each_record(|record| {
-            if is_first_line {
-                is_first_line = false;
-                if header {
-                    if !header_written {
-                        // Resolve field name if needed
-                        if field_idx.is_none() {
-                            let line_str = std::str::from_utf8(record).map_err(|e| {
-                                std::io::Error::new(std::io::ErrorKind::InvalidData, e)
-                            })?;
-                            let h = Header::from_line(line_str, '\t');
-                            if let Some(pos) = h.get_index(field_str) {
-                                field_idx = Some(pos);
-                            } else {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    format!("Field '{}' not found in header", field_str),
-                                ));
-                            }
-                        }
+        if has_header {
+            if !header_written {
+                let header_result = tsv_reader
+                    .read_header_mode(header_config.mode)
+                    .map_err(map_io_err)?;
 
-                        writer.write_all(record)?;
-                        if let Some(name) = new_name {
-                            writer.write_all(b"\t")?;
-                            writer.write_all(name.as_bytes())?;
-                        }
-                        writer.write_all(b"\n")?;
-                        header_written = true;
+                let header_info = match header_result {
+                    Some(info) => info,
+                    None => continue,
+                };
+
+                let column_names_bytes: Vec<u8> = match header_info.column_names_line {
+                    Some(line) => line,
+                    None => continue,
+                };
+
+                if field_idx.is_none() {
+                    let line_str = String::from_utf8_lossy(&column_names_bytes);
+                    let h = Header::from_line(&line_str, '\t');
+                    if let Some(pos) = h.get_index(field_str) {
+                        field_idx = Some(pos);
+                    } else {
+                        return Err(anyhow::anyhow!(
+                            "Field '{}' not found in header",
+                            field_str
+                        ));
                     }
-                    // If header already written, skip this line (it's a header from subsequent file)
-                    return Ok(());
                 }
-                // No header flag, fall through to process as data
-            }
 
-            // Process data line
+                writer.write_all(&column_names_bytes)?;
+                if let Some(name) = new_name {
+                    writer.write_all(b"\t")?;
+                    writer.write_all(name.as_bytes())?;
+                }
+                writer.write_all(b"\n")?;
+                header_written = true;
+            } else {
+                let _ = tsv_reader
+                    .read_header_mode(header_config.mode)
+                    .map_err(map_io_err)?;
+            }
+        } else if field_idx.is_none() {
+            return Err(anyhow::anyhow!(
+                "Field name '{}' requires --header",
+                field_str
+            ));
+        }
+
+        tsv_reader.for_each_record(|record| {
             let idx = field_idx.ok_or_else(|| {
                 std::io::Error::new(std::io::ErrorKind::Other, "Field index logic error")
             })?;
@@ -144,8 +149,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 writer.write_all(record)?;
                 writer.write_all(b"\t")?;
 
-                // Find the field at idx to calculate value
-                // We optimize by just scanning tabs
                 let mut iter = memchr::memchr_iter(b'\t', record);
                 let mut field_bytes = None;
 
@@ -153,7 +156,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     let end = iter.next().unwrap_or(record.len());
                     field_bytes = Some(&record[0..end]);
                 } else {
-                    // Skip idx-1 tabs
                     let mut skipped = 0;
                     for _ in 0..idx - 1 {
                         if iter.next().is_some() {
@@ -183,7 +185,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
                 writer.write_all(b"\n")?;
             } else {
-                // Replace mode
                 let mut last_pos = 0;
                 let mut current_col = 0;
                 let mut iter = memchr::memchr_iter(b'\t', record);
