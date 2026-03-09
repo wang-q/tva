@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e4cfe8fc.js";
+            window.path_to_searchindex_js = "searchindex-a39cbe75.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -2129,8 +2129,8 @@ Mega Gadget     $29.99  /buy/gadget
 <li>
 <p><strong>Header Detection Modes</strong> (mutually exclusive)</p>
 <ul>
-<li><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode - take the first line as header (contains column names), even if empty</li>
-<li><code>--header-lines N</code>: <strong>LinesN</strong> mode - take exactly N lines as header (including empty lines)</li>
+<li><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode - take the first line as header (contains column names)</li>
+<li><code>--header-lines N</code>: <strong>LinesN</strong> mode - take exactly N lines as header</li>
 <li><code>--header-hash</code>: <strong>HashLines</strong> mode - take all consecutive <code>#</code> lines as header (metadata only)</li>
 <li><code>--header-hash1</code>: <strong>HashLines1</strong> mode - take <code>#</code> lines plus the next line as header (contains column names)</li>
 </ul>
@@ -2171,8 +2171,8 @@ Mega Gadget     $29.99  /buy/gadget
 </li>
 <li>
 <p><strong>Commands by Header Mode Support</strong></p>
-<p><strong>FirstLine and HashLines1 modes</strong> (modes that provide column names): <code>select</code></p>
-<p><strong>All four modes</strong> (FirstLine, LinesN, HashLines, HashLines1): <code>blank</code>, <code>filter</code></p>
+<p><strong>FirstLine and HashLines1 modes</strong> (modes that provide column names): <code>append</code>, <code>bin</code>, <code>select</code></p>
+<p><strong>All four modes</strong> (FirstLine, LinesN, HashLines, HashLines1): <code>blank</code>, <code>check</code>, <code>filter</code></p>
 </li>
 </ul>
 <h2 id="inputoutput-conventions"><a class="header" href="#inputoutput-conventions">Input/Output Conventions</a></h2>
@@ -2569,9 +2569,12 @@ continuous data.</p>
 </ul>
 <p>Header behavior:</p>
 <ul>
+<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
 <li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header (even if empty).
 The header is written once at the top of the output.</li>
-<li>When using multiple files with <code>--header</code>, the header from the first file is
+<li><code>--header-hash1</code>: Treats consecutive ‘#’ lines plus the next line as header.
+The next line (column names) is written once at the top of the output.</li>
+<li>When using multiple files with header mode enabled, the header from the first file is
 used, and headers from subsequent files are skipped.</li>
 </ul>
 <p>Field syntax:</p>
@@ -2866,9 +2869,13 @@ ranges (run-user_time), and wildcards (*_time).</li>
 header awareness and optional source tracking.</p>
 <p>Header behavior:</p>
 <ul>
-<li>–header / -H
-Treats the first line of each input as a header. Only the header from the
-first input is written; later headers are skipped.</li>
+<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
+<li><code>--header</code> / <code>-H</code>: Treats the first non-empty line of each input as a header.
+Only the header from the first input is written; later headers are skipped.</li>
+<li><code>--header-hash1</code>: Treats consecutive ‘#’ lines plus the next line as header.
+Only the header from the first input is written; later headers are skipped.</li>
+<li>When using multiple files with header mode enabled, the header from the first file is
+used, and headers from subsequent files are skipped.</li>
 </ul>
 <p>Source tracking:</p>
 <ul>
@@ -3143,6 +3150,12 @@ tva md tests/genome/ctg.range.tsv –fmt –digits 2</p>
 <h1 id="check-1"><a class="header" href="#check-1">check</a></h1>
 <p>Validates the structure of TSV input by ensuring that all lines have the
 same number of fields.</p>
+<p>Header behavior:</p>
+<ul>
+<li>Supports all four header modes. See <code>tva --help-headers</code> for details.</li>
+<li>When header mode is enabled, the header lines are skipped from structure checking.</li>
+<li>The field count from the header’s column names line is used as the expected count.</li>
+</ul>
 <p>Input:</p>
 <ul>
 <li>If no input files are given, or an input file is ‘stdin’, data is read
@@ -3151,14 +3164,15 @@ from standard input.</li>
 </ul>
 <p>Behavior:</p>
 <ul>
-<li>The number of fields on the first line is used as the expected count.</li>
+<li>Without header mode: The number of fields on the first line is used as the expected count.</li>
+<li>With header mode: The number of fields in the header’s column names line is used as the expected count.</li>
 <li>Each subsequent line must have the same number of fields.</li>
 <li>On mismatch, details about the failing line and expected field count are
 printed to stderr and the command exits with a non-zero status.</li>
 </ul>
 <p>Output:</p>
 <ul>
-<li>On success, prints: <code>&lt;N&gt; lines, &lt;M&gt; fields</code></li>
+<li>On success, prints: <code>&lt;N&gt; lines total, &lt;M&gt; data lines, &lt;P&gt; fields</code></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="nl-1"><a class="header" href="#nl-1">nl</a></h1>

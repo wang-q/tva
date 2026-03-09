@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-e4cfe8fc.js";
+            window.path_to_searchindex_js = "../searchindex-a39cbe75.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-a6c0a49a.js"></script>
@@ -183,6 +183,12 @@
                         <h1 id="check"><a class="header" href="#check">check</a></h1>
 <p>Validates the structure of TSV input by ensuring that all lines have the
 same number of fields.</p>
+<p>Header behavior:</p>
+<ul>
+<li>Supports all four header modes. See <code>tva --help-headers</code> for details.</li>
+<li>When header mode is enabled, the header lines are skipped from structure checking.</li>
+<li>The field count from the header’s column names line is used as the expected count.</li>
+</ul>
 <p>Input:</p>
 <ul>
 <li>If no input files are given, or an input file is ‘stdin’, data is read
@@ -191,14 +197,15 @@ from standard input.</li>
 </ul>
 <p>Behavior:</p>
 <ul>
-<li>The number of fields on the first line is used as the expected count.</li>
+<li>Without header mode: The number of fields on the first line is used as the expected count.</li>
+<li>With header mode: The number of fields in the header’s column names line is used as the expected count.</li>
 <li>Each subsequent line must have the same number of fields.</li>
 <li>On mismatch, details about the failing line and expected field count are
 printed to stderr and the command exits with a non-zero status.</li>
 </ul>
 <p>Output:</p>
 <ul>
-<li>On success, prints: <code>&lt;N&gt; lines, &lt;M&gt; fields</code></li>
+<li>On success, prints: <code>&lt;N&gt; lines total, &lt;M&gt; data lines, &lt;P&gt; fields</code></li>
 </ul>
 
                     </main>

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-e4cfe8fc.js";
+            window.path_to_searchindex_js = "../searchindex-a39cbe75.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-a6c0a49a.js"></script>
@@ -197,9 +197,12 @@ continuous data.</p>
 </ul>
 <p>Header behavior:</p>
 <ul>
+<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
 <li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header (even if empty).
 The header is written once at the top of the output.</li>
-<li>When using multiple files with <code>--header</code>, the header from the first file is
+<li><code>--header-hash1</code>: Treats consecutive ‘#’ lines plus the next line as header.
+The next line (column names) is written once at the top of the output.</li>
+<li>When using multiple files with header mode enabled, the header from the first file is
 used, and headers from subsequent files are skipped.</li>
 </ul>
 <p>Field syntax:</p>

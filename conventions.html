@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e4cfe8fc.js";
+            window.path_to_searchindex_js = "searchindex-a39cbe75.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -188,8 +188,8 @@
 <li>
 <p><strong>Header Detection Modes</strong> (mutually exclusive)</p>
 <ul>
-<li><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode - take the first line as header (contains column names), even if empty</li>
-<li><code>--header-lines N</code>: <strong>LinesN</strong> mode - take exactly N lines as header (including empty lines)</li>
+<li><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode - take the first line as header (contains column names)</li>
+<li><code>--header-lines N</code>: <strong>LinesN</strong> mode - take exactly N lines as header</li>
 <li><code>--header-hash</code>: <strong>HashLines</strong> mode - take all consecutive <code>#</code> lines as header (metadata only)</li>
 <li><code>--header-hash1</code>: <strong>HashLines1</strong> mode - take <code>#</code> lines plus the next line as header (contains column names)</li>
 </ul>
@@ -230,8 +230,8 @@
 </li>
 <li>
 <p><strong>Commands by Header Mode Support</strong></p>
-<p><strong>FirstLine and HashLines1 modes</strong> (modes that provide column names): <code>select</code></p>
-<p><strong>All four modes</strong> (FirstLine, LinesN, HashLines, HashLines1): <code>blank</code>, <code>filter</code></p>
+<p><strong>FirstLine and HashLines1 modes</strong> (modes that provide column names): <code>append</code>, <code>bin</code>, <code>select</code></p>
+<p><strong>All four modes</strong> (FirstLine, LinesN, HashLines, HashLines1): <code>blank</code>, <code>check</code>, <code>filter</code></p>
 </li>
 </ul>
 <h2 id="inputoutput-conventions"><a class="header" href="#inputoutput-conventions">Input/Output Conventions</a></h2>
