@@ -61,6 +61,156 @@ fn nl_basic_from_gold() {
     assert_eq!(stdout, expected);
 }
 
+// Tests for code improvements
+
+#[test]
+fn nl_header_string_implies_header() {
+    // Test that --header-string implies --header without explicitly providing it
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "nl",
+            "--header-string",
+            "LINENUM",
+            "tests/data/nl/input1.txt",
+        ])
+        .run();
+
+    // Should behave exactly like --header --header-string
+    let (expected_stdout, _) = TvaCmd::new()
+        .args(&[
+            "nl",
+            "--header",
+            "--header-string",
+            "LINENUM",
+            "tests/data/nl/input1.txt",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected_stdout);
+}
+
+#[test]
+fn nl_header_string_short_implies_header() {
+    // Test that -s implies --header without explicitly providing it
+    let (stdout, _) = TvaCmd::new()
+        .args(&["nl", "-s", "LINENUM", "tests/data/nl/input1.txt"])
+        .run();
+
+    // Should behave exactly like --header -s
+    let (expected_stdout, _) = TvaCmd::new()
+        .args(&[
+            "nl",
+            "--header",
+            "-s",
+            "LINENUM",
+            "tests/data/nl/input1.txt",
+        ])
+        .run();
+
+    assert_eq!(stdout, expected_stdout);
+}
+
+#[test]
+fn nl_line_buffered_help_text() {
+    // Test that --line-buffered help text is updated
+    let (stdout, _) = TvaCmd::new().args(&["nl", "--help"]).run();
+    assert!(stdout.contains("Force line-buffered output mode"));
+    assert!(stdout.contains("real-time viewing"));
+}
+
+#[test]
+fn nl_empty_file_no_line_number_consumed() {
+    // Test that empty files don't consume line numbers
+    // First, get line count from single file
+    let (single_file_out, _) = TvaCmd::new()
+        .args(&["nl", "tests/data/nl/input1.txt"])
+        .run();
+    let single_file_lines = single_file_out.lines().count();
+
+    // Then with empty file in the middle
+    let (multi_file_out, _) = TvaCmd::new()
+        .args(&[
+            "nl",
+            "tests/data/nl/input1.txt",
+            "tests/data/nl/empty-file.txt",
+            "tests/data/nl/one-line-file.txt",
+        ])
+        .run();
+    let multi_file_lines = multi_file_out.lines().count();
+
+    // Should have same number of lines (empty file contributes nothing)
+    assert_eq!(single_file_lines + 1, multi_file_lines); // +1 for one-line-file
+}
+
+#[test]
+fn nl_negative_start_number() {
+    // Test negative start number functionality
+    let (stdout, _) = TvaCmd::new()
+        .args(&["nl", "-n", "-5", "tests/data/nl/input1.txt"])
+        .run();
+
+    let first_line = stdout.lines().next().unwrap();
+    assert!(first_line.starts_with("-5\t"));
+}
+
+#[test]
+fn nl_zero_start_number() {
+    // Test zero as start number
+    let (stdout, _) = TvaCmd::new()
+        .args(&["nl", "-n", "0", "tests/data/nl/input1.txt"])
+        .run();
+
+    let first_line = stdout.lines().next().unwrap();
+    assert!(first_line.starts_with("0\t"));
+}
+
+#[test]
+fn nl_unicode_header_string() {
+    // Test unicode characters in header string
+    let (stdout, _) = TvaCmd::new()
+        .args(&["nl", "-s", "行号", "tests/data/nl/input1.txt"])
+        .run();
+
+    let first_line = stdout.lines().next().unwrap();
+    assert!(first_line.starts_with("行号\t"));
+}
+
+#[test]
+fn nl_delimiter_special_chars() {
+    // Test various special characters as delimiter
+    for delim in &[":", "|", "#", "@", "~"] {
+        let (stdout, _) = TvaCmd::new()
+            .args(&["nl", "-d", delim, "tests/data/nl/one-line-file.txt"])
+            .run();
+
+        assert!(
+            stdout.contains(delim),
+            "Delimiter {} not found in output",
+            delim
+        );
+    }
+}
+
+#[test]
+fn nl_multi_file_continuous_numbering() {
+    // Test that line numbers are continuous across files
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "nl",
+            "tests/data/nl/one-line-file.txt",
+            "tests/data/nl/one-line-file.txt",
+            "tests/data/nl/one-line-file.txt",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 3);
+    assert!(lines[0].starts_with("1\t"));
+    assert!(lines[1].starts_with("2\t"));
+    assert!(lines[2].starts_with("3\t"));
+}
+
 #[test]
 fn nl_only_newlines() {
     let input = "\n\n\n";

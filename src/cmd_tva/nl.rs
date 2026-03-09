@@ -1,3 +1,4 @@
+use crate::libs::cli::{build_header_config, header_args_with_columns};
 use clap::*;
 use std::io::Write;
 
@@ -11,13 +12,7 @@ pub fn make_subcommand() -> Command {
                 .index(1)
                 .help("Input TSV file(s) to process (default: stdin)"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Treat the first line of each file as a header; only the first header is output"),
-        )
+        .args(header_args_with_columns())
         .arg(
             Arg::new("header-string")
                 .long("header-string")
@@ -55,7 +50,7 @@ pub fn make_subcommand() -> Command {
             Arg::new("line-buffered")
                 .long("line-buffered")
                 .action(ArgAction::SetTrue)
-                .help("Enable line-buffered output (for compatibility; behaves like default buffering)"),
+                .help("Force line-buffered output mode. Useful for real-time viewing with `tail -f`"),
         )
 }
 
@@ -70,9 +65,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None => vec!["stdin".to_string()],
     };
 
-    let mut has_header = args.get_flag("header");
+    // Build HeaderConfig from arguments
+    let mut header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+
     let header_string = if let Some(s) = args.get_one::<String>("header-string") {
-        has_header = true;
+        // header-string implies --header
+        header_config.enabled = true;
         s.clone()
     } else {
         "line".to_string()
@@ -90,30 +89,45 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
-        let mut file_line_num: u64 = 0;
 
-        reader.for_each_record(|line| {
-            file_line_num += 1;
+        // If header is enabled, read header according to the configured mode
+        if header_config.enabled {
+            let header_result = reader
+                .read_header_mode(header_config.mode)
+                .map_err(|e| anyhow::anyhow!(e))?;
 
-            if has_header && file_line_num == 1 {
+            if let Some(header_info) = header_result {
+                // Write header only for the first file
                 if !header_written {
-                    writer.write_all(header_bytes)?;
-                    writer.write_all(delimiter_bytes)?;
-                    writer.write_all(line)?;
-                    writer.write_all(b"\n")?;
+                    // Write all header lines (hash lines, or LinesN lines)
+                    for line in &header_info.lines {
+                        writer.write_all(line)?;
+                        writer.write_all(b"\n")?;
+                    }
+                    // For modes that provide column names, write the modified header line
+                    if let Some(column_names) = header_info.column_names_line {
+                        writer.write_all(header_bytes)?;
+                        writer.write_all(delimiter_bytes)?;
+                        writer.write_all(&column_names)?;
+                        writer.write_all(b"\n")?;
+                    }
                     writer.flush()?;
                     header_written = true;
                 }
-            } else {
-                write!(writer, "{}", line_num)?;
-                writer.write_all(delimiter_bytes)?;
-                writer.write_all(line)?;
-                writer.write_all(b"\n")?;
-                if line_buffered {
-                    writer.flush()?;
-                }
-                line_num += 1;
             }
+        }
+
+        // Process remaining data rows
+        // Empty files are naturally skipped as for_each_record finds no records
+        reader.for_each_record(|line| {
+            writer.write_all(line_num.to_string().as_bytes())?;
+            writer.write_all(delimiter_bytes)?;
+            writer.write_all(line)?;
+            writer.write_all(b"\n")?;
+            if line_buffered {
+                writer.flush()?;
+            }
+            line_num += 1;
             Ok(())
         })?;
     }
