@@ -6,36 +6,63 @@ This document defines the naming and behavior conventions for parameters shared 
 
 Headers are the column name rows in data files. Different commands have different header processing requirements, but parameter naming should remain consistent.
 
-*   **Header Detection Modes** (mutually exclusive)
-    - `--header` / `-H`: **FirstLine** mode - take the first line as header (contains column names)
-    - `--header-lines N`: **LinesN** mode - take exactly N lines as header
-    - `--header-hash`: **HashLines** mode - take all consecutive `#` lines as header (metadata only)
-    - `--header-hash1`: **HashLines1** mode - take `#` lines plus the next line as header (contains column names)
+**Quick Selection:**
 
-*   **Library Implementation**
-    - Use `TsvReader::read_header_mode(mode)` to read headers according to the specified mode.
-    - Returns `HeaderInfo` containing:
-        - `lines: Vec<Vec<u8>>` - all header lines (including column names line if applicable)
-        - `column_names_line: Option<Vec<u8>>` - the line containing column names (if mode provides it)
-    - Mode behavior:
-        - `FirstLine`: `lines` is empty, `column_names_line` is the first line
-        - `LinesN(n)`: `lines` contains first n lines, `column_names_line` is the nth line
-        - `HashLines`: `lines` contains `#` lines, `column_names_line` is None
-        - `HashLines1`: `lines` contains `#` lines + column names, `column_names_line` is the column names line
+*   Need column names for field references? Use `--header` (standard TSV) or `--header-hash1` (TSV with comments).
+*   Just skip header lines? Use `--header-lines N` (first N lines) or `--header-hash` (comment lines only).
 
-*   **Special Commands**
-    - `split`: Uses `--header-in-out` (input has header, output writes header, default) or `--header-in-only` (input has header, output does not write header). `--header` is an alias for `--header-in-out`.
-    - `keep-header`: Uses `--lines N` / `-n` to specify number of header lines (default: 1)
+**Header Detection Modes** (mutually exclusive):
 
-*   **Multi-file Header Behavior**
-    - When using multiple input files with header mode enabled, the header from the first file is read and written to output.
-    - Headers from subsequent files are skipped.
+*   **Modes that provide column names** (for commands like `select`, `filter`, `bin`):
 
-*   **Commands by Header Mode Support**
+    *   `--header` / `-H`: **FirstLine** mode
+        - Takes the first line as column names.
+        - Simplest mode for standard TSV files.
+        - `lines` is empty, `column_names_line` is the first line.
 
-    **FirstLine and HashLines1 modes** (modes that provide column names): `append`, `bin`, `select`
+    *   `--header-hash1`: **HashLines1** mode
+        - Takes consecutive `#` lines plus the next line as header.
+        - **Graceful degradation**: If no `#` lines exist, uses the first line as column names (behaves like `--header`).
+        - `lines` contains only `#` lines (empty if no `#` lines); column names line is stored separately.
 
-    **All four modes** (FirstLine, LinesN, HashLines, HashLines1): `blank`, `check`, `filter`
+*   **Modes that don't provide column names** (for commands like `blank`, `check`):
+
+    *   `--header-lines N`: **LinesN** mode
+        - Takes up to N lines as header (fewer if file is shorter).
+        - Does not extract column names.
+        - `lines` contains up to n lines, `column_names_line` is None.
+
+    *   `--header-hash`: **HashLines** mode
+        - Takes all consecutive `#` lines as header (metadata only).
+        - No column names line is extracted.
+        - `lines` contains `#` lines, `column_names_line` is None.
+
+**Library Implementation:**
+
+*   Use `TsvReader::read_header_mode(mode)` to read headers.
+*   Returns `HeaderInfo { lines, column_names_line }` where:
+    - `lines`: all header lines read from input
+    - `column_names_line`: the line containing column names (None if mode doesn't provide column names)
+*   Mode behavior:
+    - `FirstLine`: `lines` is empty, `column_names_line` is the first line
+    - `LinesN(n)`: `lines` contains up to n lines read, `column_names_line` is None
+    - `HashLines`: `lines` contains all consecutive `#` lines, `column_names_line` is None
+    - `HashLines1`: `lines` contains only `#` lines (empty if no `#` lines), `column_names_line` is the column names line
+
+**Special Commands:**
+
+*   `split`: Uses `--header-in-out` (input has header, output writes header, default) or `--header-in-only` (input has header, output does not write header). `--header` is an alias for `--header-in-out`.
+*   `keep-header`: Uses `--lines N` / `-n` to specify number of header lines (default: 1)
+
+**Multi-file Header Behavior:**
+
+*   When using multiple input files with header mode enabled, the header from the first file is read and written to output.
+*   Headers from subsequent files are skipped.
+
+**Commands by Header Mode Support:**
+
+*   **FirstLine and HashLines1 modes** (modes that provide column names): `append`, `bin`, `select`
+*   **All four modes** (FirstLine, LinesN, HashLines, HashLines1): `blank`, `check`, `filter`
 
 ## Input/Output Conventions
 

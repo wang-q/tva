@@ -167,15 +167,22 @@ impl<R: Read> TsvReader<R> {
             } else if include_next_line && found_hash && column_names.is_none() {
                 // First non-hash line after hash lines is column names
                 column_names = Some(record.to_vec());
-                lines.push(record.to_vec()); // Include column names in lines
+                // Note: column names line is NOT included in lines (per documentation)
                 return Err(io::Error::new(io::ErrorKind::Interrupted, "Stop"));
             } else if !record.is_empty() {
                 // Non-empty line that's not a hash line
                 if !found_hash {
-                    // No hash lines found - not a valid hash header
-                    // Remember this line so we can restore it to the buffer
-                    first_non_hash_line = Some(record.to_vec());
-                    return Err(io::Error::new(io::ErrorKind::Other, "No hash lines"));
+                    // No hash lines found
+                    if include_next_line {
+                        // For HashLines1 mode, use the first non-hash line as column names
+                        column_names = Some(record.to_vec());
+                        // Note: column names line is NOT included in lines (per documentation)
+                        return Err(io::Error::new(io::ErrorKind::Interrupted, "Stop"));
+                    } else {
+                        // For HashLines mode, not a valid hash header
+                        first_non_hash_line = Some(record.to_vec());
+                        return Err(io::Error::new(io::ErrorKind::Other, "No hash lines"));
+                    }
                 }
                 // Hash lines ended - remember this line and stop
                 // Don't use Interrupted here because for_each_record will skip the line
@@ -204,7 +211,8 @@ impl<R: Read> TsvReader<R> {
                 }
             }
             Err(e) if e.kind() == io::ErrorKind::Interrupted => {
-                if lines.is_empty() {
+                // For HashLines1 mode without hash lines, lines is empty but column_names is set
+                if lines.is_empty() && column_names.is_none() {
                     Ok(None)
                 } else {
                     Ok(Some(HeaderInfo {
@@ -638,10 +646,9 @@ mod tests {
             .read_header_mode(HeaderMode::HashLines1)
             .unwrap()
             .unwrap();
-        assert_eq!(header_info.lines.len(), 3); // 2 hash lines + 1 column names line
+        assert_eq!(header_info.lines.len(), 2); // Only hash lines, column names NOT included
         assert_eq!(header_info.lines[0], b"# Comment 1");
         assert_eq!(header_info.lines[1], b"# Comment 2");
-        assert_eq!(header_info.lines[2], b"col1\tcol2"); // column names included in lines
         assert_eq!(header_info.column_names_line, Some(b"col1\tcol2".to_vec()));
 
         let mut records = Vec::new();
@@ -766,11 +773,15 @@ mod tests {
         let cursor = Cursor::new(data);
         let mut reader = TsvReader::new(cursor);
 
-        // HashLines1 should return None if no hash lines found
+        // HashLines1 should use the first line as header when no hash lines found
+        // lines should be empty (like FirstLine mode), column_names_line should be set
         let header_info = reader.read_header_mode(HeaderMode::HashLines1).unwrap();
-        assert!(header_info.is_none());
+        assert!(header_info.is_some());
+        let info = header_info.unwrap();
+        assert_eq!(info.lines.len(), 0); // Empty, like FirstLine mode
+        assert_eq!(info.column_names_line, Some(b"col1\tcol2".to_vec()));
 
-        // All data should still be readable
+        // Remaining data should be readable
         let mut records = Vec::new();
         reader
             .for_each_record(|rec| {
@@ -778,9 +789,8 @@ mod tests {
                 Ok(())
             })
             .unwrap();
-        assert_eq!(records.len(), 2);
-        assert_eq!(records[0], b"col1\tcol2");
-        assert_eq!(records[1], b"val1\tval2");
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0], b"val1\tval2");
     }
 
     #[test]
