@@ -13,7 +13,7 @@ Headers are the column name rows in data files. Different commands have differen
 
 **Header Detection Modes** (mutually exclusive):
 
-*   **Modes that provide column names** (for commands like `select`, `filter`, `bin`):
+*   **Modes that provide column names**:
 
     *   `--header` / `-H`: **FirstLine** mode
         - Takes the first line as column names.
@@ -25,7 +25,9 @@ Headers are the column name rows in data files. Different commands have differen
         - **Graceful degradation**: If no `#` lines exist, uses the first line as column names (behaves like `--header`).
         - `lines` contains only `#` lines (empty if no `#` lines); column names line is stored separately.
 
-*   **Modes that don't provide column names** (for commands like `blank`, `check`):
+    Commands using these modes: `append`, `bin`, `select`.
+
+*   **Modes that don't provide column names**:
 
     *   `--header-lines N`: **LinesN** mode
         - Takes up to N lines as header (fewer if file is shorter).
@@ -36,6 +38,8 @@ Headers are the column name rows in data files. Different commands have differen
         - Takes all consecutive `#` lines as header (metadata only).
         - No column names line is extracted.
         - `lines` contains `#` lines, `column_names_line` is None.
+
+    Commands using these modes: `blank`, `check`, `filter`.
 
 **Library Implementation:**
 
@@ -58,11 +62,6 @@ Headers are the column name rows in data files. Different commands have differen
 
 *   When using multiple input files with header mode enabled, the header from the first file is read and written to output.
 *   Headers from subsequent files are skipped.
-
-**Commands by Header Mode Support:**
-
-*   **FirstLine and HashLines1 modes** (modes that provide column names): `append`, `bin`, `select`
-*   **All four modes** (FirstLine, LinesN, HashLines, HashLines1): `blank`, `check`, `filter`
 
 ## Input/Output Conventions
 

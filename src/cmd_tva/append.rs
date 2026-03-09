@@ -2,7 +2,7 @@ use clap::*;
 use std::io::Write;
 use std::path::Path;
 
-use crate::cmd_tva::common::{build_header_config, header_args};
+use crate::cmd_tva::common::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
 
 use crate::libs::tsv::reader::TsvReader;
@@ -23,7 +23,7 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("Enable line-buffered output (flush after each line)"),
         )
-        .args(header_args())
+        .args(header_args_with_columns())
         .arg(
             Arg::new("track-source")
                 .long("track-source")

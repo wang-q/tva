@@ -311,7 +311,14 @@ fn bin_field_not_found_with_hash1() -> anyhow::Result<()> {
 
     let (_, stderr) = TvaCmd::new()
         .stdin(input)
-        .args(&["bin", "--header-hash1", "--width", "10", "--field", "NonExistentField"])
+        .args(&[
+            "bin",
+            "--header-hash1",
+            "--width",
+            "10",
+            "--field",
+            "NonExistentField",
+        ])
         .run_fail();
 
     assert!(stderr.contains("Field 'NonExistentField' not found in header"));
@@ -320,13 +327,13 @@ fn bin_field_not_found_with_hash1() -> anyhow::Result<()> {
 
 #[test]
 fn bin_multiple_files_mixed_headers() -> anyhow::Result<()> {
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     let temp = TempDir::new()?;
     let file1 = temp.path().join("f1.tsv");
     let file2 = temp.path().join("f2.tsv");
-    
+
     // File 1 with hash header
     fs::write(&file1, "# Comment\nValue\n10.5\n15.2\n")?;
     // File 2 with regular header

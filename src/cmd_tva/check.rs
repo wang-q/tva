@@ -40,8 +40,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 .map_err(map_io_err)?;
 
             if let Some(header_info) = header_result {
+                // Count header lines (hash lines or LinesN lines)
+                total_lines += header_info.lines.len() as u64;
+
+                // For modes that provide column names, count fields and use as expected
                 if let Some(column_names_line) = header_info.column_names_line {
-                    // Count fields in header line
+                    // Count fields in column names line
                     let header_fields = if column_names_line.is_empty() {
                         0
                     } else {
@@ -51,8 +55,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     if expected_fields.is_none() {
                         expected_fields = Some(header_fields);
                     }
-
-                    total_lines += header_info.lines.len() as u64;
                 }
             }
         }

@@ -3,17 +3,9 @@
 //! This module provides `TsvReader`, which manages an internal buffer to allow
 //! iterating over TSV records with minimal allocation.
 
-use crate::libs::tsv::header::HeaderMode;
+use crate::libs::tsv::header::{HeaderInfo, HeaderMode};
 use crate::libs::tsv::record::TsvRow;
 use std::io::{self, Read, Write};
-
-/// Information about a detected header.
-pub struct HeaderInfo {
-    /// All header lines (e.g., comment lines, or first N lines).
-    pub lines: Vec<Vec<u8>>,
-    /// The specific line containing column names (if applicable).
-    pub column_names_line: Option<Vec<u8>>,
-}
 
 /// A reader that efficiently scans for TSV records (lines) in a byte stream.
 pub struct TsvReader<R> {
@@ -181,7 +173,10 @@ impl<R: Read> TsvReader<R> {
                     } else {
                         // For HashLines mode, not a valid hash header
                         first_non_hash_line = Some(record.to_vec());
-                        return Err(io::Error::new(io::ErrorKind::Other, "No hash lines"));
+                        return Err(io::Error::new(
+                            io::ErrorKind::Other,
+                            "No hash lines",
+                        ));
                     }
                 }
                 // Hash lines ended - remember this line and stop

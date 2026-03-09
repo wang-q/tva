@@ -70,6 +70,14 @@ impl Default for HeaderConfig {
     }
 }
 
+/// Information about a detected header (returned by TsvReader).
+pub struct HeaderInfo {
+    /// All header lines (e.g., comment lines, or first N lines).
+    pub lines: Vec<Vec<u8>>,
+    /// The specific line containing column names (if applicable).
+    pub column_names_line: Option<Vec<u8>>,
+}
+
 /// Result of header detection.
 #[derive(Debug)]
 pub struct DetectedHeader {

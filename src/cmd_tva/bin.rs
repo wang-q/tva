@@ -100,18 +100,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 let header_info = match header_result {
                     Some(info) => info,
-                    None => {
-                        // For HashLines1 mode, if no hash lines found, try to read first line as header
-                        if matches!(header_config.mode, crate::libs::tsv::header::HeaderMode::HashLines1) {
-                            let first_line_result = tsv_reader.read_header_mode(crate::libs::tsv::header::HeaderMode::FirstLine).map_err(map_io_err)?;
-                            match first_line_result {
-                                Some(info) => info,
-                                None => continue,
-                            }
-                        } else {
-                            continue;
-                        }
-                    }
+                    None => continue,
                 };
 
                 let column_names_bytes: Vec<u8> = match header_info.column_names_line {
@@ -141,14 +130,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 header_written = true;
             } else {
                 // For subsequent files, skip the header
-                let header_result = tsv_reader
+                let _ = tsv_reader
                     .read_header_mode(header_config.mode)
                     .map_err(map_io_err)?;
-                
-                // If no header found in HashLines1 mode, try to skip first line
-                if header_result.is_none() && matches!(header_config.mode, crate::libs::tsv::header::HeaderMode::HashLines1) {
-                    let _ = tsv_reader.read_header_mode(crate::libs::tsv::header::HeaderMode::FirstLine).map_err(map_io_err)?;
-                }
             }
         } else if field_idx.is_none() {
             return Err(anyhow::anyhow!(

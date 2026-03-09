@@ -894,31 +894,14 @@ fn append_header_hash1() {
 }
 
 #[test]
-fn append_header_lines_n() {
-    let expected = "field1\tfield2\tfield3\nabc\tdef\tghi\njkl\tmno\tpqr\n123\t456\t789\nxy1\txy2\txy3\npqx\tpqy\tpqz\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "append",
-            "--header-lines",
-            "1",
-            "tests/data/append/input3x2.tsv",
-            "tests/data/append/input3x5.tsv",
-        ])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
 fn append_multiple_files_mixed_headers() {
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     let temp = TempDir::new().unwrap();
     let file1 = temp.path().join("f1.tsv");
     let file2 = temp.path().join("f2.tsv");
-    
+
     // File 1 with hash header
     fs::write(&file1, "# Comment\nfield1\tfield2\tfield3\nabc\tdef\tghi\n").unwrap();
     // File 2 with regular header

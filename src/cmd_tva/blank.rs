@@ -107,20 +107,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if let Some(header_info) = header_result {
                 // Write header only for the first file
                 if !header_written {
-                    // For FirstLine mode, lines is empty but column_names_line has the header
-                    // For other modes, lines contains the header lines
-                    if header_info.lines.is_empty() {
-                        // FirstLine mode - write column_names_line as header
-                        if let Some(ref column_names) = header_info.column_names_line {
-                            writer.write_all(column_names)?;
-                            writer.write_all(b"\n")?;
-                        }
-                    } else {
-                        // Other modes - write all header lines
-                        for line in &header_info.lines {
-                            writer.write_all(line)?;
-                            writer.write_all(b"\n")?;
-                        }
+                    // Write all header lines (hash lines, or LinesN lines)
+                    for line in &header_info.lines {
+                        writer.write_all(line)?;
+                        writer.write_all(b"\n")?;
+                    }
+                    // For modes that provide column names, also write the column names line
+                    if let Some(ref column_names) = header_info.column_names_line {
+                        writer.write_all(column_names)?;
+                        writer.write_all(b"\n")?;
                     }
                     if line_buffered {
                         writer.flush()?;
