@@ -142,3 +142,98 @@ fn sort_empty_key_part() {
     assert!(stdout.is_empty());
     assert!(stderr.contains("empty key list element"));
 }
+
+// Tests for new header modes
+
+#[test]
+fn sort_with_header_lines_n() {
+    // LinesN mode: first N lines are treated as header (no column names line)
+    let input = "# Comment 1\n# Comment 2\nc\t1\na\t2\nb\t3\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sort", "--header-lines", "2", "-k", "1"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, "# Comment 1\n# Comment 2\na\t2\nb\t3\nc\t1\n");
+}
+
+#[test]
+fn sort_with_header_hash() {
+    let input = "# Comment 1\n# Comment 2\nc\t1\na\t2\nb\t3\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sort", "--header-hash", "-k", "1"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, "# Comment 1\n# Comment 2\na\t2\nb\t3\nc\t1\n");
+}
+
+#[test]
+fn sort_with_header_hash1() {
+    let input = "# Comment 1\n# Comment 2\nname\tval\nc\t1\na\t2\nb\t3\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sort", "--header-hash1", "-k", "1"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(
+        stdout,
+        "# Comment 1\n# Comment 2\nname\tval\na\t2\nb\t3\nc\t1\n"
+    );
+}
+
+#[test]
+fn sort_with_header_hash1_no_hash_lines() {
+    // When no hash lines exist, should use first line as column names
+    let input = "name\tval\nc\t1\na\t2\nb\t3\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sort", "--header-hash1", "-k", "1"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, "name\tval\na\t2\nb\t3\nc\t1\n");
+}
+
+#[test]
+fn sort_header_modes_mutually_exclusive() {
+    let (stdout, stderr) = TvaCmd::new()
+        .args(&["sort", "--header", "--header-lines", "2", "-k", "1"])
+        .stdin("a\tb\n")
+        .run_fail();
+
+    assert!(stdout.is_empty());
+    assert!(stderr.contains(
+        "only one of --header, --header-lines, --header-hash, --header-hash1"
+    ));
+}
+
+#[test]
+fn sort_with_header_lines_n_multi_file() {
+    // Create temp files for multi-file test
+    // LinesN mode: first N lines are treated as header (no column names line)
+    let dir = tempfile::tempdir().unwrap();
+    let file1 = dir.path().join("file1.tsv");
+    let file2 = dir.path().join("file2.tsv");
+
+    std::fs::write(&file1, "# Comment 1\nc\t1\na\t2\n").unwrap();
+    std::fs::write(&file2, "# Comment 1\nb\t3\nd\t4\n").unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "sort",
+            "--header-lines",
+            "1",
+            "-k",
+            "1",
+            file1.to_str().unwrap(),
+            file2.to_str().unwrap(),
+        ])
+        .run();
+
+    // Only first file's header should be written
+    assert_eq!(stdout, "# Comment 1\na\t2\nb\t3\nc\t1\nd\t4\n");
+}

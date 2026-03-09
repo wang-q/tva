@@ -1,3 +1,4 @@
+use crate::libs::cli::{build_header_config, header_args};
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::record::TsvRecord;
 use clap::*;
@@ -36,13 +37,7 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("Reverse the sort order"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Treat the first line of each file as a header; only the first header is output"),
-        )
+        .args(header_args())
         .arg(
             Arg::new("delimiter")
                 .long("delimiter")
@@ -69,7 +64,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let numeric = args.get_flag("numeric");
     let reverse = args.get_flag("reverse");
-    let has_header = args.get_flag("header");
 
     let delimiter_str = args
         .get_one::<String>("delimiter")
@@ -102,31 +96,33 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer =
         crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
-    // Phase 1: Split and sort chunks
-    // let mut chunk_files: Vec<String> = Vec::new();
-    // let mut current_chunk: Vec<SortItem> = Vec::with_capacity(buffer_size);
-    // let mut current_chunk_size: usize = 0;
+    // Build HeaderConfig from arguments
+    let header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
 
     let mut rows: Vec<TsvRecord> = Vec::new();
-    let mut header: Option<TsvRecord> = None;
+    let mut header_info: Option<crate::libs::tsv::header::HeaderInfo> = None;
     let mut header_written = false;
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
-        let mut is_first_line = true;
+
+        // If header is enabled, read header according to the configured mode
+        if header_config.enabled {
+            let header_result = reader
+                .read_header_mode(header_config.mode)
+                .map_err(|e| anyhow::anyhow!(e))?;
+
+            if let Some(h) = header_result {
+                // Store header info from the first file only
+                if header_info.is_none() {
+                    header_info = Some(h);
+                }
+            }
+        }
 
         reader.for_each_record(|record| {
-            if has_header && is_first_line {
-                if header.is_none() {
-                    let mut tsv_rec = TsvRecord::new();
-                    tsv_rec.parse_line(record, delimiter);
-                    header = Some(tsv_rec);
-                }
-                is_first_line = false;
-                return Ok(());
-            }
-
             if record.is_empty() {
                 rows.push(TsvRecord::new());
             } else {
@@ -134,15 +130,22 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 tsv_rec.parse_line(record, delimiter);
                 rows.push(tsv_rec);
             }
-
-            is_first_line = false;
             Ok(())
         })?;
     }
 
-    if let Some(h) = &header {
-        writer.write_all(h.as_line())?;
-        writer.write_all(b"\n")?;
+    // Write header (only from the first file)
+    if let Some(ref h) = header_info {
+        // Write all header lines (hash lines, or LinesN lines)
+        for line in &h.lines {
+            writer.write_all(line)?;
+            writer.write_all(b"\n")?;
+        }
+        // For modes that provide column names, also write the column names line
+        if let Some(ref column_names) = h.column_names_line {
+            writer.write_all(column_names)?;
+            writer.write_all(b"\n")?;
+        }
         header_written = true;
     }
 

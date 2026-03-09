@@ -39,7 +39,7 @@ Headers are the column name rows in data files. Different commands have differen
         - No column names line is extracted.
         - `lines` contains `#` lines, `column_names_line` is None.
 
-    Commands using these modes: `check`.
+    Commands using these modes: `check`, `slice`, `sort`.
 
 **Library Implementation:**
 
