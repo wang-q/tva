@@ -1,3 +1,4 @@
+use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use ahash::RandomState;
 use clap::*;
@@ -59,13 +60,7 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("Exclude matching records (anti-join)"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Treat the first line of each file as a header; only the first header is output"),
-        )
+        .args(header_args_with_columns())
         .arg(
             Arg::new("delimiter")
                 .long("delimiter")
@@ -199,7 +194,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         args.get_one::<String>("append-fields").cloned();
     let write_all_value: Option<String> = args.get_one::<String>("write-all").cloned();
 
-    let has_header = args.get_flag("header");
+    // Build HeaderConfig from arguments
+    let header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+
     let allow_duplicate_keys = args.get_flag("allow-duplicate-keys");
     let line_buffered = args.get_flag("line-buffered");
     let exclude = args.get_flag("exclude");
@@ -240,13 +238,20 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     );
 
     let mut filter_header: Option<crate::libs::tsv::fields::Header> = None;
-    if has_header {
-        if let Some(header_bytes) = filter_reader.read_header()? {
-            let header_line = String::from_utf8_lossy(&header_bytes);
-            filter_header = Some(crate::libs::tsv::fields::Header::from_line(
-                &header_line,
-                delimiter_char,
-            ));
+    if header_config.enabled {
+        let header_result = filter_reader
+            .read_header_mode(header_config.mode)
+            .map_err(|e| anyhow::anyhow!(e))?;
+
+        if let Some(header_info) = header_result {
+            // Get column names for field resolution if available
+            if let Some(column_names_bytes) = header_info.column_names_line {
+                let header_line = String::from_utf8_lossy(&column_names_bytes);
+                filter_header = Some(crate::libs::tsv::fields::Header::from_line(
+                    &header_line,
+                    delimiter_char,
+                ));
+            }
         }
     }
 
@@ -325,11 +330,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .cloned()
         .unwrap_or_default();
 
-    if !has_header && !prefix.is_empty() {
+    if !header_config.enabled && !prefix.is_empty() {
         arg_error("--prefix requires --header");
     }
 
-    let mut data_key_whole_line = false;
     let mut data_key_indices_len = 0; // For validation
     let mut data_key_extractor: Option<KeyExtractor> = None;
 
@@ -377,89 +381,113 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // Use 512KB buffer for data reader
         let mut reader =
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
-        let mut is_first_line = true;
 
-        reader.for_each_record(|line| {
-            if line.is_empty() {
-                return Ok(());
-            }
+        // Process header if enabled
+        if header_config.enabled {
+            let header_result = reader
+                .read_header_mode(header_config.mode)
+                .map_err(|e| anyhow::anyhow!(e))?;
 
-            if has_header && is_first_line {
+            if let Some(header_info) = header_result {
                 // Always re-parse header for each file to handle potentially different column orders
                 let effective_data_spec =
                     data_fields_spec.clone().or_else(|| key_fields_spec.clone());
 
-                let header_str = String::from_utf8_lossy(line);
-                let (whole_line, indices) = parse_join_field_spec(
-                    effective_data_spec,
-                    Some(&crate::libs::tsv::fields::Header::from_line(
-                        &header_str, delimiter_char,
-                    )),
-                    delimiter_char,
-                );
-                data_key_whole_line = whole_line;
-                if let Some(ref idxs) = indices {
-                    data_key_indices_len = idxs.len();
-                } else {
-                    data_key_indices_len = 0; // not really 0, but implicit
-                }
-                data_key_extractor = Some(KeyExtractor::new(indices, false, true));
+                // Parse column names for field resolution if available
+                if let Some(ref column_names_bytes) = header_info.column_names_line {
+                    let header_str = String::from_utf8_lossy(column_names_bytes);
+                    let (data_key_whole_line, indices) = parse_join_field_spec(
+                        effective_data_spec,
+                        Some(&crate::libs::tsv::fields::Header::from_line(
+                            &header_str,
+                            delimiter_char,
+                        )),
+                        delimiter_char,
+                    );
+                    if let Some(ref idxs) = indices {
+                        data_key_indices_len = idxs.len();
+                    } else {
+                        data_key_indices_len = 0; // not really 0, but implicit
+                    }
+                    data_key_extractor = Some(KeyExtractor::new(indices, false, true));
 
-                // Validate key lengths match
-                if !filter_key_whole_line && !data_key_whole_line {
-                    let fk_len = filter_key_indices.as_ref().unwrap().len();
-                    let dk_len = data_key_indices_len;
-                    if fk_len != dk_len {
-                        eprintln!(
-                            "tva join: different number of key-fields and data-fields in file {}",
-                            input.name
-                        );
-                        std::process::exit(1);
+                    // Validate key lengths match
+                    if !filter_key_whole_line && !data_key_whole_line {
+                        let fk_len = filter_key_indices.as_ref().unwrap().len();
+                        let dk_len = data_key_indices_len;
+                        if fk_len != dk_len {
+                            eprintln!(
+                                "tva join: different number of key-fields and data-fields in file {}",
+                                input.name
+                            );
+                            std::process::exit(1);
+                        }
                     }
                 }
 
                 if !header_written {
-                    writer.write_all(line)?;
-                    if let Some(ref suffix) = append_header_suffix {
-                        writer.write_all(suffix.as_bytes())?;
+                    // Write all header lines (hash lines, or LinesN lines)
+                    for line in &header_info.lines {
+                        writer.write_all(line)?;
+                        writer.write_all(b"\n")?;
                     }
-                    writer.write_all(b"\n")?;
+                    // For modes that provide column names, also write the column names line
+                    // Only write if column_names is not empty (to handle empty files with just a newline)
+                    if let Some(ref column_names) = header_info.column_names_line {
+                        if !column_names.is_empty() {
+                            writer.write_all(column_names)?;
+                            // Append header suffix if present
+                            if let Some(ref suffix) = append_header_suffix {
+                                writer.write_all(suffix.as_bytes())?;
+                            }
+                            writer.write_all(b"\n")?;
+                        }
+                    }
 
                     if line_buffered {
                         writer.flush()?;
                     }
                     header_written = true;
                 }
-                is_first_line = false;
+            } else {
+                continue; // Empty file
+            }
+        }
+
+        // Initialize extractor for headerless files if not set
+        if data_key_extractor.is_none() {
+            let effective_data_spec =
+                data_fields_spec.clone().or_else(|| key_fields_spec.clone());
+            let (data_key_whole_line, indices) =
+                parse_join_field_spec(effective_data_spec.clone(), None, delimiter_char);
+
+            if let Some(ref idxs) = indices {
+                data_key_indices_len = idxs.len();
+            }
+            data_key_extractor = Some(KeyExtractor::new(indices, false, true));
+
+            if !filter_key_whole_line && !data_key_whole_line {
+                let fk_len = filter_key_indices.as_ref().unwrap().len();
+                let dk_len = data_key_indices_len;
+                if fk_len != dk_len {
+                    eprintln!(
+                        "tva join: different number of key-fields and data-fields"
+                    );
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        // Process data records
+        reader.for_each_record(|line| {
+            if line.is_empty() {
                 return Ok(());
             }
 
-            is_first_line = false;
-
-            // Initialize extractor for headerless files or subsequent files if not set
-            if data_key_extractor.is_none() {
-                 let effective_data_spec =
-                    data_fields_spec.clone().or_else(|| key_fields_spec.clone());
-                let (whole_line, indices) =
-                    parse_join_field_spec(effective_data_spec.clone(), None, delimiter_char);
-
-                data_key_whole_line = whole_line;
-                if let Some(ref idxs) = indices {
-                    data_key_indices_len = idxs.len();
-                }
-                data_key_extractor = Some(KeyExtractor::new(indices, false, true));
-
-                if !filter_key_whole_line && !data_key_whole_line {
-                    let fk_len = filter_key_indices.as_ref().unwrap().len();
-                    let dk_len = data_key_indices_len;
-                    if fk_len != dk_len {
-                        eprintln!("tva join: different number of key-fields and data-fields");
-                        std::process::exit(1);
-                    }
-                }
-            }
-
-            let key_result = data_key_extractor.as_mut().unwrap().extract(line, delimiter);
+            let key_result = data_key_extractor
+                .as_mut()
+                .unwrap()
+                .extract(line, delimiter);
             let key = match key_result {
                 Ok(k) => k,
                 Err(idx) => {
