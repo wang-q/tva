@@ -1,3 +1,4 @@
+use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::key::KeyExtractor;
 use crate::libs::tsv::reader::TsvReader;
@@ -23,13 +24,7 @@ pub fn make_subcommand() -> Command {
                 .num_args(1)
                 .help("TSV fields (1-based) to use as dedup key"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Treat the first line of each input as a header; only the first header is output"),
-        )
+        .args(header_args_with_columns())
         .arg(
             Arg::new("delimiter")
                 .long("delimiter")
@@ -130,7 +125,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let fields_spec: Option<String> = args.get_one::<String>("fields").cloned();
 
-    let has_header = args.get_flag("header");
+    // Build HeaderConfig from arguments
+    let header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+
     let delimiter_str = args
         .get_one::<String>("delimiter")
         .cloned()
@@ -159,9 +157,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .and_then(|s| s.parse::<u64>().ok())
         .unwrap_or(0);
 
+    // When --repeated is set, we want lines that appear at least 2 times
     if repeated && at_least <= 1 {
         at_least = 2;
     }
+    // Ensure max is at least at_least when:
+    // - at_least >= 2 (we're filtering for repeated lines)
+    // - max is less than at_least (current max won't satisfy the constraint)
+    // - Either max is explicitly set to 0 (no limit), OR we're not in equiv/number mode
+    //   (in equiv/number mode, max=0 means output all occurrences, so we don't need to adjust)
     if at_least >= 2 && max < at_least && (max != 0 || (!equiv_mode && !number_mode)) {
         max = at_least;
     }
@@ -192,6 +196,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .and_then(|s| s.parse::<i64>().ok())
         .unwrap_or(1);
     let mut next_equiv_id: u64 = if equiv_start < 0 {
+        eprintln!(
+            "tva uniq: warning: --equiv-start value {} is negative, using 1 instead",
+            equiv_start
+        );
         1
     } else {
         equiv_start as u64
@@ -213,53 +221,69 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut tsv_reader = TsvReader::with_capacity(input.reader, 512 * 1024);
 
-        if has_header {
-            if let Some(header_bytes) = tsv_reader.read_header().map_err(map_io_err)? {
+        // If header is enabled, read header according to the configured mode
+        if header_config.enabled {
+            let header_result = tsv_reader
+                .read_header_mode(header_config.mode)
+                .map_err(map_io_err)?;
+
+            if let Some(h_info) = header_result {
+                // Parse header for field resolution if column names are available
                 if header.is_none() {
-                    let line = String::from_utf8_lossy(&header_bytes);
-                    header = Some(crate::libs::tsv::fields::Header::from_line(
-                        &line, delimiter,
-                    ));
-                    if let Some(ref spec) = fields_spec {
-                        if spec.trim() == "0" {
-                            extractor =
-                                Some(KeyExtractor::new(None, ignore_case, false));
-                        } else {
-                            let parsed =
-                                crate::libs::tsv::fields::parse_field_list_with_header(
-                                    spec,
-                                    header.as_ref(),
-                                    delimiter,
-                                );
-                            match parsed {
-                                Ok(v) => {
-                                    extractor = Some(KeyExtractor::new(
-                                        Some(v),
-                                        ignore_case,
-                                        true,
-                                    ))
-                                }
-                                Err(e) => {
-                                    arg_error(&e);
+                    if let Some(ref column_names_bytes) = h_info.column_names_line {
+                        let line = String::from_utf8_lossy(column_names_bytes);
+                        header = Some(crate::libs::tsv::fields::Header::from_line(
+                            &line, delimiter,
+                        ));
+                        if let Some(ref spec) = fields_spec {
+                            if spec.trim() == "0" {
+                                extractor =
+                                    Some(KeyExtractor::new(None, ignore_case, false));
+                            } else {
+                                let parsed =
+                                    crate::libs::tsv::fields::parse_field_list_with_header(
+                                        spec,
+                                        header.as_ref(),
+                                        delimiter,
+                                    );
+                                match parsed {
+                                    Ok(v) => {
+                                        extractor = Some(KeyExtractor::new(
+                                            Some(v),
+                                            ignore_case,
+                                            true,
+                                        ))
+                                    }
+                                    Err(e) => {
+                                        arg_error(&e);
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
+                // Write header only for the first file
                 if !header_written {
-                    // Reconstruct header line (without newline)
-                    writer.write_all(&header_bytes)?;
+                    // Write all header lines (hash lines, or LinesN lines)
+                    for line in &h_info.lines {
+                        writer.write_all(line)?;
+                        writer.write_all(b"\n")?;
+                    }
+                    // For modes that provide column names, also write the column names line
+                    if let Some(ref column_names) = h_info.column_names_line {
+                        writer.write_all(column_names)?;
 
-                    if equiv_mode {
-                        writer.write_all(&[delimiter as u8])?;
-                        writer.write_all(equiv_header.as_bytes())?;
+                        if equiv_mode {
+                            writer.write_all(&[delimiter as u8])?;
+                            writer.write_all(equiv_header.as_bytes())?;
+                        }
+                        if number_mode {
+                            writer.write_all(&[delimiter as u8])?;
+                            writer.write_all(number_header.as_bytes())?;
+                        }
+                        writer.write_all(b"\n")?;
                     }
-                    if number_mode {
-                        writer.write_all(&[delimiter as u8])?;
-                        writer.write_all(number_header.as_bytes())?;
-                    }
-                    writer.write_all(b"\n")?;
                     if line_buffered {
                         writer.flush()?;
                     }

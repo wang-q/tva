@@ -557,3 +557,105 @@ fn uniq_max_logic() {
     let lines: Vec<&str> = stdout.lines().collect();
     assert_eq!(lines.len(), 1);
 }
+
+#[test]
+fn uniq_equiv_start_negative_warning() {
+    // Test that negative equiv-start produces a warning and uses 1
+    let input = "a\nb\na\n";
+    let (stdout, stderr) = TvaCmd::new()
+        .args(&["uniq", "--equiv", "--equiv-start=-5"])
+        .stdin(input)
+        .run();
+
+    // Check warning message is printed to stderr
+    assert!(
+        stderr.contains("warning: --equiv-start value -5 is negative, using 1 instead"),
+        "Expected warning for negative equiv-start, got stderr: {}",
+        stderr
+    );
+
+    // Verify output starts from 1 (not -5)
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 3);
+    // First occurrence of "a" gets ID 1
+    assert!(
+        lines[0].ends_with("\t1"),
+        "First line should end with tab 1"
+    );
+    // "b" gets ID 2
+    assert!(
+        lines[1].ends_with("\t2"),
+        "Second line should end with tab 2"
+    );
+    // Second occurrence of "a" reuses ID 1
+    assert!(
+        lines[2].ends_with("\t1"),
+        "Third line should end with tab 1"
+    );
+}
+
+#[test]
+fn uniq_equiv_start_zero_ok() {
+    // Test that equiv-start=0 is treated as 0 (not negative), but since 0 is not useful,
+    // the code will use it as u64 value 0, which will be incremented to 1 for the first ID
+    let input = "a\nb\n";
+    let (stdout, stderr) = TvaCmd::new()
+        .args(&["uniq", "--equiv", "--equiv-start=0"])
+        .stdin(input)
+        .run();
+
+    // 0 is not negative, so no warning should be printed
+    assert!(
+        !stderr.contains("warning"),
+        "Should not have warning for zero equiv-start (0 is not negative), got stderr: {}",
+        stderr
+    );
+
+    // equiv_start=0 means next_equiv_id starts at 0, but the first entry will use 0 and increment
+    // Actually looking at the code: equiv_start as u64 = 0, so next_equiv_id = 0
+    // But then entry.equiv_id = next_equiv_id (0), then next_equiv_id += 1
+    // So first ID should be 0
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 2);
+    assert!(
+        lines[0].ends_with("\t0"),
+        "First line should end with tab 0"
+    );
+    assert!(
+        lines[1].ends_with("\t1"),
+        "Second line should end with tab 1"
+    );
+}
+
+#[test]
+fn uniq_equiv_start_positive_ok() {
+    // Test that positive equiv-start works without warning
+    let input = "a\nb\na\n";
+    let (stdout, stderr) = TvaCmd::new()
+        .args(&["uniq", "--equiv", "--equiv-start=10"])
+        .stdin(input)
+        .run();
+
+    // No warning should be printed
+    assert!(
+        !stderr.contains("warning"),
+        "Should not have warning for positive equiv-start, got stderr: {}",
+        stderr
+    );
+
+    // Verify output starts from 10
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 3);
+    assert!(
+        lines[0].ends_with("\t10"),
+        "First line should end with tab 10"
+    );
+    assert!(
+        lines[1].ends_with("\t11"),
+        "Second line should end with tab 11"
+    );
+    assert!(
+        lines[2].ends_with("\t10"),
+        "Third line should end with tab 10 (reused ID)"
+    );
+}
