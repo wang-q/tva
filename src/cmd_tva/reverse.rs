@@ -1,3 +1,5 @@
+use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::tsv::header::HeaderConfig;
 use clap::*;
 use memchr::memrchr_iter;
 use memmap2::Mmap;
@@ -14,13 +16,7 @@ pub fn make_subcommand() -> Command {
                 .index(1)
                 .help("Input TSV file(s) to process (default: stdin)"),
         )
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Treat the first line as a header and print it first"),
-        )
+        .args(header_args_with_columns())
         .arg(
             Arg::new("outfile")
                 .long("outfile")
@@ -38,11 +34,73 @@ pub fn make_subcommand() -> Command {
         )
 }
 
+/// Detect header from raw bytes according to the config.
+/// Returns (header_bytes, data_start_offset).
+fn detect_header_bytes(data: &[u8], config: &HeaderConfig) -> (Option<Vec<u8>>, usize) {
+    if !config.enabled {
+        return (None, 0);
+    }
+
+    use crate::libs::tsv::header::HeaderMode;
+
+    match config.mode {
+        HeaderMode::FirstLine => {
+            // Find first newline
+            if let Some(pos) = memchr::memchr(b'\n', data) {
+                let header = data[..=pos].to_vec();
+                (Some(header), pos + 1)
+            } else if !data.is_empty() {
+                // No newline but has data - treat whole thing as header
+                (Some(data.to_vec()), data.len())
+            } else {
+                (None, 0)
+            }
+        }
+        HeaderMode::HashLines1 => {
+            // Find consecutive '#' lines, then one more line for column names
+            let mut pos = 0;
+
+            // Skip consecutive '#' lines
+            while pos < data.len() {
+                if data[pos] == b'#' {
+                    // Find end of this line
+                    if let Some(line_end) = memchr::memchr(b'\n', &data[pos..]) {
+                        pos += line_end + 1;
+                    } else {
+                        // No newline - rest of file is a hash line
+                        return (Some(data.to_vec()), data.len());
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            // Now read the column names line (if we found hash lines or not)
+            if pos < data.len() {
+                if let Some(line_end) = memchr::memchr(b'\n', &data[pos..]) {
+                    let header_end = pos + line_end + 1;
+                    let header = data[..header_end].to_vec();
+                    (Some(header), header_end)
+                } else {
+                    // No newline after column names
+                    let header = data.to_vec();
+                    (Some(header), data.len())
+                }
+            } else {
+                (None, pos)
+            }
+        }
+        _ => {
+            // Other modes not expected with header_args_with_columns
+            (None, 0)
+        }
+    }
+}
+
 fn process_buffer(
     writer: &mut dyn Write,
     data: &[u8],
-    separator: u8,
-    header_mode: bool,
+    header_config: &HeaderConfig,
     header_printed: &mut bool,
 ) -> anyhow::Result<()> {
     // If empty, do nothing
@@ -52,21 +110,12 @@ fn process_buffer(
 
     // Identify header if needed
     let mut data_start = 0;
-    if header_mode && !*header_printed {
-        // Find first newline
-        if let Some(pos) = memchr::memchr(separator, data) {
-            let header = &data[0..=pos]; // include separator
-            writer.write_all(header)?;
+    if header_config.enabled && !*header_printed {
+        let (header_bytes, header_end) = detect_header_bytes(data, header_config);
+        if let Some(header) = header_bytes {
+            writer.write_all(&header)?;
             *header_printed = true;
-            data_start = pos + 1;
-        } else {
-            // Whole file is header? Or no newline.
-            // If no newline, treating as header line.
-            writer.write_all(data)?;
-            // If data doesn't end with newline, we might want to add one if we are strict,
-            // but let's just write as is.
-            *header_printed = true;
-            return Ok(());
+            data_start = header_end;
         }
     }
 
@@ -77,30 +126,14 @@ fn process_buffer(
     let slice = &data[data_start..];
     let mut following_line_start = slice.len();
 
-    // Iterate backwards finding separators
-    for i in memrchr_iter(separator, slice) {
-        // Correct logic:
-        // scan from right.
-        // find \n.
-        // This \n belongs to the line BEFORE it (in forward order).
-        // The content AFTER it is the line we just finished scanning (in reverse).
-
-        // Note on trailing newline behavior:
-        // If input is "A\nB\n", output is "B\nA\n".
-        // If input is "A\nB" (no trailing newline), output is "BA\n".
-        // This is a correct byte-level reversal where "B" + "A\n" becomes "BA\n".
-        // Users should ensure input has trailing newline if they want clean line separation.
-
+    // Iterate backwards finding newlines
+    for i in memrchr_iter(b'\n', slice) {
         writer.write_all(&slice[i + 1..following_line_start])?;
         following_line_start = i + 1;
     }
 
     // Write the first line (remainder)
     writer.write_all(&slice[0..following_line_start])?;
-
-    // Note: if the original file didn't end with \n, the first printed line (originally last) won't have \n.
-    // And the last printed line (originally first) will have \n (if it had one).
-    // This is consistent with tac.
 
     Ok(())
 }
@@ -114,22 +147,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None => vec!["stdin".to_string()],
     };
 
-    let header_mode = args.get_flag("header");
+    // Build HeaderConfig from arguments
+    let header_config =
+        build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+
     let no_mmap = args.get_flag("no-mmap");
     let mut header_printed = false;
 
     for infile in infiles {
         if infile == "stdin" {
-            // For stdin, we must buffer it all into memory (Vec<u8>)
-            // or use tempfile + mmap (like uutils tac).
-            // For simplicity and speed on reasonable inputs, Vec<u8> is fine.
-            // If extremely large, tempfile is better.
-            // Let's use tempfile fallback if needed, or just Vec for now as starter.
-            // uutils uses tempfile, let's try to be robust.
-
             let mut buf = Vec::new();
             stdin().read_to_end(&mut buf)?;
-            process_buffer(&mut writer, &buf, b'\n', header_mode, &mut header_printed)?;
+            process_buffer(&mut writer, &buf, &header_config, &mut header_printed)?;
         } else {
             let file = File::open(&infile)?;
 
@@ -145,31 +174,21 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             match mmap_res {
                 Ok(mmap) => {
-                    // We read backwards.
-                    // madvise(MADV_SEQUENTIAL) might assume forward.
-                    // backwards is not standard sequential.
-                    // Usually mmap is fast enough.
                     process_buffer(
                         &mut writer,
                         &mmap,
-                        b'\n',
-                        header_mode,
+                        &header_config,
                         &mut header_printed,
                     )?;
                 }
                 Err(_) => {
-                    // Fallback to reading file into Vec
-                    // Or standard reading?
-                    // If mmap fails (e.g. special file), read all.
-                    let mut f = file; // reopen or reuse? File matches Read.
-                                      // File cursor is at 0.
+                    let mut f = file;
                     let mut buf = Vec::new();
                     f.read_to_end(&mut buf)?;
                     process_buffer(
                         &mut writer,
                         &buf,
-                        b'\n',
-                        header_mode,
+                        &header_config,
                         &mut header_printed,
                     )?;
                 }
