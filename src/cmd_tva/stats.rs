@@ -1,8 +1,10 @@
 use crate::libs::aggregation::{
     Aggregator, OpKind, Operation, StatsConfig, StatsProcessor,
 };
+use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::fields;
+use crate::libs::tsv::fields::Header;
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::reader::TsvReader;
 use clap::{Arg, ArgAction, ArgMatches, Command};
@@ -12,13 +14,7 @@ pub fn make_subcommand() -> Command {
     let mut cmd = Command::new("stats")
         .about("Calculates summary statistics (like tsv-summarize)")
         .after_help(include_str!("../../docs/help/stats.md"))
-        .arg(
-            Arg::new("header")
-                .long("header")
-                .short('H')
-                .action(ArgAction::SetTrue)
-                .help("Treat the first line of each file as a header"),
-        )
+        .args(header_args_with_columns())
         .arg(
             Arg::new("group-by")
                 .long("group-by")
@@ -332,7 +328,10 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         None => vec!["stdin".to_string()],
     };
 
-    let header_mode = matches.get_flag("header");
+    // Build HeaderConfig from arguments
+    let header_config =
+        build_header_config(matches, true).map_err(|e| anyhow::anyhow!(e))?;
+
     let write_header = matches.get_flag("write-header");
     let group_by_spec = matches.get_one::<String>("group-by").cloned();
     let replace_missing = matches.get_one::<String>("replace-missing").cloned();
@@ -507,55 +506,37 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
+        let mut header: Option<Header> = None;
 
-        if header_mode {
-            let header_bytes_opt = reader.read_header().map_err(map_io_err)?;
-            if processor.is_none() {
-                if let Some(header_bytes) = header_bytes_opt {
-                    let line = String::from_utf8_lossy(&header_bytes);
-                    let header = fields::Header::from_line(&line, delimiter as char);
+        // If header is enabled, read header according to the configured mode
+        if header_config.enabled {
+            let header_result = reader
+                .read_header_mode(header_config.mode)
+                .map_err(map_io_err)?;
 
-                    let (proc, extractor, headers) = setup_processor(Some(&header))?;
-                    processor = Some(proc);
-                    group_extractor = extractor;
-                    use_grouping = group_extractor.is_some();
-
-                    if !use_grouping {
-                        aggregator =
-                            Some(processor.as_ref().unwrap().create_aggregator());
-                    }
-
-                    println!("{}", headers.join("\t"));
-                } else {
-                    // Empty file with --header.
-                    // Attempt to setup processor without header info (will fail if named fields are used).
-                    let (proc, extractor, headers) = setup_processor(None)?;
-                    processor = Some(proc);
-                    group_extractor = extractor;
-                    use_grouping = group_extractor.is_some();
-
-                    if !use_grouping {
-                        aggregator =
-                            Some(processor.as_ref().unwrap().create_aggregator());
-                    }
-
-                    println!("{}", headers.join("\t"));
+            if let Some(header_info) = header_result {
+                // Get column names for field resolution if available
+                if let Some(column_names_bytes) = header_info.column_names_line {
+                    let header_str = std::str::from_utf8(&column_names_bytes)?;
+                    header = Some(Header::from_line(header_str, delimiter as char));
                 }
             }
-        } else {
-            if processor.is_none() {
-                let (proc, extractor, headers) = setup_processor(None)?;
-                processor = Some(proc);
-                group_extractor = extractor;
-                use_grouping = group_extractor.is_some();
+        }
 
-                if !use_grouping {
-                    aggregator = Some(processor.as_ref().unwrap().create_aggregator());
-                }
+        // Setup processor on first file
+        if processor.is_none() {
+            let (proc, extractor, headers) = setup_processor(header.as_ref())?;
+            processor = Some(proc);
+            group_extractor = extractor;
+            use_grouping = group_extractor.is_some();
 
-                if write_header {
-                    println!("{}", headers.join("\t"));
-                }
+            if !use_grouping {
+                aggregator = Some(processor.as_ref().unwrap().create_aggregator());
+            }
+
+            // Write header if: 1) input has header, or 2) --write-header is specified
+            if header_config.enabled || write_header {
+                println!("{}", headers.join("\t"));
             }
         }
 

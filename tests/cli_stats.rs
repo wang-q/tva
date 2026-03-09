@@ -2698,3 +2698,398 @@ fn stats_collapse_alias_no_header() {
 
     assert!(stdout.contains("A") && stdout.contains("B") && stdout.contains("C"));
 }
+
+// --- Tests for --header-hash1 mode ---
+
+const INPUT_WITH_HASH_HEADER: &str =
+    "# This is a comment\n# Another comment\ncol1\tcol2\tcol3\n1\t2\t3\n4\t5\t6\n";
+
+#[test]
+fn stats_header_hash1_basic() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--sum", "col1", "--mean", "col2"])
+        .stdin(INPUT_WITH_HASH_HEADER)
+        .run();
+
+    assert_eq!(stdout, "col1_sum\tcol2_mean\n5\t3.5\n");
+}
+
+#[test]
+fn stats_header_hash1_count() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--count"])
+        .stdin(INPUT_WITH_HASH_HEADER)
+        .run();
+
+    assert_eq!(stdout, "count\n2\n");
+}
+
+#[test]
+fn stats_header_hash1_group_by() {
+    let input = "# Comment\ngroup\tvalue\nA\t10\nA\t20\nB\t30\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--group-by",
+            "group",
+            "--sum",
+            "value",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("A\t30"));
+    assert!(stdout.contains("B\t30"));
+}
+
+#[test]
+fn stats_header_hash1_multiple_ops() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--sum",
+            "col1",
+            "--min",
+            "col2",
+            "--max",
+            "col3",
+        ])
+        .stdin(INPUT_WITH_HASH_HEADER)
+        .run();
+
+    assert!(stdout.contains("col1_sum"));
+    assert!(stdout.contains("col2_min"));
+    assert!(stdout.contains("col3_max"));
+    assert!(stdout.contains("5"));
+    assert!(stdout.contains("2"));
+    assert!(stdout.contains("6"));
+}
+
+#[test]
+fn stats_header_hash1_no_hash_lines() {
+    // When no hash lines exist, --header-hash1 should gracefully use first line as header
+    let input = "col1\tcol2\n1\t2\n3\t4\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--sum", "col1"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("col1_sum"));
+    assert!(stdout.contains("4"));
+}
+
+#[test]
+fn stats_header_hash1_multiple_hash_lines() {
+    let input = "# Comment 1\n# Comment 2\n# Comment 3\ncolA\tcolB\n10\t20\n30\t40\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--mean", "colA", "--sum", "colB"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("colA_mean"));
+    assert!(stdout.contains("colB_sum"));
+    assert!(stdout.contains("20")); // mean of 10, 30
+    assert!(stdout.contains("60")); // sum of 20, 40
+}
+
+#[test]
+fn stats_header_hash1_with_write_header() {
+    // --write-header should not duplicate header when --header-hash1 is used
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--write-header", "--count"])
+        .stdin(INPUT_WITH_HASH_HEADER)
+        .run();
+
+    // Should only have one header line
+    let lines: Vec<&str> = stdout.trim().lines().collect();
+    assert_eq!(lines.len(), 2); // header + data
+    assert_eq!(lines[0], "count");
+    assert_eq!(lines[1], "2");
+}
+
+#[test]
+fn stats_header_hash1_median_variance() {
+    let input = "# Comment\nval\n10\n20\n30\n40\n50\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--median",
+            "val",
+            "--variance",
+            "val",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("val_median"));
+    assert!(stdout.contains("val_variance"));
+    assert!(stdout.contains("30")); // median
+}
+
+#[test]
+fn stats_header_hash1_unique_collapse() {
+    let input = "# Comment\nname\tcat\nA\tX\nB\tX\nC\tY\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--unique",
+            "cat",
+            "--collapse",
+            "name",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("cat_unique"));
+    assert!(stdout.contains("name_collapse"));
+}
+
+#[test]
+fn stats_header_hash1_quantile() {
+    let input = "# Comment\nscore\n10\n20\n30\n40\n50\n60\n70\n80\n90\n100\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--q1",
+            "score",
+            "--q3",
+            "score",
+            "--iqr",
+            "score",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("score_q1"));
+    assert!(stdout.contains("score_q3"));
+    assert!(stdout.contains("score_iqr"));
+}
+
+#[test]
+fn stats_header_hash1_mode_nunique() {
+    let input = "# Comment\ncategory\nA\nA\nB\nB\nB\nC\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--mode",
+            "category",
+            "--nunique",
+            "category",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("category_mode"));
+    assert!(stdout.contains("category_nunique"));
+    assert!(stdout.contains("B")); // mode
+    assert!(stdout.contains("3")); // 3 unique values
+}
+
+#[test]
+fn stats_header_hash1_geomean_harmmean() {
+    let input = "# Comment\nval\n2\n4\n8\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--geomean",
+            "val",
+            "--harmmean",
+            "val",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("val_geomean"));
+    assert!(stdout.contains("val_harmmean"));
+}
+
+#[test]
+fn stats_header_hash1_first_last() {
+    let input = "# Comment\nval\n10\n20\n30\n40\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--first", "val", "--last", "val"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("val_first"));
+    assert!(stdout.contains("val_last"));
+    assert!(stdout.contains("10"));
+    assert!(stdout.contains("40"));
+}
+
+#[test]
+fn stats_header_hash1_range_cv() {
+    let input = "# Comment\nval\n10\n20\n30\n40\n50\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--range", "val", "--cv", "val"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("val_range"));
+    assert!(stdout.contains("val_cv"));
+}
+
+#[test]
+fn stats_header_hash1_stdev_mad() {
+    let input = "# Comment\nval\n10\n20\n30\n40\n50\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--stdev", "val", "--mad", "val"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("val_stdev"));
+    assert!(stdout.contains("val_mad"));
+}
+
+#[test]
+fn stats_header_hash1_missing_count() {
+    let input = "# Comment\nval\n10\n\n30\n\n50\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--missing-count",
+            "val",
+            "--not-missing-count",
+            "val",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("val_missing_count"));
+    assert!(stdout.contains("val_not_missing_count"));
+}
+
+#[test]
+fn stats_header_hash1_mode_count() {
+    let input = "# Comment\nval\nA\nA\nB\nB\nB\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--mode-count", "val"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("val_mode_count"));
+    assert!(stdout.contains("3"));
+}
+
+#[test]
+fn stats_header_hash1_rand() {
+    let input = "# Comment\nval\n100\n200\n300\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--rand", "val"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("val_rand"));
+    let lines: Vec<&str> = stdout.trim().lines().collect();
+    assert_eq!(lines.len(), 2);
+    let val = lines[1];
+    assert!(val == "100" || val == "200" || val == "300");
+}
+
+#[test]
+fn stats_header_hash1_multiple_files() {
+    let file1 = create_file("# Comment\ncol1\tcol2\n1\t2\n3\t4\n");
+    let file2 = create_file("# Comment\ncol1\tcol2\n5\t6\n7\t8\n");
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--sum",
+            "col1",
+            "--sum",
+            "col2",
+            &file1.path().to_string_lossy(),
+            &file2.path().to_string_lossy(),
+        ])
+        .run();
+
+    // Sum of col1: 1+3+5+7 = 16, Sum of col2: 2+4+6+8 = 20
+    assert!(stdout.contains("col1_sum"));
+    assert!(stdout.contains("col2_sum"));
+    assert!(stdout.contains("16") || stdout.contains("20"));
+}
+
+#[test]
+fn stats_header_hash1_empty_after_header() {
+    // File with only header comments and column names, no data
+    let input = "# Comment 1\n# Comment 2\ncol1\tcol2\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--count"])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("count"));
+    assert!(stdout.contains("0"));
+}
+
+#[test]
+fn stats_header_hash1_with_replace_missing() {
+    let input = "# Comment\nval\n10\n\n30\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--mean",
+            "val",
+            "--replace-missing",
+            "0",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("val_mean"));
+}
+
+#[test]
+fn stats_header_hash1_exclude_missing() {
+    let input = "# Comment\nval\n10\n\n30\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--mean",
+            "val",
+            "--exclude-missing",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("val_mean"));
+    // Mean of 10 and 30 (excluding missing) = 20
+    assert!(stdout.contains("20"));
+}
+
+#[test]
+fn stats_header_hash1_field_by_name_not_found() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["stats", "--header-hash1", "--sum", "nonexistent"])
+        .stdin(INPUT_WITH_HASH_HEADER)
+        .run_fail();
+
+    assert!(stderr.contains("not found") || stderr.contains("field"));
+}
+
+#[test]
+fn stats_header_hash1_quantile_custom_header() {
+    let input = "# Comment\nval\n1\n2\n3\n4\n5\n";
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "stats",
+            "--header-hash1",
+            "--quantile",
+            "val:0.5:MedianValue",
+        ])
+        .stdin(input)
+        .run();
+
+    assert!(stdout.contains("MedianValue"));
+}
