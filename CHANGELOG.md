@@ -2,6 +2,8 @@
 
 ## Unreleased - ReleaseDate
 
+## 0.2.4 - 2026-03-10
+
 ### Added
 
 #### Header Handling
