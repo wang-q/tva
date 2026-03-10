@@ -246,7 +246,7 @@ fn parse_column_index(col: &str, headers: &[Vec<u8>]) -> Result<usize> {
 }
 
 fn parse_float(bytes: &[u8]) -> Option<f64> {
-    fast_float::parse(bytes).ok()
+    crate::libs::number::fast_parse_f64(bytes)
 }
 
 fn calculate_bounds(
