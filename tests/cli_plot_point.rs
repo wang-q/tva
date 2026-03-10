@@ -1,0 +1,277 @@
+use assert_cmd::cargo::cargo_bin_cmd;
+use predicates::prelude::*;
+use std::path::PathBuf;
+
+mod common;
+use common::TvaCmd;
+
+fn data_path(filename: &str) -> PathBuf {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("tests/data/plot");
+    path.push(filename);
+    path
+}
+
+#[test]
+fn test_plot_point_help() {
+    let mut cmd = cargo_bin_cmd!("tva");
+    cmd.args(["plot", "point", "--help"]);
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Draw a scatter plot or line chart",
+        ))
+        .stdout(predicate::str::contains("-x, --x"))
+        .stdout(predicate::str::contains("-y, --y"))
+        .stdout(predicate::str::contains("--color"))
+        .stdout(predicate::str::contains("-l, --line"));
+}
+
+#[test]
+fn test_plot_point_basic() {
+    let tva = TvaCmd::new();
+
+    // Create a simple TSV file with numeric data
+    let input = "x\ty\n1\t2\n2\t4\n3\t6\n4\t8\n";
+
+    let (stdout, _stderr) = tva
+        .args(&["plot", "point", "-x", "1", "-y", "2"])
+        .stdin(input)
+        .run();
+
+    // The command should produce some output (terminal graphics)
+    assert!(!stdout.is_empty());
+}
+
+#[test]
+fn test_plot_point_with_column_names() {
+    let tva = TvaCmd::new();
+
+    let input = "x\ty\n1\t2\n2\t4\n3\t6\n";
+
+    let (stdout, _stderr) = tva
+        .args(&["plot", "point", "-x", "x", "-y", "y"])
+        .stdin(input)
+        .run();
+
+    assert!(!stdout.is_empty());
+}
+
+#[test]
+fn test_plot_point_line() {
+    let tva = TvaCmd::new();
+
+    let input = "x\ty\n1\t2\n2\t4\n3\t6\n";
+
+    let (stdout, _stderr) = tva
+        .args(&["plot", "point", "-l", "-x", "1", "-y", "2"])
+        .stdin(input)
+        .run();
+
+    assert!(!stdout.is_empty());
+}
+
+#[test]
+fn test_plot_point_with_color() {
+    let tva = TvaCmd::new();
+
+    let input = "x\ty\tgroup\n1\t2\tA\n2\t4\tA\n3\t6\tB\n4\t8\tB\n";
+
+    let (stdout, _stderr) = tva
+        .args(&["plot", "point", "-x", "1", "-y", "2", "--color", "3"])
+        .stdin(input)
+        .run();
+
+    assert!(!stdout.is_empty());
+}
+
+#[test]
+fn test_plot_point_ignore_errors() {
+    let tva = TvaCmd::new();
+
+    // Data with some non-numeric values
+    let input = "x\ty\n1\t2\n2\tabc\n3\t6\n";
+
+    let (stdout, _stderr) = tva
+        .args(&["plot", "point", "-x", "1", "-y", "2", "--ignore"])
+        .stdin(input)
+        .run();
+
+    assert!(!stdout.is_empty());
+}
+
+#[test]
+fn test_plot_point_error_on_invalid_data() {
+    let tva = TvaCmd::new();
+
+    // Data with non-numeric values and no --ignore flag
+    let input = "x\ty\n1\t2\n2\tabc\n3\t6\n";
+
+    let (_stdout, stderr) = tva
+        .args(&["plot", "point", "-x", "1", "-y", "2"])
+        .stdin(input)
+        .run_fail();
+
+    assert!(stderr.contains("Cannot parse") || stderr.contains("abc"));
+}
+
+#[test]
+fn test_plot_point_empty_data() {
+    let tva = TvaCmd::new();
+
+    // Empty data (only headers)
+    let input = "x\ty\n";
+
+    let (_stdout, stderr) = tva
+        .args(&["plot", "point", "-x", "1", "-y", "2"])
+        .stdin(input)
+        .run_fail();
+
+    assert!(stderr.contains("No valid data points"));
+}
+
+#[test]
+fn test_plot_point_invalid_column() {
+    let tva = TvaCmd::new();
+
+    let input = "x\ty\n1\t2\n";
+
+    let (_stdout, stderr) = tva
+        .args(&["plot", "point", "-x", "nonexistent", "-y", "2"])
+        .stdin(input)
+        .run_fail();
+
+    assert!(stderr.contains("not found"));
+}
+
+#[test]
+fn test_plot_point_zero_based_index() {
+    let tva = TvaCmd::new();
+
+    let input = "x\ty\n1\t2\n";
+
+    let (_stdout, stderr) = tva
+        .args(&["plot", "point", "-x", "0", "-y", "2"])
+        .stdin(input)
+        .run_fail();
+
+    assert!(stderr.contains("1-based"));
+}
+
+// Iris dataset tests
+#[test]
+fn test_plot_point_iris_basic() {
+    let tva = TvaCmd::new();
+    let iris_path = data_path("iris.tsv");
+
+    let (stdout, _stderr) = tva
+        .args(&[
+            "plot",
+            "point",
+            "-x",
+            "sepal_length",
+            "-y",
+            "sepal_width",
+            iris_path.to_str().unwrap(),
+        ])
+        .run();
+
+    assert!(!stdout.is_empty());
+}
+
+#[test]
+fn test_plot_point_iris_with_color() {
+    let tva = TvaCmd::new();
+    let iris_path = data_path("iris.tsv");
+
+    let (stdout, _stderr) = tva
+        .args(&[
+            "plot",
+            "point",
+            "-x",
+            "petal_length",
+            "-y",
+            "petal_width",
+            "--color",
+            "label",
+            iris_path.to_str().unwrap(),
+        ])
+        .run();
+
+    assert!(!stdout.is_empty());
+}
+
+#[test]
+fn test_plot_point_iris_by_index() {
+    let tva = TvaCmd::new();
+    let iris_path = data_path("iris.tsv");
+
+    // Use column indices (1-based)
+    let (stdout, _stderr) = tva
+        .args(&[
+            "plot",
+            "point",
+            "-x",
+            "1", // sepal_length
+            "-y",
+            "3", // petal_length
+            "--color",
+            "5", // label
+            iris_path.to_str().unwrap(),
+        ])
+        .run();
+
+    assert!(!stdout.is_empty());
+}
+
+#[test]
+fn test_plot_point_iris_with_size() {
+    let tva = TvaCmd::new();
+    let iris_path = data_path("iris.tsv");
+
+    let (stdout, _stderr) = tva
+        .args(&[
+            "plot",
+            "point",
+            "-x",
+            "sepal_length",
+            "-y",
+            "petal_length",
+            "--color",
+            "label",
+            "--cols",
+            "80",
+            "--rows",
+            "24",
+            iris_path.to_str().unwrap(),
+        ])
+        .run();
+
+    assert!(!stdout.is_empty());
+}
+
+#[test]
+fn test_plot_point_iris_with_limits() {
+    let tva = TvaCmd::new();
+    let iris_path = data_path("iris.tsv");
+
+    let (stdout, _stderr) = tva
+        .args(&[
+            "plot",
+            "point",
+            "-x",
+            "sepal_length",
+            "-y",
+            "sepal_width",
+            "--color",
+            "label",
+            "--xlim",
+            "4,8",
+            "--ylim",
+            "2,4.5",
+            iris_path.to_str().unwrap(),
+        ])
+        .run();
+
+    assert!(!stdout.is_empty());
+}

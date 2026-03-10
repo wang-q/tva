@@ -44,6 +44,10 @@ ahash = "0.8.12"
 memmap2 = "0.9.10"
 lexical = "7.0.5"
 scraper = "0.25.0"
+ratatui = "0.29"
+fast-float = "0.2"
+crossterm = "0.28"
+colored = "2.0"
 
 [build-dependencies]
 

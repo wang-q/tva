@@ -9,6 +9,7 @@ pub mod join;
 pub mod keep_header;
 pub mod longer;
 pub mod nl;
+pub mod plot;
 pub mod reverse;
 pub mod sample;
 pub mod select;
