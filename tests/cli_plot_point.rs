@@ -373,3 +373,95 @@ fn test_plot_point_multi_y_with_color() {
     // Should show axis label with series count
     assert!(stdout.contains("2 series"));
 }
+
+// Regression line tests
+#[test]
+fn test_plot_point_regression_basic() {
+    let tva = TvaCmd::new();
+
+    // Linear data: y = 2x
+    let input = "x\ty\n0\t0\n1\t2\n2\t4\n3\t6\n4\t8\n";
+
+    let (stdout, _stderr) = tva
+        .args(&["plot", "point", "--regression", "-x", "1", "-y", "2"])
+        .stdin(input)
+        .run();
+
+    assert!(!stdout.is_empty());
+    // Chart renders successfully with regression line
+    // Note: Legend only shows when there are multiple datasets
+}
+
+#[test]
+fn test_plot_point_regression_with_color() {
+    let tva = TvaCmd::new();
+    let iris_path = data_path("iris.tsv");
+
+    let (stdout, stderr) = tva
+        .args(&[
+            "plot",
+            "point",
+            "--regression",
+            "-x",
+            "sepal_length",
+            "-y",
+            "petal_length",
+            "--color",
+            "label",
+            iris_path.to_str().unwrap(),
+        ])
+        .run();
+
+    if stdout.is_empty() {
+        eprintln!("stderr: {}", stderr);
+    }
+    assert!(!stdout.is_empty());
+    // Should show regression equations in legend (y = mx + b format)
+    assert!(stdout.contains("y =") && stdout.contains("x +"));
+}
+
+#[test]
+fn test_plot_point_regression_and_line_mutual_exclusion() {
+    let tva = TvaCmd::new();
+
+    let input = "x\ty\n1\t2\n2\t4\n";
+
+    let (_stdout, stderr) = tva
+        .args(&[
+            "plot",
+            "point",
+            "--regression",
+            "--line",
+            "-x",
+            "1",
+            "-y",
+            "2",
+        ])
+        .stdin(input)
+        .run_fail();
+
+    assert!(stderr.contains("Cannot use"));
+}
+
+#[test]
+fn test_plot_point_regression_and_path_mutual_exclusion() {
+    let tva = TvaCmd::new();
+
+    let input = "x\ty\n1\t2\n2\t4\n";
+
+    let (_stdout, stderr) = tva
+        .args(&[
+            "plot",
+            "point",
+            "--regression",
+            "--path",
+            "-x",
+            "1",
+            "-y",
+            "2",
+        ])
+        .stdin(input)
+        .run_fail();
+
+    assert!(stderr.contains("Cannot use"));
+}

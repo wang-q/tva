@@ -1,16 +1,13 @@
 use anyhow::Result;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use indexmap::IndexMap;
-use ratatui::backend::TestBackend;
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
-use ratatui::symbols::Marker;
-use ratatui::text::Span;
-use ratatui::widgets::{Axis, Chart, Dataset, GraphType, LegendPosition};
-use ratatui::Terminal;
 
 use crate::libs::io::reader;
-use crate::libs::plot::{axis, render};
+use crate::libs::plot::{
+    axis,
+    chart::{process_data, render_chart, ChartConfig},
+    regression, render,
+};
 use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRecord};
@@ -68,6 +65,13 @@ pub fn make_subcommand() -> Command {
                 .default_value("braille"),
         )
         .arg(
+            Arg::new("regression")
+                .short('r')
+                .long("regression")
+                .action(ArgAction::SetTrue)
+                .help("Draw regression line (linear fit)"),
+        )
+        .arg(
             Arg::new("ignore")
                 .long("ignore")
                 .action(ArgAction::SetTrue)
@@ -86,6 +90,7 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     let color_col = matches.get_one::<String>("color");
     let is_line = matches.get_flag("line");
     let is_path = matches.get_flag("path");
+    let draw_regression = matches.get_flag("regression");
     let ignore_errors = matches.get_flag("ignore");
     let marker_type = matches.get_one::<String>("marker").unwrap();
 
@@ -93,6 +98,13 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     if is_line && is_path {
         return Err(anyhow::anyhow!(
             "Cannot use both --line and --path. Choose one."
+        ));
+    }
+
+    // --regression cannot be used with --line or --path
+    if draw_regression && (is_line || is_path) {
+        return Err(anyhow::anyhow!(
+            "Cannot use --regression with --line or --path"
         ));
     }
 
@@ -298,7 +310,8 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
 
     // Calculate bounds from all data points (automatic)
     let all_points: Vec<(f64, f64)> = data.values().flatten().copied().collect();
-    let (x_min, x_max, y_min, y_max) = axis::calculate_bounds(all_points.into_iter());
+    let (x_min, x_max, y_min, y_max) =
+        axis::calculate_bounds(all_points.iter().copied());
 
     // Get chart dimensions
     // Reserve 1 row for the terminal prompt at the bottom
@@ -322,20 +335,48 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         format!("{} ({} series)", y_names.join(", "), y_names.len())
     };
 
-    render_chart(
-        data,
-        x_min,
-        x_max,
-        y_min,
-        y_max,
-        chart_width,
-        chart_height,
-        marker,
-        is_line,
-        is_path,
-        &headers.get(x_idx).map(|h| h.as_slice()).unwrap_or(b"x"),
-        y_axis_label.as_bytes(),
-    )?;
+    // Prepare regression data if requested
+    let mut regression_data: Vec<(String, Vec<(f64, f64)>, usize)> = Vec::new();
+    if draw_regression {
+        for (i, (group, points)) in data.iter().enumerate() {
+            if let Some((slope, intercept)) = regression::calculate_regression(points) {
+                let reg_points = regression::generate_regression_points(
+                    slope, intercept, x_min, x_max,
+                );
+                let equation = regression::format_regression_equation(slope, intercept);
+                let reg_name = format!(
+                    "{} ({})",
+                    if group.is_empty() { "data" } else { group },
+                    equation
+                );
+                regression_data.push((reg_name, reg_points, i));
+            }
+        }
+    }
+
+    // Process data into datasets
+    let datasets = process_data(data, is_line, regression_data);
+
+    // Build chart configuration
+    let config = ChartConfig::new(chart_width, chart_height)
+        .with_marker(marker)
+        .with_labels(
+            String::from_utf8_lossy(
+                headers.get(x_idx).map(|h| h.as_slice()).unwrap_or(b"x"),
+            ),
+            y_axis_label,
+        );
+
+    let config = if is_line {
+        config.with_line()
+    } else if is_path {
+        config.with_path()
+    } else {
+        config
+    };
+
+    // Render the chart
+    render_chart(datasets, x_min, x_max, y_min, y_max, &config)?;
 
     Ok(())
 }
@@ -344,11 +385,6 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
 /// - Absolute values (e.g., "80" for 80 characters)
 /// - Ratios relative to terminal size (e.g., "0.8" for 80% of terminal)
 /// - Ratios > 1.0 to fill terminal (e.g., "1.0" for 100% of terminal)
-///
-/// # Arguments
-/// * `value` - The input string (e.g., "80" or "0.8" or "1.2")
-/// * `term_size` - The terminal size (width or height)
-/// * `default` - Default value to use if `value` is None
 fn parse_chart_dimension(
     value: Option<&String>,
     term_size: u16,
@@ -373,113 +409,4 @@ fn parse_chart_dimension(
 
 fn parse_float(bytes: &[u8]) -> Option<f64> {
     crate::libs::number::fast_parse_f64(bytes)
-}
-
-fn render_chart(
-    data: IndexMap<String, Vec<(f64, f64)>>,
-    x_min: f64,
-    x_max: f64,
-    y_min: f64,
-    y_max: f64,
-    width: u16,
-    height: u16,
-    marker: Marker,
-    is_line: bool,
-    is_path: bool,
-    x_label: &[u8],
-    y_label: &[u8],
-) -> Result<()> {
-    // Prepare all data first, then create datasets
-    let mut all_data: Vec<(String, Vec<(f64, f64)>)> = Vec::new();
-
-    for (group, points) in data {
-        let mut sorted_points = points;
-        // --line: sort by x value (geom_line behavior)
-        // --path: keep original order (geom_path behavior)
-        if is_line {
-            sorted_points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-        }
-        all_data.push((group, sorted_points));
-    }
-
-    let mut datasets: Vec<Dataset> = Vec::new();
-
-    for (i, (group, points)) in all_data.iter().enumerate() {
-        let color = render::get_color(i);
-
-        let dataset = Dataset::default()
-            .name(if group.is_empty() { "data" } else { group })
-            .marker(marker)
-            .style(Style::default().fg(color))
-            .graph_type(if is_line || is_path {
-                GraphType::Line
-            } else {
-                GraphType::Scatter
-            })
-            .data(points.as_slice());
-
-        datasets.push(dataset);
-    }
-
-    let x_axis_label = String::from_utf8_lossy(x_label).to_string();
-    let y_axis_label = String::from_utf8_lossy(y_label).to_string();
-
-    // Generate axis labels and compute aligned bounds
-    // Use the first and last tick as axis bounds to ensure labels align with edges
-    // Reduce max_ticks for X axis to avoid crowded labels
-    let x_labels_vec =
-        axis::generate_axis_labels(x_min, x_max, width as usize, 10, 2, 4);
-    let y_labels_vec =
-        axis::generate_axis_labels(y_min, y_max, height as usize, 4, 2, 4);
-
-    // Compute aligned bounds from the generated labels
-    let x_bounds_aligned = if x_labels_vec.len() >= 2 {
-        let first: f64 = x_labels_vec.first().unwrap().parse().unwrap_or(x_min);
-        let last: f64 = x_labels_vec.last().unwrap().parse().unwrap_or(x_max);
-        [first, last]
-    } else {
-        [x_min, x_max]
-    };
-    let y_bounds_aligned = if y_labels_vec.len() >= 2 {
-        let first: f64 = y_labels_vec.first().unwrap().parse().unwrap_or(y_min);
-        let last: f64 = y_labels_vec.last().unwrap().parse().unwrap_or(y_max);
-        [first, last]
-    } else {
-        [y_min, y_max]
-    };
-
-    let x_labels: Vec<Span> = x_labels_vec.into_iter().map(Span::from).collect();
-    let y_labels: Vec<Span> = y_labels_vec.into_iter().map(Span::from).collect();
-
-    let chart = Chart::new(datasets)
-        .x_axis(
-            Axis::default()
-                .title(Span::from(x_axis_label))
-                .style(Style::default().fg(Color::Gray))
-                .bounds(x_bounds_aligned)
-                .labels(x_labels),
-        )
-        .y_axis(
-            Axis::default()
-                .title(Span::from(y_axis_label))
-                .style(Style::default().fg(Color::Gray))
-                .bounds(y_bounds_aligned)
-                .labels(y_labels),
-        )
-        .legend_position(Some(LegendPosition::TopRight));
-
-    // Use TestBackend to render to an off-screen buffer, then print to stdout
-    let backend = TestBackend::new(width, height);
-    let mut terminal = Terminal::new(backend)?;
-
-    terminal.draw(|f| {
-        let area = Rect::new(0, 0, width, height);
-        f.render_widget(chart, area);
-    })?;
-
-    // Print the buffer content to stdout with colors
-    let buffer = terminal.backend().buffer();
-    render::print_buffer_to_stdout(buffer, width as usize);
-
-    Ok(())
 }

@@ -119,7 +119,7 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --cols 10
 ```
 
 
-### 7. Different Marker Styles
+### 6. Different Marker Styles
 
 Choose from three marker types with `-m` or `--marker`:
 
@@ -133,6 +133,22 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m dot
 # Block markers
 tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
 ```
+
+### 7. Regression Line
+
+Use `--regression` to overlay a linear regression line (least squares fit) on the scatter plot. This helps visualize trends in the data.
+
+```bash
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot --regression
+```
+
+When combined with `--color`, a separate regression line is drawn for each group:
+
+```bash
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot  --color label --regression
+```
+
+Note: `--regression` cannot be used with `--line` or `--path`.
 
 ### 8. Handling Invalid Data
 
@@ -150,6 +166,8 @@ tva plot point data.tsv -x value1 -y value2 --ignore
 | `-y <COL>` / `--y <COL>` | **Required.** Column for Y-axis position. |
 | `--color <COL>` | Column for grouping/coloring by category. |
 | `-l` / `--line` | Draw line chart instead of scatter plot. |
+| `--path` | Draw path chart (connect points in original order). |
+| `-r` / `--regression` | Overlay linear regression line. |
 | `-m <TYPE>` / `--marker <TYPE>` | Marker style: `braille` (default), `dot`, or `block`. |
 | `--cols <N>` | Chart width in characters or ratio (default: `1.0`, i.e., full terminal width). |
 | `--rows <N>` | Chart height in characters or ratio (default: `1.0`, i.e., full terminal height minus 1 for prompt). |
@@ -162,6 +180,8 @@ tva plot point data.tsv -x value1 -y value2 --ignore
 | Basic scatter plot | `aes(x, y)` | `-x <col> -y <col>` |
 | Color by group | `aes(color = group)` | `--color <col>` |
 | Line chart | `geom_line()` | `--line` |
+| Path chart | `geom_path()` | `--path` |
+| Regression line | `geom_smooth(method = "lm")` | `--regression` |
 | Faceting | `facet_wrap()` / `facet_grid()` | Not supported |
 | Themes | `theme_*()` | Terminal-based only |
 | Output | Graphics file / Viewer | Terminal ASCII/Unicode |

@@ -4,8 +4,9 @@ Draws a scatter plot or line chart in the terminal.
 
 Behavior:
 *   Maps TSV columns to visual aesthetics (position, color).
-*   Supports scatter plots (default) or line charts (`--line`).
-*   Automatically calculates axis ranges from data (overridable with `--xlim`, `--ylim`).
+*   Supports scatter plots (default), line charts (`--line`), or path charts (`--path`).
+*   Supports overlaying linear regression lines (`--regression`).
+*   Automatically calculates axis ranges from data.
 
 Input:
 *   Reads from files or standard input.
@@ -24,11 +25,10 @@ Aesthetics:
 Options:
 *   `-l`, `--line`: Connect points with lines, sorted by X value (geom_line behavior).
 *   `--path`: Connect points with lines, preserving original data order (geom_path behavior).
+*   `-r`, `--regression`: Overlay linear regression line (least squares fit). Cannot be used with `--line` or `--path`.
 *   `-m`, `--marker`: Marker style - `braille` (default), `dot`, or `block`.
 *   `--cols`: Chart width in characters (default: 80).
 *   `--rows`: Chart height in characters (default: 24).
-*   `--xlim`: X-axis range as `min,max` (e.g., `0,100`).
-*   `--ylim`: Y-axis range as `min,max` (e.g., `0,100`).
 *   `--ignore`: Skip rows with non-numeric values in X/Y columns.
 
 Column specification:
@@ -48,8 +48,8 @@ Examples:
 4.  Path chart (preserves data order, good for trajectories):
     `tva plot point trajectory.tsv -x x -y y --path --cols 100 --rows 30`
 
-5.  Fixed axis ranges:
-    `tva plot point data.tsv -x x -y y --xlim 0,10 --ylim -5,5`
+5.  With regression line (linear fit):
+    `tva plot point iris.tsv -x sepal_length -y petal_length --regression`
 
-6.  Using column indices:
+7.  Using column indices:
     `tva plot point data.tsv -x 1 -y 3 --color 5`
