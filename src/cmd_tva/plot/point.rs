@@ -409,31 +409,46 @@ fn render_chart(
     let x_axis_label = String::from_utf8_lossy(x_label).to_string();
     let y_axis_label = String::from_utf8_lossy(y_label).to_string();
 
-    // Generate axis labels using the shared axis utilities
-    let x_labels: Vec<Span> =
-        axis::generate_axis_labels(x_min, x_max, width as usize, 15, 3, 8)
-            .into_iter()
-            .map(Span::from)
-            .collect();
-    let y_labels: Vec<Span> =
-        axis::generate_axis_labels(y_min, y_max, height as usize, 4, 3, 6)
-            .into_iter()
-            .map(Span::from)
-            .collect();
+    // Generate axis labels and compute aligned bounds
+    // Use the first and last tick as axis bounds to ensure labels align with edges
+    // Reduce max_ticks for X axis to avoid crowded labels
+    let x_labels_vec =
+        axis::generate_axis_labels(x_min, x_max, width as usize, 10, 2, 4);
+    let y_labels_vec =
+        axis::generate_axis_labels(y_min, y_max, height as usize, 4, 2, 4);
+
+    // Compute aligned bounds from the generated labels
+    let x_bounds_aligned = if x_labels_vec.len() >= 2 {
+        let first: f64 = x_labels_vec.first().unwrap().parse().unwrap_or(x_min);
+        let last: f64 = x_labels_vec.last().unwrap().parse().unwrap_or(x_max);
+        [first, last]
+    } else {
+        [x_min, x_max]
+    };
+    let y_bounds_aligned = if y_labels_vec.len() >= 2 {
+        let first: f64 = y_labels_vec.first().unwrap().parse().unwrap_or(y_min);
+        let last: f64 = y_labels_vec.last().unwrap().parse().unwrap_or(y_max);
+        [first, last]
+    } else {
+        [y_min, y_max]
+    };
+
+    let x_labels: Vec<Span> = x_labels_vec.into_iter().map(Span::from).collect();
+    let y_labels: Vec<Span> = y_labels_vec.into_iter().map(Span::from).collect();
 
     let chart = Chart::new(datasets)
         .x_axis(
             Axis::default()
                 .title(Span::from(x_axis_label))
                 .style(Style::default().fg(Color::Gray))
-                .bounds([x_min, x_max])
+                .bounds(x_bounds_aligned)
                 .labels(x_labels),
         )
         .y_axis(
             Axis::default()
                 .title(Span::from(y_axis_label))
                 .style(Style::default().fg(Color::Gray))
-                .bounds([y_min, y_max])
+                .bounds(y_bounds_aligned)
                 .labels(y_labels),
         )
         .legend_position(Some(LegendPosition::TopRight));

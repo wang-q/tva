@@ -263,6 +263,42 @@ pub fn generate_axis_labels(
     labels
 }
 
+/// Generate formatted axis labels with fixed width for better visual alignment.
+///
+/// This function pads all labels to the same width using spaces, ensuring
+/// that labels appear visually aligned when displayed.
+///
+/// # Arguments
+/// * `min` - Minimum data value
+/// * `max` - Maximum data value
+/// * `dimension` - Chart dimension in characters (width for X, height for Y)
+/// * `chars_per_tick` - Approximate characters per tick label
+/// * `min_ticks` - Minimum number of ticks
+/// * `max_ticks` - Maximum number of ticks
+///
+/// # Returns
+/// A vector of formatted label strings with consistent width
+pub fn generate_axis_labels_aligned(
+    min: f64,
+    max: f64,
+    dimension: usize,
+    chars_per_tick: usize,
+    min_ticks: usize,
+    max_ticks: usize,
+) -> Vec<String> {
+    let labels =
+        generate_axis_labels(min, max, dimension, chars_per_tick, min_ticks, max_ticks);
+
+    // Find the maximum width
+    let max_width = labels.iter().map(|s| s.len()).max().unwrap_or(0);
+
+    // Pad all labels to the same width (right-aligned)
+    labels
+        .into_iter()
+        .map(|s| format!("{:>width$}", s, width = max_width))
+        .collect()
+}
+
 /// Calculate axis bounds from data points with optional manual overrides.
 ///
 /// This function computes the min/max bounds for X and Y axes from the provided data,
