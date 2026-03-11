@@ -16,12 +16,11 @@ use crate::libs::tsv::reader::TsvReader;
 
 const COLORS: &[Color] = &[
     Color::Cyan,
-    Color::Magenta,
-    Color::Yellow,
     Color::Green,
+    Color::Yellow,
+    Color::Magenta,
     Color::Blue,
     Color::Red,
-    Color::White,
 ];
 
 pub fn make_subcommand() -> Command {
@@ -33,22 +32,19 @@ pub fn make_subcommand() -> Command {
                 .short('x')
                 .long("x")
                 .required(true)
-                .help("X axis column (1-based index or column name)")
-                .value_name("COL"),
+                .help("X axis column (1-based index or column name)"),
         )
         .arg(
             Arg::new("y")
                 .short('y')
                 .long("y")
                 .required(true)
-                .help("Y axis column (1-based index or column name)")
-                .value_name("COL"),
+                .help("Y axis column (1-based index or column name)"),
         )
         .arg(
             Arg::new("color")
                 .long("color")
-                .help("Color grouping column (1-based index or column name)")
-                .value_name("COL"),
+                .help("Color grouping column (1-based index or column name)"),
         )
         .arg(
             Arg::new("line")
@@ -60,34 +56,29 @@ pub fn make_subcommand() -> Command {
         .arg(
             Arg::new("cols")
                 .long("cols")
-                .help("Chart width (characters or ratio like '0.8')")
-                .value_name("N"),
+                .help("Chart width (characters or ratio like '0.8')"),
         )
         .arg(
             Arg::new("rows")
                 .long("rows")
-                .help("Chart height (characters or ratio like '0.6')")
-                .value_name("N"),
+                .help("Chart height (characters or ratio like '0.6')"),
         )
         .arg(
             Arg::new("marker")
                 .short('m')
                 .long("marker")
-                .help("Marker type: braille (default), dot, block")
-                .value_name("TYPE")
+                .help("Marker type: braille, dot, block")
                 .default_value("braille"),
         )
         .arg(
             Arg::new("xlim")
                 .long("xlim")
-                .help("X axis limits (min,max)")
-                .value_name("MIN,MAX"),
+                .help("X axis limits (min,max)"),
         )
         .arg(
             Arg::new("ylim")
                 .long("ylim")
-                .help("Y axis limits (min,max)")
-                .value_name("MIN,MAX"),
+                .help("Y axis limits (min,max)"),
         )
         .arg(
             Arg::new("ignore")
@@ -97,7 +88,7 @@ pub fn make_subcommand() -> Command {
         )
         .arg(
             Arg::new("infile")
-                .help("Input TSV file (default: stdin)")
+                .help("Input TSV file to process (default: stdin)")
                 .index(1),
         )
 }
@@ -183,8 +174,17 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         let group = if let Some(idx) = color_idx {
             if idx < fields.len() {
                 String::from_utf8_lossy(fields[idx]).to_string()
+            } else if ignore_errors {
+                return Ok(());
             } else {
-                String::new()
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!(
+                        "Color column index {} exceeds number of fields {}",
+                        idx,
+                        fields.len()
+                    ),
+                ));
             }
         } else {
             String::new()
@@ -201,8 +201,13 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
 
     let (x_min, x_max, y_min, y_max) = calculate_bounds(&data, matches)?;
 
-    let chart_width = parse_dimension(matches.get_one::<String>("cols"), 80)?;
-    let chart_height = parse_dimension(matches.get_one::<String>("rows"), 24)?;
+    let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
+    let default_width = (term_width as f64 * 0.8) as u16;
+    let default_height = (term_height as f64 * 0.8) as u16;
+
+    let chart_width = parse_dimension(matches.get_one::<String>("cols"), default_width)?;
+    let chart_height =
+        parse_dimension(matches.get_one::<String>("rows"), default_height)?;
 
     render_chart(
         data,
@@ -295,15 +300,43 @@ fn calculate_bounds(
     Ok((x_min, x_max, y_min, y_max))
 }
 
+/// Calculate a "nice" midpoint for axis labels.
+/// Rounds to a reasonable number of significant digits based on the range.
+fn nice_midpoint(min: f64, max: f64) -> f64 {
+    let mid = (min + max) / 2.0;
+    let range = max - min;
+
+    if range == 0.0 {
+        return mid;
+    }
+
+    // Determine appropriate precision based on range magnitude
+    let magnitude = range.log10().floor() as i32;
+    let precision = if magnitude >= 2 {
+        0 // Whole numbers for large ranges
+    } else if magnitude >= 0 {
+        1 // 1 decimal place
+    } else if magnitude >= -2 {
+        2 // 2 decimal places
+    } else {
+        3 // 3 decimal places for very small ranges
+    };
+
+    let factor = 10f64.powi(precision);
+    (mid * factor).round() / factor
+}
+
 fn parse_dimension(value: Option<&String>, default: u16) -> Result<u16> {
     match value {
         None => Ok(default),
         Some(v) => {
             if v.contains('.') {
                 let ratio: f64 = v.parse()?;
-                Ok((default as f64 * ratio) as u16)
+                let result = (default as f64 * ratio).round() as u16;
+                Ok(result.max(10)) // Minimum 10 characters
             } else {
-                Ok(v.parse()?)
+                let result: u16 = v.parse()?;
+                Ok(result.max(10)) // Minimum 10 characters
             }
         }
     }
@@ -355,6 +388,10 @@ fn render_chart(
     let x_axis_label = String::from_utf8_lossy(x_label).to_string();
     let y_axis_label = String::from_utf8_lossy(y_label).to_string();
 
+    // Calculate nice mid-point for axis labels
+    let x_mid = nice_midpoint(x_min, x_max);
+    let y_mid = nice_midpoint(y_min, y_max);
+
     let chart = Chart::new(datasets)
         .x_axis(
             Axis::default()
@@ -363,7 +400,7 @@ fn render_chart(
                 .bounds([x_min, x_max])
                 .labels(vec![
                     Span::from(format!("{:.2}", x_min)),
-                    Span::from(format!("{:.2}", (x_min + x_max) / 2.0)),
+                    Span::from(format!("{:.2}", x_mid)),
                     Span::from(format!("{:.2}", x_max)),
                 ]),
         )
@@ -374,7 +411,7 @@ fn render_chart(
                 .bounds([y_min, y_max])
                 .labels(vec![
                     Span::from(format!("{:.2}", y_min)),
-                    Span::from(format!("{:.2}", (y_min + y_max) / 2.0)),
+                    Span::from(format!("{:.2}", y_mid)),
                     Span::from(format!("{:.2}", y_max)),
                 ]),
         )
