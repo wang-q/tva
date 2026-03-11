@@ -38,51 +38,6 @@ pub fn parse_marker(marker_type: &str) -> ratatui::symbols::Marker {
     }
 }
 
-/// Parse dimension value (width/height) with support for absolute values and ratios.
-///
-/// # Arguments
-/// * `value` - The input string (e.g., "80" for 80 chars, "0.8" for 80% of default)
-/// * `default` - The default value to use if `value` is None
-/// * `min` - Minimum allowed value
-///
-/// # Returns
-/// The parsed dimension as u16
-///
-/// # Examples
-/// * `parse_dimension(None, 100, 10)` -> 100
-/// * `parse_dimension(Some("80"), 100, 10)` -> 80
-/// * `parse_dimension(Some("0.8"), 100, 10)` -> 80 (80% of default)
-pub fn parse_dimension(
-    value: Option<&String>,
-    default: u16,
-    min: u16,
-) -> anyhow::Result<u16> {
-    match value {
-        None => Ok(default),
-        Some(v) => {
-            if v.contains('.') {
-                let ratio: f64 = v.parse()?;
-                let result = (default as f64 * ratio).round() as u16;
-                Ok(result.max(min))
-            } else {
-                let result: u16 = v.parse()?;
-                Ok(result.max(min))
-            }
-        }
-    }
-}
-
-/// Get default chart dimensions based on terminal size.
-///
-/// Returns (width, height) with default ratio of 80% of terminal size.
-pub fn get_default_dimensions() -> (u16, u16) {
-    let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
-    (
-        (term_width as f64 * 0.8) as u16,
-        (term_height as f64 * 0.8) as u16,
-    )
-}
-
 /// Print a ratatui buffer to stdout with ANSI colors.
 ///
 /// This function converts the ratatui buffer content to colored terminal output,

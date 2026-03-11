@@ -317,13 +317,9 @@ pub fn generate_axis_labels_aligned(
 /// use tva::libs::plot::axis::calculate_bounds;
 ///
 /// let data = vec![(1.0, 2.0), (3.0, 4.0), (5.0, 1.0)];
-/// let (xmin, xmax, ymin, ymax) = calculate_bounds(data.iter().copied(), None, None);
+/// let (xmin, xmax, ymin, ymax) = calculate_bounds(data.iter().copied());
 /// ```
-pub fn calculate_bounds(
-    data: impl Iterator<Item = (f64, f64)>,
-    xlim: Option<(f64, f64)>,
-    ylim: Option<(f64, f64)>,
-) -> (f64, f64, f64, f64) {
+pub fn calculate_bounds(data: impl Iterator<Item = (f64, f64)>) -> (f64, f64, f64, f64) {
     let mut x_min = f64::INFINITY;
     let mut x_max = f64::NEG_INFINITY;
     let mut y_min = f64::INFINITY;
@@ -334,17 +330,6 @@ pub fn calculate_bounds(
         x_max = x_max.max(x);
         y_min = y_min.min(y);
         y_max = y_max.max(y);
-    }
-
-    // Apply manual overrides
-    if let Some((min, max)) = xlim {
-        x_min = min;
-        x_max = max;
-    }
-
-    if let Some((min, max)) = ylim {
-        y_min = min;
-        y_max = max;
     }
 
     // Ensure non-zero range

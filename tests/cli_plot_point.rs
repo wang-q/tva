@@ -250,32 +250,6 @@ fn test_plot_point_iris_with_size() {
     assert!(!stdout.is_empty());
 }
 
-#[test]
-fn test_plot_point_iris_with_limits() {
-    let tva = TvaCmd::new();
-    let iris_path = data_path("iris.tsv");
-
-    let (stdout, _stderr) = tva
-        .args(&[
-            "plot",
-            "point",
-            "-x",
-            "sepal_length",
-            "-y",
-            "sepal_width",
-            "--color",
-            "label",
-            "--xlim",
-            "4,8",
-            "--ylim",
-            "2,4.5",
-            iris_path.to_str().unwrap(),
-        ])
-        .run();
-
-    assert!(!stdout.is_empty());
-}
-
 // --path parameter tests (geom_path behavior)
 #[test]
 fn test_plot_point_path_basic() {

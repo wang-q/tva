@@ -38,37 +38,37 @@ The simplest use case is plotting two numeric columns against each other.
 Using the `tests/data/plot/iris.tsv` dataset (Fisher's Iris dataset):
 
 ```bash
-tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --cols 80 --rows 24
 ```
 
 This creates a scatter plot showing the relationship between sepal length and sepal width.
 
 Output (terminal chart):
 ```
-4.40│sepal_width                 ⠈                                        ┌────┐
-    │                        ⢀                                            │data│
-    │                  ⠠                                                  └────┘
-    │                               ⠄
-    │                      ⠠
-    │                ⠐           ⠐                                         ⠂   ⠐
-    │                ⠐   ⠐ ⠐
-    │      ⠂     ⠂ ⠂                                             ⠂
-    │              ⠁ ⠈ ⠈     ⠈
-    │      ⠁   ⠁   ⡁ ⢈ ⠈   ⠈            ⠁   ⠁ ⡁       ⢀
-    │  ⡀   ⡀ ⡀     ⡀                  ⡀         ⡀ ⢀     ⢀ ⢀ ⢀    ⡀
-3.20│      ⡀   ⡀ ⡀                              ⡀     ⢀   ⢀
-    │⠄ ⠄       ⠄ ⠄ ⠄       ⠠   ⠠ ⠠    ⠄ ⠄ ⠄       ⠠ ⠠ ⠠ ⠠     ⠠  ⠄       ⠄ ⠄
-    │  ⠄                       ⠠ ⠠      ⠄ ⠄ ⠄ ⠄ ⠄   ⠠              ⠄
-    │                          ⠠ ⠠  ⠄     ⠄ ⠄ ⠄ ⠄ ⠠     ⠠            ⠄     ⠄
-    │                  ⠐       ⠐    ⠂   ⠂     ⠂ ⠂
-    │                        ⠐   ⠐  ⠂     ⠂                                ⠂
-    │            ⠁   ⠈       ⠈ ⠈ ⠈            ⠁       ⠈
-    │            ⠁           ⠈
-    │    ⠁         ⠁         ⠈          ⡀   ⡀ ⠁
-    │
-2.00│              ⡀                                                sepal_length
-    └───────────────────────────────────────────────────────────────────────────
- 4.30                                    6.10                               7.90
+6│sepal_width                                                      ┌───────────┐
+ │                                                                 │sepal_width│
+ │                                                                 └───────────┘
+ │
+ │
+ │
+ │
+ │
+ │                                ⠠
+ │                             ⡀
+ │                       ⠂          ⢀
+4│                     ⡀     ⠂    ⢀                                      ⢀   ⢀
+ │                     ⠄   ⠄ ⠄
+ │           ⠈     ⠁ ⠅ ⠄ ⠄     ⠄                                ⠁
+ │           ⠈   ⠁   ⠅ ⠅ ⠁   ⠁          ⠈   ⠈ ⠨       ⠄
+ │       ⠈   ⢈ ⠈ ⡀ ⡀ ⠁                ⠈         ⢈ ⠁   ⡀ ⠁ ⡁ ⠁   ⠁
+ │     ⠐ ⢐       ⠂ ⠂ ⠂       ⠂  ⢐ ⢐   ⠐ ⢐ ⢐ ⢀ ⢀ ⢀ ⠂ ⡂ ⠂ ⠂     ⠂ ⠂⢀     ⠐ ⠐
+ │                       ⡀      ⢐ ⠐ ⢐   ⢀ ⠐ ⠐ ⢐ ⢐ ⠂     ⠂          ⠐     ⠐
+ │                             ⠂  ⠐ ⠐     ⠐                              ⠐
+ │                 ⠅   ⠁       ⠅⠈ ⠈           ⠈       ⠁
+ │         ⠈         ⠁         ⠁        ⠠   ⠠ ⠈
+2│                   ⡀                                              sepal_length
+ └──────────────────────────────────────────────────────────────────────────────
+ 4                                       6                                     8
 ```
 
 ### 2. Grouped by Category (Color)
@@ -78,6 +78,7 @@ Use the `--color` option to group points by a categorical column. Each unique va
 ```bash
 tva plot point tests/data/plot/iris.tsv -x petal_length -y petal_width --color label
 ```
+![iris scatter plot with color](images/plot_point_iris_color.png)
 
 This creates a scatter plot with three colors, one for each iris species (setosa, versicolor, virginica).
 
@@ -93,6 +94,8 @@ Use the `-l` or `--line` flag to connect points with lines instead of drawing in
 ```bash
 tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --line
 ```
+
+![iris line plot](images/plot_point_iris_line.png)
 
 ### 4. Using Column Indices
 
@@ -115,13 +118,6 @@ Control the chart dimensions with `--cols` and `--rows`:
 tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --cols 100 --rows 30
 ```
 
-### 6. Fixed Axis Ranges
-
-Override automatic axis range calculation with `--xlim` and `--ylim`:
-
-```bash
-tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --xlim 4,8 --ylim 2,4.5
-```
 
 ### 7. Different Marker Styles
 
@@ -155,10 +151,8 @@ tva plot point data.tsv -x value1 -y value2 --ignore
 | `--color <COL>` | Column for grouping/coloring by category. |
 | `-l` / `--line` | Draw line chart instead of scatter plot. |
 | `-m <TYPE>` / `--marker <TYPE>` | Marker style: `braille` (default), `dot`, or `block`. |
-| `--cols <N>` | Chart width in characters (default: 80). |
-| `--rows <N>` | Chart height in characters (default: 24). |
-| `--xlim <MIN,MAX>` | X-axis range (e.g., `0,100`). |
-| `--ylim <MIN,MAX>` | Y-axis range (e.g., `0,100`). |
+| `--cols <N>` | Chart width in characters or ratio (default: `1.0`, i.e., full terminal width). |
+| `--rows <N>` | Chart height in characters or ratio (default: `1.0`, i.e., full terminal height minus 1 for prompt). |
 | `--ignore` | Skip rows with non-numeric values. |
 
 ## Comparison with R `ggplot2`
@@ -168,7 +162,6 @@ tva plot point data.tsv -x value1 -y value2 --ignore
 | Basic scatter plot | `aes(x, y)` | `-x <col> -y <col>` |
 | Color by group | `aes(color = group)` | `--color <col>` |
 | Line chart | `geom_line()` | `--line` |
-| Axis limits | `xlim()`, `ylim()` | `--xlim`, `--ylim` |
 | Faceting | `facet_wrap()` / `facet_grid()` | Not supported |
 | Themes | `theme_*()` | Terminal-based only |
 | Output | Graphics file / Viewer | Terminal ASCII/Unicode |

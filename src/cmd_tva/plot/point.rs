@@ -51,11 +51,13 @@ pub fn make_subcommand() -> Command {
         .arg(
             Arg::new("cols")
                 .long("cols")
+                .default_value("1.0")
                 .help("Chart width (characters or ratio like '0.8')"),
         )
         .arg(
             Arg::new("rows")
                 .long("rows")
+                .default_value("1.0")
                 .help("Chart height (characters or ratio like '0.6')"),
         )
         .arg(
@@ -64,16 +66,6 @@ pub fn make_subcommand() -> Command {
                 .long("marker")
                 .help("Marker type: braille, dot, block")
                 .default_value("braille"),
-        )
-        .arg(
-            Arg::new("xlim")
-                .long("xlim")
-                .help("X axis limits (min,max)"),
-        )
-        .arg(
-            Arg::new("ylim")
-                .long("ylim")
-                .help("Y axis limits (min,max)"),
         )
         .arg(
             Arg::new("ignore")
@@ -279,9 +271,18 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
                 }
             };
 
-            // Build group key: if color is specified, use "color|y_name", else just "y_name"
+            // Build group key:
+            // - If color is specified and multiple Y columns: use "color|y_name"
+            // - If color is specified and single Y column: use "color"
+            // - If no color: use "y_name"
             let group_key = match &color_group {
-                Some(c) => format!("{}|{}", c, y_name),
+                Some(c) => {
+                    if y_indices.len() > 1 {
+                        format!("{}|{}", c, y_name)
+                    } else {
+                        c.clone()
+                    }
+                }
                 None => y_name.clone(),
             };
 
@@ -295,41 +296,24 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         return Err(anyhow::anyhow!("No valid data points to plot"));
     }
 
-    // Parse axis limits
-    let xlim: Option<(f64, f64)> = match matches.get_one::<String>("xlim") {
-        Some(s) => {
-            let parts: Vec<&str> = s.split(',').collect();
-            if parts.len() == 2 {
-                Some((parts[0].parse()?, parts[1].parse()?))
-            } else {
-                None
-            }
-        }
-        None => None,
-    };
-    let ylim: Option<(f64, f64)> = match matches.get_one::<String>("ylim") {
-        Some(s) => {
-            let parts: Vec<&str> = s.split(',').collect();
-            if parts.len() == 2 {
-                Some((parts[0].parse()?, parts[1].parse()?))
-            } else {
-                None
-            }
-        }
-        None => None,
-    };
-
-    // Calculate bounds from all data points
+    // Calculate bounds from all data points (automatic)
     let all_points: Vec<(f64, f64)> = data.values().flatten().copied().collect();
-    let (x_min, x_max, y_min, y_max) =
-        axis::calculate_bounds(all_points.into_iter(), xlim, ylim);
+    let (x_min, x_max, y_min, y_max) = axis::calculate_bounds(all_points.into_iter());
 
     // Get chart dimensions
-    let (default_width, default_height) = render::get_default_dimensions();
-    let chart_width =
-        render::parse_dimension(matches.get_one::<String>("cols"), default_width, 10)?;
-    let chart_height =
-        render::parse_dimension(matches.get_one::<String>("rows"), default_height, 10)?;
+    // Reserve 1 row for the terminal prompt at the bottom
+    let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
+    let available_height = term_height.saturating_sub(1).max(10);
+    let chart_width = parse_chart_dimension(
+        matches.get_one::<String>("cols"),
+        term_width,
+        (term_width as f64 * 0.7) as u16,
+    )?;
+    let chart_height = parse_chart_dimension(
+        matches.get_one::<String>("rows"),
+        available_height,
+        (available_height as f64 * 0.7) as u16,
+    )?;
 
     // Build Y axis label from all Y column names
     let y_axis_label = if y_names.len() == 1 {
@@ -354,6 +338,37 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     )?;
 
     Ok(())
+}
+
+/// Parse chart dimension with support for:
+/// - Absolute values (e.g., "80" for 80 characters)
+/// - Ratios relative to terminal size (e.g., "0.8" for 80% of terminal)
+/// - Ratios > 1.0 to fill terminal (e.g., "1.0" for 100% of terminal)
+///
+/// # Arguments
+/// * `value` - The input string (e.g., "80" or "0.8" or "1.2")
+/// * `term_size` - The terminal size (width or height)
+/// * `default` - Default value to use if `value` is None
+fn parse_chart_dimension(
+    value: Option<&String>,
+    term_size: u16,
+    default: u16,
+) -> Result<u16> {
+    match value {
+        None => Ok(default),
+        Some(v) => {
+            if v.contains('.') {
+                // Ratio relative to terminal size
+                let ratio: f64 = v.parse()?;
+                let result = (term_size as f64 * ratio).round() as u16;
+                Ok(result.max(10)) // Minimum 10 characters
+            } else {
+                // Absolute value
+                let result: u16 = v.parse()?;
+                Ok(result.max(10)) // Minimum 10 characters
+            }
+        }
+    }
 }
 
 fn parse_float(bytes: &[u8]) -> Option<f64> {
