@@ -368,6 +368,10 @@ pub fn render_chart_box<T: BoxStatsRender>(
         [y_min, y_max]
     };
 
+    // Calculate Y axis width based on longest label (like plot point)
+    let max_label_len = y_labels_vec.iter().map(|l| l.len()).max().unwrap_or(1);
+    let y_axis_width = (max_label_len as u16).max(1);
+
     // Use TestBackend to render
     let backend = TestBackend::new(config.width, config.height);
     let mut terminal = Terminal::new(backend)?;
@@ -375,7 +379,6 @@ pub fn render_chart_box<T: BoxStatsRender>(
     terminal.draw(|f| {
         // Calculate layout
         let num_boxes = boxes.len();
-        let y_axis_width = 6u16;
         let chart_width = config.width.saturating_sub(y_axis_width);
         let box_width = if num_boxes > 0 {
             (chart_width as usize / num_boxes).max(8)
@@ -517,6 +520,7 @@ pub fn render_chart_box<T: BoxStatsRender>(
         }
 
         // Draw Y axis labels (top to bottom: max to min)
+        // Place labels immediately to the left of the Y axis line, like tva plot point
         for (i, label) in y_labels_vec.iter().enumerate() {
             if y_labels_vec.len() <= 1 {
                 continue;
@@ -525,13 +529,15 @@ pub fn render_chart_box<T: BoxStatsRender>(
             let ratio = 1.0 - (i as f64 / (y_labels_vec.len() - 1) as f64);
             let row = (ratio * (chart_height - 1) as f64) as u16;
             let row = row.min(chart_height - 1);
-            // Right-align the label
-            let label_trimmed = if label.len() > y_axis_width as usize - 1 {
-                &label[..y_axis_width as usize - 1]
+            // Right-align the label, placing it immediately adjacent to Y axis
+            // Label ends at y_axis_width - 1, Y axis line is at y_axis_width
+            let label_trimmed = if label.len() > y_axis_width as usize {
+                &label[..y_axis_width as usize]
             } else {
                 label
             };
-            let x_offset = y_axis_width.saturating_sub(label_trimmed.len() as u16 + 1);
+            // Place label so its right edge is at y_axis_width - 1
+            let x_offset = y_axis_width.saturating_sub(label_trimmed.len() as u16);
             let _ = f.buffer_mut().set_stringn(
                 x_offset,
                 row,

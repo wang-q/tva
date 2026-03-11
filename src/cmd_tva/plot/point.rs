@@ -48,13 +48,13 @@ pub fn make_subcommand() -> Command {
         .arg(
             Arg::new("cols")
                 .long("cols")
-                .default_value("1.0")
+                .default_value("80")
                 .help("Chart width (characters or ratio like '0.8')"),
         )
         .arg(
             Arg::new("rows")
                 .long("rows")
-                .default_value("1.0")
+                .default_value("24")
                 .help("Chart height (characters or ratio like '0.6')"),
         )
         .arg(

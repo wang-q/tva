@@ -39,16 +39,16 @@ The simplest use case is plotting two numeric columns against each other.
 Using the `tests/data/plot/iris.tsv` dataset (Fisher's Iris dataset):
 
 ```bash
-tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --cols 80 --rows 24
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width
 ```
 
 This creates a scatter plot showing the relationship between sepal length and sepal width.
 
 Output (terminal chart):
 ```
-6│sepal_width                                                      ┌───────────┐
- │                                                                 │sepal_width│
- │                                                                 └───────────┘
+6│sepal_width
+ │
+ │
  │
  │
  │
@@ -77,7 +77,7 @@ Output (terminal chart):
 Use the `--color` option to group points by a categorical column. Each unique value gets a different color.
 
 ```bash
-tva plot point tests/data/plot/iris.tsv -x petal_length -y petal_width --color label
+tva plot point tests/data/plot/iris.tsv -x petal_length -y petal_width --color label --cols 1.0 --rows 1.0
 ```
 ![iris scatter plot with color](images/plot_point_iris_color.png)
 
@@ -93,10 +93,16 @@ The output will show three distinct clusters with different markers/colors:
 Use the `-l` or `--line` flag to connect points with lines instead of drawing individual points.
 
 ```bash
-tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --line
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --line --cols 1.0 --rows 1.0
 ```
 
 ![iris line plot](images/plot_point_iris_line.png)
+
+```bash
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --path --cols 1.0 --rows 1.0
+```
+
+![iris path plot](images/plot_point_iris_path.png)
 
 ### 4. Using Column Indices
 
@@ -111,16 +117,7 @@ This maps:
 *   Column 3 (`petal_length`) to Y-axis
 *   Column 5 (`label`) to color
 
-### 5. Custom Chart Size
-
-Control the chart dimensions with `--cols` and `--rows`:
-
-```bash
-tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --cols 100 --rows 30
-```
-
-
-### 6. Different Marker Styles
+### 5. Different Marker Styles
 
 Choose from three marker types with `-m` or `--marker`:
 
@@ -146,7 +143,7 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot -
 When combined with `--color`, a separate regression line is drawn for each group:
 
 ```bash
-tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot  --color label --regression
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot  --color label --regression --cols 1.0 --rows 1.0
 ```
 
 ![Regression lines with color grouping](images/plot_point_regression.png)
@@ -221,26 +218,26 @@ This creates a box plot showing the distribution of sepal length values.
 
 Output (terminal chart):
 ```
-   10 │
-      │
-      │
-      │
-      │
-    8 │        ─┬─
-      │         │
-      │         │
-      │         │
-      │         │
-      │        ███
-    6 │        ─┼─
-      │        ███
-      │        ███
-      │         │
-      │         │
-      │        ─┴─
-    4 │
-      ├─────────────────────────────────────────────────────
-          sepal_length
+10│
+  │
+  │
+  │
+  │
+ 8│        ─┬─
+  │         │
+  │         │
+  │         │
+  │         │
+  │        ███
+ 6│        ─┼─
+  │        ███
+  │        ███
+  │         │
+  │         │
+  │        ─┴─
+ 4│
+  ├─────────────────────────────────────────────────────────
+      sepal_length
 ```
 
 #### 2. Grouped Box Plot
@@ -248,7 +245,7 @@ Output (terminal chart):
 Use the `--color` option to create separate box plots for each category:
 
 ```bash
-tva plot box tests/data/plot/iris.tsv -y sepal_length --color label
+tva plot box tests/data/plot/iris.tsv -y sepal_length --color label --cols 1.0 --rows 1.0
 ```
 ![Grouped box plot by species](images/plot_box_grouped.png)
 
@@ -259,7 +256,7 @@ This creates three box plots side by side, one for each iris species (setosa, ve
 Plot multiple numeric columns for comparison:
 
 ```bash
-tva plot box tests/data/plot/iris.tsv -y "sepal_length,sepal_width" --color label
+tva plot box tests/data/plot/iris.tsv -y "sepal_length,sepal_width" --color label --cols 1.0 --rows 1.0
 ```
 ![Multiple columns box plot](images/plot_box_multiple.png)
 
