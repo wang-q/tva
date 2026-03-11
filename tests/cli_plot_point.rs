@@ -329,3 +329,73 @@ fn test_plot_point_path_and_line_mutual_exclusion() {
 
     assert!(stderr.contains("Cannot use both"));
 }
+
+// Multi-Y column tests
+#[test]
+fn test_plot_point_multi_y_basic() {
+    let tva = TvaCmd::new();
+
+    // Data with multiple Y columns
+    let input = "x\ty1\ty2\n0\t0\t0\n1\t2\t1\n2\t4\t2\n3\t6\t3\n";
+
+    let (stdout, _stderr) = tva
+        .args(&["plot", "point", "-x", "1", "-y", "2,3"])
+        .stdin(input)
+        .run();
+
+    assert!(!stdout.is_empty());
+    // Should show two series in legend
+    assert!(stdout.contains("y1") || stdout.contains("y2"));
+}
+
+#[test]
+fn test_plot_point_multi_y_with_names() {
+    let tva = TvaCmd::new();
+    let iris_path = data_path("iris.tsv");
+
+    // Plot sepal_length vs both petal_length and petal_width
+    let (stdout, _stderr) = tva
+        .args(&[
+            "plot",
+            "point",
+            "-x",
+            "sepal_length",
+            "-y",
+            "petal_length,petal_width",
+            iris_path.to_str().unwrap(),
+        ])
+        .run();
+
+    assert!(!stdout.is_empty());
+    // Should show both column names in legend or axis label
+    assert!(stdout.contains("petal_length") || stdout.contains("petal_width"));
+}
+
+#[test]
+fn test_plot_point_multi_y_with_color() {
+    let tva = TvaCmd::new();
+    let iris_path = data_path("iris.tsv");
+
+    // Multiple Y columns with color grouping
+    let (stdout, _stderr) = tva
+        .args(&[
+            "plot",
+            "point",
+            "-x",
+            "sepal_length",
+            "-y",
+            "petal_length,petal_width",
+            "--color",
+            "label",
+            "--cols",
+            "100",
+            "--rows",
+            "30",
+            iris_path.to_str().unwrap(),
+        ])
+        .run();
+
+    assert!(!stdout.is_empty());
+    // Should show axis label with series count
+    assert!(stdout.contains("2 series"));
+}

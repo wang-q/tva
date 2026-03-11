@@ -12,7 +12,11 @@ use ratatui::widgets::{Axis, Chart, Dataset, GraphType, LegendPosition};
 use ratatui::Terminal;
 
 use crate::libs::io::reader;
+use crate::libs::plot::axis;
+use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
 use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::record::{Row, TsvRecord};
+use crate::libs::tsv::split::TsvSplitter;
 
 const COLORS: &[Color] = &[
     Color::Cyan,
@@ -34,13 +38,9 @@ pub fn make_subcommand() -> Command {
                 .required(true)
                 .help("X axis column (1-based index or column name)"),
         )
-        .arg(
-            Arg::new("y")
-                .short('y')
-                .long("y")
-                .required(true)
-                .help("Y axis column (1-based index or column name)"),
-        )
+        .arg(Arg::new("y").short('y').long("y").required(true).help(
+            "Y axis column(s), comma-separated (e.g., 'value1,value2' or '2,3,4')",
+        ))
         .arg(
             Arg::new("color")
                 .long("color")
@@ -131,27 +131,69 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
 
     // Read header (first line)
     let header_line = tsv_reader.read_header()?;
-    let headers = match header_line {
-        Some(line) => line.split(|&b| b == b'\t').map(|s| s.to_vec()).collect(),
+    let headers: Vec<Vec<u8>> = match header_line {
+        Some(line) => TsvSplitter::new(&line, b'\t').map(|s| s.to_vec()).collect(),
         None => Vec::new(),
     };
 
+    // Parse X column (single column)
     let x_idx = parse_column_index(x_col, &headers)?;
-    let y_idx = parse_column_index(y_col, &headers)?;
+
+    // Parse Y columns (supports multiple columns like "2,3,4" or "sales2023,sales2024")
+    let header_for_parsing = if headers.is_empty() {
+        None
+    } else {
+        let field_names: Vec<String> = headers
+            .iter()
+            .map(|h| String::from_utf8_lossy(h).to_string())
+            .collect();
+        Some(Header::from_fields(field_names))
+    };
+    let y_indices =
+        parse_field_list_with_header(y_col, header_for_parsing.as_ref(), '\t')
+            .map_err(|e| anyhow::anyhow!("Invalid Y column spec: {}", e))?;
+    if y_indices.is_empty() {
+        return Err(anyhow::anyhow!("No valid Y columns specified"));
+    }
+    // Convert to 0-based indices
+    let y_indices: Vec<usize> = y_indices.iter().map(|&i| i - 1).collect();
+
     let color_idx = color_col
         .map(|c| parse_column_index(c, &headers))
         .transpose()?;
 
+    // Get Y column names for legend
+    let y_names: Vec<String> = y_indices
+        .iter()
+        .map(|&idx| {
+            headers
+                .get(idx)
+                .map(|h| String::from_utf8_lossy(h).to_string())
+                .unwrap_or_else(|| format!("col{}", idx + 1))
+        })
+        .collect();
+
     let mut data: IndexMap<String, Vec<(f64, f64)>> = IndexMap::new();
+    let mut record = TsvRecord::new();
 
-    tsv_reader.for_each_record(|record| {
-        let fields: Vec<&[u8]> = record.split(|&b| b == b'\t').collect();
+    tsv_reader.for_each_record(|line| {
+        record.parse_line(line, b'\t');
 
-        if x_idx >= fields.len() || y_idx >= fields.len() {
-            return Ok(());
-        }
+        // Parse X value
+        let x_bytes = match record.get_bytes(x_idx + 1) {
+            Some(b) => b,
+            None => {
+                if ignore_errors {
+                    return Ok(());
+                }
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("Column {} not found in line", x_col),
+                ));
+            }
+        };
 
-        let x_val = match parse_float(fields[x_idx]) {
+        let x_val = match parse_float(x_bytes) {
             Some(v) => v,
             None => {
                 if ignore_errors {
@@ -161,50 +203,75 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
                     std::io::ErrorKind::InvalidData,
                     format!(
                         "Cannot parse '{}' as number in column {}",
-                        String::from_utf8_lossy(fields[x_idx]),
+                        String::from_utf8_lossy(x_bytes),
                         x_col
                     ),
                 ));
             }
         };
 
-        let y_val = match parse_float(fields[y_idx]) {
-            Some(v) => v,
-            None => {
-                if ignore_errors {
-                    return Ok(());
+        // Get color group if specified
+        let color_group = if let Some(idx) = color_idx {
+            match record.get_bytes(idx + 1) {
+                Some(b) => Some(String::from_utf8_lossy(b).to_string()),
+                None => {
+                    if ignore_errors {
+                        return Ok(());
+                    }
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "Color column index {} exceeds number of fields {}",
+                            idx + 1,
+                            record.len()
+                        ),
+                    ));
                 }
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!(
-                        "Cannot parse '{}' as number in column {}",
-                        String::from_utf8_lossy(fields[y_idx]),
-                        y_col
-                    ),
-                ));
-            }
-        };
-
-        let group = if let Some(idx) = color_idx {
-            if idx < fields.len() {
-                String::from_utf8_lossy(fields[idx]).to_string()
-            } else if ignore_errors {
-                return Ok(());
-            } else {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!(
-                        "Color column index {} exceeds number of fields {}",
-                        idx,
-                        fields.len()
-                    ),
-                ));
             }
         } else {
-            String::new()
+            None
         };
 
-        data.entry(group).or_default().push((x_val, y_val));
+        // Parse each Y column
+        for (y_idx, y_name) in y_indices.iter().zip(y_names.iter()) {
+            let y_bytes = match record.get_bytes(y_idx + 1) {
+                Some(b) => b,
+                None => {
+                    if ignore_errors {
+                        continue;
+                    }
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!("Column {} not found in line", y_name),
+                    ));
+                }
+            };
+
+            let y_val = match parse_float(y_bytes) {
+                Some(v) => v,
+                None => {
+                    if ignore_errors {
+                        continue;
+                    }
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "Cannot parse '{}' as number in column {}",
+                            String::from_utf8_lossy(y_bytes),
+                            y_name
+                        ),
+                    ));
+                }
+            };
+
+            // Build group key: if color is specified, use "color|y_name", else just "y_name"
+            let group_key = match &color_group {
+                Some(c) => format!("{}|{}", c, y_name),
+                None => y_name.clone(),
+            };
+
+            data.entry(group_key).or_default().push((x_val, y_val));
+        }
 
         Ok(())
     })?;
@@ -223,6 +290,13 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     let chart_height =
         parse_dimension(matches.get_one::<String>("rows"), default_height)?;
 
+    // Build Y axis label from all Y column names
+    let y_axis_label = if y_names.len() == 1 {
+        y_names[0].clone()
+    } else {
+        format!("{} ({} series)", y_names.join(", "), y_names.len())
+    };
+
     render_chart(
         data,
         x_min,
@@ -235,7 +309,7 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         is_line,
         is_path,
         &headers.get(x_idx).map(|h| h.as_slice()).unwrap_or(b"x"),
-        &headers.get(y_idx).map(|h| h.as_slice()).unwrap_or(b"y"),
+        y_axis_label.as_bytes(),
     )?;
 
     Ok(())
@@ -315,32 +389,6 @@ fn calculate_bounds(
     Ok((x_min, x_max, y_min, y_max))
 }
 
-/// Calculate a "nice" midpoint for axis labels.
-/// Rounds to a reasonable number of significant digits based on the range.
-fn nice_midpoint(min: f64, max: f64) -> f64 {
-    let mid = (min + max) / 2.0;
-    let range = max - min;
-
-    if range == 0.0 {
-        return mid;
-    }
-
-    // Determine appropriate precision based on range magnitude
-    let magnitude = range.log10().floor() as i32;
-    let precision = if magnitude >= 2 {
-        0 // Whole numbers for large ranges
-    } else if magnitude >= 0 {
-        1 // 1 decimal place
-    } else if magnitude >= -2 {
-        2 // 2 decimal places
-    } else {
-        3 // 3 decimal places for very small ranges
-    };
-
-    let factor = 10f64.powi(precision);
-    (mid * factor).round() / factor
-}
-
 fn parse_dimension(value: Option<&String>, default: u16) -> Result<u16> {
     match value {
         None => Ok(default),
@@ -406,9 +454,17 @@ fn render_chart(
     let x_axis_label = String::from_utf8_lossy(x_label).to_string();
     let y_axis_label = String::from_utf8_lossy(y_label).to_string();
 
-    // Calculate nice mid-point for axis labels
-    let x_mid = nice_midpoint(x_min, x_max);
-    let y_mid = nice_midpoint(y_min, y_max);
+    // Generate axis labels using the shared axis utilities
+    let x_labels: Vec<Span> =
+        axis::generate_axis_labels(x_min, x_max, width as usize, 15, 3, 8)
+            .into_iter()
+            .map(Span::from)
+            .collect();
+    let y_labels: Vec<Span> =
+        axis::generate_axis_labels(y_min, y_max, height as usize, 4, 3, 6)
+            .into_iter()
+            .map(Span::from)
+            .collect();
 
     let chart = Chart::new(datasets)
         .x_axis(
@@ -416,22 +472,14 @@ fn render_chart(
                 .title(Span::from(x_axis_label))
                 .style(Style::default().fg(Color::Gray))
                 .bounds([x_min, x_max])
-                .labels(vec![
-                    Span::from(format!("{:.2}", x_min)),
-                    Span::from(format!("{:.2}", x_mid)),
-                    Span::from(format!("{:.2}", x_max)),
-                ]),
+                .labels(x_labels),
         )
         .y_axis(
             Axis::default()
                 .title(Span::from(y_axis_label))
                 .style(Style::default().fg(Color::Gray))
                 .bounds([y_min, y_max])
-                .labels(vec![
-                    Span::from(format!("{:.2}", y_min)),
-                    Span::from(format!("{:.2}", y_mid)),
-                    Span::from(format!("{:.2}", y_max)),
-                ]),
+                .labels(y_labels),
         )
         .legend_position(Some(LegendPosition::TopRight));
 

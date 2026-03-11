@@ -4,5 +4,6 @@ pub mod cli;
 pub mod filter;
 pub mod io;
 pub mod number;
+pub mod plot;
 pub mod sampling;
 pub mod tsv;
