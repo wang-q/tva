@@ -7,3 +7,4 @@ pub mod axis;
 pub mod chart;
 pub mod regression;
 pub mod render;
+pub mod stats;

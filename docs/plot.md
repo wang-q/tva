@@ -7,6 +7,7 @@ This document explains how to use the plotting commands in `tva`: **`plot point`
 Terminal-based plotting allows you to quickly visualize data without leaving the command line. `tva` provides plotting tools that render directly in your terminal using ASCII/Unicode characters:
 
 *   **`plot point`**: Draws scatter plots or line charts from TSV data.
+*   **`plot box`**: Draws box plots (box-and-whisker plots) from TSV data.
 
 ## `plot point` (Scatter Plots and Line Charts)
 
@@ -189,6 +190,133 @@ tva plot point data.tsv -x value1 -y value2 --ignore
 | Output | Graphics file / Viewer | Terminal ASCII/Unicode |
 
 `tva plot point` brings the core concepts of the grammar of graphics to the command line, allowing for quick data exploration without leaving your terminal.
+
+## `plot box` (Box Plots)
+
+The `plot box` command creates box plots (box-and-whisker plots) directly in your terminal. It visualizes the distribution of a numeric variable, showing the median, quartiles, and potential outliers.
+
+### Basic Usage
+
+```bash
+tva plot box [input_file] --y <column> [options]
+```
+
+*   **`-y` / `--y`**: The column(s) to plot (required). Can specify multiple columns separated by commas.
+*   **`--color`**: Column for grouping/coloring boxes by category (optional).
+*   **`--outliers`**: Show outlier points beyond the whiskers.
+
+### Examples
+
+#### 1. Basic Box Plot
+
+The simplest use case is plotting a single numeric column.
+
+Using the `tests/data/plot/iris.tsv` dataset:
+
+```bash
+tva plot box tests/data/plot/iris.tsv -y sepal_length --cols 60 --rows 20
+```
+
+This creates a box plot showing the distribution of sepal length values.
+
+Output (terminal chart):
+```
+   10 │
+      │
+      │
+      │
+      │
+    8 │        ─┬─
+      │         │
+      │         │
+      │         │
+      │         │
+      │        ███
+    6 │        ─┼─
+      │        ███
+      │        ███
+      │         │
+      │         │
+      │        ─┴─
+    4 │
+      ├─────────────────────────────────────────────────────
+          sepal_length
+```
+
+#### 2. Grouped Box Plot
+
+Use the `--color` option to create separate box plots for each category:
+
+```bash
+tva plot box tests/data/plot/iris.tsv -y sepal_length --color label
+```
+![Grouped box plot by species](images/plot_box_grouped.png)
+
+This creates three box plots side by side, one for each iris species (setosa, versicolor, virginica).
+
+#### 3. Multiple Columns
+
+Plot multiple numeric columns for comparison:
+
+```bash
+tva plot box tests/data/plot/iris.tsv -y "sepal_length,sepal_width" --color label
+```
+![Multiple columns box plot](images/plot_box_multiple.png)
+
+This creates four box plots side by side, one for each measurement column.
+
+#### 4. Show Outliers
+
+Display outlier points that fall beyond the whiskers:
+
+```bash
+tva plot box tests/data/plot/iris.tsv -y petal_width --color label --outliers --cols 80 --rows 20
+```
+
+```
+    4 │
+      │
+      │
+      │
+      │                                                ─┬─
+    2 │                                                ─┼─
+      │                            ─┬─                 ███
+      │                            ─┼─                 ─┴─
+      │                            ─┴─
+      │         •
+      │        ─┬─
+    0 │        ─┴─
+      │
+      │
+      │
+      │
+      │
+   -2 │
+      ├─────────────────────────────────────────────────────────────────────────
+             setosa            versicolor           virginica
+```
+
+### Detailed Options
+
+| Option | Description |
+| :--- | :--- |
+| `-y <COL>` / `--y <COL>` | **Required.** Column(s) to plot. Multiple columns can be comma-separated. |
+| `--color <COL>` | Column for grouping by category. |
+| `--outliers` | Show outlier points beyond whiskers. |
+| `--cols <N>` | Chart width in characters or ratio (default: `1.0`). |
+| `--rows <N>` | Chart height in characters or ratio (default: `1.0`). |
+| `--ignore` | Skip rows with non-numeric values. |
+
+### Comparison with R `ggplot2`
+
+| Feature | `ggplot2::geom_boxplot` | `tva plot box` |
+| :--- | :--- | :--- |
+| Basic box plot | `aes(y = value)` | `-y <col>` |
+| Grouped box plot | `aes(x = group, y = value)` | `-y <col> --color <group>` |
+| Show outliers | `outlier.shape` | `--outliers` |
+| Multiple variables | `facet_wrap()` or multiple geoms | `-y "col1,col2"` |
+| Horizontal boxes | `coord_flip()` | Not supported |
+| Fill color | `fill` aesthetic | Terminal-based only |
 
 ## Tips
 
