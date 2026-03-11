@@ -4,3 +4,4 @@
 //! including axis generation, color management, and rendering helpers.
 
 pub mod axis;
+pub mod render;

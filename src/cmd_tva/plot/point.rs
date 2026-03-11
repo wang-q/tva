@@ -1,31 +1,20 @@
 use anyhow::Result;
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use colored::{ColoredString, Colorize};
 use indexmap::IndexMap;
 use ratatui::backend::TestBackend;
-use ratatui::buffer::{Buffer, Cell};
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Color, Style};
 use ratatui::symbols::Marker;
 use ratatui::text::Span;
 use ratatui::widgets::{Axis, Chart, Dataset, GraphType, LegendPosition};
 use ratatui::Terminal;
 
 use crate::libs::io::reader;
-use crate::libs::plot::axis;
+use crate::libs::plot::{axis, render};
 use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRecord};
 use crate::libs::tsv::split::TsvSplitter;
-
-const COLORS: &[Color] = &[
-    Color::Cyan,
-    Color::Green,
-    Color::Yellow,
-    Color::Magenta,
-    Color::Blue,
-    Color::Red,
-];
 
 pub fn make_subcommand() -> Command {
     Command::new("point")
@@ -435,7 +424,7 @@ fn render_chart(
     let mut datasets: Vec<Dataset> = Vec::new();
 
     for (i, (group, points)) in all_data.iter().enumerate() {
-        let color = COLORS[i % COLORS.len()];
+        let color = render::get_color(i);
 
         let dataset = Dataset::default()
             .name(if group.is_empty() { "data" } else { group })
@@ -494,71 +483,7 @@ fn render_chart(
 
     // Print the buffer content to stdout with colors
     let buffer = terminal.backend().buffer();
-    print_buffer_to_stdout(buffer, width as usize);
+    render::print_buffer_to_stdout(buffer, width as usize);
 
     Ok(())
-}
-
-fn group_cells_by_color(cells: &[Cell]) -> Vec<Vec<Cell>> {
-    let mut groups: Vec<Vec<Cell>> = Vec::new();
-    let mut current_run: Vec<Cell> = Vec::new();
-
-    for cell in cells {
-        if current_run.is_empty() || (current_run[0].style() == cell.style()) {
-            current_run.push(cell.clone());
-            continue;
-        }
-        groups.push(current_run);
-        current_run = vec![cell.clone()];
-    }
-
-    if !current_run.is_empty() {
-        groups.push(current_run);
-    }
-
-    groups
-}
-
-fn colorize(string: &str, color: Color, modifier: Modifier) -> ColoredString {
-    let string = match color {
-        Color::Reset | Color::White => Colorize::normal(string),
-        Color::Red => Colorize::red(string),
-        Color::Blue => Colorize::blue(string),
-        Color::Cyan => Colorize::cyan(string),
-        Color::Green => Colorize::green(string),
-        Color::Yellow => Colorize::yellow(string),
-        Color::Magenta => Colorize::magenta(string),
-        _ => Colorize::normal(string),
-    };
-
-    if modifier.is_empty() {
-        return string;
-    }
-
-    match modifier {
-        Modifier::DIM => Colorize::dimmed(string),
-        _ => string,
-    }
-}
-
-fn print_buffer_to_stdout(buffer: &Buffer, cols: usize) {
-    let contents = &buffer.content;
-    let mut i: usize = 0;
-
-    while i < contents.len() {
-        let line = group_cells_by_color(&contents[i..(i + cols)])
-            .iter()
-            .map(|cells| {
-                colorize(
-                    &cells.iter().map(|cell| cell.symbol()).collect::<String>(),
-                    cells[0].fg,
-                    cells[0].modifier,
-                )
-                .to_string()
-            })
-            .collect::<String>();
-
-        println!("{}", line.trim_end());
-        i += cols;
-    }
 }
