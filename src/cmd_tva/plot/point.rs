@@ -358,7 +358,7 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     let datasets = process_data(data, is_line, regression_data);
 
     // Build chart configuration
-    let config = ChartConfig::new(chart_width, chart_height)
+    let mut config = ChartConfig::new(chart_width, chart_height)
         .with_marker(marker)
         .with_labels(
             String::from_utf8_lossy(
@@ -367,13 +367,15 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
             y_axis_label,
         );
 
-    let config = if is_line {
-        config.with_line()
+    if is_line {
+        config = config.with_line();
     } else if is_path {
-        config.with_path()
-    } else {
-        config
-    };
+        config = config.with_path();
+    }
+
+    if draw_regression {
+        config = config.with_regression();
+    }
 
     // Render the chart
     render_chart(datasets, x_min, x_max, y_min, y_max, &config)?;

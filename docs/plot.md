@@ -148,6 +148,8 @@ When combined with `--color`, a separate regression line is drawn for each group
 tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot  --color label --regression
 ```
 
+![Regression lines with color grouping](images/plot_point_regression.png)
+
 Note: `--regression` cannot be used with `--line` or `--path`.
 
 ### 8. Handling Invalid Data
