@@ -315,6 +315,141 @@ tva plot box tests/data/plot/iris.tsv -y petal_width --color label --outliers --
 | Horizontal boxes | `coord_flip()` | Not supported |
 | Fill color | `fill` aesthetic | Terminal-based only |
 
+## `plot bin2d` (2D Binning Heatmap)
+
+The `plot bin2d` command creates 2D binning heatmaps directly in your terminal. It divides the plane into rectangles, counts the number of cases in each rectangle, and visualizes the density using character intensity. This is a useful alternative to `plot point` in the presence of overplotting.
+
+### Basic Usage
+
+```bash
+tva plot bin2d [input_file] --x <column> --y <column> [options]
+```
+
+*   **`-x` / `--x`**: The column for X-axis position (required).
+*   **`-y` / `--y`**: The column for Y-axis position (required).
+*   **`-b` / `--bins`**: Number of bins in each direction (default: 30, or `x,y` for different counts).
+*   **`-S` / `--strategy`**: Automatic bin count strategy: `freedman-diaconis`, `sqrt`, `sturges`.
+*   **`--binwidth`**: Width of bins (or `x,y` for different widths).
+
+### Examples
+
+#### 1. Basic 2D Binning
+
+Using the `docs/data/diamonds.tsv` dataset (diamond physical dimensions):
+
+This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The output shows the concentration of diamonds in different size ranges.
+
+For better visualization of the main data cluster, you can filter the data first:
+
+```bash
+tva filter docs/data/diamonds.tsv -H --ge x:4 --le x:8 --ge y:4 --le y:8 |
+    tva plot bin2d stdin -x x -y y
+```
+
+This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The output shows the concentration of diamonds in different size ranges.
+
+Output (terminal chart):
+```
+100│y                                                             ·░▒▓█ Max:9406
+   │
+   │
+   │
+   │
+   │
+   │
+   │
+   │
+   │
+   │
+   │
+50 │
+   │
+   │
+   │
+   │
+   │
+   │
+   │                                      ··
+   │                   ·· ▒▒  ░░··▒▒▒░░░░ ··
+   │                   ··█▒▒▒▒░░░░
+0  │                                                                           x
+   └────────────────────────────────────────────────────────────────────────────
+   0                            5                  10                         15
+```
+
+#### 2. Custom Bin Count
+
+You can control the size of the bins by specifying the number of bins in each direction:
+
+```bash
+# Same bins for both axes
+tva plot bin2d docs/data/diamonds.tsv -x x -y y --bins 20
+
+# Different bins for X and Y
+tva plot bin2d docs/data/diamonds.tsv -x x -y y --bins 30,15
+```
+
+#### 3. Specify Bin Width
+
+Or by specifying the width of the bins:
+
+```bash
+tva plot bin2d docs/data/diamonds.tsv -x x -y y --binwidth 0.5,0.5
+```
+
+#### 4. Automatic Bin Selection
+
+Use a strategy to automatically determine the number of bins:
+
+```bash
+tva plot bin2d docs/data/diamonds.tsv -x x -y y -S freedman-diaconis
+```
+
+Available strategies:
+*   `freedman-diaconis`: Based on data distribution (robust to outliers)
+*   `sqrt`: Square root of number of observations
+*   `sturges`: Sturges' formula (1 + log2(n))
+
+### Detailed Options
+
+| Option | Description |
+| :--- | :--- |
+| `-x <COL>` / `--x <COL>` | **Required.** X-axis column (1-based index or name). |
+| `-y <COL>` / `--y <COL>` | **Required.** Y-axis column (1-based index or name). |
+| `-b <N>` / `--bins <N>` | Number of bins (default: 30, or `x,y` for different counts). |
+| `-S <NAME>` / `--strategy <NAME>` | Auto bin count strategy: `freedman-diaconis`, `sqrt`, `sturges`. |
+| `--binwidth <W>` | Bin width (or `x,y` for different widths). |
+| `--cols <N>` | Chart width in characters (default: 80). |
+| `--rows <N>` | Chart height in characters (default: 24). |
+| `--ignore` | Skip rows with non-numeric values. |
+
+### Comparison with R `ggplot2`
+
+| Feature | `ggplot2::geom_bin2d` | `tva plot bin2d` |
+| :--- | :--- | :--- |
+| Basic heatmap | `aes(x, y)` | `-x <col> -y <col>` |
+| Bin count | `bins` | `--bins` or `-H` |
+| Bin width | `binwidth` | `--binwidth` |
+| Fill scale | `scale_fill_*` | Character density (█▓▒░·) |
+
+### Workflow: Exploration to Production
+
+`plot bin2d` is designed for quick data exploration. After visualizing the data distribution:
+
+1.  **Explore**: Use `plot bin2d` to see patterns:
+    ```bash
+    tva plot bin2d data.tsv -x age -y income
+    ```
+
+2.  **Determine parameters**: Note the optimal bin parameters from the visualization.
+
+3.  **Process**: Use `tva bin` for precise, production-ready binning:
+    ```bash
+    tva bin data.tsv -f age -w 5 | \
+      tva bin -f income -w 5000 | \
+      tva stats -g age,income count
+    ```
+
 ## Tips
 
 1. **Large datasets**: For very large datasets, consider sampling first:

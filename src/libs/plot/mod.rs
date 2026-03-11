@@ -4,6 +4,7 @@
 //! including axis generation, color management, and rendering helpers.
 
 pub mod axis;
+pub mod bin2d;
 pub mod chart;
 pub mod regression;
 pub mod render;
