@@ -341,7 +341,7 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         for (i, (group, points)) in data.iter().enumerate() {
             if let Some((slope, intercept)) = regression::calculate_regression(points) {
                 let reg_points = regression::generate_regression_points(
-                    slope, intercept, x_min, x_max,
+                    slope, intercept, x_min, x_max, y_min, y_max,
                 );
                 let equation = regression::format_regression_equation(slope, intercept);
                 let reg_name = format!(
