@@ -138,11 +138,16 @@ pub fn format_precision(_value: f64, range: f64) -> usize {
     }
 }
 
-/// Format a number with appropriate precision.
+/// Format a number with appropriate precision and notation.
+///
+/// This function intelligently formats numbers based on their magnitude:
+/// - Small integers (0-9999): No decimal places
+/// - Large numbers (>= 10000 or < 0.001): Scientific notation
+/// - Medium numbers: Appropriate decimal places based on precision
 ///
 /// # Arguments
 /// * `value` - The number to format
-/// * `precision` - Number of decimal places
+/// * `precision` - Number of decimal places for medium-range numbers
 ///
 /// # Examples
 /// ```
@@ -150,15 +155,59 @@ pub fn format_precision(_value: f64, range: f64) -> usize {
 ///
 /// assert_eq!(format_number(3.14159, 2), "3.14");
 /// assert_eq!(format_number(42.0, 0), "42");
+/// assert_eq!(format_number(12345.6, 2), "1.23e4");
+/// assert_eq!(format_number(0.0001, 2), "1.00e-4");
 /// ```
 pub fn format_number(value: f64, precision: usize) -> String {
-    format!("{:.*}", precision, value)
+    // Handle special cases
+    if value.is_nan() {
+        return "NaN".to_string();
+    }
+    if value.is_infinite() {
+        return if value.is_sign_positive() {
+            "Inf".to_string()
+        } else {
+            "-Inf".to_string()
+        };
+    }
+    if value == 0.0 {
+        return "0".to_string();
+    }
+
+    let abs_value = value.abs();
+
+    // Use scientific notation for very large or very small numbers
+    if abs_value >= 10000.0 || abs_value < 0.001 {
+        // Format with scientific notation, removing trailing zeros
+        let formatted = format!("{:.*e}", precision, value);
+        // Clean up: remove unnecessary + in exponent and trailing zeros
+        formatted
+            .replace("e+", "e")
+            .replace("e0", "e")
+            .replace("e-0", "e-")
+    } else if abs_value >= 1.0 && precision == 0 {
+        // Integer formatting for whole numbers
+        format!("{:.0}", value)
+    } else {
+        // Standard decimal formatting
+        let formatted = format!("{:.*}", precision, value);
+        // Remove trailing zeros after decimal point
+        if formatted.contains('.') {
+            formatted
+                .trim_end_matches('0')
+                .trim_end_matches('.')
+                .to_string()
+        } else {
+            formatted
+        }
+    }
 }
 
 /// Generate formatted axis labels for a given axis.
 ///
 /// This is a convenience function that combines `nice_breaks`, `format_precision`,
 /// and `format_number` to generate a complete set of axis labels.
+/// It ensures that all labels are unique by increasing precision if needed.
 ///
 /// # Arguments
 /// * `min` - Minimum data value
@@ -189,12 +238,29 @@ pub fn generate_axis_labels(
     let tick_count =
         adaptive_tick_count(dimension, chars_per_tick, min_ticks, max_ticks);
     let breaks = nice_breaks(min, max, tick_count);
-    let precision = format_precision(min, max - min);
 
-    breaks
-        .iter()
-        .map(|&v| format_number(v, precision))
-        .collect()
+    // Try to format labels, increasing precision if we get duplicates
+    let mut precision = format_precision(min, max - min);
+    let mut labels: Vec<String>;
+
+    loop {
+        labels = breaks
+            .iter()
+            .map(|&v| format_number(v, precision))
+            .collect();
+
+        // Check for duplicates
+        let unique_labels: std::collections::HashSet<_> = labels.iter().collect();
+        if unique_labels.len() == labels.len() || precision >= 6 {
+            // No duplicates or we've reached max precision
+            break;
+        }
+
+        // Increase precision and try again
+        precision += 1;
+    }
+
+    labels
 }
 
 /// Calculate axis bounds from data points with optional manual overrides.

@@ -133,8 +133,9 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     };
 
     // Parse X column (single column)
-    let x_indices = parse_field_list_with_header(x_col, header_for_parsing.as_ref(), '\t')
-        .map_err(|e| anyhow::anyhow!("Invalid X column spec: {}", e))?;
+    let x_indices =
+        parse_field_list_with_header(x_col, header_for_parsing.as_ref(), '\t')
+            .map_err(|e| anyhow::anyhow!("Invalid X column spec: {}", e))?;
     if x_indices.is_empty() {
         return Err(anyhow::anyhow!("No valid X column specified"));
     }
@@ -159,8 +160,9 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     // Parse color column (single column, optional)
     let color_idx = match color_col {
         Some(c) => {
-            let c_indices = parse_field_list_with_header(c, header_for_parsing.as_ref(), '\t')
-                .map_err(|e| anyhow::anyhow!("Invalid color column spec: {}", e))?;
+            let c_indices =
+                parse_field_list_with_header(c, header_for_parsing.as_ref(), '\t')
+                    .map_err(|e| anyhow::anyhow!("Invalid color column spec: {}", e))?;
             if c_indices.is_empty() {
                 return Err(anyhow::anyhow!("No valid color column specified"));
             }
@@ -319,7 +321,8 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
 
     // Calculate bounds from all data points
     let all_points: Vec<(f64, f64)> = data.values().flatten().copied().collect();
-    let (x_min, x_max, y_min, y_max) = axis::calculate_bounds(all_points.into_iter(), xlim, ylim);
+    let (x_min, x_max, y_min, y_max) =
+        axis::calculate_bounds(all_points.into_iter(), xlim, ylim);
 
     // Get chart dimensions
     let (default_width, default_height) = render::get_default_dimensions();

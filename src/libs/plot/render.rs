@@ -52,7 +52,11 @@ pub fn parse_marker(marker_type: &str) -> ratatui::symbols::Marker {
 /// * `parse_dimension(None, 100, 10)` -> 100
 /// * `parse_dimension(Some("80"), 100, 10)` -> 80
 /// * `parse_dimension(Some("0.8"), 100, 10)` -> 80 (80% of default)
-pub fn parse_dimension(value: Option<&String>, default: u16, min: u16) -> anyhow::Result<u16> {
+pub fn parse_dimension(
+    value: Option<&String>,
+    default: u16,
+    min: u16,
+) -> anyhow::Result<u16> {
     match value {
         None => Ok(default),
         Some(v) => {
@@ -72,8 +76,7 @@ pub fn parse_dimension(value: Option<&String>, default: u16, min: u16) -> anyhow
 ///
 /// Returns (width, height) with default ratio of 80% of terminal size.
 pub fn get_default_dimensions() -> (u16, u16) {
-    let (term_width, term_height) =
-        crossterm::terminal::size().unwrap_or((80, 24));
+    let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
     (
         (term_width as f64 * 0.8) as u16,
         (term_height as f64 * 0.8) as u16,
