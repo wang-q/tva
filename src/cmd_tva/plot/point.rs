@@ -51,7 +51,13 @@ pub fn make_subcommand() -> Command {
                 .short('l')
                 .long("line")
                 .action(ArgAction::SetTrue)
-                .help("Draw line chart instead of scatter plot"),
+                .help("Draw line chart (sort by x value)"),
+        )
+        .arg(
+            Arg::new("path")
+                .long("path")
+                .action(ArgAction::SetTrue)
+                .help("Draw path chart (connect points in original order, no sorting)"),
         )
         .arg(
             Arg::new("cols")
@@ -98,8 +104,16 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     let y_col = matches.get_one::<String>("y").unwrap();
     let color_col = matches.get_one::<String>("color");
     let is_line = matches.get_flag("line");
+    let is_path = matches.get_flag("path");
     let ignore_errors = matches.get_flag("ignore");
     let marker_type = matches.get_one::<String>("marker").unwrap();
+
+    // --line and --path are mutually exclusive
+    if is_line && is_path {
+        return Err(anyhow::anyhow!(
+            "Cannot use both --line and --path. Choose one."
+        ));
+    }
 
     let marker = match marker_type.as_str() {
         "dot" => Marker::Dot,
@@ -219,6 +233,7 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         chart_height,
         marker,
         is_line,
+        is_path,
         &headers.get(x_idx).map(|h| h.as_slice()).unwrap_or(b"x"),
         &headers.get(y_idx).map(|h| h.as_slice()).unwrap_or(b"y"),
     )?;
@@ -352,6 +367,7 @@ fn render_chart(
     height: u16,
     marker: Marker,
     is_line: bool,
+    is_path: bool,
     x_label: &[u8],
     y_label: &[u8],
 ) -> Result<()> {
@@ -360,6 +376,8 @@ fn render_chart(
 
     for (group, points) in data {
         let mut sorted_points = points;
+        // --line: sort by x value (geom_line behavior)
+        // --path: keep original order (geom_path behavior)
         if is_line {
             sorted_points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         }
@@ -375,7 +393,7 @@ fn render_chart(
             .name(if group.is_empty() { "data" } else { group })
             .marker(marker)
             .style(Style::default().fg(color))
-            .graph_type(if is_line {
+            .graph_type(if is_line || is_path {
                 GraphType::Line
             } else {
                 GraphType::Scatter

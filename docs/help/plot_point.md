@@ -22,7 +22,8 @@ Aesthetics:
 *   `--color`: Column for grouping/coloring points by category.
 
 Options:
-*   `-l`, `--line`: Connect points with lines (default is scatter plot).
+*   `-l`, `--line`: Connect points with lines, sorted by X value (geom_line behavior).
+*   `--path`: Connect points with lines, preserving original data order (geom_path behavior).
 *   `-m`, `--marker`: Marker style - `braille` (default), `dot`, or `block`.
 *   `--cols`: Chart width in characters (default: 80).
 *   `--rows`: Chart height in characters (default: 24).
@@ -41,11 +42,14 @@ Examples:
 2.  Grouped by category:
     `tva plot point iris.tsv -x petal_length -y petal_width --color label`
 
-3.  Line chart with custom size:
+3.  Line chart (sorted by X, good for trends):
     `tva plot point timeseries.tsv -x time -y value --line --cols 100 --rows 30`
 
-4.  Fixed axis ranges:
+4.  Path chart (preserves data order, good for trajectories):
+    `tva plot point trajectory.tsv -x x -y y --path --cols 100 --rows 30`
+
+5.  Fixed axis ranges:
     `tva plot point data.tsv -x x -y y --xlim 0,10 --ylim -5,5`
 
-5.  Using column indices:
+6.  Using column indices:
     `tva plot point data.tsv -x 1 -y 3 --color 5`
