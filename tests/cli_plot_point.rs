@@ -141,7 +141,7 @@ fn test_plot_point_invalid_column() {
         .stdin(input)
         .run_fail();
 
-    assert!(stderr.contains("not found"));
+    assert!(stderr.contains("Invalid X column spec"));
 }
 
 #[test]
@@ -155,7 +155,7 @@ fn test_plot_point_zero_based_index() {
         .stdin(input)
         .run_fail();
 
-    assert!(stderr.contains("1-based"));
+    assert!(stderr.contains("field index must be >= 1"));
 }
 
 // Iris dataset tests

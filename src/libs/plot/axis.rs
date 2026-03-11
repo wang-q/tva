@@ -197,6 +197,67 @@ pub fn generate_axis_labels(
         .collect()
 }
 
+/// Calculate axis bounds from data points with optional manual overrides.
+///
+/// This function computes the min/max bounds for X and Y axes from the provided data,
+/// with support for manual override via xlim and ylim parameters.
+///
+/// # Arguments
+/// * `data` - Iterator of (x, y) data points
+/// * `xlim` - Optional manual X axis limits as (min, max)
+/// * `ylim` - Optional manual Y axis limits as (min, max)
+///
+/// # Returns
+/// A tuple of (x_min, x_max, y_min, y_max)
+///
+/// # Examples
+/// ```
+/// use tva::libs::plot::axis::calculate_bounds;
+///
+/// let data = vec![(1.0, 2.0), (3.0, 4.0), (5.0, 1.0)];
+/// let (xmin, xmax, ymin, ymax) = calculate_bounds(data.iter().copied(), None, None);
+/// ```
+pub fn calculate_bounds(
+    data: impl Iterator<Item = (f64, f64)>,
+    xlim: Option<(f64, f64)>,
+    ylim: Option<(f64, f64)>,
+) -> (f64, f64, f64, f64) {
+    let mut x_min = f64::INFINITY;
+    let mut x_max = f64::NEG_INFINITY;
+    let mut y_min = f64::INFINITY;
+    let mut y_max = f64::NEG_INFINITY;
+
+    for (x, y) in data {
+        x_min = x_min.min(x);
+        x_max = x_max.max(x);
+        y_min = y_min.min(y);
+        y_max = y_max.max(y);
+    }
+
+    // Apply manual overrides
+    if let Some((min, max)) = xlim {
+        x_min = min;
+        x_max = max;
+    }
+
+    if let Some((min, max)) = ylim {
+        y_min = min;
+        y_max = max;
+    }
+
+    // Ensure non-zero range
+    if x_min == x_max {
+        x_min -= 1.0;
+        x_max += 1.0;
+    }
+    if y_min == y_max {
+        y_min -= 1.0;
+        y_max += 1.0;
+    }
+
+    (x_min, x_max, y_min, y_max)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -104,11 +104,7 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         ));
     }
 
-    let marker = match marker_type.as_str() {
-        "dot" => Marker::Dot,
-        "block" => Marker::Block,
-        _ => Marker::Braille,
-    };
+    let marker = render::parse_marker(marker_type);
 
     let infile = matches.get_one::<String>("infile");
     let input_reader = match infile {
@@ -125,10 +121,7 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         None => Vec::new(),
     };
 
-    // Parse X column (single column)
-    let x_idx = parse_column_index(x_col, &headers)?;
-
-    // Parse Y columns (supports multiple columns like "2,3,4" or "sales2023,sales2024")
+    // Build header for field parsing
     let header_for_parsing = if headers.is_empty() {
         None
     } else {
@@ -138,6 +131,22 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
             .collect();
         Some(Header::from_fields(field_names))
     };
+
+    // Parse X column (single column)
+    let x_indices = parse_field_list_with_header(x_col, header_for_parsing.as_ref(), '\t')
+        .map_err(|e| anyhow::anyhow!("Invalid X column spec: {}", e))?;
+    if x_indices.is_empty() {
+        return Err(anyhow::anyhow!("No valid X column specified"));
+    }
+    if x_indices.len() > 1 {
+        return Err(anyhow::anyhow!(
+            "X column must be a single column, got {} columns",
+            x_indices.len()
+        ));
+    }
+    let x_idx = x_indices[0] - 1; // Convert to 0-based
+
+    // Parse Y columns (supports multiple columns like "2,3,4" or "sales2023,sales2024")
     let y_indices =
         parse_field_list_with_header(y_col, header_for_parsing.as_ref(), '\t')
             .map_err(|e| anyhow::anyhow!("Invalid Y column spec: {}", e))?;
@@ -147,9 +156,24 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     // Convert to 0-based indices
     let y_indices: Vec<usize> = y_indices.iter().map(|&i| i - 1).collect();
 
-    let color_idx = color_col
-        .map(|c| parse_column_index(c, &headers))
-        .transpose()?;
+    // Parse color column (single column, optional)
+    let color_idx = match color_col {
+        Some(c) => {
+            let c_indices = parse_field_list_with_header(c, header_for_parsing.as_ref(), '\t')
+                .map_err(|e| anyhow::anyhow!("Invalid color column spec: {}", e))?;
+            if c_indices.is_empty() {
+                return Err(anyhow::anyhow!("No valid color column specified"));
+            }
+            if c_indices.len() > 1 {
+                return Err(anyhow::anyhow!(
+                    "Color column must be a single column, got {} columns",
+                    c_indices.len()
+                ));
+            }
+            Some(c_indices[0] - 1) // Convert to 0-based
+        }
+        None => None,
+    };
 
     // Get Y column names for legend
     let y_names: Vec<String> = y_indices
@@ -269,15 +293,40 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         return Err(anyhow::anyhow!("No valid data points to plot"));
     }
 
-    let (x_min, x_max, y_min, y_max) = calculate_bounds(&data, matches)?;
+    // Parse axis limits
+    let xlim: Option<(f64, f64)> = match matches.get_one::<String>("xlim") {
+        Some(s) => {
+            let parts: Vec<&str> = s.split(',').collect();
+            if parts.len() == 2 {
+                Some((parts[0].parse()?, parts[1].parse()?))
+            } else {
+                None
+            }
+        }
+        None => None,
+    };
+    let ylim: Option<(f64, f64)> = match matches.get_one::<String>("ylim") {
+        Some(s) => {
+            let parts: Vec<&str> = s.split(',').collect();
+            if parts.len() == 2 {
+                Some((parts[0].parse()?, parts[1].parse()?))
+            } else {
+                None
+            }
+        }
+        None => None,
+    };
 
-    let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
-    let default_width = (term_width as f64 * 0.8) as u16;
-    let default_height = (term_height as f64 * 0.8) as u16;
+    // Calculate bounds from all data points
+    let all_points: Vec<(f64, f64)> = data.values().flatten().copied().collect();
+    let (x_min, x_max, y_min, y_max) = axis::calculate_bounds(all_points.into_iter(), xlim, ylim);
 
-    let chart_width = parse_dimension(matches.get_one::<String>("cols"), default_width)?;
+    // Get chart dimensions
+    let (default_width, default_height) = render::get_default_dimensions();
+    let chart_width =
+        render::parse_dimension(matches.get_one::<String>("cols"), default_width, 10)?;
     let chart_height =
-        parse_dimension(matches.get_one::<String>("rows"), default_height)?;
+        render::parse_dimension(matches.get_one::<String>("rows"), default_height, 10)?;
 
     // Build Y axis label from all Y column names
     let y_axis_label = if y_names.len() == 1 {
@@ -304,94 +353,8 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn parse_column_index(col: &str, headers: &[Vec<u8>]) -> Result<usize> {
-    if let Ok(idx) = col.parse::<usize>() {
-        if idx == 0 {
-            return Err(anyhow::anyhow!("Column index must be 1-based"));
-        }
-        if idx > headers.len() {
-            return Err(anyhow::anyhow!(
-                "Column index {} exceeds number of columns {}",
-                idx,
-                headers.len()
-            ));
-        }
-        return Ok(idx - 1);
-    }
-
-    for (i, header) in headers.iter().enumerate() {
-        if String::from_utf8_lossy(header) == col {
-            return Ok(i);
-        }
-    }
-
-    Err(anyhow::anyhow!("Column '{}' not found in headers", col))
-}
-
 fn parse_float(bytes: &[u8]) -> Option<f64> {
     crate::libs::number::fast_parse_f64(bytes)
-}
-
-fn calculate_bounds(
-    data: &IndexMap<String, Vec<(f64, f64)>>,
-    matches: &ArgMatches,
-) -> Result<(f64, f64, f64, f64)> {
-    let mut x_min = f64::INFINITY;
-    let mut x_max = f64::NEG_INFINITY;
-    let mut y_min = f64::INFINITY;
-    let mut y_max = f64::NEG_INFINITY;
-
-    for points in data.values() {
-        for (x, y) in points {
-            x_min = x_min.min(*x);
-            x_max = x_max.max(*x);
-            y_min = y_min.min(*y);
-            y_max = y_max.max(*y);
-        }
-    }
-
-    if let Some(xlim) = matches.get_one::<String>("xlim") {
-        let parts: Vec<&str> = xlim.split(',').collect();
-        if parts.len() == 2 {
-            x_min = parts[0].parse()?;
-            x_max = parts[1].parse()?;
-        }
-    }
-
-    if let Some(ylim) = matches.get_one::<String>("ylim") {
-        let parts: Vec<&str> = ylim.split(',').collect();
-        if parts.len() == 2 {
-            y_min = parts[0].parse()?;
-            y_max = parts[1].parse()?;
-        }
-    }
-
-    if x_min == x_max {
-        x_min -= 1.0;
-        x_max += 1.0;
-    }
-    if y_min == y_max {
-        y_min -= 1.0;
-        y_max += 1.0;
-    }
-
-    Ok((x_min, x_max, y_min, y_max))
-}
-
-fn parse_dimension(value: Option<&String>, default: u16) -> Result<u16> {
-    match value {
-        None => Ok(default),
-        Some(v) => {
-            if v.contains('.') {
-                let ratio: f64 = v.parse()?;
-                let result = (default as f64 * ratio).round() as u16;
-                Ok(result.max(10)) // Minimum 10 characters
-            } else {
-                let result: u16 = v.parse()?;
-                Ok(result.max(10)) // Minimum 10 characters
-            }
-        }
-    }
 }
 
 fn render_chart(
