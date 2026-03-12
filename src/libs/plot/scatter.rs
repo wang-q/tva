@@ -190,7 +190,7 @@ pub fn render_scatter_chart(
     }
 
     let x_labels_vec =
-        axis::generate_axis_labels(x_min, x_max, config.width as usize, 10, 2, 4);
+        axis::generate_axis_labels(x_min, x_max, config.width as usize, 4, 2, 4);
     let y_labels_vec =
         axis::generate_axis_labels(y_min, y_max, config.height as usize, 4, 2, 4);
 
