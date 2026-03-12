@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b61d3b3e.js";
+            window.path_to_searchindex_js = "searchindex-511739ac.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -406,6 +406,23 @@
 </ul>
 </li>
 </ul>
+<h2 id="aggregation-architecture"><a class="header" href="#aggregation-architecture">Aggregation Architecture</a></h2>
+<p>This section provides a deep dive into the architectural differences between <code>tva</code> and other tools like <code>xan</code> (Rust) and <code>tsv-utils</code> (D Language) in their aggregation module designs.</p>
+<h3 id="tva-runtime-polymorphism-with-soa-memory-layout"><a class="header" href="#tva-runtime-polymorphism-with-soa-memory-layout">tva: Runtime Polymorphism with SoA Memory Layout</a></h3>
+<p><strong>Design</strong>: Hybrid Struct-of-Arrays (SoA). The Schema (<code>StatsProcessor</code>) builds the computation graph at runtime, while the State (<code>Aggregator</code>) uses compact columnar storage (<code>Vec&lt;f64&gt;</code>, <code>Vec&lt;String&gt;</code>). Computation logic is dynamically dispatched via <code>Box&lt;dyn Calculator&gt;</code> trait objects.</p>
+<p><strong>Advantages</strong>:</p>
+<ul>
+<li><strong>Memory Efficient</strong>: Even with millions of groups, each group’s <code>Aggregator</code> overhead is minimal (only a few <code>Vec</code> headers).</li>
+<li><strong>Modular</strong>: Adding new operators only requires implementing the <code>Calculator</code> trait, completely decoupled from existing code.</li>
+<li><strong>Fast Compilation</strong>: Compared to generic/template bloat, <code>dyn Trait</code> significantly reduces compile times and binary size.</li>
+<li><strong>Deterministic</strong>: Uses <code>IndexMap</code> to guarantee that GroupBy output order matches the first-occurrence order in the input.</li>
+</ul>
+<p><strong>Trade-offs</strong>: Virtual function calls (<code>vtable</code>) have a tiny overhead compared to inlined code in extremely high-frequency loops (e.g., 10 calls per row), but this is usually negligible in I/O-bound CLI tools.</p>
+<h3 id="other-tools"><a class="header" href="#other-tools">Other Tools</a></h3>
+<p><strong>xan</strong>: Uses enum dispatch (<code>enum Agg { Sum(SumState), ... }</code>) to avoid heap allocation, but requires modifying core enum definitions to add new operators.</p>
+<p><strong>tsv-utils (D)</strong>: Uses compile-time template specialization for extreme performance, but has long compile times and high code complexity.</p>
+<p><strong>datamash (C)</strong>: Uses sort-based grouping with O(1) memory, but requires pre-sorted input.</p>
+<p><strong>dplyr (R)</strong>: Uses vectorized mask evaluation, but depends on columnar storage and is unsuitable for streaming.</p>
 
                     </main>
 
