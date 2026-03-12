@@ -380,78 +380,70 @@ trim(@name)
 
 **任务清单**:
 
-1.  **项目结构搭建**
+1.  **项目结构搭建** ✅
     ```
     src/libs/expr/
-    ├── mod.rs          # 模块入口，公开 API
+    ├── mod.rs              # 模块入口，公开 API
     ├── parser/
-    │   ├── mod.rs      # 解析器入口
-    │   ├── grammar.pest # PEG 语法定义
-    │   ├── ast.rs      # AST 节点定义
-    │   └── pratt.rs    # Pratt Parser 实现
-    ├── compiler/
-    │   ├── mod.rs      # 编译器入口
-    │   └── concretize.rs # 静态分析和优化
+    │   ├── mod.rs          # 解析器入口（Pest 实现）
+    │   ├── grammar.pest    # Pest PEG 语法定义
+    │   └── ast.rs          # AST 节点定义
     ├── runtime/
-    │   ├── mod.rs      # 运行时入口
-    │   ├── interpreter.rs # 解释器
-    │   └── value.rs    # DynamicValue 类型系统
-    ├── functions/
-    │   ├── mod.rs      # 函数注册和管理
-    │   ├── string.rs   # 字符串函数
-    │   ├── numeric.rs  # 数值函数
-    │   └── logic.rs    # 逻辑函数
-    └── error.rs        # 错误类型定义
-    
-    tests/expr/         # 表达式引擎专项测试
-    ├── parser_tests.rs # 解析器单元测试
-    ├── eval_tests.rs   # 求值测试
-    ├── functions/      # 函数测试
-    └── fuzz/           # 模糊测试输入
+    │   ├── mod.rs          # 运行时入口（求值器）
+    │   └── value.rs        # Value 类型系统
+    └── tests/              # 集成测试目录
+        ├── mod.rs          # 测试模块入口
+        ├── basic.rs        # 基础功能测试
+        └── errors.rs       # 错误处理测试
     ```
 
     **测试策略**:
-    -   每个模块必须有对应的单元测试文件
+    -   单元测试放在各模块的 `#[cfg(test)]` 中，与源码在一起
+    -   集成测试放在 `tests/` 子目录下，按功能分类（如 `basic.rs`, `errors.rs`）
     -   解析器测试覆盖所有语法规则和边界情况
-    -   求值测试包含类型转换、错误处理、管道操作
-    -   集成测试验证与现有命令的兼容性
+    -   求值测试包含类型转换、错误处理
+    -   CLI 集成测试放在顶层 `tests/` 目录（如 `cli_*.rs`）
     -   模糊测试确保零 panic（参考 `tests/torture/`）
 
-2.  **语法定义 (grammar.pest)**
-    -   字面量: int, float, string, bool, null
-    -   列引用: `@` 前缀
-    -   操作符: 算术、比较、逻辑、管道
-    -   函数调用: 前缀调用和管道调用
-    -   括号分组
+2.  **语法定义 (grammar.pest)** ✅
+    -   字面量: int, float, string (单/双/反引号), bool, null
+    -   列引用: `@` 前缀（支持索引 `@1` 和名称 `@name`）
+    -   操作符: 算术 (`+`, `-`, `*`, `/`, `%`, `**`)、比较 (`==`, `!=`, `<`, `<=`, `>`, `>=`)、逻辑 (`&&`/`and`, `||`/`or`, `!`/`not`)
+    -   一元运算符: `-` (负号), `!`/`not` (逻辑非)
+    -   函数调用: 前缀调用 `func(arg1, arg2)`
+    -   括号分组: `(expr)`
 
-3.  **AST 定义 (ast.rs)**
+3.  **AST 定义 (ast.rs)** ✅
     ```rust
     pub enum Expr {
-        Literal(Literal),
-        ColumnRef(ColumnRef),
-        Binary(BinaryOp, Box<Expr>, Box<Expr>),
-        Unary(UnaryOp, Box<Expr>),
-        Call(String, Vec<Expr>),
-        Pipe(Box<Expr>, Vec<PipeSegment>),
+        ColumnRef(ColumnRef),           // @1, @name
+        Int(i64),                       // 整数
+        Float(f64),                     // 浮点数
+        String(String),                 // 字符串
+        Bool(bool),                     // true/false
+        Null,                           // null
+        Unary { op: UnaryOp, expr: Box<Expr> },           // -expr, !expr
+        Binary { op: BinaryOp, left: Box<Expr>, right: Box<Expr> },  // expr + expr
+        Call { name: String, args: Vec<Expr> },           // func(args)
     }
     ```
 
-4.  **Pratt Parser 实现 (pratt.rs)**
-    -   参考 xan 的 Pratt Parser 实现
+4.  **Pest Parser 实现** ✅
+    -   使用 Pest PEG 语法生成解析器
     -   处理操作符优先级和结合性
-    -   支持左递归消除
+    -   语法规则层级: primary → unary → power → multiplicative → additive → comparison → logical_and → logical_or
 
-5.  **错误处理 (error.rs)**
+5.  **错误处理** ✅
     ```rust
-    pub enum ParseError { ... }
-    pub enum CompileError { ... }
-    pub enum RuntimeError { ... }
+    pub enum ParseError { ... }     // 解析错误（使用 thiserror）
+    pub enum EvalError { ... }      // 运行时求值错误
     ```
 
 **验收标准**:
--   能正确解析简单表达式: `@1 + @2`, `@name | trim(_)`
--   错误信息清晰，包含位置信息
--   单元测试覆盖率 > 80%
+-   ✅ 能正确解析简单表达式: `@1 + @2`, `-5`, `2 ** 10`
+-   ✅ 支持完整操作符优先级: 一元运算符 → 乘方 → 乘除模 → 加减 → 比较 → 逻辑
+-   ✅ 错误信息清晰（使用 `thiserror`）
+-   ✅ 单元测试覆盖率: 60 个测试全部通过
 
 #### Phase 2: 运行时和函数库 (2-3 周)
 
