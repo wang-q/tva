@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f6379600.js";
+            window.path_to_searchindex_js = "../searchindex-26758a87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-a6c0a49a.js"></script>
@@ -194,6 +194,13 @@
 <li>Use <code>--invert</code> to invert the overall match result (select non-matching rows).</li>
 <li>Use <code>--count</code> to print only the number of matching data rows.</li>
 </ul>
+<p>Labeling:</p>
+<ul>
+<li>Use <code>--label</code> to add a column indicating whether each row passed the filter tests.</li>
+<li>Use <code>--label-values</code> to customize the pass/fail values (format: <code>PASS:FAIL</code>, default: <code>1:0</code>).</li>
+<li>When no tests are specified, all rows are considered passing.</li>
+<li>This is useful for adding a constant column to all rows.</li>
+</ul>
 <p>Field syntax:</p>
 <ul>
 <li>All tests that take a <code>&lt;field-list&gt;</code> argument accept the same field list
@@ -201,6 +208,21 @@ syntax as other tva commands: 1-based indices, ranges, header names, name
 ranges, and wildcards.</li>
 <li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
 </ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Filter rows where column 2 is greater than 100:
+<code>tva filter data.tsv --gt 2:100</code></p>
+</li>
+<li>
+<p>Add a ‘year’ column with value ‘2021’ to all rows:
+<code>tva filter data.tsv -H --label year --label-values 2021:any</code></p>
+</li>
+<li>
+<p>Label rows as ‘pass’/‘fail’ based on filter tests:
+<code>tva filter data.tsv -H --label status --label-values pass:fail --gt score:60</code></p>
+</li>
+</ol>
 
                     </main>
 
