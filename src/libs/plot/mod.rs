@@ -5,12 +5,23 @@
 
 use anyhow::Result;
 
+// Core modules
 pub mod axis;
-pub mod bin2d;
+pub mod binning;
+pub mod boxplot;
 pub mod chart;
+pub mod heatmap;
 pub mod regression;
 pub mod render;
+pub mod scatter;
 pub mod stats;
+
+// Re-exports for convenience
+pub use binning::{Bin2dConfig, Bin2d, compute_bins_2d};
+pub use binning::{freedman_diaconis_bins, sturges_bins, sqrt_bins};
+pub use heatmap::render_heatmap;
+pub use scatter::{ScatterConfig, ScatterDataset, process_scatter_data, render_scatter_chart};
+pub use boxplot::{BoxPlotConfig, BoxPlotData, BoxStatsRender, render_boxplot};
 
 /// Parse chart dimension with support for:
 /// - Absolute values (e.g., "80" for 80 characters)

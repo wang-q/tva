@@ -2,7 +2,8 @@ use anyhow::Result;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 
 use crate::libs::io::reader;
-use crate::libs::plot::bin2d::{render_bin2d_chart, Bin2dConfig};
+use crate::libs::plot::binning::Bin2dConfig;
+use crate::libs::plot::heatmap::render_heatmap;
 use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRecord};
@@ -253,7 +254,7 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     };
 
     // Render the heatmap
-    render_bin2d_chart(&x_values, &y_values, &config)?;
+    render_heatmap(&x_values, &y_values, &config)?;
 
     Ok(())
 }
