@@ -31,6 +31,7 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::fill::make_subcommand())
         .subcommand(cmd_tva::filter::make_subcommand())
         .subcommand(cmd_tva::r#from::make_subcommand())
+        .subcommand(cmd_tva::header::make_subcommand())
         .subcommand(cmd_tva::join::make_subcommand())
         .subcommand(cmd_tva::keep_header::make_subcommand())
         .subcommand(cmd_tva::longer::make_subcommand())
@@ -48,7 +49,7 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::uniq::make_subcommand())
         .subcommand(cmd_tva::wider::make_subcommand())
         .after_help(
-            r###"Currently implemented subcommands:
+            r###"Subcommands groups:
 
 * Selection & Sampling: sample, select, slice
 * Filtering: filter
@@ -56,9 +57,9 @@ fn main() -> anyhow::Result<()> {
 * Statistics & Summary: bin, stats, uniq
 * Reshaping: blank, fill, longer, wider
 * Combining & Splitting: append, join, split
-* Formatting & Utilities: check, keep-header, nl
+* Formatting & Utilities: check, header, keep-header, nl
 * Import & Export: from, to (csv, xlsx, md)
-* Plotting: plot point
+* Plotting: plot (bin2d, box, point)
 "###,
         );
 
@@ -84,6 +85,7 @@ fn main() -> anyhow::Result<()> {
         Some(("fill", sub_matches)) => cmd_tva::fill::execute(sub_matches),
         Some(("filter", sub_matches)) => cmd_tva::filter::execute(sub_matches),
         Some(("from", sub_matches)) => cmd_tva::r#from::execute(sub_matches),
+        Some(("header", sub_matches)) => cmd_tva::header::execute(sub_matches),
         Some(("join", sub_matches)) => cmd_tva::join::execute(sub_matches),
         Some(("keep-header", sub_matches)) => cmd_tva::keep_header::execute(sub_matches),
         Some(("longer", sub_matches)) => cmd_tva::longer::execute(sub_matches),

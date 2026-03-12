@@ -5,6 +5,7 @@ pub mod check;
 pub mod fill;
 pub mod filter;
 pub mod r#from;
+pub mod header;
 pub mod join;
 pub mod keep_header;
 pub mod longer;
