@@ -76,8 +76,7 @@ fn compute_bins_2d(
     };
 
     // Initialize bins
-    let mut bins: Vec<Vec<usize>> =
-        vec![vec![0; actual_y_bins]; actual_x_bins];
+    let mut bins: Vec<Vec<usize>> = vec![vec![0; actual_y_bins]; actual_x_bins];
 
     // Count points in each bin
     for (x, y) in x_values.iter().zip(y_values.iter()) {
@@ -104,24 +103,19 @@ fn compute_bins_2d(
         }
     }
 
-    (
-        bin2d_list,
-        x_min,
-        x_max,
-        y_min,
-        y_max,
-    )
+    (bin2d_list, x_min, x_max, y_min, y_max)
 }
 
 /// Render density characters based on normalized count.
+/// 7-level non-linear scale: low values have finer granularity
 fn density_char(density: f64) -> &'static str {
     match density {
-        d if d >= 0.9 => "█",
-        d if d >= 0.7 => "▓",
-        d if d >= 0.5 => "▒",
-        d if d >= 0.3 => "░",
-        d if d >= 0.1 => "·",
-        _ => " ",
+        d if d >= 0.8 => "█", // Highest density
+        d if d >= 0.6 => "▓",
+        d if d >= 0.4 => "▒",
+        d if d >= 0.2 => "░",
+        d if d >= 0.05 => "·", // Low density threshold
+        _ => " ",              // Below 5%: not shown
     }
 }
 
@@ -205,7 +199,8 @@ pub fn render_bin2d_chart(
         // Get the inner chart area (where data would be plotted)
         // Chart widget typically has margins for labels
         // We need to estimate the plotting area
-        let y_label_width = y_labels_vec.iter().map(|l| l.len()).max().unwrap_or(1) as u16;
+        let y_label_width =
+            y_labels_vec.iter().map(|l| l.len()).max().unwrap_or(1) as u16;
         let chart_inner_x = y_label_width + 1; // Y labels + axis line
         let _chart_inner_y = 0; // Top margin
         let chart_inner_width = config.width.saturating_sub(chart_inner_x + 1); // -1 for right margin
@@ -213,15 +208,15 @@ pub fn render_bin2d_chart(
 
         // Map data coordinates to screen coordinates within chart area
         let x_to_col = |x: f64| -> u16 {
-            let ratio = (x - x_bounds_aligned[0])
-                / (x_bounds_aligned[1] - x_bounds_aligned[0]);
+            let ratio =
+                (x - x_bounds_aligned[0]) / (x_bounds_aligned[1] - x_bounds_aligned[0]);
             let col = chart_inner_x + (ratio * (chart_inner_width - 1) as f64) as u16;
             col.clamp(chart_inner_x, config.width - 1)
         };
 
         let y_to_row = |y: f64| -> u16 {
-            let ratio = (y - y_bounds_aligned[0])
-                / (y_bounds_aligned[1] - y_bounds_aligned[0]);
+            let ratio =
+                (y - y_bounds_aligned[0]) / (y_bounds_aligned[1] - y_bounds_aligned[0]);
             // Invert: larger Y values go to smaller row numbers
             let row = (1.0 - ratio) * (chart_inner_height - 1) as f64;
             row.clamp(0.0, chart_inner_height as f64 - 1.0) as u16
@@ -246,9 +241,13 @@ pub fn render_bin2d_chart(
             for row in y_start..=y_end {
                 for col in x_start..=x_end {
                     let color = density_color(density);
-                    let _ = f
-                        .buffer_mut()
-                        .set_stringn(col, row, symbol, 1, Style::default().fg(color));
+                    let _ = f.buffer_mut().set_stringn(
+                        col,
+                        row,
+                        symbol,
+                        1,
+                        Style::default().fg(color),
+                    );
                 }
             }
         }
@@ -256,7 +255,8 @@ pub fn render_bin2d_chart(
         // Draw horizontal legend for density scale (low to high)
         let legend_y = 0u16;
         // Reverse order: low density to high density
-        let scale_chars = [(0.1, "·"), (0.3, "░"), (0.5, "▒"), (0.7, "▓"), (0.9, "█")];
+        // 7-level non-linear scale: low values (0-0.2) have finer granularity
+        let scale_chars = [(0.05, "·"), (0.2, "░"), (0.4, "▒"), (0.6, "▓"), (0.8, "█")];
         let legend_text = format!(" Max:{}", max_count);
         let legend_width = scale_chars.len() + legend_text.len();
         let legend_x = config.width.saturating_sub(legend_width as u16);
@@ -293,14 +293,15 @@ pub fn render_bin2d_chart(
 
 /// Get color based on density.
 /// Heat gradient: black -> grey -> white -> yellow -> red
+/// 7-level non-linear scale matching density_char
 fn density_color(density: f64) -> Color {
     match density {
-        d if d >= 0.9 => Color::Red,        // █ - hottest
-        d if d >= 0.7 => Color::Yellow,     // ▓ - hot
-        d if d >= 0.5 => Color::White,      // ▒ - warm
-        d if d >= 0.3 => Color::Gray,       // ░ - cool
-        d if d >= 0.1 => Color::Black,      // · - cold
-        _ => Color::Black,
+        d if d >= 0.8 => Color::Red,    // █ - highest
+        d if d >= 0.6 => Color::Yellow, // ▓
+        d if d >= 0.4 => Color::White,  // ▒
+        d if d >= 0.2 => Color::Gray,   // ░
+        d if d >= 0.05 => Color::Black, // · - low
+        _ => Color::Black,              // (space) below 5%
     }
 }
 

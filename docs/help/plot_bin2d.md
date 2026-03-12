@@ -10,8 +10,14 @@ Input:
 *   Files ending in `.gz` are transparently decompressed.
 
 Output:
-*   Renders a heatmap to the terminal using character density (█▓▒░·).
-*   Higher density areas are shown with denser characters.
+*   Renders a heatmap to the terminal using character density.
+*   Density scale (low to high):
+    *   · ≥5% (dark grey)
+    *   ░ ≥20% (grey)
+    *   ▒ ≥40% (white)
+    *   ▓ ≥60% (yellow)
+    *   █ ≥80% (red)
+*   Values below 5% are not shown.
 
 Header behavior:
 *   Supports all four header modes. See `tva --help-headers` for details.
@@ -30,9 +36,9 @@ Examples:
 
         tva plot bin2d data.tsv -x age -y income --bins 30,10
 
-4.  Use automatic bin count heuristic:
+4.  Use automatic bin count strategy:
 
-        tva plot bin2d data.tsv -x age -y income -H freedman-diaconis
+        tva plot bin2d data.tsv -x age -y income -S freedman-diaconis
 
 5.  Specify bin width:
 

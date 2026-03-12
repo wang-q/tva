@@ -31,7 +31,9 @@ pub fn make_subcommand() -> Command {
                 .short('b')
                 .long("bins")
                 .default_value("30")
-                .help("Number of bins in each direction (or 'x,y' for different counts)"),
+                .help(
+                    "Number of bins in each direction (or 'x,y' for different counts)",
+                ),
         )
         .arg(
             Arg::new("binwidth")
@@ -39,10 +41,9 @@ pub fn make_subcommand() -> Command {
                 .help("Width of bins (or 'x,y' for different widths)"),
         )
         .arg(
-            Arg::new("strategy")
-                .short('S')
-                .long("strategy")
-                .help("Strategy for automatic bin count: freedman-diaconis, sqrt, sturges"),
+            Arg::new("strategy").short('S').long("strategy").help(
+                "Strategy for automatic bin count: freedman-diaconis, sqrt, sturges",
+            ),
         )
         .arg(
             Arg::new("cols")
@@ -76,6 +77,13 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     let binwidth_str = matches.get_one::<String>("binwidth");
     let _strategy = matches.get_one::<String>("strategy");
     let ignore_errors = matches.get_flag("ignore");
+
+    // Parse cols and rows
+    let cols_str = matches.get_one::<String>("cols").unwrap();
+    let rows_str = matches.get_one::<String>("rows").unwrap();
+    let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
+    let width = crate::libs::plot::parse_chart_dimension(Some(cols_str), term_width, 80)?;
+    let height = crate::libs::plot::parse_chart_dimension(Some(rows_str), term_height, 24)?;
 
     let infile = matches.get_one::<String>("infile");
     let input_reader = match infile {
@@ -234,8 +242,8 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
 
     // Build config
     let config = Bin2dConfig {
-        width: 80,
-        height: 24,
+        width,
+        height,
         x_bins,
         y_bins,
         x_binwidth,

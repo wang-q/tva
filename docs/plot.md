@@ -342,39 +342,35 @@ This creates a heatmap showing the density distribution of diamond length (x) vs
 For better visualization of the main data cluster, you can filter the data first:
 
 ```bash
-tva filter docs/data/diamonds.tsv -H --ge x:4 --le x:8 --ge y:4 --le y:8 |
-    tva plot bin2d stdin -x x -y y
+cargo run --bin tva plot bin2d docs/data/diamonds.48.tsv -x x -y y
 ```
-
-This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The output shows the concentration of diamonds in different size ranges.
 
 Output (terminal chart):
 ```
-100│y                                                             ·░▒▓█ Max:9406
-   │
-   │
-   │
-   │
-   │
-   │
-   │
-   │
-   │
-   │
-   │
-50 │
-   │
-   │
-   │
-   │
-   │
-   │
-   │                                      ··
-   │                   ·· ▒▒  ░░··▒▒▒░░░░ ··
-   │                   ··█▒▒▒▒░░░░
-0  │                                                                           x
-   └────────────────────────────────────────────────────────────────────────────
-   0                            5                  10                         15
+8│y                                                               ·░▒▓█ Max:3908
+ │
+ │                                                                    ··
+ │                                                            ········
+ │                                                            ·····
+ │                                                     ·····
+ │                                                  ···░░···
+ │                                             ·····░░░···
+ │                                        ·····▒▒▒··
+ │                                        ···░░···
+ │                                      ░░···
+6│                                ···░░░··
+ │                           ···░░···
+ │                      ···  ·····
+ │                      ···░░
+ │                 ···▒▒···
+ │          ··     ·····
+ │       ·····▓▓▓··
+ │  ···░░···░░···
+ │  ···██····
+ │  ······
+4│··                                                                           x
+ └──────────────────────────────────────────────────────────────────────────────
+ 4                                       6                                     8
 ```
 
 #### 2. Custom Bin Count
@@ -383,10 +379,10 @@ You can control the size of the bins by specifying the number of bins in each di
 
 ```bash
 # Same bins for both axes
-tva plot bin2d docs/data/diamonds.tsv -x x -y y --bins 20
+tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --bins 20
 
 # Different bins for X and Y
-tva plot bin2d docs/data/diamonds.tsv -x x -y y --bins 30,15
+tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --bins 30,15
 ```
 
 #### 3. Specify Bin Width
@@ -394,7 +390,7 @@ tva plot bin2d docs/data/diamonds.tsv -x x -y y --bins 30,15
 Or by specifying the width of the bins:
 
 ```bash
-tva plot bin2d docs/data/diamonds.tsv -x x -y y --binwidth 0.5,0.5
+tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --binwidth 0.5,0.5
 ```
 
 #### 4. Automatic Bin Selection
@@ -402,7 +398,7 @@ tva plot bin2d docs/data/diamonds.tsv -x x -y y --binwidth 0.5,0.5
 Use a strategy to automatically determine the number of bins:
 
 ```bash
-tva plot bin2d docs/data/diamonds.tsv -x x -y y -S freedman-diaconis
+tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --cols 1.0 --rows 1.0 -S freedman-diaconis
 ```
 
 Available strategies:
@@ -428,9 +424,9 @@ Available strategies:
 | Feature | `ggplot2::geom_bin2d` | `tva plot bin2d` |
 | :--- | :--- | :--- |
 | Basic heatmap | `aes(x, y)` | `-x <col> -y <col>` |
-| Bin count | `bins` | `--bins` or `-H` |
+| Bin count | `bins` | `--bins` or `-S` |
 | Bin width | `binwidth` | `--binwidth` |
-| Fill scale | `scale_fill_*` | Character density (█▓▒░·) |
+| Fill scale | `scale_fill_*` | Character density (·░▒▓█) |
 
 ### Workflow: Exploration to Production
 

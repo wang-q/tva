@@ -317,12 +317,12 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     // Reserve 1 row for the terminal prompt at the bottom
     let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
     let available_height = term_height.saturating_sub(1).max(10);
-    let chart_width = parse_chart_dimension(
+    let chart_width = crate::libs::plot::parse_chart_dimension(
         matches.get_one::<String>("cols"),
         term_width,
         (term_width as f64 * 0.7) as u16,
     )?;
-    let chart_height = parse_chart_dimension(
+    let chart_height = crate::libs::plot::parse_chart_dimension(
         matches.get_one::<String>("rows"),
         available_height,
         (available_height as f64 * 0.7) as u16,
@@ -381,32 +381,6 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     render_chart(datasets, x_min, x_max, y_min, y_max, &config)?;
 
     Ok(())
-}
-
-/// Parse chart dimension with support for:
-/// - Absolute values (e.g., "80" for 80 characters)
-/// - Ratios relative to terminal size (e.g., "0.8" for 80% of terminal)
-/// - Ratios > 1.0 to fill terminal (e.g., "1.0" for 100% of terminal)
-fn parse_chart_dimension(
-    value: Option<&String>,
-    term_size: u16,
-    default: u16,
-) -> Result<u16> {
-    match value {
-        None => Ok(default),
-        Some(v) => {
-            if v.contains('.') {
-                // Ratio relative to terminal size
-                let ratio: f64 = v.parse()?;
-                let result = (term_size as f64 * ratio).round() as u16;
-                Ok(result.max(10)) // Minimum 10 characters
-            } else {
-                // Absolute value
-                let result: u16 = v.parse()?;
-                Ok(result.max(10)) // Minimum 10 characters
-            }
-        }
-    }
 }
 
 fn parse_float(bytes: &[u8]) -> Option<f64> {
