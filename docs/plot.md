@@ -319,6 +319,8 @@ tva plot box tests/data/plot/iris.tsv -y petal_width --color label --outliers --
 
 The `plot bin2d` command creates 2D binning heatmaps directly in your terminal. It divides the plane into rectangles, counts the number of cases in each rectangle, and visualizes the density using character intensity. This is a useful alternative to `plot point` in the presence of overplotting.
 
+**Workflow**: Use `plot bin2d` for quick exploration with automatic binning, then use `bin` with manually determined parameters for precise processing.
+
 ### Basic Usage
 
 ```bash
