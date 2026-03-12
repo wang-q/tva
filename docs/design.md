@@ -180,3 +180,29 @@ All tools use a unified syntax to identify fields (columns). See [Field Syntax D
     *   Standard tool for random permutations.
     *   `tva sample` adds specific data science sampling methods: weighted sampling (by column value) and Bernoulli sampling.
 
+## Aggregation Architecture
+
+This section provides a deep dive into the architectural differences between `tva` and other tools like `xan` (Rust) and `tsv-utils` (D Language) in their aggregation module designs.
+
+### tva: Runtime Polymorphism with SoA Memory Layout
+
+**Design**: Hybrid Struct-of-Arrays (SoA). The Schema (`StatsProcessor`) builds the computation graph at runtime, while the State (`Aggregator`) uses compact columnar storage (`Vec<f64>`, `Vec<String>`). Computation logic is dynamically dispatched via `Box<dyn Calculator>` trait objects.
+
+**Advantages**:
+*   **Memory Efficient**: Even with millions of groups, each group's `Aggregator` overhead is minimal (only a few `Vec` headers).
+*   **Modular**: Adding new operators only requires implementing the `Calculator` trait, completely decoupled from existing code.
+*   **Fast Compilation**: Compared to generic/template bloat, `dyn Trait` significantly reduces compile times and binary size.
+*   **Deterministic**: Uses `IndexMap` to guarantee that GroupBy output order matches the first-occurrence order in the input.
+
+**Trade-offs**: Virtual function calls (`vtable`) have a tiny overhead compared to inlined code in extremely high-frequency loops (e.g., 10 calls per row), but this is usually negligible in I/O-bound CLI tools.
+
+### Other Tools
+
+**xan**: Uses enum dispatch (`enum Agg { Sum(SumState), ... }`) to avoid heap allocation, but requires modifying core enum definitions to add new operators.
+
+**tsv-utils (D)**: Uses compile-time template specialization for extreme performance, but has long compile times and high code complexity.
+
+**datamash (C)**: Uses sort-based grouping with O(1) memory, but requires pre-sorted input.
+
+**dplyr (R)**: Uses vectorized mask evaluation, but depends on columnar storage and is unsuitable for streaming.
+
