@@ -2,3 +2,4 @@
 
 mod basic;
 mod errors;
+mod functions;

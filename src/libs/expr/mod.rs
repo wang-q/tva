@@ -2,6 +2,7 @@
 //!
 //! Provides parsing and evaluation of expressions like `@1 + @2 * 3`
 
+pub mod functions;
 pub mod parser;
 pub mod runtime;
 

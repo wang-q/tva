@@ -38,6 +38,11 @@ impl Value {
         matches!(self, Value::Float(_) | Value::Int(_))
     }
 
+    /// Check if value is null
+    pub fn is_null(&self) -> bool {
+        matches!(self, Value::Null)
+    }
+
     /// Convert to string representation
     pub fn to_string(&self) -> String {
         match self {

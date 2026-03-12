@@ -10,12 +10,18 @@ pub enum EvalError {
     ColumnIndexOutOfBounds(usize),
     #[error("Column '{0}' not found")]
     ColumnNotFound(String),
-    #[error("Type error: expected {expected}")]
-    TypeError { expected: String },
+    #[error("Type error: {0}")]
+    TypeError(String),
     #[error("Division by zero")]
     DivisionByZero,
     #[error("Unknown function: {0}")]
     UnknownFunction(String),
+    #[error("Function '{name}': expected {expected} arguments, got {got}")]
+    WrongArity {
+        name: String,
+        expected: usize,
+        got: usize,
+    },
 }
 
 /// Context for expression evaluation
@@ -38,7 +44,7 @@ impl<'a> EvalContext<'a> {
         }
     }
 
-    /// Get value at column index (1-based)
+    /// Get value by 1-based column index
     fn get_by_index(&self, idx: usize) -> Result<Value, EvalError> {
         let zero_based = idx - 1;
         if zero_based >= self.row.len() {
@@ -98,9 +104,7 @@ pub fn eval(expr: &Expr, ctx: &EvalContext) -> Result<Value, EvalError> {
                 UnaryOp::Neg => match val {
                     Value::Int(i) => Ok(Value::Int(-i)),
                     Value::Float(f) => Ok(Value::Float(-f)),
-                    _ => Err(EvalError::TypeError {
-                        expected: "numeric".to_string(),
-                    }),
+                    _ => Err(EvalError::TypeError("expected numeric".to_string())),
                 },
                 UnaryOp::Not => Ok(Value::Bool(!val.as_bool())),
             }
@@ -111,35 +115,32 @@ pub fn eval(expr: &Expr, ctx: &EvalContext) -> Result<Value, EvalError> {
 
             match op {
                 // Arithmetic
-                BinaryOp::Add => (left_val + right_val).ok_or(EvalError::TypeError {
-                    expected: "numeric".to_string(),
-                }),
-                BinaryOp::Sub => (left_val - right_val).ok_or(EvalError::TypeError {
-                    expected: "numeric".to_string(),
-                }),
-                BinaryOp::Mul => (left_val * right_val).ok_or(EvalError::TypeError {
-                    expected: "numeric".to_string(),
-                }),
+                BinaryOp::Add => (left_val + right_val)
+                    .ok_or(EvalError::TypeError("expected numeric".to_string())),
+                BinaryOp::Sub => (left_val - right_val)
+                    .ok_or(EvalError::TypeError("expected numeric".to_string())),
+                BinaryOp::Mul => (left_val * right_val)
+                    .ok_or(EvalError::TypeError("expected numeric".to_string())),
                 BinaryOp::Div => (left_val / right_val).ok_or(EvalError::DivisionByZero),
                 BinaryOp::Mod => (left_val % right_val).ok_or(EvalError::DivisionByZero),
-                BinaryOp::Pow => left_val.pow(&right_val).ok_or(EvalError::TypeError {
-                    expected: "numeric".to_string(),
-                }),
+                BinaryOp::Pow => left_val
+                    .pow(&right_val)
+                    .ok_or(EvalError::TypeError("expected numeric".to_string())),
                 // Comparison
                 BinaryOp::Eq => Ok(left_val.eq(&right_val)),
                 BinaryOp::Ne => Ok(left_val.ne(&right_val)),
-                BinaryOp::Lt => left_val.lt(&right_val).ok_or(EvalError::TypeError {
-                    expected: "comparable".to_string(),
-                }),
-                BinaryOp::Le => left_val.le(&right_val).ok_or(EvalError::TypeError {
-                    expected: "comparable".to_string(),
-                }),
-                BinaryOp::Gt => left_val.gt(&right_val).ok_or(EvalError::TypeError {
-                    expected: "comparable".to_string(),
-                }),
-                BinaryOp::Ge => left_val.ge(&right_val).ok_or(EvalError::TypeError {
-                    expected: "comparable".to_string(),
-                }),
+                BinaryOp::Lt => left_val
+                    .lt(&right_val)
+                    .ok_or(EvalError::TypeError("expected comparable".to_string())),
+                BinaryOp::Le => left_val
+                    .le(&right_val)
+                    .ok_or(EvalError::TypeError("expected comparable".to_string())),
+                BinaryOp::Gt => left_val
+                    .gt(&right_val)
+                    .ok_or(EvalError::TypeError("expected comparable".to_string())),
+                BinaryOp::Ge => left_val
+                    .ge(&right_val)
+                    .ok_or(EvalError::TypeError("expected comparable".to_string())),
                 // Logical
                 BinaryOp::And => {
                     Ok(Value::Bool(left_val.as_bool() && right_val.as_bool()))
@@ -150,9 +151,12 @@ pub fn eval(expr: &Expr, ctx: &EvalContext) -> Result<Value, EvalError> {
             }
         }
         Expr::Call { name, args } => {
-            let _arg_values: Result<Vec<Value>, EvalError> =
-                args.iter().map(|arg| eval(arg, ctx)).collect();
-            Err(EvalError::UnknownFunction(name.clone()))
+            let arg_values: Vec<Value> = args
+                .iter()
+                .map(|arg| eval(arg, ctx))
+                .collect::<Result<Vec<_>, _>>()?;
+            let registry = crate::libs::expr::functions::FunctionRegistry::new();
+            registry.call(name, &arg_values)
         }
     }
 }
@@ -203,45 +207,42 @@ mod tests {
     }
 
     #[test]
-    fn test_eval_with_headers() {
-        let headers = vec!["price".to_string(), "qty".to_string()];
-        let row = vec!["100".to_string(), "5".to_string()];
-        let ctx = EvalContext::with_headers(&row, &headers);
-
-        let expr = Expr::ColumnRef(ColumnRef::Name("price".to_string()));
-        assert_eq!(eval(&expr, &ctx).unwrap(), Value::Int(100));
-    }
-
-    #[test]
     fn test_eval_number_literal() {
         let row: Vec<String> = vec![];
         let ctx = EvalContext::new(&row);
 
-        let expr = Expr::Float(42.5);
-        assert_eq!(eval(&expr, &ctx).unwrap(), Value::Float(42.5));
-
+        // 42
         let expr = Expr::Int(42);
         assert_eq!(eval(&expr, &ctx).unwrap(), Value::Int(42));
+
+        // 3.14
+        let expr = Expr::Float(3.14);
+        match eval(&expr, &ctx).unwrap() {
+            Value::Float(f) => assert!((f - 3.14).abs() < 0.001),
+            _ => panic!("Expected float"),
+        }
     }
 
     #[test]
     fn test_eval_comparison() {
-        let row: Vec<String> = vec![];
+        let row = vec!["10".to_string(), "20".to_string()];
         let ctx = EvalContext::new(&row);
 
+        // @1 < @2
         let expr = Expr::Binary {
-            op: BinaryOp::Gt,
-            left: Box::new(Expr::Int(10)),
-            right: Box::new(Expr::Int(5)),
+            op: BinaryOp::Lt,
+            left: Box::new(Expr::ColumnRef(ColumnRef::Index(1))),
+            right: Box::new(Expr::ColumnRef(ColumnRef::Index(2))),
         };
         assert_eq!(eval(&expr, &ctx).unwrap(), Value::Bool(true));
 
+        // @1 == @2
         let expr = Expr::Binary {
             op: BinaryOp::Eq,
-            left: Box::new(Expr::Int(5)),
-            right: Box::new(Expr::Int(5)),
+            left: Box::new(Expr::ColumnRef(ColumnRef::Index(1))),
+            right: Box::new(Expr::ColumnRef(ColumnRef::Index(2))),
         };
-        assert_eq!(eval(&expr, &ctx).unwrap(), Value::Bool(true));
+        assert_eq!(eval(&expr, &ctx).unwrap(), Value::Bool(false));
     }
 
     #[test]
@@ -249,6 +250,7 @@ mod tests {
         let row: Vec<String> = vec![];
         let ctx = EvalContext::new(&row);
 
+        // true && false
         let expr = Expr::Binary {
             op: BinaryOp::And,
             left: Box::new(Expr::Bool(true)),
@@ -256,6 +258,7 @@ mod tests {
         };
         assert_eq!(eval(&expr, &ctx).unwrap(), Value::Bool(false));
 
+        // true || false
         let expr = Expr::Binary {
             op: BinaryOp::Or,
             left: Box::new(Expr::Bool(true)),
@@ -266,19 +269,37 @@ mod tests {
 
     #[test]
     fn test_eval_unary() {
-        let row: Vec<String> = vec![];
+        let row = vec!["5".to_string()];
         let ctx = EvalContext::new(&row);
 
+        // -@1
         let expr = Expr::Unary {
             op: UnaryOp::Neg,
-            expr: Box::new(Expr::Int(5)),
+            expr: Box::new(Expr::ColumnRef(ColumnRef::Index(1))),
         };
         assert_eq!(eval(&expr, &ctx).unwrap(), Value::Int(-5));
 
+        // !true
         let expr = Expr::Unary {
             op: UnaryOp::Not,
             expr: Box::new(Expr::Bool(true)),
         };
         assert_eq!(eval(&expr, &ctx).unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_eval_with_headers() {
+        let row = vec!["Alice".to_string(), "30".to_string()];
+        let headers = vec!["name".to_string(), "age".to_string()];
+        let ctx = EvalContext::with_headers(&row, &headers);
+
+        let expr = Expr::ColumnRef(ColumnRef::Name("name".to_string()));
+        assert_eq!(
+            eval(&expr, &ctx).unwrap(),
+            Value::String("Alice".to_string())
+        );
+
+        let expr = Expr::ColumnRef(ColumnRef::Name("age".to_string()));
+        assert_eq!(eval(&expr, &ctx).unwrap(), Value::Int(30));
     }
 }
