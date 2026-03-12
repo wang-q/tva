@@ -80,10 +80,11 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
 
     // Parse dimensions
     let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
+    let available_height = term_height.saturating_sub(1).max(10);
     let width =
         parse_chart_dimension(matches.get_one::<String>("cols"), term_width, 80)?;
     let height =
-        parse_chart_dimension(matches.get_one::<String>("rows"), term_height, 24)?;
+        parse_chart_dimension(matches.get_one::<String>("rows"), available_height, 24)?;
 
     // Open input
     let infile = matches.get_one::<String>("infile");

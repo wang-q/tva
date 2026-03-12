@@ -401,6 +401,8 @@ Use a strategy to automatically determine the number of bins:
 tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --cols 1.0 --rows 1.0 -S freedman-diaconis
 ```
 
+![bin2d diamonds heatmap](images/plot_bin2d_diamonds.png)
+
 Available strategies:
 *   `freedman-diaconis`: Based on data distribution (robust to outliers)
 *   `sqrt`: Square root of number of observations
