@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-511739ac.js";
+            window.path_to_searchindex_js = "searchindex-f6379600.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-a6c0a49a.js"></script>
@@ -362,51 +362,70 @@ Copyright by Qiang Wang.</p>
 <h2 id="performance-architecture--benchmarks"><a class="header" href="#performance-architecture--benchmarks">Performance Architecture &amp; Benchmarks</a></h2>
 <p><code>tva</code> is built on a philosophy of “Zero-Copy” and “SIMD-First”. We continuously benchmark different parsing strategies to ensure <code>tva</code> remains the fastest tool for TSV processing.</p>
 <h3 id="parsing-strategy-evolution"><a class="header" href="#parsing-strategy-evolution">Parsing Strategy Evolution</a></h3>
-<p>We compared 11 different parsing strategies to find the optimal balance between speed and correctness.</p>
+<p>We compared multiple parsing strategies to find the optimal balance between speed and correctness.</p>
+<h3 id="latest-benchmark-results"><a class="header" href="#latest-benchmark-results">Latest Benchmark Results</a></h3>
+<p>Data sample: <code>1\tJohn\tDoe\t30\tNew York\n...</code> (3 rows repeated 1000 times)</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th style="text-align: left">Strategy</th><th style="text-align: left">Throughput</th><th style="text-align: left">Description</th></tr>
+<tr><th style="text-align: left">Implementation</th><th style="text-align: left">Time</th><th style="text-align: left">Throughput</th><th style="text-align: left">Notes</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong>Chunked Reader Sim</strong></td><td style="text-align: left"><strong>875 MiB/s</strong></td><td style="text-align: left"><strong>The Future</strong>. Reads fixed-size chunks (e.g. 8KB) and processes with SIMD. Realistic high-performance model.</td></tr>
-<tr><td style="text-align: left"><strong>Memchr2 SIMD Loop</strong></td><td style="text-align: left">865 MiB/s</td><td style="text-align: left"><strong>The Core</strong>. Uses SIMD to find both <code>\t</code> and <code>\n</code> simultaneously. Faster than <code>csv</code> crate because it ignores quotes.</td></tr>
-<tr><td style="text-align: left"><strong>Memchr Reused Buffer</strong></td><td style="text-align: left">806 MiB/s</td><td style="text-align: left">Uses SIMD but processes line-by-line. Slightly slower due to function call overhead.</td></tr>
-<tr><td style="text-align: left"><strong>csv crate</strong></td><td style="text-align: left">687 MiB/s</td><td style="text-align: left">The standard Rust CSV parser. Highly optimized state machine, but pays a cost for handling quotes and escapes.</td></tr>
-<tr><td style="text-align: left"><strong>Manual Byte Loop</strong></td><td style="text-align: left">519 MiB/s</td><td style="text-align: left">Scalar loop (no SIMD). Proves that SIMD provides a ~60% speedup.</td></tr>
-<tr><td style="text-align: left"><strong>Std Split Iterator</strong></td><td style="text-align: left">420 MiB/s</td><td style="text-align: left">Standard <code>line.split('\t')</code>. Good, but not great.</td></tr>
-<tr><td style="text-align: left"><strong>Naive Split</strong></td><td style="text-align: left">160 MiB/s</td><td style="text-align: left"><code>line.split().collect()</code>. Allocating a <code>Vec</code> for every line is a performance killer. Avoid this!</td></tr>
+<tr><td style="text-align: left"><strong>simd-csv</strong></td><td style="text-align: left"><strong>67 µs</strong></td><td style="text-align: left"><strong>1.05 GiB/s</strong></td><td style="text-align: left">Hybrid SIMD state machine, performance ceiling</td></tr>
+<tr><td style="text-align: left"><strong>Tva TsvReader</strong></td><td style="text-align: left"><strong>72 µs</strong></td><td style="text-align: left"><strong>1.00 GiB/s</strong></td><td style="text-align: left"><strong>Current</strong>: Zero-copy Reader + SIMD (memchr)</td></tr>
+<tr><td style="text-align: left"><strong>Memchr Reused Buffer</strong></td><td style="text-align: left">82 µs</td><td style="text-align: left">878 MiB/s</td><td style="text-align: left">Line-by-line memchr, limited by function call overhead</td></tr>
+<tr><td style="text-align: left"><strong>csv crate</strong></td><td style="text-align: left">111 µs</td><td style="text-align: left">652 MiB/s</td><td style="text-align: left">Classic DFA state machine, correctness baseline</td></tr>
+<tr><td style="text-align: left"><strong>Naive Split</strong></td><td style="text-align: left">443 µs</td><td style="text-align: left">163 MiB/s</td><td style="text-align: left">Original implementation, slowest</td></tr>
 </tbody>
 </table>
 </div>
+<p><strong>Key Findings</strong>:</p>
+<ol>
+<li><strong>Performance Leap</strong>: Our new <code>Tva TsvReader</code> (1.00 GiB/s) is <strong>2.6x faster</strong> than the old version, reaching <strong>95%</strong> of <code>simd-csv</code> performance.</li>
+<li><strong>Bottleneck Shift</strong>: The bottleneck has moved from “memory allocation/IO” to “field iteration”.</li>
+</ol>
 <h3 id="key-insights"><a class="header" href="#key-insights">Key Insights</a></h3>
 <ol>
-<li><strong>I/O is the Bottleneck</strong>: The standard <code>BufReader::lines()</code> allocates a new <code>String</code> for every line, capping throughput at ~400 MiB/s regardless of parsing speed. To break this barrier, <code>tva</code> must use chunked reading and zero-copy slicing.</li>
-<li><strong>TSV &gt; CSV</strong>: By strictly enforcing the TSV standard (no quotes, no escapes), we can use simpler, faster SIMD instructions (<code>memchr2</code>) that outperform even the most optimized CSV parsers (<code>simd-csv</code> or <code>csv</code> crate).</li>
-<li><strong>Zero Allocation</strong>: The fastest parser is the one that allocates nothing. <code>tva</code> strives to reuse buffers and yield slices (<code>&amp;[u8]</code>) instead of allocating new strings.</li>
+<li><strong>I/O is the Bottleneck</strong>: <code>BufReader::lines()</code> allocates a new <code>String</code> per line, capping throughput at ~400 MiB/s. Chunked reading with zero-copy slicing breaks this barrier.</li>
+<li><strong>TSV &gt; CSV</strong>: By enforcing no quotes/escapes, we use simpler SIMD (<code>memchr2</code>) that outperforms optimized CSV parsers.</li>
+<li><strong>Zero Allocation</strong>: The fastest parser allocates nothing. <code>tva</code> reuses buffers and yields slices (<code>&amp;[u8]</code>).</li>
 </ol>
 <h3 id="why-is-simd-csv-still-faster"><a class="header" href="#why-is-simd-csv-still-faster">Why is <code>simd-csv</code> still faster?</a></h3>
-<p>Despite our optimizations, <code>simd-csv</code> (1.15 GiB/s) still outperforms our <code>Chunked Reader</code> (875 MiB/s) by ~30%. Why?</p>
+<p><code>simd-csv</code> (1.15 GiB/s) outperforms our <code>Chunked Reader</code> (875 MiB/s) by ~30% due to:</p>
 <ol>
-<li><strong>Instruction-Level Parallelism (ILP)</strong>:
-<ul>
-<li><code>memchr2</code> processes data in sequence: load -&gt; find -&gt; branch -&gt; process -&gt; repeat.</li>
-<li><code>simd-csv</code> uses hand-written AVX2 intrinsics that can process larger blocks (32+ bytes) and speculatively execute multiple checks in parallel, minimizing branch mispredictions.</li>
-</ul>
-</li>
-<li><strong>L1 Cache Efficiency</strong>:
-<ul>
-<li><code>simd-csv</code>’s hybrid state machine is extremely compact.</li>
-<li>Our chunked reader introduces some overhead for buffer management (<code>copy_within</code>) and boundary checks.</li>
-</ul>
-</li>
-<li><strong>The “Good Enough” Threshold</strong>:
-<ul>
-<li>Reaching 875 MiB/s means we can parse a 1GB file in ~1.2 seconds. This is already faster than most I/O subsystems (NVMe SSDs typically sustain 2-3 GB/s, but file system overhead matters).</li>
-<li>Further optimization requires dropping down to <code>unsafe</code> hand-written assembly, which trades safety and maintainability for diminishing returns.</li>
-</ul>
-</li>
+<li><strong>Instruction-Level Parallelism</strong>: Hand-written AVX2 intrinsics process 32+ byte blocks with speculative execution.</li>
+<li><strong>L1 Cache Efficiency</strong>: <code>simd-csv</code>’s hybrid state machine is extremely compact.</li>
+<li><strong>The “Good Enough” Threshold</strong>: At 875 MiB/s, we parse 1GB in ~1.2 seconds—already faster than most I/O subsystems. Further optimization requires <code>unsafe</code> assembly with diminishing returns.</li>
 </ol>
+<h2 id="tsv-parser-design"><a class="header" href="#tsv-parser-design">TSV Parser Design</a></h2>
+<p>This section details the design of <code>tva</code>’s custom TSV parser, which leverages the simplicity of the TSV format to achieve high performance.</p>
+<h3 id="format-differences-csv-vs-tsv"><a class="header" href="#format-differences-csv-vs-tsv">Format Differences: CSV vs TSV</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left">CSV (RFC 4180)</th><th style="text-align: left">TSV (Simple)</th><th style="text-align: left">Impact</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Delimiter</strong></td><td style="text-align: left"><code>,</code> (variable)</td><td style="text-align: left"><code>\t</code> (fixed)</td><td style="text-align: left">TSV can hardcode delimiter, enabling SIMD optimization.</td></tr>
+<tr><td style="text-align: left"><strong>Quotes</strong></td><td style="text-align: left">Supports <code>"</code> wrapping</td><td style="text-align: left"><strong>Not supported</strong></td><td style="text-align: left">TSV eliminates “in_quote” state machine, removing branch misprediction.</td></tr>
+<tr><td style="text-align: left"><strong>Escapes</strong></td><td style="text-align: left"><code>""</code> escapes quotes</td><td style="text-align: left">None</td><td style="text-align: left">TSV supports true zero-copy slicing without rewriting.</td></tr>
+<tr><td style="text-align: left"><strong>Newlines</strong></td><td style="text-align: left">Allowed in fields</td><td style="text-align: left"><strong>Not allowed</strong></td><td style="text-align: left">TSV guarantees <code>\n</code> always means record end, enabling parallel chunking.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="design-goals-1"><a class="header" href="#design-goals-1">Design Goals</a></h3>
+<p>The goal is to build a TSV parser that is faster than <code>rust-csv</code> and lighter than <code>simd-csv</code>:</p>
+<ol>
+<li><strong>Pure SIMD Scanning</strong>: Without quote handling, we can use SIMD (<code>memchr</code> or <code>std::simd</code>) to blindly scan for <code>\t</code> and <code>\n</code>. No backtracking, no state maintenance.</li>
+<li><strong>Absolute Zero-Copy</strong>: CSV parsers must copy memory when encountering escaped quotes (<code>Cow&lt;str&gt;</code>). TSV parsers can always return slices (<code>&amp;str</code> or <code>&amp;[u8]</code>) from the original buffer, completely avoiding allocation.</li>
+<li><strong>Line-Level Parallelism</strong>: Since <code>\n</code> has unique semantics in TSV (record separator), we can safely split large files into chunks, align at <code>\n</code> boundaries, and parse in parallel. This is difficult in CSV where <code>\n</code> might be inside quotes.</li>
+</ol>
+<h3 id="can-we-do-better"><a class="header" href="#can-we-do-better">Can We Do Better?</a></h3>
+<p><strong>TSV’s Advantage</strong>: TSV has <strong>no quotes</strong>. This means we don’t need to check if a <code>memchr</code> hit is inside quotes or maintain a <code>Quoted</code> state like <code>simd-csv</code> does.</p>
+<p><strong>Simpler SIMD</strong>: We only need to find <code>\t</code> and <code>\n</code>. This is fewer special characters than CSV’s 3-4, reducing register pressure.</p>
+<p><strong>Theoretical Limit</strong>: If <code>simd-csv</code> can achieve 1.12 GiB/s while handling quote logic, a pure TSV parser should theoretically reach memory bandwidth limits (or at least 2-3 GiB/s).</p>
+<p><strong>Action Items</strong>:
+We don’t need complex hybrid state machines. We just need an optimized <code>memchr2(b'\t', b'\n')</code> loop with efficient buffer management. Our <code>Memchr Reused Buffer</code> (806 MiB/s) already validates this approach.</p>
 <h2 id="common-behavior--syntax"><a class="header" href="#common-behavior--syntax">Common Behavior &amp; Syntax</a></h2>
 <p><code>tva</code> tools share a consistent set of behaviors and syntax conventions, making them easy to learn and combine.</p>
 <h3 id="field-syntax"><a class="header" href="#field-syntax">Field Syntax</a></h3>
