@@ -271,26 +271,26 @@ tva plot box tests/data/plot/iris.tsv -y petal_width --color label --outliers --
 ```
 
 ```
-    4 │
-      │
-      │
-      │
-      │                                                ─┬─
-    2 │                                                ─┼─
-      │                            ─┬─                 ███
-      │                            ─┼─                 ─┴─
-      │                            ─┴─
-      │         •
-      │        ─┬─
-    0 │        ─┴─
-      │
-      │
-      │
-      │
-      │
-   -2 │
-      ├─────────────────────────────────────────────────────────────────────────
-             setosa            versicolor           virginica
+ 4│
+  │
+  │
+  │
+  │                                                ─┬─
+ 2│                                                ─┼─
+  │                            ─┬─                 ███
+  │                            ─┼─                 ─┴─
+  │                            ─┴─
+  │         •
+  │        ─┬─
+ 0│        ─┴─
+  │
+  │
+  │
+  │
+  │
+-2│
+  ├─────────────────────────────────────────────────────────────────────────────
+         setosa            versicolor           virginica
 ```
 
 ### Detailed Options
@@ -344,7 +344,7 @@ This creates a heatmap showing the density distribution of diamond length (x) vs
 For better visualization of the main data cluster, you can filter the data first:
 
 ```bash
-cargo run --bin tva plot bin2d docs/data/diamonds.48.tsv -x x -y y
+tva plot bin2d docs/data/diamonds.48.tsv -x x -y y
 ```
 
 Output (terminal chart):
