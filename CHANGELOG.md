@@ -2,6 +2,19 @@
 
 ## Unreleased - ReleaseDate
 
+### Added
+
+#### New Commands
+- **`header`**: New command for analyzing and displaying TSV file headers with support for all four header detection modes.
+
+#### Plotting
+- **`plot point`**: Terminal-based scatter plot visualization with support for:
+    - Multiple Y columns and color grouping
+    - Regression line fitting (Liang-Barsky clipping algorithm)
+    - Path mode (`--path`) for connected line plots
+- **`plot box`**: Box plot visualization with grouping support and outlier detection
+- **`plot bin2d`**: 2D binning heatmap visualization with automatic binning and character density rendering
+
 ## 0.2.4 - 2026-03-10
 
 ### Added
