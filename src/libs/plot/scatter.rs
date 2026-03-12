@@ -154,6 +154,7 @@ pub fn render_scatter_chart(
         let color = render::get_color(ds.color_idx);
 
         let dataset = if ds.is_regression {
+            // Regression lines always show their name (equation)
             Dataset::default()
                 .name(ds.name.clone())
                 .marker(Marker::Braille)
@@ -168,7 +169,9 @@ pub fn render_scatter_chart(
             };
 
             if config.draw_regression && !config.is_line && !config.is_path {
+                // Show data point names even when showing regression
                 Dataset::default()
+                    .name(ds.name.clone())
                     .marker(config.marker)
                     .style(Style::default().fg(color))
                     .graph_type(graph_type)

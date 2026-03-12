@@ -1,9 +1,14 @@
+use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::str::contains;
 
+fn new_cmd() -> Command {
+    cargo_bin_cmd!("tva")
+}
+
 #[test]
 fn test_plot_box_basic() {
-    let mut cmd = Command::cargo_bin("tva").unwrap();
+    let mut cmd = new_cmd();
 
     let input = "value\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10";
 
@@ -18,7 +23,7 @@ fn test_plot_box_basic() {
 
 #[test]
 fn test_plot_box_with_color() {
-    let mut cmd = Command::cargo_bin("tva").unwrap();
+    let mut cmd = new_cmd();
 
     let input = "group\tvalue\nA\t1\nA\t2\nA\t3\nB\t8\nB\t9\nB\t10";
 
@@ -35,7 +40,7 @@ fn test_plot_box_with_color() {
 
 #[test]
 fn test_plot_box_with_outliers() {
-    let mut cmd = Command::cargo_bin("tva").unwrap();
+    let mut cmd = new_cmd();
 
     let input = "value\n1\n2\n3\n4\n5\n6\n7\n8\n9\n100"; // 100 is an outlier
 
@@ -51,7 +56,7 @@ fn test_plot_box_with_outliers() {
 
 #[test]
 fn test_plot_box_ignore_errors() {
-    let mut cmd = Command::cargo_bin("tva").unwrap();
+    let mut cmd = new_cmd();
 
     let input = "value\n1\n2\ninvalid\n4\n5";
 
@@ -67,7 +72,7 @@ fn test_plot_box_ignore_errors() {
 
 #[test]
 fn test_plot_box_error_no_data() {
-    let mut cmd = Command::cargo_bin("tva").unwrap();
+    let mut cmd = new_cmd();
 
     let input = "value\ninvalid\nalso_invalid";
 
@@ -82,7 +87,7 @@ fn test_plot_box_error_no_data() {
 
 #[test]
 fn test_plot_box_multiple_y_columns() {
-    let mut cmd = Command::cargo_bin("tva").unwrap();
+    let mut cmd = new_cmd();
 
     let input = "x\ty\tz\n1\t2\t3\n4\t5\t6\n7\t8\t9";
 
@@ -97,7 +102,7 @@ fn test_plot_box_multiple_y_columns() {
 
 #[test]
 fn test_plot_box_help() {
-    let mut cmd = Command::cargo_bin("tva").unwrap();
+    let mut cmd = new_cmd();
 
     cmd.arg("plot").arg("box").arg("--help");
 

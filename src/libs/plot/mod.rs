@@ -10,6 +10,7 @@ pub mod axis;
 pub mod binning;
 pub mod boxplot;
 pub mod chart;
+pub mod data;
 pub mod heatmap;
 pub mod regression;
 pub mod render;
@@ -17,11 +18,17 @@ pub mod scatter;
 pub mod stats;
 
 // Re-exports for convenience
-pub use binning::{Bin2dConfig, Bin2d, compute_bins_2d};
-pub use binning::{freedman_diaconis_bins, sturges_bins, sqrt_bins};
+pub use binning::{compute_bins_2d, Bin2d, Bin2dConfig};
+pub use binning::{freedman_diaconis_bins, sqrt_bins, sturges_bins};
+pub use boxplot::{render_boxplot, BoxPlotConfig, BoxPlotData, BoxStatsRender};
+pub use data::{
+    build_header, load_bin2d_data, load_box_data, load_numeric_column,
+    load_scatter_data, parse_columns, parse_single_column, read_headers, ColumnSpec,
+};
 pub use heatmap::render_heatmap;
-pub use scatter::{ScatterConfig, ScatterDataset, process_scatter_data, render_scatter_chart};
-pub use boxplot::{BoxPlotConfig, BoxPlotData, BoxStatsRender, render_boxplot};
+pub use scatter::{
+    process_scatter_data, render_scatter_chart, ScatterConfig, ScatterDataset,
+};
 
 /// Parse chart dimension with support for:
 /// - Absolute values (e.g., "80" for 80 characters)

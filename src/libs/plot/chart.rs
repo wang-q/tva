@@ -3,8 +3,10 @@
 //! This module provides shared chart configurations and re-exports
 //! from specialized rendering modules.
 
-pub use super::scatter::{ScatterConfig, ScatterDataset, render_scatter_chart, process_scatter_data};
-pub use super::boxplot::{BoxPlotConfig, render_boxplot, BoxStatsRender};
+pub use super::boxplot::{render_boxplot, BoxPlotConfig, BoxStatsRender};
+pub use super::scatter::{
+    process_scatter_data, render_scatter_chart, ScatterConfig, ScatterDataset,
+};
 
 // Re-export for backward compatibility
 pub type ChartConfig = ScatterConfig;

@@ -20,7 +20,7 @@ use super::render;
 /// 7-level non-linear scale: low values have finer granularity
 fn density_char(density: f64) -> &'static str {
     match density {
-        d if d >= 0.8 => "█",  // Highest density
+        d if d >= 0.8 => "█", // Highest density
         d if d >= 0.6 => "▓",
         d if d >= 0.4 => "▒",
         d if d >= 0.2 => "░",

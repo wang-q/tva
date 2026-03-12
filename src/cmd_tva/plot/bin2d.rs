@@ -2,12 +2,11 @@ use anyhow::Result;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 
 use crate::libs::io::reader;
-use crate::libs::plot::binning::Bin2dConfig;
-use crate::libs::plot::heatmap::render_heatmap;
-use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
+use crate::libs::plot::{
+    binning::Bin2dConfig, build_header, heatmap::render_heatmap, load_bin2d_data,
+    parse_chart_dimension, parse_single_column, read_headers,
+};
 use crate::libs::tsv::reader::TsvReader;
-use crate::libs::tsv::record::{Row, TsvRecord};
-use crate::libs::tsv::split::TsvSplitter;
 
 pub fn make_subcommand() -> Command {
     Command::new("bin2d")
@@ -79,13 +78,14 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     let _strategy = matches.get_one::<String>("strategy");
     let ignore_errors = matches.get_flag("ignore");
 
-    // Parse cols and rows
-    let cols_str = matches.get_one::<String>("cols").unwrap();
-    let rows_str = matches.get_one::<String>("rows").unwrap();
+    // Parse dimensions
     let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
-    let width = crate::libs::plot::parse_chart_dimension(Some(cols_str), term_width, 80)?;
-    let height = crate::libs::plot::parse_chart_dimension(Some(rows_str), term_height, 24)?;
+    let width =
+        parse_chart_dimension(matches.get_one::<String>("cols"), term_width, 80)?;
+    let height =
+        parse_chart_dimension(matches.get_one::<String>("rows"), term_height, 24)?;
 
+    // Open input
     let infile = matches.get_one::<String>("infile");
     let input_reader = match infile {
         Some(path) => reader(path)?,
@@ -94,139 +94,19 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
 
     let mut tsv_reader: TsvReader<_> = TsvReader::new(input_reader);
 
-    // Read header (first line)
-    let header_line = tsv_reader.read_header()?;
-    let headers: Vec<Vec<u8>> = match header_line {
-        Some(line) => TsvSplitter::new(&line, b'\t').map(|s| s.to_vec()).collect(),
-        None => Vec::new(),
-    };
+    // Read headers
+    let headers = read_headers(&mut tsv_reader)?;
+    let header_for_parsing = build_header(&headers);
 
-    // Build header for field parsing
-    let header_for_parsing = if headers.is_empty() {
-        None
-    } else {
-        let field_names: Vec<String> = headers
-            .iter()
-            .map(|h| String::from_utf8_lossy(h).to_string())
-            .collect();
-        Some(Header::from_fields(field_names))
-    };
+    // Parse columns
+    let (x_idx, x_name) =
+        parse_single_column(x_col, header_for_parsing.as_ref(), &headers)?;
+    let (y_idx, y_name) =
+        parse_single_column(y_col, header_for_parsing.as_ref(), &headers)?;
 
-    // Parse X column
-    let x_indices =
-        parse_field_list_with_header(x_col, header_for_parsing.as_ref(), '\t')
-            .map_err(|e| anyhow::anyhow!("Invalid X column spec: {}", e))?;
-    if x_indices.is_empty() {
-        return Err(anyhow::anyhow!("No valid X column specified"));
-    }
-    if x_indices.len() > 1 {
-        return Err(anyhow::anyhow!(
-            "X column must be a single column, got {} columns",
-            x_indices.len()
-        ));
-    }
-    let x_idx = x_indices[0] - 1;
-
-    // Parse Y column
-    let y_indices =
-        parse_field_list_with_header(y_col, header_for_parsing.as_ref(), '\t')
-            .map_err(|e| anyhow::anyhow!("Invalid Y column spec: {}", e))?;
-    if y_indices.is_empty() {
-        return Err(anyhow::anyhow!("No valid Y column specified"));
-    }
-    if y_indices.len() > 1 {
-        return Err(anyhow::anyhow!(
-            "Y column must be a single column, got {} columns",
-            y_indices.len()
-        ));
-    }
-    let y_idx = y_indices[0] - 1;
-
-    // Get column names
-    let x_name = headers
-        .get(x_idx)
-        .map(|h| String::from_utf8_lossy(h).to_string())
-        .unwrap_or_else(|| format!("col{}", x_idx + 1));
-    let y_name = headers
-        .get(y_idx)
-        .map(|h| String::from_utf8_lossy(h).to_string())
-        .unwrap_or_else(|| format!("col{}", y_idx + 1));
-
-    // Collect data points
-    let mut x_values: Vec<f64> = Vec::new();
-    let mut y_values: Vec<f64> = Vec::new();
-    let mut record = TsvRecord::new();
-
-    tsv_reader.for_each_record(|line| {
-        record.parse_line(line, b'\t');
-
-        // Parse X value
-        let x_bytes = match record.get_bytes(x_idx + 1) {
-            Some(b) => b,
-            None => {
-                if ignore_errors {
-                    return Ok(());
-                }
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("Column {} not found in line", x_col),
-                ));
-            }
-        };
-
-        let x_val = match parse_float(x_bytes) {
-            Some(v) => v,
-            None => {
-                if ignore_errors {
-                    return Ok(());
-                }
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!(
-                        "Cannot parse '{}' as number in column {}",
-                        String::from_utf8_lossy(x_bytes),
-                        x_col
-                    ),
-                ));
-            }
-        };
-
-        // Parse Y value
-        let y_bytes = match record.get_bytes(y_idx + 1) {
-            Some(b) => b,
-            None => {
-                if ignore_errors {
-                    return Ok(());
-                }
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("Column {} not found in line", y_col),
-                ));
-            }
-        };
-
-        let y_val = match parse_float(y_bytes) {
-            Some(v) => v,
-            None => {
-                if ignore_errors {
-                    return Ok(());
-                }
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!(
-                        "Cannot parse '{}' as number in column {}",
-                        String::from_utf8_lossy(y_bytes),
-                        y_col
-                    ),
-                ));
-            }
-        };
-
-        x_values.push(x_val);
-        y_values.push(y_val);
-
-        Ok(())
-    })?;
+    // Load data
+    let (x_values, y_values) =
+        load_bin2d_data(tsv_reader, x_idx, &x_name, y_idx, &y_name, ignore_errors)?;
 
     if x_values.is_empty() {
         return Err(anyhow::anyhow!("No valid data points to plot"));
@@ -241,7 +121,7 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         None => (None, None),
     };
 
-    // Build config
+    // Build config and render
     let config = Bin2dConfig {
         width,
         height,
@@ -253,15 +133,9 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
         y_label: y_name,
     };
 
-    // Render the heatmap
     render_heatmap(&x_values, &y_values, &config)?;
 
     Ok(())
-}
-
-fn parse_float(bytes: &[u8]) -> Option<f64> {
-    let s = std::str::from_utf8(bytes).ok()?;
-    s.trim().parse::<f64>().ok()
 }
 
 fn parse_bins_config(s: &str) -> Result<(usize, usize)> {
