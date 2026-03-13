@@ -74,3 +74,10 @@ pub fn ends_with(args: &[Value]) -> Result<Value, EvalError> {
     let suffix = args[1].as_string();
     Ok(Value::Bool(s.ends_with(&suffix)))
 }
+
+pub fn replace(args: &[Value]) -> Result<Value, EvalError> {
+    let s = args[0].as_string();
+    let from = args[1].as_string();
+    let to = args[2].as_string();
+    Ok(Value::String(s.replace(&from, &to)))
+}

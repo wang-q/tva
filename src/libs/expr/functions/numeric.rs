@@ -161,3 +161,43 @@ pub fn float(args: &[Value]) -> Result<Value, EvalError> {
         Value::List(_) => Err(EvalError::TypeError("float: cannot convert list to float".to_string())),
     }
 }
+
+pub fn ceil(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::Int(n) => Ok(Value::Int(*n)),
+        Value::Float(f) => Ok(Value::Int(f.ceil() as i64)),
+        Value::String(s) => {
+            if let Ok(f) = s.parse::<f64>() {
+                Ok(Value::Int(f.ceil() as i64))
+            } else {
+                Err(EvalError::TypeError(format!(
+                    "ceil: cannot convert '{}' to number",
+                    s
+                )))
+            }
+        }
+        Value::Null => Ok(Value::Null),
+        Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
+        Value::List(_) => Err(EvalError::TypeError("ceil: cannot convert list to number".to_string())),
+    }
+}
+
+pub fn floor(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::Int(n) => Ok(Value::Int(*n)),
+        Value::Float(f) => Ok(Value::Int(f.floor() as i64)),
+        Value::String(s) => {
+            if let Ok(f) = s.parse::<f64>() {
+                Ok(Value::Int(f.floor() as i64))
+            } else {
+                Err(EvalError::TypeError(format!(
+                    "floor: cannot convert '{}' to number",
+                    s
+                )))
+            }
+        }
+        Value::Null => Ok(Value::Null),
+        Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
+        Value::List(_) => Err(EvalError::TypeError("floor: cannot convert list to number".to_string())),
+    }
+}

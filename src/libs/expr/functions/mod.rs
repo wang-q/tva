@@ -3,6 +3,7 @@ use crate::libs::expr::runtime::EvalError;
 use std::collections::HashMap;
 
 mod io;
+mod list;
 mod logical;
 mod numeric;
 mod string;
@@ -101,6 +102,7 @@ impl FunctionRegistry {
         self.register("contains", FunctionInfo::fixed(string::contains, 2));
         self.register("starts_with", FunctionInfo::fixed(string::starts_with, 2));
         self.register("ends_with", FunctionInfo::fixed(string::ends_with, 2));
+        self.register("replace", FunctionInfo::fixed(string::replace, 3));
 
         // Numeric functions
         self.register("abs", FunctionInfo::fixed(numeric::abs, 1));
@@ -109,6 +111,8 @@ impl FunctionRegistry {
         self.register("max", FunctionInfo::variadic(numeric::max, 1));
         self.register("int", FunctionInfo::fixed(numeric::int, 1));
         self.register("float", FunctionInfo::fixed(numeric::float, 1));
+        self.register("ceil", FunctionInfo::fixed(numeric::ceil, 1));
+        self.register("floor", FunctionInfo::fixed(numeric::floor, 1));
 
         // Logical functions
         self.register("if", FunctionInfo::fixed(logical::if_fn, 3));
@@ -117,6 +121,11 @@ impl FunctionRegistry {
         // IO functions
         self.register("print", FunctionInfo::variadic(io::print, 1));
         self.register("eprint", FunctionInfo::variadic(io::eprint, 1));
+
+        // List functions
+        self.register("join", FunctionInfo::fixed(list::join, 2));
+        self.register("first", FunctionInfo::fixed(list::first, 1));
+        self.register("last", FunctionInfo::fixed(list::last, 1));
     }
 }
 
@@ -360,5 +369,66 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call("max", &[Value::Null]);
         assert_eq!(result.unwrap(), Value::Null);
+    }
+
+    // New function tests
+    #[test]
+    fn test_replace() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "replace",
+            &[Value::String("hello world".to_string()), Value::String("world".to_string()), Value::String("rust".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::String("hello rust".to_string()));
+    }
+
+    #[test]
+    fn test_ceil() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("ceil", &[Value::Float(3.2)]);
+        assert_eq!(result.unwrap(), Value::Int(4));
+
+        let result = registry.call("ceil", &[Value::Float(-3.7)]);
+        assert_eq!(result.unwrap(), Value::Int(-3));
+    }
+
+    #[test]
+    fn test_floor() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("floor", &[Value::Float(3.7)]);
+        assert_eq!(result.unwrap(), Value::Int(3));
+
+        let result = registry.call("floor", &[Value::Float(-3.2)]);
+        assert_eq!(result.unwrap(), Value::Int(-4));
+    }
+
+    #[test]
+    fn test_join() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "join",
+            &[Value::List(vec![Value::String("a".to_string()), Value::String("b".to_string()), Value::String("c".to_string())]), Value::String(",".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::String("a,b,c".to_string()));
+    }
+
+    #[test]
+    fn test_first() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "first",
+            &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])],
+        );
+        assert_eq!(result.unwrap(), Value::Int(1));
+    }
+
+    #[test]
+    fn test_last() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "last",
+            &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])],
+        );
+        assert_eq!(result.unwrap(), Value::Int(3));
     }
 }
