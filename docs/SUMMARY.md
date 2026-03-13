@@ -18,7 +18,10 @@
 - [Export (to)](to.md)
 - [CSS Selectors](selectors.md)
 - [Common Conventions](conventions.md)
-- [Expression Syntax](expr-syntax.md)
+
+# Expression Language
+- [Syntax Overview](expr/syntax.md)
+- [Functions & Operators](expr/functions.md)
 
 # Command Reference
 - [select](help/select.md)
