@@ -151,11 +151,11 @@ pipe_func_call = { ident ~ "(" ~ (pipe_arg ~ ("," ~ pipe_arg)*)? ~ ")" }
 pipe_arg = { placeholder | expr }
 placeholder = { "_" }
 
-// Postfix: primary or function call or method call chain
-postfix = _{ func_call | method_chain | primary }
+// Postfix: primary with optional method chain, or function call with optional method chain
+postfix = _{ chainable ~ ("." ~ method_call)* }
 
-// Method call chain: expr.method() or expr.method().method2()
-method_chain = { primary ~ ("." ~ method_call)+ }
+// Chainable expression: function call or primary
+chainable = _{ func_call | primary }
 
 // Unary expressions
 unary = { (op_not | op_neg)* ~ postfix }

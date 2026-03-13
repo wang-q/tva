@@ -96,7 +96,6 @@ fn build_expr(pair: Pair<Rule>) -> Result<Expr, ParseError> {
         Rule::postfix => build_postfix(pair),
         Rule::primary => build_primary(pair),
         Rule::func_call => build_func_call(pair),
-        Rule::method_chain => build_method_chain(pair),
         Rule::ident_or_lambda => {
             // ident_or_lambda can be lambda_single_param, ident, or lambda_multi_params
             let inner = pair
@@ -415,21 +414,18 @@ fn build_unary(pair: Pair<Rule>) -> Result<Expr, ParseError> {
 }
 
 fn build_postfix(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::method_chain => return build_method_chain(inner),
-            _ => return build_expr(inner),
-        }
-    }
-    Err(ParseError::EmptyExpression)
-}
-
-fn build_method_chain(pair: Pair<Rule>) -> Result<Expr, ParseError> {
     let mut inner = pair.into_inner();
 
-    // First element is the primary expression (the object)
-    let primary_pair = inner.next().ok_or_else(|| ParseError::EmptyExpression)?;
-    let mut object = build_expr(primary_pair)?;
+    // First element can be func_call or primary
+    let first_pair = inner.next().ok_or_else(|| ParseError::EmptyExpression)?;
+
+    // If it's a func_call, return it directly (no method chain after standalone func_call)
+    if first_pair.as_rule() == Rule::func_call {
+        return build_func_call(first_pair);
+    }
+
+    // Otherwise, it's a primary, build it and process method chain
+    let mut object = build_expr(first_pair)?;
 
     // Process each method call in the chain
     for method_pair in inner {
@@ -636,7 +632,28 @@ fn extract_variable_name(s: &str) -> String {
 
 fn build_string(s: &str) -> Result<Expr, ParseError> {
     let inner = &s[1..s.len() - 1];
-    Ok(Expr::String(inner.to_string()))
+    // Process escape sequences
+    let mut result = String::new();
+    let mut chars = inner.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            match chars.next() {
+                Some('n') => result.push('\n'),
+                Some('t') => result.push('\t'),
+                Some('r') => result.push('\r'),
+                Some('\\') => result.push('\\'),
+                Some('"') => result.push('"'),
+                Some(c) => {
+                    result.push('\\');
+                    result.push(c);
+                }
+                None => result.push('\\'),
+            }
+        } else {
+            result.push(c);
+        }
+    }
+    Ok(Expr::String(result))
 }
 
 fn fold_left(exprs: Vec<Expr>, ops: Vec<BinaryOp>) -> Result<Expr, ParseError> {
@@ -990,7 +1007,6 @@ mod tests {
     fn test_parse_lambda() {
         // x => x + 1
         let expr = parse("x => x + 1").unwrap();
-        println!("Parsed expr: {:?}", expr);
         match expr {
             Expr::Lambda { params, body } => {
                 assert_eq!(params, vec!["x"]);
