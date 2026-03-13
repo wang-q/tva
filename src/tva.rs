@@ -28,6 +28,7 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::bin::make_subcommand())
         .subcommand(cmd_tva::blank::make_subcommand())
         .subcommand(cmd_tva::check::make_subcommand())
+        .subcommand(cmd_tva::eval::make_subcommand())
         .subcommand(cmd_tva::fill::make_subcommand())
         .subcommand(cmd_tva::filter::make_subcommand())
         .subcommand(cmd_tva::r#from::make_subcommand())
@@ -82,6 +83,7 @@ fn main() -> anyhow::Result<()> {
         Some(("bin", sub_matches)) => cmd_tva::bin::execute(sub_matches),
         Some(("blank", sub_matches)) => cmd_tva::blank::execute(sub_matches),
         Some(("check", sub_matches)) => cmd_tva::check::execute(sub_matches),
+        Some(("eval", sub_matches)) => cmd_tva::eval::execute(sub_matches),
         Some(("fill", sub_matches)) => cmd_tva::fill::execute(sub_matches),
         Some(("filter", sub_matches)) => cmd_tva::filter::execute(sub_matches),
         Some(("from", sub_matches)) => cmd_tva::r#from::execute(sub_matches),

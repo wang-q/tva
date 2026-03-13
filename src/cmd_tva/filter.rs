@@ -69,6 +69,13 @@ pub fn make_subcommand() -> Command {
                 .long("label-values")
                 .num_args(1)
                 .help("Pass/No-pass values for --label, format PASS:FAIL (default 1:0)"),
+        )
+        .arg(
+            Arg::new("expr")
+                .long("expr")
+                .short('E')
+                .num_args(1)
+                .help("Filter expression (e.g., '@price > 100 and @stock > 0')"),
         );
 
     macro_rules! arg_test {

@@ -506,7 +506,7 @@ trim(@name)
     tva filter -f price -gt 100
     
     # 新增: 表达式支持
-    tva filter -e '@price > 100 and @stock > 0'
+    tva filter -E '@price > 100 and @stock > 0'
     ```
 
 2.  **新增 mutate 命令**
