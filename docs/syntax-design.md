@@ -576,7 +576,8 @@ default(@nickname, @username)
 | :--- | :--- | :--- | :--- | :--- |
 | `if` | `if(cond, then, else)` | 三元表达式 | ✅ 已实现 | Excel/SQL |
 | `default` | `default(val, fallback)` | 空值回退 | ✅ 已实现 | Tera/jq |
-| `print` | `print(val, label?)` | 调试打印（输出到 stderr，返回原值） | 📝 待实现 | - |
+| `print` | `print(val, ...)` | 打印到 stdout，返回最后一个参数的值 | ✅ 已实现 | - |
+| `eprint` | `eprint(val, ...)` | 打印到 stderr，返回最后一个参数的值 | ✅ 已实现 | - |
 
 #### 4. 列表/数组函数 (List Functions)
 

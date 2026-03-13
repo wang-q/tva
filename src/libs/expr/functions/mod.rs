@@ -2,6 +2,11 @@ use crate::libs::expr::runtime::value::Value;
 use crate::libs::expr::runtime::EvalError;
 use std::collections::HashMap;
 
+mod io;
+mod logical;
+mod numeric;
+mod string;
+
 /// Function signature
 pub type Function = fn(&[Value]) -> Result<Value, EvalError>;
 
@@ -108,273 +113,10 @@ impl FunctionRegistry {
         // Logical functions
         self.register("if", FunctionInfo::fixed(logical::if_fn, 3));
         self.register("default", FunctionInfo::fixed(logical::default_fn, 2));
-    }
-}
 
-/// String functions
-pub mod string {
-    use super::*;
-
-    pub fn trim(args: &[Value]) -> Result<Value, EvalError> {
-        match &args[0] {
-            Value::String(s) => Ok(Value::String(s.trim().to_string())),
-            Value::Null => Ok(Value::Null),
-            v => Ok(Value::String(v.to_string().trim().to_string())),
-        }
-    }
-
-    pub fn upper(args: &[Value]) -> Result<Value, EvalError> {
-        match &args[0] {
-            Value::String(s) => Ok(Value::String(s.to_uppercase())),
-            Value::Null => Ok(Value::Null),
-            v => Ok(Value::String(v.to_string().to_uppercase())),
-        }
-    }
-
-    pub fn lower(args: &[Value]) -> Result<Value, EvalError> {
-        match &args[0] {
-            Value::String(s) => Ok(Value::String(s.to_lowercase())),
-            Value::Null => Ok(Value::Null),
-            v => Ok(Value::String(v.to_string().to_lowercase())),
-        }
-    }
-
-    pub fn len(args: &[Value]) -> Result<Value, EvalError> {
-        match &args[0] {
-            Value::String(s) => Ok(Value::Int(s.len() as i64)),
-            Value::Null => Ok(Value::Int(0)),
-            v => Ok(Value::Int(v.to_string().len() as i64)),
-        }
-    }
-
-    pub fn substr(args: &[Value]) -> Result<Value, EvalError> {
-        let s = args[0].as_string();
-        let start = args[1].as_int().unwrap_or(0) as usize;
-        let len = args[2].as_int().unwrap_or(s.len() as i64) as usize;
-
-        if start >= s.len() {
-            return Ok(Value::String(String::new()));
-        }
-
-        let end = (start + len).min(s.len());
-        Ok(Value::String(s[start..end].to_string()))
-    }
-
-    pub fn split(args: &[Value]) -> Result<Value, EvalError> {
-        let s = args[0].as_string();
-        let delim = args[1].as_string();
-
-        let parts: Vec<Value> = s
-            .split(&delim)
-            .map(|p| Value::String(p.to_string()))
-            .collect();
-        Ok(Value::List(parts))
-    }
-
-    pub fn contains(args: &[Value]) -> Result<Value, EvalError> {
-        let s = args[0].as_string();
-        let substr = args[1].as_string();
-        Ok(Value::Bool(s.contains(&substr)))
-    }
-
-    pub fn starts_with(args: &[Value]) -> Result<Value, EvalError> {
-        let s = args[0].as_string();
-        let prefix = args[1].as_string();
-        Ok(Value::Bool(s.starts_with(&prefix)))
-    }
-
-    pub fn ends_with(args: &[Value]) -> Result<Value, EvalError> {
-        let s = args[0].as_string();
-        let suffix = args[1].as_string();
-        Ok(Value::Bool(s.ends_with(&suffix)))
-    }
-}
-
-/// Numeric functions
-pub mod numeric {
-    use super::*;
-
-    pub fn abs(args: &[Value]) -> Result<Value, EvalError> {
-        match &args[0] {
-            Value::Int(n) => Ok(Value::Int(n.abs())),
-            Value::Float(f) => Ok(Value::Float(f.abs())),
-            Value::String(s) => {
-                if let Ok(n) = s.parse::<i64>() {
-                    Ok(Value::Int(n.abs()))
-                } else if let Ok(f) = s.parse::<f64>() {
-                    Ok(Value::Float(f.abs()))
-                } else {
-                    Err(EvalError::TypeError(format!(
-                        "abs: cannot convert '{}' to number",
-                        s
-                    )))
-                }
-            }
-            Value::Null => Ok(Value::Null),
-            Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
-            Value::List(_) => Err(EvalError::TypeError("abs: cannot convert list to number".to_string())),
-        }
-    }
-
-    pub fn round(args: &[Value]) -> Result<Value, EvalError> {
-        match &args[0] {
-            Value::Int(n) => Ok(Value::Int(*n)),
-            Value::Float(f) => Ok(Value::Int(f.round() as i64)),
-            Value::String(s) => {
-                if let Ok(f) = s.parse::<f64>() {
-                    Ok(Value::Int(f.round() as i64))
-                } else {
-                    Err(EvalError::TypeError(format!(
-                        "round: cannot convert '{}' to number",
-                        s
-                    )))
-                }
-            }
-            Value::Null => Ok(Value::Null),
-            Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
-            Value::List(_) => Err(EvalError::TypeError("round: cannot convert list to number".to_string())),
-        }
-    }
-
-    pub fn min(args: &[Value]) -> Result<Value, EvalError> {
-        if args.is_empty() {
-            return Err(EvalError::WrongArity {
-                name: "min".to_string(),
-                expected: 1,
-                got: 0,
-            });
-        }
-
-        let mut min_val: Option<f64> = None;
-        for arg in args {
-            let val = match arg {
-                Value::Int(n) => *n as f64,
-                Value::Float(f) => *f,
-                Value::String(s) => s.parse::<f64>().map_err(|_| {
-                    EvalError::TypeError(format!(
-                        "min: cannot convert '{}' to number",
-                        s
-                    ))
-                })?,
-                Value::Bool(b) => {
-                    if *b {
-                        1.0
-                    } else {
-                        0.0
-                    }
-                }
-                Value::Null => continue,
-                Value::List(_) => continue,
-            };
-            min_val = Some(min_val.map_or(val, |m| m.min(val)));
-        }
-
-        match min_val {
-            Some(v) if v == v.floor() => Ok(Value::Int(v as i64)),
-            Some(v) => Ok(Value::Float(v)),
-            None => Ok(Value::Null),
-        }
-    }
-
-    pub fn max(args: &[Value]) -> Result<Value, EvalError> {
-        if args.is_empty() {
-            return Err(EvalError::WrongArity {
-                name: "max".to_string(),
-                expected: 1,
-                got: 0,
-            });
-        }
-
-        let mut max_val: Option<f64> = None;
-        for arg in args {
-            let val = match arg {
-                Value::Int(n) => *n as f64,
-                Value::Float(f) => *f,
-                Value::String(s) => s.parse::<f64>().map_err(|_| {
-                    EvalError::TypeError(format!(
-                        "max: cannot convert '{}' to number",
-                        s
-                    ))
-                })?,
-                Value::Bool(b) => {
-                    if *b {
-                        1.0
-                    } else {
-                        0.0
-                    }
-                }
-                Value::Null => continue,
-                Value::List(_) => continue,
-            };
-            max_val = Some(max_val.map_or(val, |m| m.max(val)));
-        }
-
-        match max_val {
-            Some(v) if v == v.floor() => Ok(Value::Int(v as i64)),
-            Some(v) => Ok(Value::Float(v)),
-            None => Ok(Value::Null),
-        }
-    }
-
-    pub fn int(args: &[Value]) -> Result<Value, EvalError> {
-        match &args[0] {
-            Value::Int(n) => Ok(Value::Int(*n)),
-            Value::Float(f) => Ok(Value::Int(*f as i64)),
-            Value::String(s) => {
-                if let Ok(n) = s.parse::<i64>() {
-                    Ok(Value::Int(n))
-                } else if let Ok(f) = s.parse::<f64>() {
-                    Ok(Value::Int(f as i64))
-                } else {
-                    Err(EvalError::TypeError(format!(
-                        "int: cannot convert '{}' to integer",
-                        s
-                    )))
-                }
-            }
-            Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
-            Value::Null => Ok(Value::Null),
-            Value::List(_) => Err(EvalError::TypeError("int: cannot convert list to integer".to_string())),
-        }
-    }
-
-    pub fn float(args: &[Value]) -> Result<Value, EvalError> {
-        match &args[0] {
-            Value::Int(n) => Ok(Value::Float(*n as f64)),
-            Value::Float(f) => Ok(Value::Float(*f)),
-            Value::String(s) => s
-                .parse::<f64>()
-                .map(Value::Float)
-                .map_err(|_| EvalError::TypeError(format!(
-                    "float: cannot convert '{}' to float",
-                    s
-                ))),
-            Value::Bool(b) => Ok(Value::Float(if *b { 1.0 } else { 0.0 })),
-            Value::Null => Ok(Value::Null),
-            Value::List(_) => Err(EvalError::TypeError("float: cannot convert list to float".to_string())),
-        }
-    }
-}
-
-/// Logical functions
-pub mod logical {
-    use super::*;
-
-    pub fn if_fn(args: &[Value]) -> Result<Value, EvalError> {
-        let condition = args[0].as_bool();
-        if condition {
-            Ok(args[1].clone())
-        } else {
-            Ok(args[2].clone())
-        }
-    }
-
-    pub fn default_fn(args: &[Value]) -> Result<Value, EvalError> {
-        if args[0].is_null() || args[0].as_bool() == false {
-            Ok(args[1].clone())
-        } else {
-            Ok(args[0].clone())
-        }
+        // IO functions
+        self.register("print", FunctionInfo::variadic(io::print, 1));
+        self.register("eprint", FunctionInfo::variadic(io::eprint, 1));
     }
 }
 
@@ -382,6 +124,32 @@ pub mod logical {
 mod tests {
     use super::*;
 
+    // IO function tests
+    #[test]
+    fn test_print() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("print", &[Value::String("hello".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("hello".to_string()));
+    }
+
+    #[test]
+    fn test_print_multiple_args() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "print",
+            &[Value::String("a".to_string()), Value::Int(1), Value::Bool(true)],
+        );
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_eprint() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("eprint", &[Value::Int(42)]);
+        assert_eq!(result.unwrap(), Value::Int(42));
+    }
+
+    // String function tests
     #[test]
     fn test_trim() {
         let registry = FunctionRegistry::new();
@@ -397,10 +165,88 @@ mod tests {
     }
 
     #[test]
+    fn test_lower() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("lower", &[Value::String("HELLO".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("hello".to_string()));
+    }
+
+    #[test]
+    fn test_len() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("len", &[Value::String("hello".to_string())]);
+        assert_eq!(result.unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_substr() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "substr",
+            &[Value::String("hello world".to_string()), Value::Int(0), Value::Int(5)],
+        );
+        assert_eq!(result.unwrap(), Value::String("hello".to_string()));
+    }
+
+    #[test]
+    fn test_split() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "split",
+            &[Value::String("a,b,c".to_string()), Value::String(",".to_string())],
+        );
+        match result.unwrap() {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 3);
+                assert_eq!(vals[0], Value::String("a".to_string()));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_contains() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "contains",
+            &[Value::String("hello world".to_string()), Value::String("world".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_starts_with() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "starts_with",
+            &[Value::String("hello".to_string()), Value::String("he".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_ends_with() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "ends_with",
+            &[Value::String("hello".to_string()), Value::String("lo".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    // Numeric function tests
+    #[test]
     fn test_abs() {
         let registry = FunctionRegistry::new();
         let result = registry.call("abs", &[Value::Int(-5)]);
         assert_eq!(result.unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_round() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("round", &[Value::Float(3.7)]);
+        assert_eq!(result.unwrap(), Value::Int(4));
     }
 
     #[test]
@@ -412,6 +258,35 @@ mod tests {
     }
 
     #[test]
+    fn test_max() {
+        let registry = FunctionRegistry::new();
+        let result =
+            registry.call("max", &[Value::Int(3), Value::Int(5), Value::Int(2)]);
+        assert_eq!(result.unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_int() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("int", &[Value::Float(3.7)]);
+        assert_eq!(result.unwrap(), Value::Int(3));
+
+        let result = registry.call("int", &[Value::String("42".to_string())]);
+        assert_eq!(result.unwrap(), Value::Int(42));
+    }
+
+    #[test]
+    fn test_float() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("float", &[Value::Int(42)]);
+        assert_eq!(result.unwrap(), Value::Float(42.0));
+
+        let result = registry.call("float", &[Value::String("3.14".to_string())]);
+        assert_eq!(result.unwrap(), Value::Float(3.14));
+    }
+
+    // Logical function tests
+    #[test]
     fn test_if() {
         let registry = FunctionRegistry::new();
         let result =
@@ -419,6 +294,24 @@ mod tests {
         assert_eq!(result.unwrap(), Value::Int(1));
     }
 
+    #[test]
+    fn test_default() {
+        let registry = FunctionRegistry::new();
+        
+        // null returns fallback
+        let result = registry.call("default", &[Value::Null, Value::String("fallback".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("fallback".to_string()));
+        
+        // false returns fallback
+        let result = registry.call("default", &[Value::Bool(false), Value::Int(0)]);
+        assert_eq!(result.unwrap(), Value::Int(0));
+        
+        // non-null returns original
+        let result = registry.call("default", &[Value::String("value".to_string()), Value::String("fallback".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("value".to_string()));
+    }
+
+    // Error handling tests
     #[test]
     fn test_unknown_function() {
         let registry = FunctionRegistry::new();
@@ -431,5 +324,41 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call("trim", &[]);
         assert!(matches!(result, Err(EvalError::WrongArity { .. })));
+    }
+
+    // Edge case tests
+    #[test]
+    fn test_trim_null() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("trim", &[Value::Null]);
+        assert_eq!(result.unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_len_null() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("len", &[Value::Null]);
+        assert_eq!(result.unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_abs_null() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("abs", &[Value::Null]);
+        assert_eq!(result.unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_min_empty() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("min", &[Value::Null]);
+        assert_eq!(result.unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_max_empty() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("max", &[Value::Null]);
+        assert_eq!(result.unwrap(), Value::Null);
     }
 }
