@@ -201,3 +201,44 @@ pub fn floor(args: &[Value]) -> Result<Value, EvalError> {
         Value::List(_) => Err(EvalError::TypeError("floor: cannot convert list to number".to_string())),
     }
 }
+
+pub fn sqrt(args: &[Value]) -> Result<Value, EvalError> {
+    let n = match &args[0] {
+        Value::Int(n) => *n as f64,
+        Value::Float(f) => *f,
+        Value::String(s) => s.parse::<f64>().map_err(|_| {
+            EvalError::TypeError(format!("sqrt: cannot convert '{}' to number", s))
+        })?,
+        Value::Null => return Ok(Value::Null),
+        Value::Bool(b) => if *b { 1.0 } else { 0.0 },
+        Value::List(_) => return Err(EvalError::TypeError("sqrt: cannot convert list to number".to_string())),
+    };
+    if n < 0.0 {
+        return Err(EvalError::TypeError("sqrt: cannot compute square root of negative number".to_string()));
+    }
+    Ok(Value::Float(n.sqrt()))
+}
+
+pub fn pow(args: &[Value]) -> Result<Value, EvalError> {
+    let base = match &args[0] {
+        Value::Int(n) => *n as f64,
+        Value::Float(f) => *f,
+        Value::String(s) => s.parse::<f64>().map_err(|_| {
+            EvalError::TypeError(format!("pow: cannot convert '{}' to number", s))
+        })?,
+        Value::Null => return Ok(Value::Null),
+        Value::Bool(b) => if *b { 1.0 } else { 0.0 },
+        Value::List(_) => return Err(EvalError::TypeError("pow: cannot convert list to number".to_string())),
+    };
+    let exp = match &args[1] {
+        Value::Int(n) => *n as f64,
+        Value::Float(f) => *f,
+        Value::String(s) => s.parse::<f64>().map_err(|_| {
+            EvalError::TypeError(format!("pow: cannot convert '{}' to number", s))
+        })?,
+        Value::Null => return Ok(Value::Null),
+        Value::Bool(b) => if *b { 1.0 } else { 0.0 },
+        Value::List(_) => return Err(EvalError::TypeError("pow: cannot convert list to number".to_string())),
+    };
+    Ok(Value::Float(base.powf(exp)))
+}

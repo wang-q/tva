@@ -551,9 +551,9 @@ default(@nickname, @username)
 | `starts_with` | `starts_with(str, prefix) -> bool` | 是否以指定前缀开头 | ✅ 已实现 | - |
 | `ends_with` | `ends_with(str, suffix) -> bool` | 是否以指定后缀结尾 | ✅ 已实现 | - |
 | `replace` | `replace(str, from, to) -> str` | 字符串替换 | ✅ 已实现 | Tera/xan |
-| `truncate` | `truncate(str, len, end?) -> str` | 截断字符串 | 📝 待实现 | Tera |
-| `wordcount` | `wordcount(str) -> int` | 单词计数 | 📝 待实现 | Tera |
-| `char_len` | `char_len(str) -> int` | 字符数 (UTF-8) | 📝 待实现 | - |
+| `truncate` | `truncate(str, len, end?) -> str` | 截断字符串 | ✅ 已实现 | Tera |
+| `wordcount` | `wordcount(str) -> int` | 单词计数 | ✅ 已实现 | Tera |
+| `char_len` | `char_len(str) -> int` | 字符数 (UTF-8) | ✅ 已实现 | - |
 
 #### 2. 数值与转换 (Numeric & Conversion)
 
@@ -567,8 +567,8 @@ default(@nickname, @username)
 | `float` | `float(val) -> float` | 解析为浮点数 | ✅ 已实现 | Python/Tera |
 | `ceil` | `ceil(num) -> int` | 向上取整 | ✅ 已实现 | Tera |
 | `floor` | `floor(num) -> int` | 向下取整 | ✅ 已实现 | Tera |
-| `sqrt` | `sqrt(num) -> float` | 平方根 | 📝 待实现 | - |
-| `pow` | `pow(base, exp) -> float` | 幂运算 | 📝 待实现 | - |
+| `sqrt` | `sqrt(num) -> float` | 平方根 | ✅ 已实现 | - |
+| `pow` | `pow(base, exp) -> float` | 幂运算 | ✅ 已实现 | - |
 
 #### 3. 逻辑与控制 (Logic & Control)
 
@@ -588,11 +588,11 @@ default(@nickname, @username)
 | `join` | `join(list, sep) -> str` | 将列表连接成字符串 | ✅ 已实现 | xan/jq |
 | `first` | `first(list) -> val` | 获取第一个元素 | ✅ 已实现 | xan/jq |
 | `last` | `last(list) -> val` | 获取最后一个元素 | ✅ 已实现 | xan/jq |
-| `nth` | `nth(list, n) -> val` | 获取第 n 个元素 | 📝 待实现 | - |
-| `reverse` | `reverse(list) -> list` | 反转列表 | 📝 待实现 | - |
-| `sort` | `sort(list) -> list` | 排序 | 📝 待实现 | - |
-| `unique` | `unique(list) -> list` | 去重 | 📝 待实现 | - |
-| `slice` | `slice(list, start, end) -> list` | 切片 | 📝 待实现 | - |
+| `nth` | `nth(list, n) -> val` | 获取第 n 个元素 | ✅ 已实现 | - |
+| `reverse` | `reverse(list) -> list` | 反转列表 | ✅ 已实现 | - |
+| `sort` | `sort(list) -> list` | 排序 | ✅ 已实现 | - |
+| `unique` | `unique(list) -> list` | 去重 | ✅ 已实现 | - |
+| `slice` | `slice(list, start, end?) -> list` | 切片 | ✅ 已实现 | - |
 | `reduce` | `reduce(list, init, f) -> val` | 列表归约 | 📝 待实现 | xan/jq |
 
 #### 5. 正则表达式 (Regex)
@@ -601,9 +601,9 @@ default(@nickname, @username)
 
 | 函数 | 签名 | 说明 | 状态 | 参考 |
 | :--- | :--- | :--- | :--- | :--- |
-| `regex_match` | `regex_match(str, pattern) -> bool` | 是否匹配 | 📝 待实现 | xan/jq |
-| `regex_extract` | `regex_extract(str, pattern, group?) -> str` | 提取捕获组 | 📝 待实现 | xan |
-| `regex_replace` | `regex_replace(str, pattern, to) -> str` | 正则替换 | 📝 待实现 | xan/jq |
+| `regex_match` | `regex_match(str, pattern) -> bool` | 是否匹配 | ✅ 已实现 | xan/jq |
+| `regex_extract` | `regex_extract(str, pattern, group?) -> str` | 提取捕获组 | ✅ 已实现 | xan |
+| `regex_replace` | `regex_replace(str, pattern, to) -> str` | 正则替换 | ✅ 已实现 | xan/jq |
 
 #### 6. 编码与哈希 (Encoding & Hashing)
 

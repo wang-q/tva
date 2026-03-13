@@ -6,6 +6,7 @@ mod io;
 mod list;
 mod logical;
 mod numeric;
+mod regex;
 mod string;
 
 /// Function signature
@@ -103,6 +104,9 @@ impl FunctionRegistry {
         self.register("starts_with", FunctionInfo::fixed(string::starts_with, 2));
         self.register("ends_with", FunctionInfo::fixed(string::ends_with, 2));
         self.register("replace", FunctionInfo::fixed(string::replace, 3));
+        self.register("truncate", FunctionInfo::variadic(string::truncate, 2));
+        self.register("wordcount", FunctionInfo::fixed(string::wordcount, 1));
+        self.register("char_len", FunctionInfo::fixed(string::char_len, 1));
 
         // Numeric functions
         self.register("abs", FunctionInfo::fixed(numeric::abs, 1));
@@ -113,6 +117,8 @@ impl FunctionRegistry {
         self.register("float", FunctionInfo::fixed(numeric::float, 1));
         self.register("ceil", FunctionInfo::fixed(numeric::ceil, 1));
         self.register("floor", FunctionInfo::fixed(numeric::floor, 1));
+        self.register("sqrt", FunctionInfo::fixed(numeric::sqrt, 1));
+        self.register("pow", FunctionInfo::fixed(numeric::pow, 2));
 
         // Logical functions
         self.register("if", FunctionInfo::fixed(logical::if_fn, 3));
@@ -126,6 +132,16 @@ impl FunctionRegistry {
         self.register("join", FunctionInfo::fixed(list::join, 2));
         self.register("first", FunctionInfo::fixed(list::first, 1));
         self.register("last", FunctionInfo::fixed(list::last, 1));
+        self.register("reverse", FunctionInfo::fixed(list::reverse, 1));
+        self.register("nth", FunctionInfo::fixed(list::nth, 2));
+        self.register("sort", FunctionInfo::fixed(list::sort, 1));
+        self.register("unique", FunctionInfo::fixed(list::unique, 1));
+        self.register("slice", FunctionInfo::variadic(list::slice, 2));
+
+        // Regex functions
+        self.register("regex_match", FunctionInfo::fixed(regex::regex_match, 2));
+        self.register("regex_extract", FunctionInfo::variadic(regex::regex_extract, 2));
+        self.register("regex_replace", FunctionInfo::fixed(regex::regex_replace, 3));
     }
 }
 
@@ -430,5 +446,227 @@ mod tests {
             &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])],
         );
         assert_eq!(result.unwrap(), Value::Int(3));
+    }
+
+    #[test]
+    fn test_sqrt() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("sqrt", &[Value::Float(16.0)]);
+        assert_eq!(result.unwrap(), Value::Float(4.0));
+
+        let result = registry.call("sqrt", &[Value::Int(9)]);
+        assert_eq!(result.unwrap(), Value::Float(3.0));
+
+        // Negative number error
+        let result = registry.call("sqrt", &[Value::Float(-4.0)]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_pow() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("pow", &[Value::Float(2.0), Value::Float(3.0)]);
+        assert_eq!(result.unwrap(), Value::Float(8.0));
+
+        let result = registry.call("pow", &[Value::Int(2), Value::Int(10)]);
+        assert_eq!(result.unwrap(), Value::Float(1024.0));
+    }
+
+    #[test]
+    fn test_truncate() {
+        let registry = FunctionRegistry::new();
+        // "hello world" is 11 bytes, limit 8, end "..." is 3 bytes
+        // So we take 8-3=5 bytes: "hello" + "..." = "hello..."
+        let result = registry.call(
+            "truncate",
+            &[Value::String("hello world".to_string()), Value::Int(8)],
+        );
+        assert_eq!(result.unwrap(), Value::String("hello...".to_string()));
+
+        // Custom ending: limit 8, end ">>" is 2 bytes
+        // So we take 8-2=6 bytes: "hello " + ">>" = "hello >>"
+        let result = registry.call(
+            "truncate",
+            &[Value::String("hello world".to_string()), Value::Int(8), Value::String(">>".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::String("hello >>".to_string()));
+
+        // String shorter than limit - return as-is
+        let result = registry.call(
+            "truncate",
+            &[Value::String("hi".to_string()), Value::Int(10)],
+        );
+        assert_eq!(result.unwrap(), Value::String("hi".to_string()));
+    }
+
+    #[test]
+    fn test_reverse() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "reverse",
+            &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])],
+        );
+        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(3), Value::Int(2), Value::Int(1)]));
+
+        // Empty list
+        let result = registry.call("reverse", &[Value::List(vec![])]);
+        assert_eq!(result.unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_wordcount() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("wordcount", &[Value::String("hello world foo bar".to_string())]);
+        assert_eq!(result.unwrap(), Value::Int(4));
+
+        let result = registry.call("wordcount", &[Value::String("   multiple   spaces   ".to_string())]);
+        assert_eq!(result.unwrap(), Value::Int(2));
+
+        let result = registry.call("wordcount", &[Value::String("".to_string())]);
+        assert_eq!(result.unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_char_len() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("char_len", &[Value::String("hello".to_string())]);
+        assert_eq!(result.unwrap(), Value::Int(5));
+
+        // UTF-8 characters
+        let result = registry.call("char_len", &[Value::String("你好世界".to_string())]);
+        assert_eq!(result.unwrap(), Value::Int(4));
+    }
+
+    #[test]
+    fn test_nth() {
+        let registry = FunctionRegistry::new();
+        let list = Value::List(vec![Value::Int(10), Value::Int(20), Value::Int(30)]);
+
+        let result = registry.call("nth", &[list.clone(), Value::Int(0)]);
+        assert_eq!(result.unwrap(), Value::Int(10));
+
+        let result = registry.call("nth", &[list.clone(), Value::Int(2)]);
+        assert_eq!(result.unwrap(), Value::Int(30));
+
+        // Out of bounds
+        let result = registry.call("nth", &[list.clone(), Value::Int(5)]);
+        assert_eq!(result.unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_sort() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "sort",
+            &[Value::List(vec![Value::Int(3), Value::Int(1), Value::Int(2)])],
+        );
+        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]));
+
+        // Mixed types
+        let result = registry.call(
+            "sort",
+            &[Value::List(vec![Value::Float(2.5), Value::Int(1), Value::Float(1.5)])],
+        );
+        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(1), Value::Float(1.5), Value::Float(2.5)]));
+    }
+
+    #[test]
+    fn test_unique() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "unique",
+            &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(1), Value::Int(3)])],
+        );
+        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]));
+
+        // Strings
+        let result = registry.call(
+            "unique",
+            &[Value::List(vec![
+                Value::String("a".to_string()),
+                Value::String("b".to_string()),
+                Value::String("a".to_string()),
+            ])],
+        );
+        assert_eq!(result.unwrap(), Value::List(vec![
+            Value::String("a".to_string()),
+            Value::String("b".to_string()),
+        ]));
+    }
+
+    #[test]
+    fn test_slice() {
+        let registry = FunctionRegistry::new();
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3), Value::Int(4), Value::Int(5)]);
+
+        // slice(list, 1, 3) -> [2, 3]
+        let result = registry.call("slice", &[list.clone(), Value::Int(1), Value::Int(3)]);
+        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(2), Value::Int(3)]));
+
+        // slice(list, 2) -> [3, 4, 5]
+        let result = registry.call("slice", &[list.clone(), Value::Int(2)]);
+        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(3), Value::Int(4), Value::Int(5)]));
+
+        // Out of bounds handling
+        let result = registry.call("slice", &[list.clone(), Value::Int(10)]);
+        assert_eq!(result.unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_regex_match() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "regex_match",
+            &[Value::String("hello world".to_string()), Value::String(r"hello.*".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Bool(true));
+
+        let result = registry.call(
+            "regex_match",
+            &[Value::String("hello world".to_string()), Value::String(r"^foo".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_regex_extract() {
+        let registry = FunctionRegistry::new();
+        // Extract full match (group 0)
+        let result = registry.call(
+            "regex_extract",
+            &[Value::String("hello 123 world".to_string()), Value::String(r"\d+".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::String("123".to_string()));
+
+        // Extract specific group
+        let result = registry.call(
+            "regex_extract",
+            &[Value::String("hello 123 world".to_string()), Value::String(r"(\d+)".to_string()), Value::Int(1)],
+        );
+        assert_eq!(result.unwrap(), Value::String("123".to_string()));
+
+        // No match
+        let result = registry.call(
+            "regex_extract",
+            &[Value::String("hello world".to_string()), Value::String(r"\d+".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_regex_replace() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "regex_replace",
+            &[Value::String("hello 123 world 456".to_string()), Value::String(r"\d+".to_string()), Value::String("XXX".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::String("hello XXX world XXX".to_string()));
+
+        // Replace with capture group reference
+        let result = registry.call(
+            "regex_replace",
+            &[Value::String("hello world".to_string()), Value::String(r"(world)".to_string()), Value::String("$1!".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::String("hello world!".to_string()));
     }
 }

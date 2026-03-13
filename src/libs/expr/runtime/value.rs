@@ -45,6 +45,18 @@ impl Value {
         matches!(self, Value::Null)
     }
 
+    /// Get type name for error messages
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Value::Null => "null",
+            Value::Bool(_) => "bool",
+            Value::Int(_) => "int",
+            Value::Float(_) => "float",
+            Value::String(_) => "string",
+            Value::List(_) => "list",
+        }
+    }
+
     /// Convert to string representation
     pub fn to_string(&self) -> String {
         match self {

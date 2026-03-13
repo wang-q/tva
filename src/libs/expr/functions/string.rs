@@ -81,3 +81,38 @@ pub fn replace(args: &[Value]) -> Result<Value, EvalError> {
     let to = args[2].as_string();
     Ok(Value::String(s.replace(&from, &to)))
 }
+
+pub fn wordcount(args: &[Value]) -> Result<Value, EvalError> {
+    let s = args[0].as_string();
+    let count = s.split_whitespace().count() as i64;
+    Ok(Value::Int(count))
+}
+
+pub fn char_len(args: &[Value]) -> Result<Value, EvalError> {
+    let s = args[0].as_string();
+    Ok(Value::Int(s.chars().count() as i64))
+}
+
+pub fn truncate(args: &[Value]) -> Result<Value, EvalError> {
+    let s = args[0].as_string();
+    let len = match &args[1] {
+        Value::Int(n) => *n as usize,
+        Value::Float(f) => f.round() as usize,
+        v => return Err(EvalError::TypeError(format!(
+            "truncate: length must be a number, got {}",
+            v.type_name()
+        ))),
+    };
+    let end = if args.len() > 2 {
+        args[2].as_string()
+    } else {
+        "...".to_string()
+    };
+
+    if s.len() <= len {
+        Ok(Value::String(s))
+    } else {
+        let truncated = &s[..len.saturating_sub(end.len())];
+        Ok(Value::String(format!("{}{}", truncated, end)))
+    }
+}
