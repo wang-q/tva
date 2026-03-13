@@ -130,10 +130,8 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
         Expr::Bool(b) => Ok(Value::Bool(*b)),
         Expr::Null => Ok(Value::Null),
         Expr::List(elements) => {
-            let values: Result<Vec<Value>, EvalError> = elements
-                .iter()
-                .map(|e| eval(e, ctx))
-                .collect();
+            let values: Result<Vec<Value>, EvalError> =
+                elements.iter().map(|e| eval(e, ctx)).collect();
             Ok(Value::List(values?))
         }
         Expr::Unary { op, expr } => {
@@ -165,9 +163,9 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
                     .pow(&right_val)
                     .ok_or(EvalError::TypeError("expected numeric".to_string())),
                 // String concatenation
-                BinaryOp::Concat => Ok(Value::String(
-                    left_val.as_string() + &right_val.as_string()
-                )),
+                BinaryOp::Concat => {
+                    Ok(Value::String(left_val.as_string() + &right_val.as_string()))
+                }
                 // Comparison
                 BinaryOp::Eq => Ok(left_val.eq(&right_val)),
                 BinaryOp::Ne => Ok(left_val.ne(&right_val)),
@@ -197,6 +195,17 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
                 .iter()
                 .map(|arg| eval(arg, ctx))
                 .collect::<Result<Vec<_>, _>>()?;
+            let registry = crate::libs::expr::functions::FunctionRegistry::new();
+            registry.call(name, &arg_values)
+        }
+        Expr::MethodCall { object, name, args } => {
+            // Evaluate the object first
+            let obj_val = eval(object, ctx)?;
+            // Build args: object as first arg, followed by method args
+            let mut arg_values = vec![obj_val];
+            for arg in args {
+                arg_values.push(eval(arg, ctx)?);
+            }
             let registry = crate::libs::expr::functions::FunctionRegistry::new();
             registry.call(name, &arg_values)
         }
@@ -288,11 +297,7 @@ mod tests {
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
-        let expr = Expr::List(vec![
-            Expr::Int(1),
-            Expr::Int(2),
-            Expr::Int(3),
-        ]);
+        let expr = Expr::List(vec![Expr::Int(1), Expr::Int(2), Expr::Int(3)]);
         match eval(&expr, &mut ctx).unwrap() {
             Value::List(values) => {
                 assert_eq!(values.len(), 3);
@@ -332,10 +337,10 @@ mod tests {
             }),
             name: "total".to_string(),
         };
-        
+
         // First, evaluate the bind expression
         assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(30));
-        
+
         // Then, the variable should be accessible
         let var_expr = Expr::Variable("total".to_string());
         assert_eq!(eval(&var_expr, &mut ctx).unwrap(), Value::Int(30));
@@ -362,7 +367,7 @@ mod tests {
                 right: Box::new(Expr::Variable("q".to_string())),
             },
         ]);
-        
+
         assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(30));
     }
 
@@ -469,6 +474,64 @@ mod tests {
         assert_eq!(
             eval(&expr, &mut ctx).unwrap(),
             Value::String("Alice".to_string())
+        );
+    }
+
+    #[test]
+    fn test_eval_method_call() {
+        // Test @name.trim() - method call syntax
+        let row = vec!["  hello  ".to_string()];
+        let headers = vec!["name".to_string()];
+        let mut ctx = EvalContext::with_headers(&row, &headers);
+
+        let expr = Expr::MethodCall {
+            object: Box::new(Expr::ColumnRef(ColumnRef::Name("name".to_string()))),
+            name: "trim".to_string(),
+            args: vec![],
+        };
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("hello".to_string())
+        );
+    }
+
+    #[test]
+    fn test_eval_method_call_with_args() {
+        // Test @name.substr(0, 3)
+        let row = vec!["hello".to_string()];
+        let headers = vec!["name".to_string()];
+        let mut ctx = EvalContext::with_headers(&row, &headers);
+
+        let expr = Expr::MethodCall {
+            object: Box::new(Expr::ColumnRef(ColumnRef::Name("name".to_string()))),
+            name: "substr".to_string(),
+            args: vec![Expr::Int(0), Expr::Int(3)],
+        };
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("hel".to_string())
+        );
+    }
+
+    #[test]
+    fn test_eval_method_chain() {
+        // Test @name.trim().upper()
+        let row = vec!["  hello  ".to_string()];
+        let headers = vec!["name".to_string()];
+        let mut ctx = EvalContext::with_headers(&row, &headers);
+
+        let expr = Expr::MethodCall {
+            object: Box::new(Expr::MethodCall {
+                object: Box::new(Expr::ColumnRef(ColumnRef::Name("name".to_string()))),
+                name: "trim".to_string(),
+                args: vec![],
+            }),
+            name: "upper".to_string(),
+            args: vec![],
+        };
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("HELLO".to_string())
         );
     }
 }

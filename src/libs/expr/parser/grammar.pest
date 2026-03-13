@@ -119,6 +119,9 @@ list_literal = { "[" ~ (expr ~ ("," ~ expr)*)? ~ "]" }
 // Function call: func(arg1, arg2) or func()
 func_call = { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 
+// Method call: expr.ident() - e.g., @name.trim()
+method_call = { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
+
 // Pipe right-hand side: func() or func(_, arg2)
 pipe_func_call = { ident ~ "(" ~ (pipe_arg ~ ("," ~ pipe_arg)*)? ~ ")" }
 
@@ -126,8 +129,11 @@ pipe_func_call = { ident ~ "(" ~ (pipe_arg ~ ("," ~ pipe_arg)*)? ~ ")" }
 pipe_arg = { placeholder | expr }
 placeholder = { "_" }
 
-// Postfix: primary or function call
-postfix = _{ func_call | primary }
+// Postfix: primary or function call or method call chain
+postfix = _{ func_call | method_chain | primary }
+
+// Method call chain: expr.method() or expr.method().method2()
+method_chain = { primary ~ ("." ~ method_call)+ }
 
 // Unary expressions
 unary = { (op_not | op_neg)* ~ postfix }

@@ -22,10 +22,12 @@ pub fn regex_extract(args: &[Value]) -> Result<Value, EvalError> {
         match &args[2] {
             Value::Int(n) => *n as usize,
             Value::Float(f) => f.round() as usize,
-            v => return Err(EvalError::TypeError(format!(
-                "regex_extract: group must be a number, got {}",
-                v.type_name()
-            ))),
+            v => {
+                return Err(EvalError::TypeError(format!(
+                    "regex_extract: group must be a number, got {}",
+                    v.type_name()
+                )))
+            }
         }
     } else {
         0

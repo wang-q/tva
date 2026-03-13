@@ -27,7 +27,7 @@ pub fn base64_decode(args: &[Value]) -> Result<Value, EvalError> {
         Ok(bytes) => match String::from_utf8(bytes) {
             Ok(decoded) => Ok(Value::String(decoded)),
             Err(_) => Err(EvalError::TypeError(
-                "base64_decode: decoded bytes are not valid UTF-8".to_string()
+                "base64_decode: decoded bytes are not valid UTF-8".to_string(),
             )),
         },
         Err(e) => Err(EvalError::TypeError(format!(

@@ -29,9 +29,18 @@ pub enum Expr {
     },
     /// Function call: func(arg1, arg2)
     Call { name: String, args: Vec<Expr> },
+    /// Method call: expr.method(arg1, arg2) - syntactic sugar for method(expr, arg1, arg2)
+    MethodCall {
+        object: Box<Expr>,
+        name: String,
+        args: Vec<Expr>,
+    },
     /// Pipe expression: expr | func() or expr | func(_, arg)
     /// The first argument is implicitly the left side of the pipe
-    Pipe { left: Box<Expr>, right: Box<PipeRight> },
+    Pipe {
+        left: Box<Expr>,
+        right: Box<PipeRight>,
+    },
     /// Variable binding: expr as @name
     Bind { expr: Box<Expr>, name: String },
     /// Multiple expressions separated by semicolons

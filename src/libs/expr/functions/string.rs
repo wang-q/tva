@@ -98,10 +98,12 @@ pub fn truncate(args: &[Value]) -> Result<Value, EvalError> {
     let len = match &args[1] {
         Value::Int(n) => *n as usize,
         Value::Float(f) => f.round() as usize,
-        v => return Err(EvalError::TypeError(format!(
-            "truncate: length must be a number, got {}",
-            v.type_name()
-        ))),
+        v => {
+            return Err(EvalError::TypeError(format!(
+                "truncate: length must be a number, got {}",
+                v.type_name()
+            )))
+        }
     };
     let end = if args.len() > 2 {
         args[2].as_string()

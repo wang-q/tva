@@ -23,6 +23,14 @@ impl Value {
         }
     }
 
+    /// Get float value (for test assertions)
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            Value::Float(f) => Some(*f),
+            _ => None,
+        }
+    }
+
     /// Convert to bool for logical operations
     pub fn as_bool(&self) -> bool {
         match self {

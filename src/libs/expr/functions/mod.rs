@@ -121,6 +121,12 @@ impl FunctionRegistry {
         self.register("floor", FunctionInfo::fixed(numeric::floor, 1));
         self.register("sqrt", FunctionInfo::fixed(numeric::sqrt, 1));
         self.register("pow", FunctionInfo::fixed(numeric::pow, 2));
+        self.register("sin", FunctionInfo::fixed(numeric::sin, 1));
+        self.register("cos", FunctionInfo::fixed(numeric::cos, 1));
+        self.register("tan", FunctionInfo::fixed(numeric::tan, 1));
+        self.register("ln", FunctionInfo::fixed(numeric::ln, 1));
+        self.register("log10", FunctionInfo::fixed(numeric::log10, 1));
+        self.register("exp", FunctionInfo::fixed(numeric::exp, 1));
 
         // Logical functions
         self.register("if", FunctionInfo::fixed(logical::if_fn, 3));
@@ -143,8 +149,14 @@ impl FunctionRegistry {
 
         // Regex functions
         self.register("regex_match", FunctionInfo::fixed(regex::regex_match, 2));
-        self.register("regex_extract", FunctionInfo::variadic(regex::regex_extract, 2));
-        self.register("regex_replace", FunctionInfo::fixed(regex::regex_replace, 3));
+        self.register(
+            "regex_extract",
+            FunctionInfo::variadic(regex::regex_extract, 2),
+        );
+        self.register(
+            "regex_replace",
+            FunctionInfo::fixed(regex::regex_replace, 3),
+        );
 
         // Hash functions
         self.register("md5", FunctionInfo::fixed(hash::md5, 1));
@@ -176,7 +188,11 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "print",
-            &[Value::String("a".to_string()), Value::Int(1), Value::Bool(true)],
+            &[
+                Value::String("a".to_string()),
+                Value::Int(1),
+                Value::Bool(true),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Bool(true));
     }
@@ -222,7 +238,11 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "substr",
-            &[Value::String("hello world".to_string()), Value::Int(0), Value::Int(5)],
+            &[
+                Value::String("hello world".to_string()),
+                Value::Int(0),
+                Value::Int(5),
+            ],
         );
         assert_eq!(result.unwrap(), Value::String("hello".to_string()));
     }
@@ -232,7 +252,10 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "split",
-            &[Value::String("a,b,c".to_string()), Value::String(",".to_string())],
+            &[
+                Value::String("a,b,c".to_string()),
+                Value::String(",".to_string()),
+            ],
         );
         match result.unwrap() {
             Value::List(vals) => {
@@ -248,7 +271,10 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "contains",
-            &[Value::String("hello world".to_string()), Value::String("world".to_string())],
+            &[
+                Value::String("hello world".to_string()),
+                Value::String("world".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Bool(true));
     }
@@ -258,7 +284,10 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "starts_with",
-            &[Value::String("hello".to_string()), Value::String("he".to_string())],
+            &[
+                Value::String("hello".to_string()),
+                Value::String("he".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Bool(true));
     }
@@ -268,7 +297,10 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "ends_with",
-            &[Value::String("hello".to_string()), Value::String("lo".to_string())],
+            &[
+                Value::String("hello".to_string()),
+                Value::String("lo".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Bool(true));
     }
@@ -336,17 +368,26 @@ mod tests {
     #[test]
     fn test_default() {
         let registry = FunctionRegistry::new();
-        
+
         // null returns fallback
-        let result = registry.call("default", &[Value::Null, Value::String("fallback".to_string())]);
+        let result = registry.call(
+            "default",
+            &[Value::Null, Value::String("fallback".to_string())],
+        );
         assert_eq!(result.unwrap(), Value::String("fallback".to_string()));
-        
+
         // false returns fallback
         let result = registry.call("default", &[Value::Bool(false), Value::Int(0)]);
         assert_eq!(result.unwrap(), Value::Int(0));
-        
+
         // non-null returns original
-        let result = registry.call("default", &[Value::String("value".to_string()), Value::String("fallback".to_string())]);
+        let result = registry.call(
+            "default",
+            &[
+                Value::String("value".to_string()),
+                Value::String("fallback".to_string()),
+            ],
+        );
         assert_eq!(result.unwrap(), Value::String("value".to_string()));
     }
 
@@ -407,7 +448,11 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "replace",
-            &[Value::String("hello world".to_string()), Value::String("world".to_string()), Value::String("rust".to_string())],
+            &[
+                Value::String("hello world".to_string()),
+                Value::String("world".to_string()),
+                Value::String("rust".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::String("hello rust".to_string()));
     }
@@ -437,7 +482,14 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "join",
-            &[Value::List(vec![Value::String("a".to_string()), Value::String("b".to_string()), Value::String("c".to_string())]), Value::String(",".to_string())],
+            &[
+                Value::List(vec![
+                    Value::String("a".to_string()),
+                    Value::String("b".to_string()),
+                    Value::String("c".to_string()),
+                ]),
+                Value::String(",".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::String("a,b,c".to_string()));
     }
@@ -447,7 +499,11 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "first",
-            &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])],
+            &[Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+            ])],
         );
         assert_eq!(result.unwrap(), Value::Int(1));
     }
@@ -457,7 +513,11 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "last",
-            &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])],
+            &[Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+            ])],
         );
         assert_eq!(result.unwrap(), Value::Int(3));
     }
@@ -501,7 +561,11 @@ mod tests {
         // So we take 8-2=6 bytes: "hello " + ">>" = "hello >>"
         let result = registry.call(
             "truncate",
-            &[Value::String("hello world".to_string()), Value::Int(8), Value::String(">>".to_string())],
+            &[
+                Value::String("hello world".to_string()),
+                Value::Int(8),
+                Value::String(">>".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::String("hello >>".to_string()));
 
@@ -518,9 +582,16 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "reverse",
-            &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])],
+            &[Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+            ])],
         );
-        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(3), Value::Int(2), Value::Int(1)]));
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![Value::Int(3), Value::Int(2), Value::Int(1)])
+        );
 
         // Empty list
         let result = registry.call("reverse", &[Value::List(vec![])]);
@@ -530,10 +601,16 @@ mod tests {
     #[test]
     fn test_wordcount() {
         let registry = FunctionRegistry::new();
-        let result = registry.call("wordcount", &[Value::String("hello world foo bar".to_string())]);
+        let result = registry.call(
+            "wordcount",
+            &[Value::String("hello world foo bar".to_string())],
+        );
         assert_eq!(result.unwrap(), Value::Int(4));
 
-        let result = registry.call("wordcount", &[Value::String("   multiple   spaces   ".to_string())]);
+        let result = registry.call(
+            "wordcount",
+            &[Value::String("   multiple   spaces   ".to_string())],
+        );
         assert_eq!(result.unwrap(), Value::Int(2));
 
         let result = registry.call("wordcount", &[Value::String("".to_string())]);
@@ -572,16 +649,30 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "sort",
-            &[Value::List(vec![Value::Int(3), Value::Int(1), Value::Int(2)])],
+            &[Value::List(vec![
+                Value::Int(3),
+                Value::Int(1),
+                Value::Int(2),
+            ])],
         );
-        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]));
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
+        );
 
         // Mixed types
         let result = registry.call(
             "sort",
-            &[Value::List(vec![Value::Float(2.5), Value::Int(1), Value::Float(1.5)])],
+            &[Value::List(vec![
+                Value::Float(2.5),
+                Value::Int(1),
+                Value::Float(1.5),
+            ])],
         );
-        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(1), Value::Float(1.5), Value::Float(2.5)]));
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![Value::Int(1), Value::Float(1.5), Value::Float(2.5)])
+        );
     }
 
     #[test]
@@ -589,9 +680,17 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "unique",
-            &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(1), Value::Int(3)])],
+            &[Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(1),
+                Value::Int(3),
+            ])],
         );
-        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]));
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
+        );
 
         // Strings
         let result = registry.call(
@@ -602,24 +701,40 @@ mod tests {
                 Value::String("a".to_string()),
             ])],
         );
-        assert_eq!(result.unwrap(), Value::List(vec![
-            Value::String("a".to_string()),
-            Value::String("b".to_string()),
-        ]));
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![
+                Value::String("a".to_string()),
+                Value::String("b".to_string()),
+            ])
+        );
     }
 
     #[test]
     fn test_slice() {
         let registry = FunctionRegistry::new();
-        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3), Value::Int(4), Value::Int(5)]);
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+            Value::Int(5),
+        ]);
 
         // slice(list, 1, 3) -> [2, 3]
-        let result = registry.call("slice", &[list.clone(), Value::Int(1), Value::Int(3)]);
-        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(2), Value::Int(3)]));
+        let result =
+            registry.call("slice", &[list.clone(), Value::Int(1), Value::Int(3)]);
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![Value::Int(2), Value::Int(3)])
+        );
 
         // slice(list, 2) -> [3, 4, 5]
         let result = registry.call("slice", &[list.clone(), Value::Int(2)]);
-        assert_eq!(result.unwrap(), Value::List(vec![Value::Int(3), Value::Int(4), Value::Int(5)]));
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![Value::Int(3), Value::Int(4), Value::Int(5)])
+        );
 
         // Out of bounds handling
         let result = registry.call("slice", &[list.clone(), Value::Int(10)]);
@@ -631,13 +746,19 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "regex_match",
-            &[Value::String("hello world".to_string()), Value::String(r"hello.*".to_string())],
+            &[
+                Value::String("hello world".to_string()),
+                Value::String(r"hello.*".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Bool(true));
 
         let result = registry.call(
             "regex_match",
-            &[Value::String("hello world".to_string()), Value::String(r"^foo".to_string())],
+            &[
+                Value::String("hello world".to_string()),
+                Value::String(r"^foo".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Bool(false));
     }
@@ -648,21 +769,31 @@ mod tests {
         // Extract full match (group 0)
         let result = registry.call(
             "regex_extract",
-            &[Value::String("hello 123 world".to_string()), Value::String(r"\d+".to_string())],
+            &[
+                Value::String("hello 123 world".to_string()),
+                Value::String(r"\d+".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::String("123".to_string()));
 
         // Extract specific group
         let result = registry.call(
             "regex_extract",
-            &[Value::String("hello 123 world".to_string()), Value::String(r"(\d+)".to_string()), Value::Int(1)],
+            &[
+                Value::String("hello 123 world".to_string()),
+                Value::String(r"(\d+)".to_string()),
+                Value::Int(1),
+            ],
         );
         assert_eq!(result.unwrap(), Value::String("123".to_string()));
 
         // No match
         let result = registry.call(
             "regex_extract",
-            &[Value::String("hello world".to_string()), Value::String(r"\d+".to_string())],
+            &[
+                Value::String("hello world".to_string()),
+                Value::String(r"\d+".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Null);
     }
@@ -672,14 +803,25 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "regex_replace",
-            &[Value::String("hello 123 world 456".to_string()), Value::String(r"\d+".to_string()), Value::String("XXX".to_string())],
+            &[
+                Value::String("hello 123 world 456".to_string()),
+                Value::String(r"\d+".to_string()),
+                Value::String("XXX".to_string()),
+            ],
         );
-        assert_eq!(result.unwrap(), Value::String("hello XXX world XXX".to_string()));
+        assert_eq!(
+            result.unwrap(),
+            Value::String("hello XXX world XXX".to_string())
+        );
 
         // Replace with capture group reference
         let result = registry.call(
             "regex_replace",
-            &[Value::String("hello world".to_string()), Value::String(r"(world)".to_string()), Value::String("$1!".to_string())],
+            &[
+                Value::String("hello world".to_string()),
+                Value::String(r"(world)".to_string()),
+                Value::String("$1!".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::String("hello world!".to_string()));
     }
@@ -689,7 +831,10 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call("md5", &[Value::String("hello".to_string())]);
         // MD5 of "hello" is 5d41402abc4b2a76b9719d911017c592
-        assert_eq!(result.unwrap(), Value::String("5d41402abc4b2a76b9719d911017c592".to_string()));
+        assert_eq!(
+            result.unwrap(),
+            Value::String("5d41402abc4b2a76b9719d911017c592".to_string())
+        );
     }
 
     #[test]
@@ -699,7 +844,10 @@ mod tests {
         // SHA256 of "hello"
         assert_eq!(
             result.unwrap(),
-            Value::String("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824".to_string())
+            Value::String(
+                "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+                    .to_string()
+            )
         );
     }
 
@@ -721,7 +869,9 @@ mod tests {
         assert_eq!(result.unwrap(), Value::String("hello".to_string()));
 
         // Round-trip
-        let encoded = registry.call("base64", &[Value::String("test 123".to_string())]).unwrap();
+        let encoded = registry
+            .call("base64", &[Value::String("test 123".to_string())])
+            .unwrap();
         let result = registry.call("unbase64", &[encoded]);
         assert_eq!(result.unwrap(), Value::String("test 123".to_string()));
     }
@@ -733,7 +883,7 @@ mod tests {
         assert!(result.is_ok());
         // Check it's a DateTime
         match result.unwrap() {
-            Value::DateTime(_) => {},
+            Value::DateTime(_) => {}
             _ => panic!("now() should return DateTime"),
         }
     }
@@ -744,7 +894,10 @@ mod tests {
         let registry = FunctionRegistry::new();
         let result = registry.call(
             "strptime",
-            &[Value::String("2024-03-15 14:30:00".to_string()), Value::String("%Y-%m-%d %H:%M:%S".to_string())],
+            &[
+                Value::String("2024-03-15 14:30:00".to_string()),
+                Value::String("%Y-%m-%d %H:%M:%S".to_string()),
+            ],
         );
         match &result {
             Err(e) => println!("strptime error: {:?}", e),
@@ -765,21 +918,27 @@ mod tests {
     fn test_strftime() {
         let registry = FunctionRegistry::new();
         // Parse and format
-        let dt = registry.call(
-            "strptime",
-            &[Value::String("2024-03-15 14:30:00".to_string()), Value::String("%Y-%m-%d %H:%M:%S".to_string())],
-        ).unwrap();
+        let dt = registry
+            .call(
+                "strptime",
+                &[
+                    Value::String("2024-03-15 14:30:00".to_string()),
+                    Value::String("%Y-%m-%d %H:%M:%S".to_string()),
+                ],
+            )
+            .unwrap();
 
-        let result = registry.call(
-            "strftime",
-            &[dt, Value::String("%Y/%m/%d".to_string())],
-        );
+        let result =
+            registry.call("strftime", &[dt, Value::String("%Y/%m/%d".to_string())]);
         assert_eq!(result.unwrap(), Value::String("2024/03/15".to_string()));
 
         // Format from string
         let result = registry.call(
             "strftime",
-            &[Value::String("2024-03-15T14:30:00Z".to_string()), Value::String("%d-%m-%Y".to_string())],
+            &[
+                Value::String("2024-03-15T14:30:00Z".to_string()),
+                Value::String("%d-%m-%Y".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::String("15-03-2024".to_string()));
     }
@@ -791,43 +950,143 @@ mod tests {
         // Sum
         let result = registry.call(
             "reduce",
-            &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]), Value::Int(0), Value::String("+".to_string())],
+            &[
+                Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]),
+                Value::Int(0),
+                Value::String("+".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Int(6));
 
         // Product
         let result = registry.call(
             "reduce",
-            &[Value::List(vec![Value::Int(2), Value::Int(3), Value::Int(4)]), Value::Int(1), Value::String("*".to_string())],
+            &[
+                Value::List(vec![Value::Int(2), Value::Int(3), Value::Int(4)]),
+                Value::Int(1),
+                Value::String("*".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Int(24));
 
         // String concat
         let result = registry.call(
             "reduce",
-            &[Value::List(vec![Value::String("a".to_string()), Value::String("b".to_string()), Value::String("c".to_string())]), Value::String("".to_string()), Value::String("+".to_string())],
+            &[
+                Value::List(vec![
+                    Value::String("a".to_string()),
+                    Value::String("b".to_string()),
+                    Value::String("c".to_string()),
+                ]),
+                Value::String("".to_string()),
+                Value::String("+".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::String("abc".to_string()));
 
         // Empty list returns initial value
         let result = registry.call(
             "reduce",
-            &[Value::List(vec![]), Value::Int(42), Value::String("+".to_string())],
+            &[
+                Value::List(vec![]),
+                Value::Int(42),
+                Value::String("+".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Int(42));
 
         // Min
         let result = registry.call(
             "reduce",
-            &[Value::List(vec![Value::Int(5), Value::Int(2), Value::Int(8)]), Value::Int(10), Value::String("min".to_string())],
+            &[
+                Value::List(vec![Value::Int(5), Value::Int(2), Value::Int(8)]),
+                Value::Int(10),
+                Value::String("min".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Int(2));
 
         // Max
         let result = registry.call(
             "reduce",
-            &[Value::List(vec![Value::Int(5), Value::Int(2), Value::Int(8)]), Value::Int(0), Value::String("max".to_string())],
+            &[
+                Value::List(vec![Value::Int(5), Value::Int(2), Value::Int(8)]),
+                Value::Int(0),
+                Value::String("max".to_string()),
+            ],
         );
         assert_eq!(result.unwrap(), Value::Int(8));
+    }
+
+    // Trigonometric function tests
+    #[test]
+    fn test_sin() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("sin", &[Value::Float(0.0)]);
+        assert!((result.unwrap().as_float().unwrap() - 0.0).abs() < 1e-10);
+
+        let result = registry.call("sin", &[Value::Float(std::f64::consts::PI / 2.0)]);
+        assert!((result.unwrap().as_float().unwrap() - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_cos() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("cos", &[Value::Float(0.0)]);
+        assert!((result.unwrap().as_float().unwrap() - 1.0).abs() < 1e-10);
+
+        let result = registry.call("cos", &[Value::Float(std::f64::consts::PI)]);
+        assert!((result.unwrap().as_float().unwrap() + 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_tan() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("tan", &[Value::Float(0.0)]);
+        assert!((result.unwrap().as_float().unwrap() - 0.0).abs() < 1e-10);
+
+        let result = registry.call("tan", &[Value::Float(std::f64::consts::PI / 4.0)]);
+        assert!((result.unwrap().as_float().unwrap() - 1.0).abs() < 1e-10);
+    }
+
+    // Logarithmic and exponential function tests
+    #[test]
+    fn test_ln() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("ln", &[Value::Float(1.0)]);
+        assert!((result.unwrap().as_float().unwrap() - 0.0).abs() < 1e-10);
+
+        let result = registry.call("ln", &[Value::Float(std::f64::consts::E)]);
+        assert!((result.unwrap().as_float().unwrap() - 1.0).abs() < 1e-10);
+
+        // Error on non-positive
+        let result = registry.call("ln", &[Value::Float(-1.0)]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_log10() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("log10", &[Value::Float(1.0)]);
+        assert!((result.unwrap().as_float().unwrap() - 0.0).abs() < 1e-10);
+
+        let result = registry.call("log10", &[Value::Float(100.0)]);
+        assert!((result.unwrap().as_float().unwrap() - 2.0).abs() < 1e-10);
+
+        // Error on non-positive
+        let result = registry.call("log10", &[Value::Float(0.0)]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_exp() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("exp", &[Value::Float(0.0)]);
+        assert!((result.unwrap().as_float().unwrap() - 1.0).abs() < 1e-10);
+
+        let result = registry.call("exp", &[Value::Float(1.0)]);
+        assert!(
+            (result.unwrap().as_float().unwrap() - std::f64::consts::E).abs() < 1e-10
+        );
     }
 }

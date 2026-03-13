@@ -11,7 +11,9 @@ pub fn strptime(args: &[Value]) -> Result<Value, EvalError> {
     let fmt = args[1].as_string();
 
     match NaiveDateTime::parse_from_str(&s, &fmt) {
-        Ok(ndt) => Ok(Value::DateTime(DateTime::from_naive_utc_and_offset(ndt, Utc))),
+        Ok(ndt) => Ok(Value::DateTime(DateTime::from_naive_utc_and_offset(
+            ndt, Utc,
+        ))),
         Err(e) => Err(EvalError::TypeError(format!(
             "strptime: failed to parse '{}' with format '{}': {}",
             s, fmt, e
@@ -30,7 +32,9 @@ pub fn strftime(args: &[Value]) -> Result<Value, EvalError> {
             match DateTime::parse_from_rfc3339(s) {
                 Ok(dt) => {
                     let fmt = args[1].as_string();
-                    Ok(Value::String(dt.with_timezone(&Utc).format(&fmt).to_string()))
+                    Ok(Value::String(
+                        dt.with_timezone(&Utc).format(&fmt).to_string(),
+                    ))
                 }
                 Err(e) => Err(EvalError::TypeError(format!(
                     "strftime: failed to parse datetime '{}': {}",
