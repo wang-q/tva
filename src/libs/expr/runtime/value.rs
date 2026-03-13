@@ -10,6 +10,7 @@ pub enum Value {
     Float(f64),
     String(String),
     List(Vec<Value>),
+    DateTime(chrono::DateTime<chrono::Utc>),
 }
 
 impl Value {
@@ -32,6 +33,7 @@ impl Value {
             Value::Float(f) => *f != 0.0,
             Value::String(s) => !s.is_empty(),
             Value::List(list) => !list.is_empty(),
+            Value::DateTime(_) => true,
         }
     }
 
@@ -54,6 +56,7 @@ impl Value {
             Value::Float(_) => "float",
             Value::String(_) => "string",
             Value::List(_) => "list",
+            Value::DateTime(_) => "datetime",
         }
     }
 
@@ -66,6 +69,7 @@ impl Value {
             Value::Float(f) => f.to_string(),
             Value::String(s) => s.clone(),
             Value::List(list) => format!("{:?}", list),
+            Value::DateTime(dt) => dt.to_rfc3339(),
         }
     }
 

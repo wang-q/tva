@@ -48,6 +48,10 @@ scraper = "0.25.0"
 
 pest = "2.7"
 pest_derive = "2.7"
+md5 = "0.7"
+sha2 = "0.10"
+base64 = "0.22"
+chrono = "0.4"
 
 # TUI
 ratatui = "0.29"

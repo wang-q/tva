@@ -593,7 +593,7 @@ default(@nickname, @username)
 | `sort` | `sort(list) -> list` | 排序 | ✅ 已实现 | - |
 | `unique` | `unique(list) -> list` | 去重 | ✅ 已实现 | - |
 | `slice` | `slice(list, start, end?) -> list` | 切片 | ✅ 已实现 | - |
-| `reduce` | `reduce(list, init, f) -> val` | 列表归约 | 📝 待实现 | xan/jq |
+| `reduce` | `reduce(list, init, op) -> val` | 列表归约 | ✅ 已实现 | xan/jq |
 
 #### 5. 正则表达式 (Regex)
 
@@ -609,18 +609,18 @@ default(@nickname, @username)
 
 | 函数 | 签名 | 说明 | 状态 | 参考 |
 | :--- | :--- | :--- | :--- | :--- |
-| `md5` | `md5(str) -> str` | MD5 哈希 | 📝 待实现 | xan |
-| `sha256` | `sha256(str) -> str` | SHA256 哈希 | 📝 待实现 | xan |
-| `base64` | `base64(str) -> str` | Base64 编码 | 📝 待实现 | xan/jq |
-| `unbase64` | `unbase64(str) -> str` | Base64 解码 | 📝 待实现 | xan/jq |
+| `md5` | `md5(str) -> str` | MD5 哈希 | ✅ 已实现 | xan |
+| `sha256` | `sha256(str) -> str` | SHA256 哈希 | ✅ 已实现 | xan |
+| `base64` | `base64(str) -> str` | Base64 编码 | ✅ 已实现 | xan/jq |
+| `unbase64` | `unbase64(str) -> str` | Base64 解码 | ✅ 已实现 | xan/jq |
 
 #### 7. 日期时间 (Date & Time)
 
 | 函数 | 签名 | 说明 | 状态 | 参考 |
 | :--- | :--- | :--- | :--- | :--- |
-| `now` | `now() -> str` | 当前时间 (RFC3339) | 📝 待实现 | Tera |
-| `strptime` | `strptime(str, fmt) -> datetime` | 字符串转时间 | 📝 待实现 | Python/jq |
-| `strftime` | `strftime(datetime, fmt) -> str` | 时间转字符串 | 📝 待实现 | Python/jq |
+| `now` | `now() -> datetime` | 当前时间 (UTC) | ✅ 已实现 | Tera |
+| `strptime` | `strptime(str, fmt) -> datetime` | 字符串转时间 | ✅ 已实现 | Python/jq |
+| `strftime` | `strftime(datetime, fmt) -> str` | 时间转字符串 | ✅ 已实现 | Python/jq |
 
 ## 3. 实施路线图 (Implementation Roadmap)
 
@@ -775,6 +775,8 @@ src/libs/expr/
 -   `sort(list)` - 排序
 
 #### Phase 6: 高级语法 (可选)
+
+lambda 表达式
 
 **目标**: 扩展表达式能力
 

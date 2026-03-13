@@ -2,6 +2,8 @@ use crate::libs::expr::runtime::value::Value;
 use crate::libs::expr::runtime::EvalError;
 use std::collections::HashMap;
 
+mod datetime;
+mod hash;
 mod io;
 mod list;
 mod logical;
@@ -137,11 +139,23 @@ impl FunctionRegistry {
         self.register("sort", FunctionInfo::fixed(list::sort, 1));
         self.register("unique", FunctionInfo::fixed(list::unique, 1));
         self.register("slice", FunctionInfo::variadic(list::slice, 2));
+        self.register("reduce", FunctionInfo::fixed(list::reduce, 3));
 
         // Regex functions
         self.register("regex_match", FunctionInfo::fixed(regex::regex_match, 2));
         self.register("regex_extract", FunctionInfo::variadic(regex::regex_extract, 2));
         self.register("regex_replace", FunctionInfo::fixed(regex::regex_replace, 3));
+
+        // Hash functions
+        self.register("md5", FunctionInfo::fixed(hash::md5, 1));
+        self.register("sha256", FunctionInfo::fixed(hash::sha256, 1));
+        self.register("base64", FunctionInfo::fixed(hash::base64_encode, 1));
+        self.register("unbase64", FunctionInfo::fixed(hash::base64_decode, 1));
+
+        // Datetime functions
+        self.register("now", FunctionInfo::fixed(datetime::now, 0));
+        self.register("strptime", FunctionInfo::fixed(datetime::strptime, 2));
+        self.register("strftime", FunctionInfo::fixed(datetime::strftime, 2));
     }
 }
 
@@ -668,5 +682,152 @@ mod tests {
             &[Value::String("hello world".to_string()), Value::String(r"(world)".to_string()), Value::String("$1!".to_string())],
         );
         assert_eq!(result.unwrap(), Value::String("hello world!".to_string()));
+    }
+
+    #[test]
+    fn test_md5() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("md5", &[Value::String("hello".to_string())]);
+        // MD5 of "hello" is 5d41402abc4b2a76b9719d911017c592
+        assert_eq!(result.unwrap(), Value::String("5d41402abc4b2a76b9719d911017c592".to_string()));
+    }
+
+    #[test]
+    fn test_sha256() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("sha256", &[Value::String("hello".to_string())]);
+        // SHA256 of "hello"
+        assert_eq!(
+            result.unwrap(),
+            Value::String("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824".to_string())
+        );
+    }
+
+    #[test]
+    fn test_base64() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("base64", &[Value::String("hello".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("aGVsbG8=".to_string()));
+
+        // Empty string
+        let result = registry.call("base64", &[Value::String("".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("".to_string()));
+    }
+
+    #[test]
+    fn test_unbase64() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("unbase64", &[Value::String("aGVsbG8=".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("hello".to_string()));
+
+        // Round-trip
+        let encoded = registry.call("base64", &[Value::String("test 123".to_string())]).unwrap();
+        let result = registry.call("unbase64", &[encoded]);
+        assert_eq!(result.unwrap(), Value::String("test 123".to_string()));
+    }
+
+    #[test]
+    fn test_now() {
+        let registry = FunctionRegistry::new();
+        let result = registry.call("now", &[]);
+        assert!(result.is_ok());
+        // Check it's a DateTime
+        match result.unwrap() {
+            Value::DateTime(_) => {},
+            _ => panic!("now() should return DateTime"),
+        }
+    }
+
+    #[test]
+    fn test_strptime() {
+        use chrono::Datelike;
+        let registry = FunctionRegistry::new();
+        let result = registry.call(
+            "strptime",
+            &[Value::String("2024-03-15 14:30:00".to_string()), Value::String("%Y-%m-%d %H:%M:%S".to_string())],
+        );
+        match &result {
+            Err(e) => println!("strptime error: {:?}", e),
+            _ => {}
+        }
+        assert!(result.is_ok(), "strptime failed: {:?}", result);
+        match result.unwrap() {
+            Value::DateTime(dt) => {
+                assert_eq!(dt.year(), 2024);
+                assert_eq!(dt.month(), 3);
+                assert_eq!(dt.day(), 15);
+            }
+            _ => panic!("strptime should return DateTime"),
+        }
+    }
+
+    #[test]
+    fn test_strftime() {
+        let registry = FunctionRegistry::new();
+        // Parse and format
+        let dt = registry.call(
+            "strptime",
+            &[Value::String("2024-03-15 14:30:00".to_string()), Value::String("%Y-%m-%d %H:%M:%S".to_string())],
+        ).unwrap();
+
+        let result = registry.call(
+            "strftime",
+            &[dt, Value::String("%Y/%m/%d".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::String("2024/03/15".to_string()));
+
+        // Format from string
+        let result = registry.call(
+            "strftime",
+            &[Value::String("2024-03-15T14:30:00Z".to_string()), Value::String("%d-%m-%Y".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::String("15-03-2024".to_string()));
+    }
+
+    #[test]
+    fn test_reduce() {
+        let registry = FunctionRegistry::new();
+
+        // Sum
+        let result = registry.call(
+            "reduce",
+            &[Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]), Value::Int(0), Value::String("+".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Int(6));
+
+        // Product
+        let result = registry.call(
+            "reduce",
+            &[Value::List(vec![Value::Int(2), Value::Int(3), Value::Int(4)]), Value::Int(1), Value::String("*".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Int(24));
+
+        // String concat
+        let result = registry.call(
+            "reduce",
+            &[Value::List(vec![Value::String("a".to_string()), Value::String("b".to_string()), Value::String("c".to_string())]), Value::String("".to_string()), Value::String("+".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::String("abc".to_string()));
+
+        // Empty list returns initial value
+        let result = registry.call(
+            "reduce",
+            &[Value::List(vec![]), Value::Int(42), Value::String("+".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Int(42));
+
+        // Min
+        let result = registry.call(
+            "reduce",
+            &[Value::List(vec![Value::Int(5), Value::Int(2), Value::Int(8)]), Value::Int(10), Value::String("min".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Int(2));
+
+        // Max
+        let result = registry.call(
+            "reduce",
+            &[Value::List(vec![Value::Int(5), Value::Int(2), Value::Int(8)]), Value::Int(0), Value::String("max".to_string())],
+        );
+        assert_eq!(result.unwrap(), Value::Int(8));
     }
 }

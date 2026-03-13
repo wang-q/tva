@@ -20,6 +20,7 @@ pub fn abs(args: &[Value]) -> Result<Value, EvalError> {
         Value::Null => Ok(Value::Null),
         Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
         Value::List(_) => Err(EvalError::TypeError("abs: cannot convert list to number".to_string())),
+        Value::DateTime(_) => Err(EvalError::TypeError("abs: cannot convert datetime to number".to_string())),
     }
 }
 
@@ -40,6 +41,7 @@ pub fn round(args: &[Value]) -> Result<Value, EvalError> {
         Value::Null => Ok(Value::Null),
         Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
         Value::List(_) => Err(EvalError::TypeError("round: cannot convert list to number".to_string())),
+        Value::DateTime(_) => Err(EvalError::TypeError("round: cannot convert datetime to number".to_string())),
     }
 }
 
@@ -72,6 +74,7 @@ pub fn min(args: &[Value]) -> Result<Value, EvalError> {
             }
             Value::Null => continue,
             Value::List(_) => continue,
+            Value::DateTime(_) => continue,
         };
         min_val = Some(min_val.map_or(val, |m| m.min(val)));
     }
@@ -112,6 +115,7 @@ pub fn max(args: &[Value]) -> Result<Value, EvalError> {
             }
             Value::Null => continue,
             Value::List(_) => continue,
+            Value::DateTime(_) => continue,
         };
         max_val = Some(max_val.map_or(val, |m| m.max(val)));
     }
@@ -142,6 +146,7 @@ pub fn int(args: &[Value]) -> Result<Value, EvalError> {
         Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
         Value::Null => Ok(Value::Null),
         Value::List(_) => Err(EvalError::TypeError("int: cannot convert list to integer".to_string())),
+        Value::DateTime(_) => Err(EvalError::TypeError("int: cannot convert datetime to integer".to_string())),
     }
 }
 
@@ -159,6 +164,7 @@ pub fn float(args: &[Value]) -> Result<Value, EvalError> {
         Value::Bool(b) => Ok(Value::Float(if *b { 1.0 } else { 0.0 })),
         Value::Null => Ok(Value::Null),
         Value::List(_) => Err(EvalError::TypeError("float: cannot convert list to float".to_string())),
+        Value::DateTime(_) => Err(EvalError::TypeError("float: cannot convert datetime to float".to_string())),
     }
 }
 
@@ -179,6 +185,7 @@ pub fn ceil(args: &[Value]) -> Result<Value, EvalError> {
         Value::Null => Ok(Value::Null),
         Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
         Value::List(_) => Err(EvalError::TypeError("ceil: cannot convert list to number".to_string())),
+        Value::DateTime(_) => Err(EvalError::TypeError("ceil: cannot convert datetime to number".to_string())),
     }
 }
 
@@ -199,6 +206,7 @@ pub fn floor(args: &[Value]) -> Result<Value, EvalError> {
         Value::Null => Ok(Value::Null),
         Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
         Value::List(_) => Err(EvalError::TypeError("floor: cannot convert list to number".to_string())),
+        Value::DateTime(_) => Err(EvalError::TypeError("floor: cannot convert datetime to number".to_string())),
     }
 }
 
@@ -212,6 +220,7 @@ pub fn sqrt(args: &[Value]) -> Result<Value, EvalError> {
         Value::Null => return Ok(Value::Null),
         Value::Bool(b) => if *b { 1.0 } else { 0.0 },
         Value::List(_) => return Err(EvalError::TypeError("sqrt: cannot convert list to number".to_string())),
+        Value::DateTime(_) => return Err(EvalError::TypeError("sqrt: cannot convert datetime to number".to_string())),
     };
     if n < 0.0 {
         return Err(EvalError::TypeError("sqrt: cannot compute square root of negative number".to_string()));
@@ -229,6 +238,7 @@ pub fn pow(args: &[Value]) -> Result<Value, EvalError> {
         Value::Null => return Ok(Value::Null),
         Value::Bool(b) => if *b { 1.0 } else { 0.0 },
         Value::List(_) => return Err(EvalError::TypeError("pow: cannot convert list to number".to_string())),
+        Value::DateTime(_) => return Err(EvalError::TypeError("pow: cannot convert datetime to number".to_string())),
     };
     let exp = match &args[1] {
         Value::Int(n) => *n as f64,
@@ -239,6 +249,7 @@ pub fn pow(args: &[Value]) -> Result<Value, EvalError> {
         Value::Null => return Ok(Value::Null),
         Value::Bool(b) => if *b { 1.0 } else { 0.0 },
         Value::List(_) => return Err(EvalError::TypeError("pow: cannot convert list to number".to_string())),
+        Value::DateTime(_) => return Err(EvalError::TypeError("pow: cannot convert datetime to number".to_string())),
     };
     Ok(Value::Float(base.powf(exp)))
 }

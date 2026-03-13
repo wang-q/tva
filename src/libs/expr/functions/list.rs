@@ -152,3 +152,84 @@ pub fn slice(args: &[Value]) -> Result<Value, EvalError> {
         _ => Err(EvalError::TypeError("slice: first argument must be a list".to_string())),
     }
 }
+
+pub fn reduce(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => {
+            if list.is_empty() {
+                return Ok(args[1].clone());
+            }
+
+            let op = args[2].as_string();
+            let mut result = args[1].clone();
+
+            for item in list.iter() {
+                result = match op.as_str() {
+                    "+" | "add" => match (&result, item) {
+                        (Value::Int(a), Value::Int(b)) => Value::Int(a + b),
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a + b),
+                        (Value::Int(a), Value::Float(b)) => Value::Float(*a as f64 + b),
+                        (Value::Float(a), Value::Int(b)) => Value::Float(a + *b as f64),
+                        (Value::String(a), Value::String(b)) => Value::String(format!("{}{}", a, b)),
+                        _ => return Err(EvalError::TypeError(format!(
+                            "reduce: cannot add {:?} and {:?}", result, item
+                        ))),
+                    },
+                    "-" | "sub" => match (&result, item) {
+                        (Value::Int(a), Value::Int(b)) => Value::Int(a - b),
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a - b),
+                        (Value::Int(a), Value::Float(b)) => Value::Float(*a as f64 - b),
+                        (Value::Float(a), Value::Int(b)) => Value::Float(a - *b as f64),
+                        _ => return Err(EvalError::TypeError(format!(
+                            "reduce: cannot subtract {:?} from {:?}", item, result
+                        ))),
+                    },
+                    "*" | "mul" => match (&result, item) {
+                        (Value::Int(a), Value::Int(b)) => Value::Int(a * b),
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a * b),
+                        (Value::Int(a), Value::Float(b)) => Value::Float(*a as f64 * b),
+                        (Value::Float(a), Value::Int(b)) => Value::Float(a * *b as f64),
+                        _ => return Err(EvalError::TypeError(format!(
+                            "reduce: cannot multiply {:?} and {:?}", result, item
+                        ))),
+                    },
+                    "/" | "div" => match (&result, item) {
+                        (Value::Int(a), Value::Int(b)) => {
+                            if *b == 0 {
+                                return Err(EvalError::TypeError("reduce: division by zero".to_string()));
+                            }
+                            Value::Int(a / b)
+                        }
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a / b),
+                        (Value::Int(a), Value::Float(b)) => Value::Float(*a as f64 / b),
+                        (Value::Float(a), Value::Int(b)) => Value::Float(a / *b as f64),
+                        _ => return Err(EvalError::TypeError(format!(
+                            "reduce: cannot divide {:?} by {:?}", result, item
+                        ))),
+                    },
+                    "min" => match (&result, item) {
+                        (Value::Int(a), Value::Int(b)) => Value::Int(*a.min(b)),
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a.min(*b)),
+                        _ => return Err(EvalError::TypeError(format!(
+                            "reduce: cannot compare {:?} and {:?}", result, item
+                        ))),
+                    },
+                    "max" => match (&result, item) {
+                        (Value::Int(a), Value::Int(b)) => Value::Int(*a.max(b)),
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a.max(*b)),
+                        _ => return Err(EvalError::TypeError(format!(
+                            "reduce: cannot compare {:?} and {:?}", result, item
+                        ))),
+                    },
+                    _ => return Err(EvalError::TypeError(format!(
+                        "reduce: unknown operator '{}'", op
+                    ))),
+                };
+            }
+
+            Ok(result)
+        }
+        Value::Null => Ok(args[1].clone()),
+        _ => Err(EvalError::TypeError("reduce: first argument must be a list".to_string())),
+    }
+}
