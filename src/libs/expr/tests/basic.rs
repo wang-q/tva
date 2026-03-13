@@ -268,8 +268,14 @@ fn test_unary_operators() {
     let r: Vec<String> = vec![];
 
     assert_eq!(eval_expr("-5", &r, None).unwrap().to_string(), "-5");
-    assert_eq!(eval_expr("not true", &r, None).unwrap().to_string(), "false");
-    assert_eq!(eval_expr("not false", &r, None).unwrap().to_string(), "true");
+    assert_eq!(
+        eval_expr("not true", &r, None).unwrap().to_string(),
+        "false"
+    );
+    assert_eq!(
+        eval_expr("not false", &r, None).unwrap().to_string(),
+        "true"
+    );
 }
 
 #[test]

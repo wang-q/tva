@@ -33,17 +33,22 @@ The expression engine supports:
 Evaluates expression for each row and outputs the expression result as a new row (original row structure is discarded).
 
 ```bash
-# Evaluate expression to create new row
-tva expr -E "@price * @qty as @total" data.tsv
+# Simple arithmetic expression
+tva expr -E "10 + 20"
 
-# Multiple expressions with semicolon
-tva expr -E '@price | float() as @p; @qty | int() as @q; @p * @q as @total' data.tsv
+# Evaluate expression with row data
+tva expr -n "price,qty" -r "100,2" -E "@price * @qty"
 
 # String manipulation
-tva expr -E '@name | trim() | upper() as @clean_name' data.tsv
+tva expr -n "name" -r "  alice  " -E 'upper(trim(@name))'
+tva expr -n "name" -r "  alice  " -E '@name.trim().upper()'
+tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 
 # Conditional expression
-tva expr -E 'if(@score >= 60, "pass", "fail") as @result' data.tsv
+tva expr -n "score" -r "85" -E 'if(@score >= 60, "pass", "fail")'
+
+# Process TSV file
+tva expr -E "@1 * @2" data.tsv
 ```
 
 ### `tva filter` - Filter Rows
@@ -51,14 +56,14 @@ tva expr -E 'if(@score >= 60, "pass", "fail") as @result' data.tsv
 Evaluates expression for each row to decide whether to output the row.
 
 ```bash
-# Filter rows where age > 18
-tva filter -E "@age > 18" data.tsv
+# Filter rows where price > 300
+tva filter -E "@price > 300" docs/data/diamonds.tsv
 
 # Filter with string comparison
-tva filter -E '@status eq "active"' data.tsv
+tva filter -E '@cut eq "Ideal"' docs/data/diamonds.tsv
 
 # Complex conditions
-tva filter -E '@age > 18 and @status eq "active"' data.tsv
+tva filter -E '@price > 300 and @cut eq "Ideal"' docs/data/diamonds.tsv
 ```
 
 ### `tva map` - Add New Column
@@ -67,13 +72,13 @@ Evaluates expression for each row to add a new column to the existing row.
 
 ```bash
 # Add a new column with calculated value
-tva map -E "@price * @qty as @total" data.tsv
+tva map -E "@price * 1.1 as @price_with_tax" docs/data/diamonds.tsv
 
 # Add multiple columns
-tva map -E '@price * 1.1 as @price_with_tax, @qty * 2 as @double_qty' data.tsv
+tva map -E '@price * 1.1 as @price_with_tax, @carat * 2 as @double_carat' docs/data/diamonds.tsv
 
 # Add column with transformed value
-tva map -E '@email | lower() | trim() as @clean_email' data.tsv
+tva map -E '@cut | lower() as @cut_lower' docs/data/diamonds.tsv
 ```
 
 ### `tva apply` - Update Column
@@ -82,13 +87,13 @@ Evaluates expression for each row to update an existing column value.
 
 ```bash
 # Modify existing column
-tva apply -E '@price | float() * 1.1' -c price data.tsv
+tva apply -E '@price * 1.1' -c price docs/data/diamonds.tsv
 
 # Transform column value
-tva apply -E '@name | trim() | upper()' -c name data.tsv
+tva apply -E '@cut | upper()' -c cut docs/data/diamonds.tsv
 
 # Replace with conditional value
-tva apply -E 'if(@score >= 60, "PASS", "FAIL")' -c status data.tsv
+tva apply -E 'if(@price >= 350, "expensive", "cheap")' -c price docs/data/diamonds.tsv
 ```
 
 ## Examples

@@ -1,23 +1,52 @@
 use clap::*;
 
+use crate::libs::cli::{build_header_config, header_args};
 use crate::libs::expr::{parser, runtime};
+use crate::libs::io::map_io_err;
+use crate::libs::tsv::header::HeaderMode;
+use crate::libs::tsv::reader::TsvReader;
 
 pub fn make_subcommand() -> Command {
     Command::new("expr")
-        .about("Evaluates an expression for testing/debugging")
+        .about("Evaluates expression for each row to create new row")
         .after_help(include_str!("../../docs/help/expr.md"))
         .arg(
-            Arg::new("expr")
+            Arg::new("infiles")
+                .num_args(0..)
                 .index(1)
-                .required(true)
-                .help("Expression to evaluate (e.g., '@1 + @2', 'upper(@name)')"),
+                .help("Input TSV file(s) to process (default: stdin)"),
         )
         .arg(
-            Arg::new("headers")
-                .long("headers")
-                .short('H')
+            Arg::new("expr")
+                .long("expr")
+                .short('E')
                 .num_args(1)
-                .help("Comma-separated header names for column reference (e.g., 'name,age')"),
+                .required(true)
+                .help("Expression to evaluate (e.g., '@price * @qty as @total')"),
+        )
+        .arg(
+            Arg::new("outfile")
+                .long("outfile")
+                .short('o')
+                .num_args(1)
+                .default_value("stdout")
+                .help("Output filename. [stdout] for screen"),
+        )
+        .args(header_args())
+        .arg(
+            Arg::new("delimiter")
+                .long("delimiter")
+                .short('d')
+                .num_args(1)
+                .default_value("\t")
+                .help("Field delimiter character (default: TAB)"),
+        )
+        .arg(
+            Arg::new("colnames")
+                .long("colnames")
+                .short('n')
+                .num_args(1)
+                .help("Comma-separated column names for reference (e.g., 'name,age')"),
         )
         .arg(
             Arg::new("row")
@@ -29,37 +58,37 @@ pub fn make_subcommand() -> Command {
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
+    let mut writer =
+        crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
+
     let expr_str = args.get_one::<String>("expr").unwrap();
-    let headers_str = args.get_one::<String>("headers");
-    let row_values: Vec<String> = match args.get_many::<String>("row") {
-        Some(values) => values.cloned().collect(),
-        None => Vec::new(),
-    };
 
     // Parse the expression
     let parsed_expr = parser::parse(expr_str)
         .map_err(|e| anyhow::anyhow!("Failed to parse expression: {}", e))?;
 
-    // Build headers if provided
-    let headers: Option<Vec<String>> = headers_str
-        .as_ref()
-        .map(|h| h.split(',').map(|s| s.trim().to_string()).collect());
+    // Check if we have inline row data (debug mode)
+    let row_values: Vec<String> = match args.get_many::<String>("row") {
+        Some(values) => values.cloned().collect(),
+        None => Vec::new(),
+    };
 
-    // Process each row
-    if row_values.is_empty() {
-        // No rows provided, evaluate with empty context
-        let row: Vec<String> = headers
+    // Get input files
+    let infiles: Vec<String> = match args.get_many::<String>("infiles") {
+        Some(values) => values.cloned().collect(),
+        None => Vec::new(),
+    };
+
+    // If we have inline row data, use debug mode (no input file needed)
+    if !row_values.is_empty() {
+        let headers_str = args.get_one::<String>("colnames");
+
+        // Build headers if provided
+        let headers: Option<Vec<String>> = headers_str
             .as_ref()
-            .map(|h| vec!["".to_string(); h.len()])
-            .unwrap_or_default();
-        let mut ctx = match headers.as_ref() {
-            Some(h) => runtime::EvalContext::with_headers(&row, h),
-            None => runtime::EvalContext::new(&row),
-        };
-        let result = runtime::eval(&parsed_expr, &mut ctx)
-            .map_err(|e| anyhow::anyhow!("Evaluation error: {}", e))?;
-        println!("{}", result.to_string());
-    } else {
+            .map(|h| h.split(',').map(|s| s.trim().to_string()).collect());
+
+        // Process each row
         for row_str in &row_values {
             let row: Vec<String> =
                 row_str.split(',').map(|s| s.trim().to_string()).collect();
@@ -69,8 +98,115 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             };
             let result = runtime::eval(&parsed_expr, &mut ctx)
                 .map_err(|e| anyhow::anyhow!("Evaluation error: {}", e))?;
-            println!("{}", result.to_string());
+            writeln!(writer, "{}", result.to_string())?;
         }
+
+        return Ok(());
+    }
+
+    // If no input files and no row data, evaluate expression with empty context
+    if infiles.is_empty() {
+        let row: Vec<String> = Vec::new();
+        let mut ctx = runtime::EvalContext::new(&row);
+        let result = runtime::eval(&parsed_expr, &mut ctx)
+            .map_err(|e| anyhow::anyhow!("Evaluation error: {}", e))?;
+        writeln!(writer, "{}", result.to_string())?;
+        return Ok(());
+    }
+
+    // Otherwise, process input files (default to stdin if no files specified)
+    let infiles = if infiles.is_empty() {
+        vec!["stdin".to_string()]
+    } else {
+        infiles
+    };
+
+    // Build HeaderConfig from arguments
+    let header_config =
+        build_header_config(args, false).map_err(|e| anyhow::anyhow!(e))?;
+    let has_header = header_config.enabled;
+
+    let delimiter_str = args
+        .get_one::<String>("delimiter")
+        .cloned()
+        .unwrap_or_else(|| "\t".to_string());
+    let mut chars = delimiter_str.chars();
+    let delimiter = chars.next().unwrap_or('\t');
+    if chars.next().is_some() {
+        return Err(anyhow::anyhow!(
+            "delimiter must be a single character, got `{}`",
+            delimiter_str
+        ));
+    }
+    let delim_byte = delimiter as u8;
+
+    let mut header_written = false;
+    let mut headers: Vec<String> = Vec::new();
+
+    for input in crate::libs::io::raw_input_sources(&infiles)? {
+        let mut tsv_reader = TsvReader::with_capacity(input.reader, 512 * 1024);
+
+        if has_header {
+            if !header_written {
+                // First file: read header
+                let header_result = tsv_reader
+                    .read_header_mode(header_config.mode)
+                    .map_err(map_io_err)?;
+
+                if let Some(info) = header_result {
+                    // Parse column names from column_names_line or first line
+                    let header_line = info
+                        .column_names_line
+                        .as_ref()
+                        .or(info.lines.first())
+                        .cloned()
+                        .unwrap_or_default();
+                    headers = String::from_utf8_lossy(&header_line)
+                        .split(|c| c == delimiter)
+                        .map(|s| s.to_string())
+                        .collect();
+                    // Write header from expression result
+                    // TODO: Parse "as @colname" from expression to build proper header
+                    writeln!(writer, "{}", expr_str)?;
+                    header_written = true;
+                }
+            } else {
+                // Subsequent files: skip header
+                let _ = tsv_reader
+                    .read_header_mode(HeaderMode::FirstLine)
+                    .map_err(map_io_err)?;
+            }
+        }
+
+        // Process data rows
+        let result: std::io::Result<()> = tsv_reader.for_each_record(|record| {
+            // Split record into fields
+            let row: Vec<String> = record
+                .split(|&b| b == delim_byte)
+                .map(|s| String::from_utf8_lossy(s).to_string())
+                .collect();
+
+            // Create evaluation context
+            let mut ctx = if headers.is_empty() {
+                runtime::EvalContext::new(&row)
+            } else {
+                runtime::EvalContext::with_headers(&row, &headers)
+            };
+
+            // Evaluate expression
+            let result = runtime::eval(&parsed_expr, &mut ctx).map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
+            })?;
+
+            // Output result
+            writeln!(writer, "{}", result.to_string()).map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
+            })?;
+
+            Ok(())
+        });
+
+        result.map_err(|e| anyhow::anyhow!("Error processing file: {}", e))?;
     }
 
     Ok(())

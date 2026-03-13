@@ -5,8 +5,8 @@ mod common;
 use common::TvaCmd;
 
 #[test]
-fn eval_simple_arithmetic() {
-    let (stdout, _) = TvaCmd::new().args(&["eval", "10 + 20"]).run();
+fn expr_simple_arithmetic() {
+    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "10 + 20"]).run();
 
     assert!(
         stdout.contains("30"),
@@ -16,9 +16,9 @@ fn eval_simple_arithmetic() {
 }
 
 #[test]
-fn eval_with_headers_and_row() {
+fn expr_with_colnames_and_row() {
     let (stdout, _) = TvaCmd::new()
-        .args(&["eval", "-H", "price,qty", "-r", "100,2", "@price * @qty"])
+        .args(&["expr", "-n", "price,qty", "-r", "100,2", "-E", "@price * @qty"])
         .run();
 
     assert!(
@@ -29,17 +29,14 @@ fn eval_with_headers_and_row() {
 }
 
 #[test]
-fn eval_multiple_rows() {
+fn expr_multiple_rows() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "eval",
-            "-H",
-            "price,qty",
-            "-r",
-            "100,2",
-            "-r",
-            "200,3",
-            "@price * @qty",
+            "expr",
+            "-n", "price,qty",
+            "-r", "100,2",
+            "-r", "200,3",
+            "-E", "@price * @qty",
         ])
         .run();
 
@@ -58,15 +55,13 @@ fn eval_multiple_rows() {
 }
 
 #[test]
-fn eval_string_function() {
+fn expr_string_function() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "eval",
-            "-H",
-            "name",
-            "-r",
-            "  alice  ",
-            "upper(trim(@name))",
+            "expr",
+            "-n", "name",
+            "-r", "  alice  ",
+            "-E", "upper(trim(@name))",
         ])
         .run();
 
@@ -78,15 +73,13 @@ fn eval_string_function() {
 }
 
 #[test]
-fn eval_conditional_expression() {
+fn expr_conditional_expression() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "eval",
-            "-H",
-            "score",
-            "-r",
-            "85",
-            "if(@score >= 70, \"pass\", \"fail\")",
+            "expr",
+            "-n", "score",
+            "-r", "85",
+            "-E", "if(@score >= 70, \"pass\", \"fail\")",
         ])
         .run();
 
@@ -98,15 +91,13 @@ fn eval_conditional_expression() {
 }
 
 #[test]
-fn eval_conditional_expression_false() {
+fn expr_conditional_expression_false() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "eval",
-            "-H",
-            "score",
-            "-r",
-            "65",
-            "if(@score >= 70, \"pass\", \"fail\")",
+            "expr",
+            "-n", "score",
+            "-r", "65",
+            "-E", "if(@score >= 70, \"pass\", \"fail\")",
         ])
         .run();
 
@@ -118,8 +109,8 @@ fn eval_conditional_expression_false() {
 }
 
 #[test]
-fn eval_numeric_functions() {
-    let (stdout, _) = TvaCmd::new().args(&["eval", "abs(-5)"]).run();
+fn expr_numeric_functions() {
+    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "abs(-5)"]).run();
 
     assert!(
         stdout.contains("5"),
@@ -129,8 +120,8 @@ fn eval_numeric_functions() {
 }
 
 #[test]
-fn eval_min_function() {
-    let (stdout, _) = TvaCmd::new().args(&["eval", "min(10, 5, 3)"]).run();
+fn expr_min_function() {
+    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "min(10, 5, 3)"]).run();
 
     assert!(
         stdout.contains("3"),
@@ -140,8 +131,8 @@ fn eval_min_function() {
 }
 
 #[test]
-fn eval_power_operator() {
-    let (stdout, _) = TvaCmd::new().args(&["eval", "2 ** 10"]).run();
+fn expr_power_operator() {
+    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "2 ** 10"]).run();
 
     assert!(
         stdout.contains("1024"),
@@ -151,8 +142,8 @@ fn eval_power_operator() {
 }
 
 #[test]
-fn eval_modulo_operator() {
-    let (stdout, _) = TvaCmd::new().args(&["eval", "10 % 3"]).run();
+fn expr_modulo_operator() {
+    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "10 % 3"]).run();
 
     assert!(
         stdout.contains("1"),
@@ -162,8 +153,8 @@ fn eval_modulo_operator() {
 }
 
 #[test]
-fn eval_invalid_expression_error() {
-    let (_, stderr) = TvaCmd::new().args(&["eval", "invalid("]).run();
+fn expr_invalid_expression_error() {
+    let (_, stderr) = TvaCmd::new().args(&["expr", "-E", "invalid("]).run();
 
     assert!(
         stderr.contains("Failed to parse expression"),
@@ -173,8 +164,8 @@ fn eval_invalid_expression_error() {
 }
 
 #[test]
-fn eval_unknown_function_error() {
-    let (_, stderr) = TvaCmd::new().args(&["eval", "unknown(1)"]).run();
+fn expr_unknown_function_error() {
+    let (_, stderr) = TvaCmd::new().args(&["expr", "-E", "unknown(1)"]).run();
 
     assert!(
         stderr.contains("Unknown function") || stderr.contains("error"),
