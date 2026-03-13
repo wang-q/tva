@@ -1,5 +1,6 @@
 use crate::libs::expr::runtime::value::Value;
 use crate::libs::expr::runtime::EvalError;
+use base64::Engine;
 use sha2::{Digest, Sha256};
 
 pub fn md5(args: &[Value]) -> Result<Value, EvalError> {
@@ -18,12 +19,12 @@ pub fn sha256(args: &[Value]) -> Result<Value, EvalError> {
 
 pub fn base64_encode(args: &[Value]) -> Result<Value, EvalError> {
     let s = args[0].as_string();
-    Ok(Value::String(base64::encode(s.as_bytes())))
+    Ok(Value::String(base64::engine::general_purpose::STANDARD.encode(s.as_bytes())))
 }
 
 pub fn base64_decode(args: &[Value]) -> Result<Value, EvalError> {
     let s = args[0].as_string();
-    match base64::decode(s.as_bytes()) {
+    match base64::engine::general_purpose::STANDARD.decode(s.as_bytes()) {
         Ok(bytes) => match String::from_utf8(bytes) {
             Ok(decoded) => Ok(Value::String(decoded)),
             Err(_) => Err(EvalError::TypeError(
