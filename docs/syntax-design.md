@@ -480,40 +480,6 @@ default(@nickname, @username)
 
 ## 3. 实施路线图 (Implementation Roadmap)
 
-基于对 `xan/moonblade` 和 `tera` 的深度分析，我们计划为 `tva` 构建一个轻量级、高性能的表达式引擎。
-
-### 3.1 参考架构分析
-
-#### 3.1.1 xan/moonblade 架构
-
-**核心组件**:
--   **grammar.pest**: PEG 语法定义，使用 `pest` 解析器生成器
--   **parser.rs**: Pratt Parser 实现，处理操作符优先级
--   **interpreter.rs**: 树遍历解释器 (Tree-Walker Interpreter)
--   **functions.rs**: 内置函数库 (~200+ 函数)
--   **special_functions.rs**: 编译期和运行期特殊函数 (如 `col`, `header`)
--   **error.rs**: 统一的错误处理 (ConcretizationError, EvaluationError)
--   **types**: DynamicValue 动态类型系统
-
-**关键设计模式**:
--   **Concretization (具体化)**: 执行前静态分析，将列名解析为索引
--   **Arc-based 字符串**: 减少深拷贝
--   **Pratt Parser**: 处理复杂操作符优先级
--   **GlobalVariables**: 支持全局变量槽位
-
-#### 3.1.2 Tera 架构
-
-**核心组件**:
--   **tera.pest**: 模板语法定义
--   **ast.rs**: AST 节点定义
--   **whitespace.rs**: 空白字符控制逻辑
--   **Renderer**: 树遍历渲染器
-
-**关键设计模式**:
--   **Whitespace Control**: `{%-` 和 `-%}` 精确控制空白
--   **Filter Chain**: `value | filter1 | filter2`
--   **Macro System**: 模板级别的函数抽象
-
 ### 3.2 TVA 表达式引擎设计
 
 #### 3.2.1 设计原则
@@ -554,12 +520,6 @@ src/libs/expr/
 | 正则 | `regex_match`, `regex_extract`, `regex_replace` | 3 |
 | 编码哈希 | `md5`, `sha256`, `base64`, `unbase64` | 4 |
 | 日期时间 | `now`, `strptime`, `strftime` | 3 |
-| 方法调用 | `@name.trim()`, `@price.round()` | 语法特性 |
-
-**新增依赖**:
--   `regex = "1.11"` - 正则表达式支持
--   `md5 = "0.7"`, `sha2 = "0.10"`, `base64 = "0.22"` - 编码哈希
--   `chrono = "0.4"` - 日期时间处理
 
 #### 待完成任务
 
@@ -588,6 +548,8 @@ tva mutate -E "@first ++ ' ' ++ @last as @full_name" data.tsv
 ```bash
 tva filter -E "@price > 100 and @stock > 0" data.tsv
 tva filter -E "@name | contains(_, 'John')" data.tsv
+tva filter -E "@name.contains('John')" data.tsv
+tva filter -E "contains(@name, 'John')" data.tsv
 ```
 
 *实现规划*:
