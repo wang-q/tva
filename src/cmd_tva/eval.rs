@@ -49,21 +49,21 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     if row_values.is_empty() {
         // No rows provided, evaluate with empty context
         let row: Vec<String> = headers.as_ref().map(|h| vec!["".to_string(); h.len()]).unwrap_or_default();
-        let ctx = match headers.as_ref() {
+        let mut ctx = match headers.as_ref() {
             Some(h) => runtime::EvalContext::with_headers(&row, h),
             None => runtime::EvalContext::new(&row),
         };
-        let result = runtime::eval(&parsed_expr, &ctx)
+        let result = runtime::eval(&parsed_expr, &mut ctx)
             .map_err(|e| anyhow::anyhow!("Evaluation error: {}", e))?;
         println!("{}", result.to_string());
     } else {
         for row_str in &row_values {
             let row: Vec<String> = row_str.split(',').map(|s| s.trim().to_string()).collect();
-            let ctx = match headers.as_ref() {
+            let mut ctx = match headers.as_ref() {
                 Some(h) => runtime::EvalContext::with_headers(&row, h),
                 None => runtime::EvalContext::new(&row),
             };
-            let result = runtime::eval(&parsed_expr, &ctx)
+            let result = runtime::eval(&parsed_expr, &mut ctx)
                 .map_err(|e| anyhow::anyhow!("Evaluation error: {}", e))?;
             println!("{}", result.to_string());
         }

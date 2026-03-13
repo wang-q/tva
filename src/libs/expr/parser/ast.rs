@@ -1,10 +1,12 @@
 /// AST for expression parsing
-/// Supports: column refs, literals, arithmetic, comparison, logical ops
+/// Supports: column refs, variables, literals, arithmetic, comparison, logical ops, pipes
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     /// Column reference: @1, @name
     ColumnRef(ColumnRef),
+    /// Variable reference: @var_name (bound by 'as')
+    Variable(String),
     /// Integer literal: 123
     Int(i64),
     /// Float literal: 3.14
@@ -15,6 +17,8 @@ pub enum Expr {
     Bool(bool),
     /// Null literal
     Null,
+    /// List literal: [1, 2, 3]
+    List(Vec<Expr>),
     /// Unary operation: -x, !x
     Unary { op: UnaryOp, expr: Box<Expr> },
     /// Binary operation: @1 + @2
@@ -25,6 +29,23 @@ pub enum Expr {
     },
     /// Function call: func(arg1, arg2)
     Call { name: String, args: Vec<Expr> },
+    /// Pipe expression: expr | func() or expr | func(_, arg)
+    /// The first argument is implicitly the left side of the pipe
+    Pipe { left: Box<Expr>, right: Box<PipeRight> },
+    /// Variable binding: expr as @name
+    Bind { expr: Box<Expr>, name: String },
+    /// Multiple expressions separated by semicolons
+    Block(Vec<Expr>),
+}
+
+/// Right-hand side of a pipe expression
+#[derive(Debug, Clone, PartialEq)]
+pub enum PipeRight {
+    /// Function call with implicit first argument: func()
+    Call { name: String, args: Vec<Expr> },
+    /// Function call with placeholder: func(_, arg2)
+    /// The placeholder _ is replaced with the pipe's left value
+    CallWithPlaceholder { name: String, args: Vec<Expr> },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -50,6 +71,8 @@ pub enum BinaryOp {
     Div, // /
     Mod, // %
     Pow, // **
+    // String concatenation
+    Concat, // ++
     // Comparison
     Eq, // ==
     Ne, // !=
@@ -58,8 +81,8 @@ pub enum BinaryOp {
     Gt, // >
     Ge, // >=
     // Logical
-    And, // &&
-    Or,  // ||
+    And, // && / and
+    Or,  // || / or
 }
 
 impl Expr {

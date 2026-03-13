@@ -4,6 +4,9 @@
 // Whitespace is ignored between tokens
 WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
 
+// Comments are also ignored (pest convention: use COMMENT rule)
+COMMENT = _{ "//" ~ (!"\n" ~ ANY)* }
+
 // ============================================
 // Literals
 // ============================================
@@ -31,11 +34,14 @@ boolean = { "true" | "false" }
 null = { "null" }
 
 // ============================================
-// Column References
+// Column References and Variables
 // ============================================
 
 // @1, @2, @name
 column_ref = ${ "@" ~ (int | ident) }
+
+// Variable reference: @name (bound by 'as')
+variable_ref = ${ "@" ~ ident }
 
 // ============================================
 // Identifiers
@@ -45,7 +51,7 @@ ident_char = _{ 'a'..'z' | 'A'..'Z' | '0'..'9' | "_" }
 ident = @{ ('a'..'z' | 'A'..'Z' | "_") ~ ident_char* }
 
 // ============================================
-// Operators (ordered by precedence)
+// Operators
 // ============================================
 
 // Logical OR
@@ -54,13 +60,16 @@ op_or = { "||" | "or" }
 // Logical AND
 op_and = { "&&" | "and" }
 
-// Comparison - order matters for longest match
+// Comparison
 op_eq = { "==" | "=" }
 op_ne = { "!=" | "<>" }
 op_le = { "<=" }
 op_ge = { ">=" }
 op_lt = { "<" }
 op_gt = { ">" }
+
+// String concatenation
+op_concat = { "++" }
 
 // Additive
 op_add = { "+" }
@@ -78,6 +87,15 @@ op_pow = { "**" }
 op_not = { "!" | "not" }
 op_neg = { "-" }
 
+// Pipe
+op_pipe = { "|" }
+
+// Variable binding
+op_as = { "as" }
+
+// Semicolon for multiple expressions
+op_semi = { ";" }
+
 // ============================================
 // Expressions
 // ============================================
@@ -85,6 +103,7 @@ op_neg = { "-" }
 // Primary expressions (highest precedence)
 primary = _{
     column_ref
+  | list_literal
   | string
   | float
   | int
@@ -94,16 +113,26 @@ primary = _{
   | "(" ~ expr ~ ")"
 }
 
+// List literal: [1, 2, 3] or []
+list_literal = { "[" ~ (expr ~ ("," ~ expr)*)? ~ "]" }
+
 // Function call: func(arg1, arg2) or func()
 func_call = { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
+
+// Pipe right-hand side: func() or func(_, arg2)
+pipe_func_call = { ident ~ "(" ~ (pipe_arg ~ ("," ~ pipe_arg)*)? ~ ")" }
+
+// Arguments in pipe context: can be _ placeholder or regular expr
+pipe_arg = { placeholder | expr }
+placeholder = { "_" }
 
 // Postfix: primary or function call
 postfix = _{ func_call | primary }
 
-// Unary expressions (zero or more unary ops, then postfix)
+// Unary expressions
 unary = { (op_not | op_neg)* ~ postfix }
 
-// Power (right-associative) - handled as left fold for simplicity
+// Power
 power = { unary ~ (op_pow ~ unary)* }
 
 // Multiplicative
@@ -112,18 +141,33 @@ multiplicative = { power ~ ((op_mul | op_div | op_mod) ~ power)* }
 // Additive
 additive = { multiplicative ~ ((op_add | op_sub) ~ multiplicative)* }
 
-// Comparison - use atomic rules to ensure longest match
+// String concatenation
+concat = { additive ~ (op_concat ~ additive)* }
+
+// Comparison
 comparison_op = _{ op_le | op_ge | op_lt | op_gt | op_eq | op_ne }
-comparison = { additive ~ (comparison_op ~ additive)? }
+comparison = { concat ~ (comparison_op ~ concat)? }
 
 // Logical AND
 logical_and = { comparison ~ (op_and ~ comparison)* }
 
-// Logical OR (lowest precedence)
+// Logical OR
 logical_or = { logical_and ~ (op_or ~ logical_and)* }
 
-// Top-level expression
-expr = { logical_or }
+// Pipe expression - must be non-atomic to capture children
+pipe = { logical_or ~ (op_pipe ~ pipe_func_call)* }
+
+// Variable binding: expr as @name
+bind = { pipe ~ (op_as ~ var_name)? }
+
+// Variable name (with @ prefix for binding target)
+var_name = ${ "@" ~ ident }
+
+// Single expression
+expr = { bind }
+
+// Multiple expressions separated by semicolons
+expr_list = { expr ~ (op_semi ~ expr)* }
 
 // Full expression (for parsing complete input)
-full_expr = _{ SOI ~ expr ~ EOI }
+full_expr = _{ SOI ~ expr_list ~ EOI }
