@@ -207,23 +207,58 @@ fn test_comparison_operators() {
 }
 
 #[test]
+fn test_string_comparison_operators() {
+    let r = row(&["alice", "bob"]);
+
+    // String comparison (lexicographic)
+    assert_eq!(eval_expr("@1 eq @1", &r, None).unwrap().to_string(), "true");
+    assert_eq!(
+        eval_expr("@1 eq @2", &r, None).unwrap().to_string(),
+        "false"
+    );
+    assert_eq!(eval_expr("@1 ne @2", &r, None).unwrap().to_string(), "true");
+    assert_eq!(eval_expr("@1 lt @2", &r, None).unwrap().to_string(), "true"); // alice < bob
+    assert_eq!(eval_expr("@1 le @2", &r, None).unwrap().to_string(), "true");
+    assert_eq!(
+        eval_expr("@1 gt @2", &r, None).unwrap().to_string(),
+        "false"
+    );
+    assert_eq!(
+        eval_expr("@1 ge @2", &r, None).unwrap().to_string(),
+        "false"
+    );
+
+    // String literal comparison
+    assert_eq!(
+        eval_expr("'hello' eq 'hello'", &r, None)
+            .unwrap()
+            .to_string(),
+        "true"
+    );
+    assert_eq!(
+        eval_expr("'abc' lt 'def'", &r, None).unwrap().to_string(),
+        "true"
+    );
+}
+
+#[test]
 fn test_logical_operators() {
     let r: Vec<String> = vec![];
 
     assert_eq!(
-        eval_expr("true && true", &r, None).unwrap().to_string(),
+        eval_expr("true and true", &r, None).unwrap().to_string(),
         "true"
     );
     assert_eq!(
-        eval_expr("true && false", &r, None).unwrap().to_string(),
+        eval_expr("true and false", &r, None).unwrap().to_string(),
         "false"
     );
     assert_eq!(
-        eval_expr("true || false", &r, None).unwrap().to_string(),
+        eval_expr("true or false", &r, None).unwrap().to_string(),
         "true"
     );
     assert_eq!(
-        eval_expr("false || false", &r, None).unwrap().to_string(),
+        eval_expr("false or false", &r, None).unwrap().to_string(),
         "false"
     );
 }
@@ -233,8 +268,8 @@ fn test_unary_operators() {
     let r: Vec<String> = vec![];
 
     assert_eq!(eval_expr("-5", &r, None).unwrap().to_string(), "-5");
-    assert_eq!(eval_expr("!true", &r, None).unwrap().to_string(), "false");
-    assert_eq!(eval_expr("!false", &r, None).unwrap().to_string(), "true");
+    assert_eq!(eval_expr("not true", &r, None).unwrap().to_string(), "false");
+    assert_eq!(eval_expr("not false", &r, None).unwrap().to_string(), "true");
 }
 
 #[test]

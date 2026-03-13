@@ -273,7 +273,13 @@ fn build_comparison(pair: Pair<Rule>) -> Result<Expr, ParseError> {
             | Rule::op_lt
             | Rule::op_le
             | Rule::op_gt
-            | Rule::op_ge => {
+            | Rule::op_ge
+            | Rule::op_str_eq
+            | Rule::op_str_ne
+            | Rule::op_str_lt
+            | Rule::op_str_le
+            | Rule::op_str_gt
+            | Rule::op_str_ge => {
                 let s = inner.as_str();
                 match s {
                     "==" | "=" => ops.push(BinaryOp::Eq),
@@ -282,6 +288,12 @@ fn build_comparison(pair: Pair<Rule>) -> Result<Expr, ParseError> {
                     "<=" => ops.push(BinaryOp::Le),
                     ">" => ops.push(BinaryOp::Gt),
                     ">=" => ops.push(BinaryOp::Ge),
+                    "eq" => ops.push(BinaryOp::StrEq),
+                    "ne" => ops.push(BinaryOp::StrNe),
+                    "lt" => ops.push(BinaryOp::StrLt),
+                    "le" => ops.push(BinaryOp::StrLe),
+                    "gt" => ops.push(BinaryOp::StrGt),
+                    "ge" => ops.push(BinaryOp::StrGe),
                     _ => {
                         return Err(ParseError::InvalidNumber(format!(
                             "unknown comparison op: {}",
@@ -881,7 +893,7 @@ mod tests {
 
     #[test]
     fn test_parse_logical() {
-        let expr = parse("@1 > 0 && @2 < 100").unwrap();
+        let expr = parse("@1 > 0 and @2 < 100").unwrap();
         match expr {
             Expr::Binary {
                 op: BinaryOp::And, ..

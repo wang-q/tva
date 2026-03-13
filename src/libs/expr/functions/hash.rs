@@ -19,7 +19,9 @@ pub fn sha256(args: &[Value]) -> Result<Value, EvalError> {
 
 pub fn base64_encode(args: &[Value]) -> Result<Value, EvalError> {
     let s = args[0].as_string();
-    Ok(Value::String(base64::engine::general_purpose::STANDARD.encode(s.as_bytes())))
+    Ok(Value::String(
+        base64::engine::general_purpose::STANDARD.encode(s.as_bytes()),
+    ))
 }
 
 pub fn base64_decode(args: &[Value]) -> Result<Value, EvalError> {

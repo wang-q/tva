@@ -189,7 +189,7 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
                 BinaryOp::Concat => {
                     Ok(Value::String(left_val.as_string() + &right_val.as_string()))
                 }
-                // Comparison
+                // Comparison (numeric)
                 BinaryOp::Eq => Ok(left_val.eq(&right_val)),
                 BinaryOp::Ne => Ok(left_val.ne(&right_val)),
                 BinaryOp::Lt => left_val
@@ -204,6 +204,25 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
                 BinaryOp::Ge => left_val
                     .ge(&right_val)
                     .ok_or(EvalError::TypeError("expected comparable".to_string())),
+                // Comparison (string)
+                BinaryOp::StrEq => {
+                    Ok(Value::Bool(left_val.as_string() == right_val.as_string()))
+                }
+                BinaryOp::StrNe => {
+                    Ok(Value::Bool(left_val.as_string() != right_val.as_string()))
+                }
+                BinaryOp::StrLt => {
+                    Ok(Value::Bool(left_val.as_string() < right_val.as_string()))
+                }
+                BinaryOp::StrLe => {
+                    Ok(Value::Bool(left_val.as_string() <= right_val.as_string()))
+                }
+                BinaryOp::StrGt => {
+                    Ok(Value::Bool(left_val.as_string() > right_val.as_string()))
+                }
+                BinaryOp::StrGe => {
+                    Ok(Value::Bool(left_val.as_string() >= right_val.as_string()))
+                }
                 // Logical
                 BinaryOp::And => {
                     Ok(Value::Bool(left_val.as_bool() && right_val.as_bool()))

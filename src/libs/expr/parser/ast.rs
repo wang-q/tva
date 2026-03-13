@@ -89,13 +89,20 @@ pub enum BinaryOp {
     Pow, // **
     // String concatenation
     Concat, // ++
-    // Comparison
+    // Comparison (numeric)
     Eq, // ==
     Ne, // !=
     Lt, // <
     Le, // <=
     Gt, // >
     Ge, // >=
+    // Comparison (string)
+    StrEq, // eq
+    StrNe, // ne
+    StrLt, // lt
+    StrLe, // le
+    StrGt, // gt
+    StrGe, // ge
     // Logical
     And, // && / and
     Or,  // || / or

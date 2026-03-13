@@ -55,18 +55,26 @@ ident = @{ ('a'..'z' | 'A'..'Z' | "_") ~ ident_char* }
 // ============================================
 
 // Logical OR
-op_or = { "||" | "or" }
+op_or = { "or" }
 
 // Logical AND
-op_and = { "&&" | "and" }
+op_and = { "and" }
 
-// Comparison
+// Comparison (numeric)
 op_eq = { "==" | "=" }
 op_ne = { "!=" | "<>" }
 op_le = { "<=" }
 op_ge = { ">=" }
 op_lt = { "<" }
 op_gt = { ">" }
+
+// String comparison
+op_str_eq = { "eq" }
+op_str_ne = { "ne" }
+op_str_lt = { "lt" }
+op_str_le = { "le" }
+op_str_gt = { "gt" }
+op_str_ge = { "ge" }
 
 // String concatenation
 op_concat = { "++" }
@@ -84,7 +92,7 @@ op_mod = { "%" }
 op_pow = { "**" }
 
 // Unary
-op_not = { "!" | "not" }
+op_not = { "not" }
 op_neg = { "-" }
 
 // Pipe
@@ -164,9 +172,10 @@ additive = { multiplicative ~ ((op_add | op_sub) ~ multiplicative)* }
 // String concatenation
 concat = { additive ~ (op_concat ~ additive)* }
 
-// Comparison
+// Comparison (numeric and string)
 comparison_op = _{ op_le | op_ge | op_lt | op_gt | op_eq | op_ne }
-comparison = { concat ~ (comparison_op ~ concat)? }
+str_comparison_op = _{ op_str_eq | op_str_ne | op_str_lt | op_str_le | op_str_gt | op_str_ge }
+comparison = { concat ~ ((comparison_op | str_comparison_op) ~ concat)? }
 
 // Logical AND
 logical_and = { comparison ~ (op_and ~ comparison)* }
