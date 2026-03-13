@@ -1,0 +1,1062 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Expression Syntax - tva Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-2459343d.css">
+        <link rel="stylesheet" href="css/chrome-ae938929.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2dfa081b.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-aa8e6ef6.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">tva Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/wang-q/tva" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/wang-q/tva/edit/master/docs/expr-syntax.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="语法设计与表达式语言规划"><a class="header" href="#语法设计与表达式语言规划">语法设计与表达式语言规划</a></h1>
+<p>本文档旨在规划 <code>tva</code> 的数据处理格式与表达式语法。我们将首先分析现有的优秀工具（如 GNU Parallel 和 xan/moonblade）的设计模式，然后基于 <code>tva</code> 的高性能、零拷贝目标，引出我们自己的格式设计。</p>
+<h2 id="2-tva-表达式设计"><a class="header" href="#2-tva-表达式设计">2. TVA 表达式设计</a></h2>
+<h3 id="21-设计原则与哲学"><a class="header" href="#21-设计原则与哲学">2.1 设计原则与哲学</a></h3>
+<p><strong>核心理念：单线程极致性能 + 外部并行工具</strong></p>
+<p><code>tva</code> 坚持在绝大多数数据处理场景下采用<strong>单线程</strong>模型。这并非技术限制，而是基于 Unix 哲学的主动选择：</p>
+<ol>
+<li><strong>专注 (Do One Thing Well)</strong>: <code>tva</code> 专注于流式数据的解析、转换与统计，将并行调度的复杂性交给专业的工具（如 GNU Parallel）。</li>
+<li><strong>避免重复造轮子</strong>: GNU Parallel 已经是一个极其成熟、功能强大的并行任务调度器。与其在 <code>tva</code> 内部实现复杂的线程池和任务分发，不如让 <code>tva</code> 成为 Parallel 的最佳拍档。</li>
+<li><strong>确定性与简单性</strong>: 单线程模型使得数据处理顺序（Order）天然确定，调试更简单，且极大地降低了内存管理的复杂度和开销（无锁、零拷贝更容易实现）。</li>
+</ol>
+<p><strong>设计原则</strong>：</p>
+<ul>
+<li><strong>简洁性 (Conciseness)</strong>: 对于常见操作（如列引用），语法应尽可能短。</li>
+<li><strong>类型感知 (Type-aware)</strong>: 能够在需要时识别数字、日期等类型，但在默认情况下作为字节串处理以保持速度。</li>
+<li><strong>Shell 友好 (Shell-friendly)</strong>: 语法设计避免与 Shell 特殊字符冲突（如 <code>$</code>, <code>!</code>, <code>`</code>），减少用户转义负担。由于表达式通常在命令行中运行且被引号包裹，应尽量避免触发 Shell 的变量替换（如 <code>$var</code>）。</li>
+<li><strong>流式处理 (Streaming)</strong>: 表达式按行求值，无全局状态，适合大数据处理。</li>
+<li><strong>错误处理 (Error Handling)</strong>: 默认采用宽容模式，无效操作返回 <code>null</code> 而非报错，但可通过严格模式开关改变行为。</li>
+<li><strong>一致性 (Consistency)</strong>: 与现有工具（如 jq、xan）保持相似性，降低学习成本。</li>
+<li><strong>Parallel 兼容</strong>: 当用户需要并行处理时，通常是 <code>parallel</code> 调用 <code>tva</code> 的模式（例如 <code>parallel "tva ... {}"</code>），因此 <code>tva</code> 的内部语法不应干扰 <code>parallel</code> 的参数替换机制。</li>
+</ul>
+<h3 id="22-语法草案-draft"><a class="header" href="#22-语法草案-draft">2.2 语法草案 (Draft)</a></h3>
+<h4 id="221-字面量-literals"><a class="header" href="#221-字面量-literals">2.2.1 字面量 (Literals)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">类型</th><th style="text-align: left">语法</th><th style="text-align: left">示例</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">整数</td><td style="text-align: left">数字序列</td><td style="text-align: left"><code>42</code>, <code>-10</code>, <code>1_000_000</code></td></tr>
+<tr><td style="text-align: left">浮点数</td><td style="text-align: left">小数点</td><td style="text-align: left"><code>3.14</code>, <code>-0.5</code>, <code>1e10</code></td></tr>
+<tr><td style="text-align: left">字符串</td><td style="text-align: left">单/双引号</td><td style="text-align: left"><code>"hello"</code>, <code>'world'</code></td></tr>
+<tr><td style="text-align: left">布尔</td><td style="text-align: left"><code>true</code> / <code>false</code></td><td style="text-align: left"><code>true</code>, <code>false</code></td></tr>
+<tr><td style="text-align: left">空值</td><td style="text-align: left"><code>null</code></td><td style="text-align: left"><code>null</code></td></tr>
+<tr><td style="text-align: left">列表</td><td style="text-align: left">方括号</td><td style="text-align: left"><code>[1, 2, 3]</code>, <code>["a", "b"]</code></td></tr>
+<tr><td style="text-align: left">Lambda</td><td style="text-align: left">箭头函数</td><td style="text-align: left"><code>x =&gt; x + 1</code>, <code>(x, y) =&gt; x + y</code></td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="222-列引用-column-reference"><a class="header" href="#222-列引用-column-reference">2.2.2 列引用 (Column Reference)</a></h4>
+<p>使用 <code>@</code> 前缀引用列，避免与 Shell 变量冲突：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">语法</th><th style="text-align: left">含义</th><th style="text-align: left">示例</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>@0</code></td><td style="text-align: left">整行内容</td><td style="text-align: left"><code>@0</code> 表示当前行所有列</td></tr>
+<tr><td style="text-align: left"><code>@1</code>, <code>@2</code></td><td style="text-align: left">1-based 列索引</td><td style="text-align: left"><code>@1</code> 表示第1列</td></tr>
+<tr><td style="text-align: left"><code>@col_name</code></td><td style="text-align: left">列名引用</td><td style="text-align: left"><code>@price</code> 表示 price 列</td></tr>
+<tr><td style="text-align: left"><code>@"col name"</code></td><td style="text-align: left">含空格的列名</td><td style="text-align: left"><code>@"user name"</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>设计理由</strong>：</p>
+<ul>
+<li><strong>Shell 友好</strong>：<code>@</code> 在 bash/zsh 中无特殊含义，无需转义</li>
+<li><strong>简洁高效</strong>：仅需 2 个字符（<code>Shift+2</code>）</li>
+</ul>
+<h4 id="223-变量绑定-variable-binding"><a class="header" href="#223-变量绑定-variable-binding">2.2.3 变量绑定 (Variable Binding)</a></h4>
+<p>使用 <code>as</code> 关键字将表达式结果绑定到变量，在后续管道中复用：</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// 基本语法
+@price * @qty as @total | @total * (1 + @tax_rate)
+
+// 复用中间结果
+@name | split(" ") as @parts | first(@parts) ++ "." ++ last(@parts)
+
+// 多变量绑定
+@price as @p | @qty as @q | @p * @q
+<span class="boring">}</span></code></pre>
+<p><strong>规则</strong>：</p>
+<ul>
+<li>变量在当前行内有效，进入下一行自动清空</li>
+<li>可遮蔽同名列引用（<code>@price as @price</code>）</li>
+<li>列引用优先检查变量，再回退到列名查找</li>
+</ul>
+<p><strong>设计说明</strong>：</p>
+<ul>
+<li>采用 <code>as</code> 与管道语义一致（“将左侧结果命名为…”）</li>
+<li>统一使用 <code>@</code> 前缀，降低认知负担</li>
+<li>参考 jq 语法但去掉 <code>$</code> 避免 Shell 冲突</li>
+</ul>
+<h4 id="224-操作符-operators"><a class="header" href="#224-操作符-operators">2.2.4 操作符 (Operators)</a></h4>
+<p>操作符按优先级从高到低排列：</p>
+<ul>
+<li><code>()</code> - 分组，如 <code>(@price + @tax) * @qty</code></li>
+<li><code>-</code> (一元) - 负号，如 <code>-@price</code>, <code>-(10 + 5)</code></li>
+<li><code>**</code> - 乘方，如 <code>2 ** 10</code>, <code>@base ** @exp</code></li>
+<li><code>*</code>, <code>/</code>, <code>%</code> - 乘除模，如 <code>@price * 1.1</code></li>
+<li><code>+</code>, <code>-</code> (二元) - 加减，如 <code>@a + @b</code></li>
+<li><code>++</code> - 字符串拼接，如 <code>@first ++ " " ++ @last</code></li>
+<li><code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code> - 数值比较，如 <code>@age &gt;= 18</code></li>
+<li><code>and</code>, <code>or</code>, <code>not</code> - 逻辑与或非，如 <code>@age &gt; 18 and @age &lt; 65</code></li>
+<li><code>|</code> - 管道（函数链，最低优先级），如 <code>@name | trim() | upper()</code></li>
+</ul>
+<p><strong>注意</strong>：</p>
+<ul>
+<li>无隐式类型转换，字符串比较需显式使用函数</li>
+<li>管道操作符 <code>|</code> 作为分隔符，将左侧结果作为第一个参数传递给右侧函数</li>
+</ul>
+<h4 id="225-类型系统-type-system"><a class="header" href="#225-类型系统-type-system">2.2.5 类型系统 (Type System)</a></h4>
+<p>TVA 采用动态类型系统，运行时自动识别类型：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">类型</th><th style="text-align: left">说明</th><th style="text-align: left">转换规则</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>Int</code></td><td style="text-align: left">64位有符号整数</td><td style="text-align: left">字符串解析失败时返回 <code>null</code></td></tr>
+<tr><td style="text-align: left"><code>Float</code></td><td style="text-align: left">64位浮点数</td><td style="text-align: left">整数可自动提升为浮点数</td></tr>
+<tr><td style="text-align: left"><code>String</code></td><td style="text-align: left">UTF-8 字符串</td><td style="text-align: left">数字/布尔可显式转换为字符串</td></tr>
+<tr><td style="text-align: left"><code>Bool</code></td><td style="text-align: left">布尔值</td><td style="text-align: left">空字符串、0、<code>null</code> 为假，其余为真</td></tr>
+<tr><td style="text-align: left"><code>Null</code></td><td style="text-align: left">空值</td><td style="text-align: left">表示缺失或无效数据</td></tr>
+<tr><td style="text-align: left"><code>List</code></td><td style="text-align: left">异构列表</td><td style="text-align: left">元素可以是任意类型</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>类型转换</strong>：</p>
+<ul>
+<li><strong>显式转换</strong>: 使用 <code>int()</code>, <code>float()</code>, <code>string()</code> 函数</li>
+<li><strong>数值运算</strong>: 整数与浮点数混合运算时，结果提升为浮点数</li>
+<li><strong>字符串拼接</strong>: <code>++</code> 操作符会将操作数转为字符串</li>
+<li><strong>比较操作</strong>: 同类型比较，不同类型始终返回 <code>false</code></li>
+</ul>
+<p><strong>列引用类型</strong>：</p>
+<ul>
+<li>列引用 <code>@col</code> 默认返回 <code>String</code>（原始字节）</li>
+<li>数值运算时自动尝试解析为数字，解析失败视为 <code>null</code></li>
+<li>可用 <code>int(@col)</code> 或 <code>float(@col)</code> 显式指定类型</li>
+</ul>
+<h4 id="226-函数调用-function-call"><a class="header" href="#226-函数调用-function-call">2.2.6 函数调用 (Function Call)</a></h4>
+<ul>
+<li><strong>前缀调用</strong>: <code>func(arg1, arg2, ...)</code>，如 <code>trim(@name)</code>, <code>substr(@desc, 0, 50)</code></li>
+<li><strong>管道调用（单参数函数）</strong>: <code>arg | func()</code>，如 <code>@name | trim() | upper()</code>
+<ul>
+<li>单参数函数在管道中可省略 <code>_</code> 占位符</li>
+</ul>
+</li>
+<li><strong>管道调用（多参数函数）</strong>: <code>arg | func(_, arg2)</code>，如 <code>@name | substr(_, 0, 5)</code>
+<ul>
+<li>使用 <code>_</code> 表示管道左侧的值作为第一个参数</li>
+</ul>
+</li>
+</ul>
+<h4 id="227-表达式-expression"><a class="header" href="#227-表达式-expression">2.2.7 表达式 (Expression)</a></h4>
+<p>TVA 表达式由以下元素组合而成：</p>
+<p><strong>原子元素</strong>：</p>
+<ul>
+<li><strong>列引用</strong>: <code>@1</code>, <code>@col_name</code> - 输入数据的列值</li>
+<li><strong>变量</strong>: <code>@var_name</code> - 通过 <code>as</code> 绑定的变量</li>
+<li><strong>字面量</strong>: <code>42</code>, <code>"hello"</code>, <code>true</code>, <code>null</code>, <code>[1, 2, 3]</code> - 常量值</li>
+<li><strong>函数调用</strong>: <code>func(args...)</code> - 内置函数</li>
+</ul>
+<p><strong>组合方式</strong>：</p>
+<ul>
+<li><strong>操作符组合</strong>: <code>@a + @b</code>, <code>@x &gt; 10 and @y &lt; 20</code></li>
+<li><strong>管道组合</strong>: <code>@name | trim() | upper()</code></li>
+<li><strong>变量绑定</strong>: <code>expr as @var | @var + 1</code></li>
+<li><strong>函数嵌套</strong>: <code>if(@age &gt; 18, "adult", "minor")</code></li>
+</ul>
+<p><strong>求值规则</strong>：</p>
+<ul>
+<li>表达式按操作符优先级从左到右求值</li>
+<li>管道操作符 <code>|</code> 优先级最低，用于连接多个处理步骤</li>
+<li>变量绑定 <code>as</code> 在管道中立即生效，后续步骤可引用</li>
+</ul>
+<p><strong>多表达式</strong>：</p>
+<ul>
+<li>使用 <code>;</code> 分隔多个表达式，按顺序依次求值</li>
+<li>只有最后一个表达式的值会被输出，前面的表达式用于副作用（如变量绑定、调试打印）</li>
+<li>示例：<code>@price as @p; @qty as @q; @p * @q</code></li>
+</ul>
+<p><strong>输出行为</strong>：</p>
+<ul>
+<li>在 <code>tva eval</code> 中，最后一个表达式的值会打印到标准输出</li>
+<li><code>print(val, ...)</code> 函数将多个参数依次输出，返回最后一个参数的值。如果 print() 是最后一个表达式，不会双重打印。</li>
+<li>示例：<code>@price | print("price:", _); @qty | print("qty:", _); @price * @qty</code></li>
+</ul>
+<h4 id="228-注释-comments"><a class="header" href="#228-注释-comments">2.2.8 注释 (Comments)</a></h4>
+<p>TVA 支持行注释，以 <code>//</code> 开头：</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// 计算总价
+@price * @qty as @total | @total * (1 + @tax_rate)  // 含税
+<span class="boring">}</span></code></pre>
+<p><strong>注意</strong>：注释仅在表达式内部有效，命令行中的注释由 Shell 处理。</p>
+<h4 id="229-完整示例"><a class="header" href="#229-完整示例">2.2.9 完整示例</a></h4>
+<pre><code class="language-bash"># 过滤：价格大于100且库存大于0
+@price &gt; 100 and @stock &gt; 0
+
+# 计算：总价（含税）
+@price * (1 + @tax_rate)
+
+# 字符串处理：格式化姓名
+@first_name | trim() | upper() ++ " " ++ @last_name | trim() | upper()
+
+# 条件：根据年龄分组
+if(@age &lt; 18, "minor", if(@age &lt; 60, "adult", "senior"))
+
+# 正则匹配：验证邮箱格式
+regex_match(@email, "^[\\w.-]+@[\\w.-]+\\.\\w+$")
+
+# 默认值：处理可能为空的字段
+default(@nickname, @username)
+
+# 单参数函数管道
+@name | trim() | upper()
+
+# 多参数函数管道（使用 _ 占位符）
+@desc | substr(_, 0, 50) | upper()
+
+// 多表达式与变量绑定
+@price as @p; @qty as @q; @p * @q
+
+// 复杂管道与分号组合
+@price | int() as @p | @p * 2; @qty | int() as @q | @q * 3; @p + @q
+
+// 使用注释解释逻辑
+@total | int() as @t;  // 转为整数
+@tax | float() as @r;  // 税率转为浮点数
+@t * (1 + @r)          // 计算含税总价
+</code></pre>
+<h3 id="23-函数库参考-standard-library-reference"><a class="header" href="#23-函数库参考-standard-library-reference">2.3 函数库参考 (Standard Library Reference)</a></h3>
+<h4 id="1-字符串处理-string-manipulation"><a class="header" href="#1-字符串处理-string-manipulation">1. 字符串处理 (String Manipulation)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">函数</th><th style="text-align: left">说明</th><th style="text-align: left">参考</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>trim(str) -&gt; str</code></td><td style="text-align: left">去除首尾空白</td><td style="text-align: left">Tera/xan/jq</td></tr>
+<tr><td style="text-align: left"><code>upper(str) -&gt; str</code></td><td style="text-align: left">转大写</td><td style="text-align: left">Tera/xan</td></tr>
+<tr><td style="text-align: left"><code>lower(str) -&gt; str</code></td><td style="text-align: left">转小写</td><td style="text-align: left">Tera/xan</td></tr>
+<tr><td style="text-align: left"><code>len(str) -&gt; int</code></td><td style="text-align: left">字节长度</td><td style="text-align: left">Tera/jq</td></tr>
+<tr><td style="text-align: left"><code>substr(str, start, len) -&gt; str</code></td><td style="text-align: left">获取子串</td><td style="text-align: left">SQL/Go</td></tr>
+<tr><td style="text-align: left"><code>split(str, pat) -&gt; list</code></td><td style="text-align: left">按分隔符分割</td><td style="text-align: left">xan/jq</td></tr>
+<tr><td style="text-align: left"><code>contains(str, substr) -&gt; bool</code></td><td style="text-align: left">是否包含子串</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>starts_with(str, prefix) -&gt; bool</code></td><td style="text-align: left">是否以指定前缀开头</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>ends_with(str, suffix) -&gt; bool</code></td><td style="text-align: left">是否以指定后缀结尾</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>replace(str, from, to) -&gt; str</code></td><td style="text-align: left">字符串替换</td><td style="text-align: left">Tera/xan</td></tr>
+<tr><td style="text-align: left"><code>truncate(str, len, end?) -&gt; str</code></td><td style="text-align: left">截断字符串</td><td style="text-align: left">Tera</td></tr>
+<tr><td style="text-align: left"><code>wordcount(str) -&gt; int</code></td><td style="text-align: left">单词计数</td><td style="text-align: left">Tera</td></tr>
+<tr><td style="text-align: left"><code>char_len(str) -&gt; int</code></td><td style="text-align: left">字符数 (UTF-8)</td><td style="text-align: left">-</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="2-数值与转换-numeric--conversion"><a class="header" href="#2-数值与转换-numeric--conversion">2. 数值与转换 (Numeric &amp; Conversion)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">函数</th><th style="text-align: left">说明</th><th style="text-align: left">参考</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>abs(num) -&gt; num</code></td><td style="text-align: left">绝对值</td><td style="text-align: left">Tera/xan</td></tr>
+<tr><td style="text-align: left"><code>round(num) -&gt; int</code></td><td style="text-align: left">四舍五入</td><td style="text-align: left">Tera/xan</td></tr>
+<tr><td style="text-align: left"><code>min(a, b, ...) -&gt; num</code></td><td style="text-align: left">最小值</td><td style="text-align: left">xan</td></tr>
+<tr><td style="text-align: left"><code>max(a, b, ...) -&gt; num</code></td><td style="text-align: left">最大值</td><td style="text-align: left">xan</td></tr>
+<tr><td style="text-align: left"><code>int(val) -&gt; int</code></td><td style="text-align: left">解析为整数</td><td style="text-align: left">Python/Tera</td></tr>
+<tr><td style="text-align: left"><code>float(val) -&gt; float</code></td><td style="text-align: left">解析为浮点数</td><td style="text-align: left">Python/Tera</td></tr>
+<tr><td style="text-align: left"><code>ceil(num) -&gt; int</code></td><td style="text-align: left">向上取整</td><td style="text-align: left">Tera</td></tr>
+<tr><td style="text-align: left"><code>floor(num) -&gt; int</code></td><td style="text-align: left">向下取整</td><td style="text-align: left">Tera</td></tr>
+<tr><td style="text-align: left"><code>sqrt(num) -&gt; float</code></td><td style="text-align: left">平方根</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>pow(base, exp) -&gt; float</code></td><td style="text-align: left">幂运算</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>sin(num) -&gt; float</code></td><td style="text-align: left">正弦函数（弧度）</td><td style="text-align: left">AWK</td></tr>
+<tr><td style="text-align: left"><code>cos(num) -&gt; float</code></td><td style="text-align: left">余弦函数（弧度）</td><td style="text-align: left">AWK</td></tr>
+<tr><td style="text-align: left"><code>tan(num) -&gt; float</code></td><td style="text-align: left">正切函数（弧度）</td><td style="text-align: left">AWK</td></tr>
+<tr><td style="text-align: left"><code>ln(num) -&gt; float</code></td><td style="text-align: left">自然对数</td><td style="text-align: left">AWK</td></tr>
+<tr><td style="text-align: left"><code>log10(num) -&gt; float</code></td><td style="text-align: left">常用对数（以10为底）</td><td style="text-align: left">AWK</td></tr>
+<tr><td style="text-align: left"><code>exp(num) -&gt; float</code></td><td style="text-align: left">指数函数 e^x</td><td style="text-align: left">AWK</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="3-逻辑与控制-logic--control"><a class="header" href="#3-逻辑与控制-logic--control">3. 逻辑与控制 (Logic &amp; Control)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">函数</th><th style="text-align: left">说明</th><th style="text-align: left">参考</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>if(cond, then, else)</code></td><td style="text-align: left">三元表达式</td><td style="text-align: left">Excel/SQL</td></tr>
+<tr><td style="text-align: left"><code>default(val, fallback)</code></td><td style="text-align: left">空值回退</td><td style="text-align: left">Tera/jq</td></tr>
+<tr><td style="text-align: left"><code>print(val, ...)</code></td><td style="text-align: left">打印到 stdout，返回最后一个参数</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>eprint(val, ...)</code></td><td style="text-align: left">打印到 stderr，返回最后一个参数</td><td style="text-align: left">-</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="4-列表数组函数-list-functions"><a class="header" href="#4-列表数组函数-list-functions">4. 列表/数组函数 (List Functions)</a></h4>
+<p><em>注：以下函数操作的是表达式中的 <code>List</code> 类型（如 <code>split()</code> 返回的列表），与 <code>stats</code> 命令的列级聚合不同。</em></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">函数</th><th style="text-align: left">说明</th><th style="text-align: left">参考</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>join(list, sep) -&gt; str</code></td><td style="text-align: left">将列表连接成字符串</td><td style="text-align: left">xan/jq</td></tr>
+<tr><td style="text-align: left"><code>first(list) -&gt; val</code></td><td style="text-align: left">获取第一个元素</td><td style="text-align: left">xan/jq</td></tr>
+<tr><td style="text-align: left"><code>last(list) -&gt; val</code></td><td style="text-align: left">获取最后一个元素</td><td style="text-align: left">xan/jq</td></tr>
+<tr><td style="text-align: left"><code>nth(list, n) -&gt; val</code></td><td style="text-align: left">获取第 n 个元素</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>reverse(list) -&gt; list</code></td><td style="text-align: left">反转列表</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>sort(list) -&gt; list</code></td><td style="text-align: left">排序</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>unique(list) -&gt; list</code></td><td style="text-align: left">去重</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>slice(list, start, end?) -&gt; list</code></td><td style="text-align: left">切片</td><td style="text-align: left">-</td></tr>
+<tr><td style="text-align: left"><code>map(list, lambda) -&gt; list</code></td><td style="text-align: left">对列表每个元素应用 lambda</td><td style="text-align: left">xan/jq</td></tr>
+<tr><td style="text-align: left"><code>filter(list, lambda) -&gt; list</code></td><td style="text-align: left">过滤列表元素</td><td style="text-align: left">xan/jq</td></tr>
+<tr><td style="text-align: left"><code>reduce(list, init, op) -&gt; val</code></td><td style="text-align: left">列表归约</td><td style="text-align: left">xan/jq</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Lambda 表达式</strong>:</p>
+<ul>
+<li>语法: <code>x =&gt; expr</code> 或 <code>(x, y) =&gt; expr</code> 或 <code>() =&gt; expr</code></li>
+<li>示例: <code>map([1, 2, 3], x =&gt; x * 2)</code> 返回 <code>[2, 4, 6]</code></li>
+<li>示例: <code>filter([1, 2, 3, 4], x =&gt; x &gt; 2)</code> 返回 <code>[3, 4]</code></li>
+<li>示例: <code>reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x)</code> 返回 <code>6</code> |</li>
+</ul>
+<h4 id="5-正则表达式-regex"><a class="header" href="#5-正则表达式-regex">5. 正则表达式 (Regex)</a></h4>
+<p><em>注：正则操作通常开销较大，应谨慎使用。</em></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">函数</th><th style="text-align: left">说明</th><th style="text-align: left">参考</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>regex_match(str, pattern) -&gt; bool</code></td><td style="text-align: left">是否匹配</td><td style="text-align: left">xan/jq</td></tr>
+<tr><td style="text-align: left"><code>regex_extract(str, pattern, group?) -&gt; str</code></td><td style="text-align: left">提取捕获组</td><td style="text-align: left">xan</td></tr>
+<tr><td style="text-align: left"><code>regex_replace(str, pattern, to) -&gt; str</code></td><td style="text-align: left">正则替换</td><td style="text-align: left">xan/jq</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="6-编码与哈希-encoding--hashing"><a class="header" href="#6-编码与哈希-encoding--hashing">6. 编码与哈希 (Encoding &amp; Hashing)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">函数</th><th style="text-align: left">说明</th><th style="text-align: left">参考</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>md5(str) -&gt; str</code></td><td style="text-align: left">MD5 哈希</td><td style="text-align: left">xan</td></tr>
+<tr><td style="text-align: left"><code>sha256(str) -&gt; str</code></td><td style="text-align: left">SHA256 哈希</td><td style="text-align: left">xan</td></tr>
+<tr><td style="text-align: left"><code>base64(str) -&gt; str</code></td><td style="text-align: left">Base64 编码</td><td style="text-align: left">xan/jq</td></tr>
+<tr><td style="text-align: left"><code>unbase64(str) -&gt; str</code></td><td style="text-align: left">Base64 解码</td><td style="text-align: left">xan/jq</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="7-日期时间-date--time"><a class="header" href="#7-日期时间-date--time">7. 日期时间 (Date &amp; Time)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">函数</th><th style="text-align: left">说明</th><th style="text-align: left">参考</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>now() -&gt; datetime</code></td><td style="text-align: left">当前时间 (UTC)</td><td style="text-align: left">Tera</td></tr>
+<tr><td style="text-align: left"><code>strptime(str, fmt) -&gt; datetime</code></td><td style="text-align: left">字符串转时间</td><td style="text-align: left">Python/jq</td></tr>
+<tr><td style="text-align: left"><code>strftime(datetime, fmt) -&gt; str</code></td><td style="text-align: left">时间转字符串</td><td style="text-align: left">Python/jq</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="24-高级表达式特性"><a class="header" href="#24-高级表达式特性">2.4 高级表达式特性</a></h3>
+<h4 id="241-管道操作符"><a class="header" href="#241-管道操作符">2.4.1 管道操作符</a></h4>
+<p>管道操作符 <code>|</code> 用于函数链式调用：</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// 单参数函数管道（_ 可省略）
+@name | trim() | upper()
+
+// 多参数函数管道（使用 _ 占位符）
+@desc | substr(_, 0, 50) | upper()
+
+// 复杂管道
+@email | trim() | lower() | regex_match(_, ".*@.*\\.com")
+<span class="boring">}</span></code></pre>
+<h4 id="242-多表达式"><a class="header" href="#242-多表达式">2.4.2 多表达式</a></h4>
+<p>使用 <code>;</code> 分隔多个表达式，按顺序依次求值：</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// 多表达式与变量绑定
+@price as @p; @qty as @q; @p * @q
+
+// 复杂管道与分号组合
+@price | int() as @p | @p * 2; @qty | int() as @q | @q * 3; @p + @q
+
+// 使用注释解释逻辑
+@total | int() as @t;  // 转为整数
+@tax | float() as @r;  // 税率转为浮点数
+@t * (1 + @r)          // 计算含税总价
+<span class="boring">}</span></code></pre>
+<p><strong>规则</strong>：</p>
+<ul>
+<li>每个表达式可以产生副作用（如变量绑定）</li>
+<li>只有最后一个表达式的值被返回</li>
+</ul>
+<h4 id="243-方法调用语法"><a class="header" href="#243-方法调用语法">2.4.3 方法调用语法</a></h4>
+<p>方法调用是函数调用的语法糖：</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// 方法调用等价于函数调用
+@name.trim()           // 等价于 trim(@name)
+@price.round()         // 等价于 round(@price)
+
+// 方法链
+@name.trim().upper().substr(0, 5)
+// 等价于 substr(upper(trim(@name)), 0, 5)
+
+// 带参数的方法调用
+@name.substr(0, 5)     // 等价于 substr(@name, 0, 5)
+@price.pow(2)          // 等价于 pow(@price, 2)
+<span class="boring">}</span></code></pre>
+<h4 id="244-lambda-表达式"><a class="header" href="#244-lambda-表达式">2.4.4 Lambda 表达式</a></h4>
+<p>Lambda 表达式用于创建匿名函数，主要用于高阶函数（如 <code>map</code>, <code>filter</code>, <code>reduce</code>）：</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// 单参数 Lambda
+x =&gt; x + 1
+
+// 多参数 Lambda
+(x, y) =&gt; x + y
+
+// 无参数 Lambda
+() =&gt; 42
+
+// 复杂 Lambda 体（使用括号）
+x =&gt; (x * 2) + 1
+
+// Lambda 作为函数参数
+map([1, 2, 3], x =&gt; x * 2)           // [2, 4, 6]
+filter([1, 2, 3, 4], x =&gt; x &gt; 2)     // [3, 4]
+reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x)  // 6
+<span class="boring">}</span></code></pre>
+<p><strong>语法规则</strong>:</p>
+<ul>
+<li>单参数: <code>param =&gt; expr</code></li>
+<li>多参数: <code>(p1, p2, ...) =&gt; expr</code></li>
+<li>无参数: <code>() =&gt; expr</code></li>
+<li>Lambda 体内可以使用列引用（<code>@col</code>）和变量（<code>@var</code>）</li>
+</ul>
+<h2 id="3-实施路线图-implementation-roadmap"><a class="header" href="#3-实施路线图-implementation-roadmap">3. 实施路线图 (Implementation Roadmap)</a></h2>
+<h3 id="32-tva-表达式引擎设计"><a class="header" href="#32-tva-表达式引擎设计">3.2 TVA 表达式引擎设计</a></h3>
+<h4 id="321-设计原则"><a class="header" href="#321-设计原则">3.2.1 设计原则</a></h4>
+<ol>
+<li><strong>极简主义</strong>: 只实现最核心的功能，避免过度设计</li>
+<li><strong>性能优先</strong>: 零拷贝、预编译、静态分析</li>
+<li><strong>Shell 友好</strong>: 语法避免与 Shell 特殊字符冲突</li>
+<li><strong>类型安全</strong>: 显式类型转换，无隐式转换</li>
+</ol>
+<h4 id="322-项目结构"><a class="header" href="#322-项目结构">3.2.2 项目结构</a></h4>
+<pre><code>src/libs/expr/
+├── mod.rs              # 模块入口，公开 API
+├── parser/
+│   ├── mod.rs          # 解析器入口（Pest 实现）
+│   ├── grammar.pest    # Pest PEG 语法定义
+│   └── ast.rs          # AST 节点定义
+├── runtime/
+│   ├── mod.rs          # 运行时入口（求值器）
+│   └── value.rs        # Value 类型系统
+├── functions/
+│   ├── mod.rs          # 函数注册和实现
+│   ├── string.rs       # 字符串函数
+│   ├── numeric.rs      # 数值函数
+│   ├── list.rs         # 列表函数（含 map/filter/reduce）
+│   ├── logical.rs      # 逻辑控制函数
+│   ├── regex.rs        # 正则表达式函数
+│   ├── hash.rs         # 编码哈希函数
+│   ├── datetime.rs     # 日期时间函数
+│   └── io.rs           # IO 函数
+└── tests/              # 表达式引擎测试
+    ├── mod.rs
+    ├── basic.rs
+    ├── functions.rs
+    └── errors.rs
+</code></pre>
+<h3 id="33-实施路线图"><a class="header" href="#33-实施路线图">3.3 实施路线图</a></h3>
+<h4 id="待完成任务"><a class="header" href="#待完成任务">待完成任务</a></h4>
+<p><strong><code>tva mutate</code> - 计算新列/修改列</strong>（优先实现，相对简单）</p>
+<p><em>设计</em>:</p>
+<pre><code class="language-bash">tva mutate -E "@price * 1.1 as @new_price" data.tsv
+tva mutate -E "@first ++ ' ' ++ @last as @full_name" data.tsv
+</code></pre>
+<p><em>实现要点</em>:</p>
+<ul>
+<li>复用现有 <code>TsvReader</code> 读取输入</li>
+<li>解析表达式，计算新列值</li>
+<li>输出原始列 + 新列（或替换现有列）</li>
+<li>支持 <code>--header</code> 模式自动添加新列表头</li>
+</ul>
+<p><em>工作量</em>: 较小（1-2天）
+<em>状态</em>: 📝 待实现</p>
+<hr>
+<p><strong><code>tva filter -E</code> - 表达式过滤</strong>（已完成 ✅）</p>
+<p><em>设计</em>:</p>
+<pre><code class="language-bash">tva filter -E "@price &gt; 100 and @stock &gt; 0" data.tsv
+tva filter -E "@name | contains(_, 'John')" data.tsv
+tva filter -E "@name.contains('John')" data.tsv
+tva filter -E "contains(@name, 'John')" data.tsv
+</code></pre>
+<p><em>实现规划</em>:</p>
+<ol>
+<li>
+<p><strong>架构改造</strong> (<code>engine.rs</code>, <code>config.rs</code>)</p>
+<ul>
+<li>新增 <code>TestKind::Expression { expr: Expr }</code> 测试类型</li>
+<li><code>FilterConfig</code> 添加 <code>expression: Option&lt;String&gt;</code> 字段</li>
+<li><code>-E</code> 参数与现有过滤条件互斥</li>
+</ul>
+</li>
+<li>
+<p><strong>Builder 适配</strong> (<code>builder.rs</code>)</p>
+<ul>
+<li>表达式解析为 AST</li>
+<li>列名静态解析（<code>@price</code> → 索引）</li>
+</ul>
+</li>
+</ol>
+<p><em>工作量</em>: 中等（3-5天）
+<em>状态</em>: 📝 待实现
+-   支持预编译优化</p>
+<ol start="3">
+<li>
+<p><strong>Runner 集成</strong> (<code>runner.rs</code>)</p>
+<ul>
+<li>行处理循环中创建 <code>EvalContext</code></li>
+<li>表达式求值返回 bool 决定行是否保留</li>
+<li>复用现有 header/label/invert 逻辑</li>
+</ul>
+</li>
+<li>
+<p><strong>CLI 集成</strong> (<code>cmd_tva/filter.rs</code>)</p>
+<ul>
+<li>添加 <code>-E, --expression</code> 参数</li>
+<li>参数互斥验证</li>
+</ul>
+</li>
+</ol>
+<p><em>工作量</em>: 较大（3-5天）</p>
+<p><em>依赖</em>: 建议先完成 <code>tva mutate</code> 验证表达式引擎在命令集成中的稳定性</p>
+<h3 id="34-技术选型"><a class="header" href="#34-技术选型">3.4 技术选型</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">组件</th><th style="text-align: left">选择</th><th style="text-align: left">理由</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Parser Generator</td><td style="text-align: left"><code>pest</code></td><td style="text-align: left">成熟的 PEG 解析器，xan/tera 都在使用</td></tr>
+<tr><td style="text-align: left">Parser Algorithm</td><td style="text-align: left">Pratt Parser</td><td style="text-align: left">处理操作符优先级的标准方案</td></tr>
+<tr><td style="text-align: left">String Storage</td><td style="text-align: left"><code>Arc&lt;str&gt;</code></td><td style="text-align: left">零拷贝共享，减少内存分配</td></tr>
+<tr><td style="text-align: left">Error Handling</td><td style="text-align: left"><code>thiserror</code></td><td style="text-align: left">与现有代码库一致</td></tr>
+<tr><td style="text-align: left">Regex</td><td style="text-align: left"><code>regex</code> crate</td><td style="text-align: left">Rust 生态标准，性能优秀</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="34-实现要点"><a class="header" href="#34-实现要点">3.4 实现要点</a></h3>
+<h4 id="341-evalcontext-结构"><a class="header" href="#341-evalcontext-结构">3.4.1 EvalContext 结构</a></h4>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct EvalContext&lt;'a&gt; {
+    pub row: &amp;'a [String],
+    pub headers: Option&lt;&amp;'a [String]&gt;,
+    pub variables: HashMap&lt;String, Value&gt;,      // 行级变量存储（as 绑定）
+    pub lambda_params: HashMap&lt;String, Value&gt;,  // Lambda 参数绑定
+}
+<span class="boring">}</span></code></pre>
+<h4 id="342-核心-ast-节点"><a class="header" href="#342-核心-ast-节点">3.4.2 核心 AST 节点</a></h4>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum Expr {
+    // 字面量
+    Int(i64),
+    Float(f64),
+    String(String),
+    Bool(bool),
+    Null,
+    List(Vec&lt;Expr&gt;),
+    
+    // 列引用
+    ColumnRef(ColumnRef),  // @1, @col_name
+    
+    // 变量
+    Variable(String),      // as 绑定的变量
+    
+    // Lambda 表达式
+    Lambda { params: Vec&lt;String&gt;, body: Box&lt;Expr&gt; },  // x =&gt; x + 1
+    LambdaParam(String),   // Lambda 参数引用
+    
+    // 操作
+    Unary { op: UnaryOp, expr: Box&lt;Expr&gt; },
+    Binary { op: BinaryOp, left: Box&lt;Expr&gt;, right: Box&lt;Expr&gt; },
+    
+    // 函数调用
+    Call { name: String, args: Vec&lt;Expr&gt; },
+    MethodCall { object: Box&lt;Expr&gt;, name: String, args: Vec&lt;Expr&gt; },
+    Pipe { left: Box&lt;Expr&gt;, right: PipeRight },
+}
+
+pub enum PipeRight {
+    Call { name: String, args: Vec&lt;Expr&gt; },           // func() - 左侧值作为首参
+    CallWithPlaceholder { name: String, args: Vec&lt;Expr&gt; },  // func(_, arg2)
+}
+<span class="boring">}</span></code></pre>
+<h3 id="35-风险和对策"><a class="header" href="#35-风险和对策">3.5 风险和对策</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">风险</th><th style="text-align: left">影响</th><th style="text-align: left">对策</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">解析性能不足</td><td style="text-align: left">高</td><td style="text-align: left">使用 Pratt Parser，预编译表达式</td></tr>
+<tr><td style="text-align: left">内存占用过高</td><td style="text-align: left">中</td><td style="text-align: left">Arc 共享字符串，缓冲区复用</td></tr>
+<tr><td style="text-align: left">功能过度设计</td><td style="text-align: left">中</td><td style="text-align: left">严格遵循极简原则，分阶段实施</td></tr>
+<tr><td style="text-align: left">与现有命令冲突</td><td style="text-align: left">低</td><td style="text-align: left">保持向后兼容，新增 <code>-E</code> 选项</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="36-参考资源"><a class="header" href="#36-参考资源">3.6 参考资源</a></h3>
+<ul>
+<li>
+<p><strong>xan/moonblade</strong>: <code>xan-0.56.0/src/moonblade/</code></p>
+<ul>
+<li><code>grammar.pest</code>: 完整的 PEG 语法定义</li>
+<li><code>parser.rs</code>: Pratt Parser 实现</li>
+<li><code>interpreter.rs</code>: 解释器和求值逻辑</li>
+<li><code>functions.rs</code>: 丰富的函数库参考</li>
+<li><code>error.rs</code>: 错误处理模式</li>
+</ul>
+</li>
+<li>
+<p><strong>tera</strong>: <code>tera-1.20.1/src/parser/</code></p>
+<ul>
+<li><code>tera.pest</code>: 模板语法定义</li>
+<li><code>whitespace.rs</code>: 空白字符处理</li>
+<li><code>ast.rs</code>: AST 节点设计</li>
+</ul>
+</li>
+</ul>
+<h2 id="2-现有方案分析-landscape-analysis"><a class="header" href="#2-现有方案分析-landscape-analysis">2. 现有方案分析 (Landscape Analysis)</a></h2>
+<h3 id="gnu-parallel-模板替换-template-substitution"><a class="header" href="#gnu-parallel-模板替换-template-substitution">GNU Parallel: 模板替换 (Template Substitution)</a></h3>
+<p>GNU Parallel 采用的是基于<strong>字符串替换</strong>的占位符机制，特别适合构建 Shell 命令。</p>
+<ul>
+<li><strong>核心机制</strong>: 预定义占位符，在执行时进行字符串插值。</li>
+<li><strong>占位符语法</strong>:
+<ul>
+<li><code>{1}</code>, <code>{2}</code>: 按索引引用列。</li>
+<li><code>{-1}</code>: 倒序引用。</li>
+<li><code>{col_name}</code>: 引用表头列名。</li>
+<li><code>{= perl_expr =}</code>: 嵌入 Perl 表达式进行即时求值。</li>
+</ul>
+</li>
+<li><strong>优点</strong>:
+<ul>
+<li>直观，符合 Shell 脚本习惯。</li>
+<li>适合“构造命令“的场景。</li>
+</ul>
+</li>
+<li><strong>缺点</strong>:
+<ul>
+<li>本质是文本处理，缺乏类型系统（Type System）。</li>
+<li>难以处理复杂的逻辑运算（除非嵌入 Perl，但会有性能损耗）。</li>
+</ul>
+</li>
+</ul>
+<h3 id="awk-记录与字段处理模型-record-and-field-processing-model"><a class="header" href="#awk-记录与字段处理模型-record-and-field-processing-model">AWK: 记录与字段处理模型 (Record and Field Processing Model)</a></h3>
+<p>AWK 是 Unix 文本处理的经典工具，其核心设计围绕<strong>记录 (Records)</strong> 和<strong>字段 (Fields)</strong> 的概念展开。</p>
+<ul>
+<li>
+<p><strong>核心机制</strong>:</p>
+<ul>
+<li><strong>记录分割</strong>: 输入被分割为记录（默认按行，由 <code>RS</code> 变量控制）。<code>NR</code> 记录当前记录号，<code>FNR</code> 记录当前文件的记录号。</li>
+<li><strong>字段分割</strong>: 每个记录进一步分割为字段（默认按空白，由 <code>FS</code> 变量控制）。<code>NF</code> 记录当前记录的字段数。</li>
+<li><strong>字段引用</strong>: 使用 <code>$n</code> 语法引用第 n 个字段，<code>$0</code> 表示整行记录。字段号可以是变量或表达式（如 <code>$NF</code> 表示最后一个字段）。</li>
+</ul>
+</li>
+<li>
+<p><strong>语法特性</strong>:</p>
+<ul>
+<li><strong>模式-动作</strong>: <code>pattern { action }</code> 结构，模式匹配时执行动作。</li>
+<li><strong>内置变量</strong>: <code>NR</code>, <code>NF</code>, <code>FS</code>, <code>RS</code>, <code>OFS</code>, <code>ORS</code> 等控制输入输出行为。</li>
+<li><strong>隐式类型转换</strong>: 字符串和数值根据上下文自动转换。</li>
+</ul>
+</li>
+<li>
+<p><strong>优点</strong>:</p>
+<ul>
+<li><strong>简洁高效</strong>: 针对文本处理优化，单行代码即可完成复杂任务。</li>
+<li><strong>流式处理</strong>: 天然支持逐行处理，内存占用低。</li>
+<li><strong>广泛可用</strong>: 几乎所有 Unix-like 系统都预装 AWK。</li>
+</ul>
+</li>
+<li>
+<p><strong>缺点</strong>:</p>
+<ul>
+<li><strong>语法古老</strong>: 语法与现代语言差异较大，学习曲线陡峭。</li>
+<li><strong>类型系统薄弱</strong>: 隐式转换虽方便但也容易出错。</li>
+<li><strong>功能有限</strong>: 标准 AWK 缺乏现代功能（如 JSON 支持、丰富的字符串函数）。</li>
+</ul>
+</li>
+</ul>
+<h3 id="xan-moonblade-动态表达式引擎-dynamic-expression-engine"><a class="header" href="#xan-moonblade-动态表达式引擎-dynamic-expression-engine">xan (Moonblade): 动态表达式引擎 (Dynamic Expression Engine)</a></h3>
+<p>xan 内置了一个名为 <strong>Moonblade</strong> 的动态脚本语言，其设计类似于简化版的 Python/JavaScript，专为 CSV 处理优化。</p>
+<ul>
+<li><strong>核心机制</strong>:
+<ul>
+<li><strong>Parser &amp; Interpreter</strong>: 基于 PEG 解析器 (Pest) 构建 AST，采用树遍历解释器 (Tree-Walker Interpreter)。</li>
+<li><strong>Concretization (具体化)</strong>: 在执行前进行静态分析优化，例如将列名引用静态解析为索引，避免运行时的哈希查找开销。</li>
+<li><strong>Arc-based Types</strong>: 使用 <code>Arc&lt;T&gt;</code> 管理字符串和复杂对象，尽可能减少深拷贝，适合流式处理。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li></li>
+</ul>
+<ul>
+<li>
+<p><strong>语法特性</strong>:</p>
+<ul>
+<li><strong>列即变量</strong>: 直接使用列名作为变量（如 <code>count &gt; 10</code>），或通过 <code>col("name")</code>/<code>col(index)</code> 引用。</li>
+<li><strong>操作符区分</strong>: 区分字符串 (<code>eq</code>, <code>++</code>) 和数值 (<code>==</code>, <code>+</code>) 操作符（类 Perl 设计），避免隐式转换带来的歧义。</li>
+<li><strong>丰富的内置函数</strong>: 涵盖 String, Math, Date, Regex, Hashing 等，支持 CSS Selector 风格的 HTML 抓取。</li>
+<li><strong>高阶函数</strong>: 支持 <code>map</code>, <code>filter</code>, <code>reduce</code> 及 Lambda 表达式（如 <code>map(list, x =&gt; x + 1)</code>）。</li>
+</ul>
+</li>
+<li>
+<p><strong>优点</strong>:</p>
+<ul>
+<li><strong>表达力极强</strong>: 能够处理复杂的业务逻辑（如 JSON 解析、日期计算、模糊匹配）。</li>
+<li><strong>相对高性能</strong>: 相比通用脚本语言（Python/Lua），它针对 CSV 结构（Header/Row）进行了专门优化。</li>
+</ul>
+</li>
+<li>
+<p><strong>缺点</strong>:</p>
+<ul>
+<li><strong>实现复杂度高</strong>: 维护一套完整的解释器、类型系统和函数库成本较高。</li>
+<li><strong>运行时开销</strong>: 尽管有优化，但在处理每一行时仍需进行 AST 遍历和动态分发，相比纯 Native 代码有一定损耗。</li>
+</ul>
+</li>
+</ul>
+<h3 id="jq-json-处理器与流式计算-json-processor--stream-computing"><a class="header" href="#jq-json-处理器与流式计算-json-processor--stream-computing">jq: JSON 处理器与流式计算 (JSON Processor &amp; Stream Computing)</a></h3>
+<p><code>jq</code> 是处理 JSON 数据的事实标准工具，其核心是一个专门设计的栈式虚拟机（Stack-based VM），支持回溯（Backtracking）和生成器（Generators）。</p>
+<ul>
+<li>
+<p><strong>核心机制</strong>:</p>
+<ul>
+<li><strong>Bytecode Compiler &amp; VM</strong>: <code>jq</code> 将查询（Filters）编译为字节码，并在 <code>execute.c</code> 中的解释器循环中执行。这与 <code>xan</code> 的 Tree-walker 不同，提供了更紧凑的执行模型。</li>
+<li><strong>Backtracking (回溯)</strong>: <code>jq</code> 的杀手级特性。通过 <code>FORK</code> 和 <code>BACKTRACK</code> 指令，一个输入可以产生零个、一个或多个输出（例如 <code>.[]</code>）。这使得 <code>jq</code> 本质上是一个流式生成器引擎。</li>
+<li><strong>Reference Counting (引用计数)</strong>: 数据通过 <code>jv</code> 结构体表示（定义在 <code>jv.h</code>），使用引用计数管理内存。这允许高效的“浅拷贝“（Copy-on-write），但在高频分配下会有一定开销。</li>
+</ul>
+</li>
+<li>
+<p><strong>架构设计</strong>:</p>
+<ul>
+<li><strong><code>jv</code> 类型系统</strong>: 统一的 JSON 值表示（Tagged Union），包含 Null, Bool, Number, String, Array, Object。</li>
+<li><strong>Hybrid Stdlib</strong>: 大量标准库函数（如 <code>map</code>, <code>select</code>, <code>recurse</code>）直接用 <code>jq</code> 语言编写（<code>builtin.jq</code>），只有底层原语（如 <code>type</code>, <code>keys</code>）用 C 实现。这使得扩展库非常容易。</li>
+<li><strong>Stack Machine</strong>: 虚拟机维护值栈（Value Stack）和调用栈（Frame Stack），支持闭包（Closures）和复杂的控制流。</li>
+</ul>
+</li>
+<li>
+<p><strong>语法特性</strong>:</p>
+<ul>
+<li><strong>Filters</strong>: 一切皆过滤器。输入 -&gt; 过滤器 -&gt; 输出流。</li>
+<li><strong>管道 (<code>|</code>)</strong>: 组合过滤器的主要方式。<code>a | b</code> 将 <code>a</code> 的<strong>每一个</strong>输出作为 <code>b</code> 的输入运行。</li>
+<li><strong>Context (<code>.</code>)</strong>: 当前上下文值的显式引用。</li>
+<li><strong>变量 (<code>$var</code>)</strong>: 通过 <code>... as $x | ...</code> 绑定变量，这在 <code>jq</code> 中是词法作用域的。</li>
+</ul>
+</li>
+<li>
+<p><strong>优点</strong>:</p>
+<ul>
+<li><strong>极简的流式语法</strong>: 处理嵌套 JSON 数据极其高效。</li>
+<li><strong>强大的组合能力</strong>: 通过管道和回溯，可以轻松实现笛卡尔积、全排列等复杂逻辑。</li>
+<li><strong>成熟生态</strong>: 几乎所有环境都预装，无依赖。</li>
+</ul>
+</li>
+<li>
+<p><strong>缺点</strong>:</p>
+<ul>
+<li><strong>性能瓶颈</strong>: 相比于专门的列式引擎（如 xan/polars），<code>jq</code> 的逐个对象处理和解释器开销较大。</li>
+<li><strong>心智模型</strong>: 回溯机制对于习惯传统编程的用户来说较难理解（例如 <code>debug</code> 为什么会打印多次）。</li>
+</ul>
+</li>
+</ul>
+<h3 id="tera-模板引擎与-rust-生态-template-engine--rust-ecosystem"><a class="header" href="#tera-模板引擎与-rust-生态-template-engine--rust-ecosystem">Tera: 模板引擎与 Rust 生态 (Template Engine &amp; Rust Ecosystem)</a></h3>
+<p><code>Tera</code> 是 Rust 生态中最流行的模板引擎之一，深受 Jinja2 和 Django 模板的启发。虽然它主要用于生成 HTML，但其设计模式对表达式语言的设计有很高的参考价值。</p>
+<ul>
+<li>
+<p><strong>核心机制</strong>:</p>
+<ul>
+<li><strong>Pest Parser</strong>: 使用 PEG (Parsing Expression Grammar) 解析器 (<code>pest</code>) 定义语法 (<code>tera.pest</code>)，生成 AST (<code>ast.rs</code>)。这提供了极高的语法灵活性。</li>
+<li><strong>Renderer &amp; CallStack</strong>: 采用 Tree-walker 模式。通过 <code>CallStack</code> (<code>call_stack.rs</code>) 管理 <code>StackFrame</code> (<code>stack_frame.rs</code>)，处理作用域、循环 (<code>ForLoop</code>) 和宏调用。</li>
+<li><strong>JSON-centric</strong>: 数据模型完全构建在 <code>serde_json::Value</code> 之上。<code>Context</code> 本质上是 <code>BTreeMap&lt;String, Value&gt;</code>。这意味着它能无缝处理任何可序列化为 JSON 的 Rust 数据。</li>
+</ul>
+</li>
+<li>
+<p><strong>架构设计</strong>:</p>
+<ul>
+<li><strong>Function/Filter/Test Traits</strong>: 扩展性极强。通过实现 <code>Function</code>, <code>Filter</code>, <code>Test</code> trait (<code>builtins/mod.rs</code>)，可以轻松注入自定义逻辑。</li>
+<li><strong>Inheritance (继承)</strong>: 支持 <code>extends</code> 和 <code>block</code>，允许模板复用和覆盖，这在处理复杂文档结构时非常有用。</li>
+<li><strong>Whitespace Control</strong>: 通过 <code>{%-</code> 和 <code>-%}</code> 精确控制空白字符 (<code>parser/whitespace.rs</code>)，这对生成对格式敏感的文本（如代码或特定数据格式）至关重要。</li>
+</ul>
+</li>
+<li>
+<p><strong>语法特性</strong>:</p>
+<ul>
+<li><strong>Delimiters</strong>: 变量 <code>{{ ... }}</code>, 标签 <code>{% ... %}</code>, 注释 <code>{# ... #}</code>。</li>
+<li><strong>Filters</strong>: 管道风格 <code>value | filter(arg=1)</code>。</li>
+<li><strong>Control Flow</strong>: 丰富的 <code>if</code>, <code>for</code>, <code>include</code>, <code>macro</code> 支持。</li>
+<li><strong>Tests</strong>: <code>is</code> 操作符，如 <code>if variable is defined</code>。</li>
+</ul>
+</li>
+<li>
+<p><strong>优点</strong>:</p>
+<ul>
+<li><strong>类型安全与动态性的平衡</strong>: 基于 Rust 但提供动态类型体验 (JSON Value)。</li>
+<li><strong>极其成熟的语法</strong>: Jinja2 风格经过了时间的考验，用户认知负担小。</li>
+<li><strong>错误处理</strong>: 提供了详细的错误定位和上下文 (<code>errors.rs</code>)。</li>
+</ul>
+</li>
+<li>
+<p><strong>缺点</strong>:</p>
+<ul>
+<li><strong>Allocation Heavy</strong>: 这里的渲染过程涉及大量的 <code>String</code> 分配和 <code>Value</code> 克隆 (Clone-on-write via <code>Cow</code>)，对于高性能流式数据处理（如 <code>tva</code> 的目标）来说，开销可能过大。</li>
+<li><strong>Text-oriented</strong>: 核心目标是拼接文本，而不是数据结构的转换。</li>
+</ul>
+</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="conventions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="help/select.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="conventions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="help/select.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-c2a407aa.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
