@@ -9,6 +9,7 @@ pub enum Value {
     Int(i64),
     Float(f64),
     String(String),
+    List(Vec<Value>),
 }
 
 impl Value {
@@ -30,6 +31,7 @@ impl Value {
             Value::Int(_) => true,
             Value::Float(f) => *f != 0.0,
             Value::String(s) => !s.is_empty(),
+            Value::List(list) => !list.is_empty(),
         }
     }
 
@@ -51,6 +53,26 @@ impl Value {
             Value::Int(i) => i.to_string(),
             Value::Float(f) => f.to_string(),
             Value::String(s) => s.clone(),
+            Value::List(list) => format!("{:?}", list),
+        }
+    }
+
+    /// Convert to string (for string operations)
+    pub fn as_string(&self) -> String {
+        match self {
+            Value::String(s) => s.clone(),
+            v => v.to_string(),
+        }
+    }
+
+    /// Convert to i64 (for numeric operations)
+    pub fn as_int(&self) -> Option<i64> {
+        match self {
+            Value::Int(i) => Some(*i),
+            Value::Float(f) => Some(*f as i64),
+            Value::String(s) => s.parse().ok(),
+            Value::Bool(b) => Some(if *b { 1 } else { 0 }),
+            _ => None,
         }
     }
 
