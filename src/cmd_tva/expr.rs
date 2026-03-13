@@ -3,9 +3,9 @@ use clap::*;
 use crate::libs::expr::{parser, runtime};
 
 pub fn make_subcommand() -> Command {
-    Command::new("eval")
+    Command::new("expr")
         .about("Evaluates an expression for testing/debugging")
-        .after_help(include_str!("../../docs/help/eval.md"))
+        .after_help(include_str!("../../docs/help/expr.md"))
         .arg(
             Arg::new("expr")
                 .index(1)
