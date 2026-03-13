@@ -40,16 +40,15 @@ Using `range()` and string concatenation:
 
 ```bash
 tva expr -E '
-join(
-    map(
-        range(99, 0, -1),
-        n => n ++ " bottles of beer on the wall,\n" ++
-        n ++ " bottles of beer!\n" ++
-        "Take one down, pass it around,\n" ++
-        (n - 1) ++ " bottles of beer on the wall!"
-    ),
-    "\n\n"
-)'
+map(
+    range(99, 0, -1),
+    n => 
+    n ++ " bottles of beer on the wall,\n" ++
+    n ++ " bottles of beer!\n" ++
+    "Take one down, pass it around,\n" ++
+    (n - 1) ++ " bottles of beer on the wall!\n"
+) | join(_, "\n")
+'
 ```
 
 This demonstrates:
@@ -69,10 +68,11 @@ map(
     n =>
     if(n % 15 == 0, "FizzBuzz",
         if(n % 3 == 0, "Fizz",
-        if(n % 5 == 0, "Buzz", n)
+            if(n % 5 == 0, "Buzz", n)
         )
     )
-) | join(_, "\n")'
+) | join(_, "\n")
+'
 ```
 
 This demonstrates:
