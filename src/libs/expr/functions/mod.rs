@@ -148,6 +148,7 @@ impl FunctionRegistry {
         self.register("reduce", FunctionInfo::fixed(list::reduce, 3));
         self.register("map", FunctionInfo::fixed(list::map, 2));
         self.register("filter", FunctionInfo::fixed(list::filter, 2));
+        self.register("range", FunctionInfo::variadic(list::range, 1));
 
         // Regex functions
         self.register("regex_match", FunctionInfo::fixed(regex::regex_match, 2));
@@ -1090,5 +1091,130 @@ mod tests {
         assert!(
             (result.unwrap().as_float().unwrap() - std::f64::consts::E).abs() < 1e-10
         );
+    }
+
+    // List function tests for map, filter, range
+    #[test]
+    fn test_map() {
+        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+        
+        // Test map with lambda: map([1, 2, 3], |x| x * 2) -> [2, 4, 6]
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Mul,
+                left: Box::new(Expr::LambdaParam("x".to_string())),
+                right: Box::new(Expr::Int(2)),
+            },
+        });
+        let result = list::map(&[list, lambda]);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 3);
+                assert_eq!(vals[0], Value::Int(2));
+                assert_eq!(vals[1], Value::Int(4));
+                assert_eq!(vals[2], Value::Int(6));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_filter() {
+        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+        
+        // Test filter with lambda: filter([1, 2, 3, 4], |x| x > 2) -> [3, 4]
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+        ]);
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Gt,
+                left: Box::new(Expr::LambdaParam("x".to_string())),
+                right: Box::new(Expr::Int(2)),
+            },
+        });
+        let result = list::filter(&[list, lambda]);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 2);
+                assert_eq!(vals[0], Value::Int(3));
+                assert_eq!(vals[1], Value::Int(4));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_range() {
+        let registry = FunctionRegistry::new();
+
+        // range(4) -> [0, 1, 2, 3]
+        let result = registry.call("range", &[Value::Int(4)]);
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![Value::Int(0), Value::Int(1), Value::Int(2), Value::Int(3)])
+        );
+
+        // range(2, 4) -> [2, 3]
+        let result = registry.call("range", &[Value::Int(2), Value::Int(4)]);
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![Value::Int(2), Value::Int(3)])
+        );
+
+        // range(0, 10, 3) -> [0, 3, 6, 9]
+        let result = registry.call("range", &[Value::Int(0), Value::Int(10), Value::Int(3)]);
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![Value::Int(0), Value::Int(3), Value::Int(6), Value::Int(9)])
+        );
+
+        // range(0, -5, -1) -> [0, -1, -2, -3, -4]
+        let result = registry.call("range", &[Value::Int(0), Value::Int(-5), Value::Int(-1)]);
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![
+                Value::Int(0),
+                Value::Int(-1),
+                Value::Int(-2),
+                Value::Int(-3),
+                Value::Int(-4)
+            ])
+        );
+
+        // range(0, 10, -1) -> [] (step direction doesn't match range direction)
+        let result = registry.call("range", &[Value::Int(0), Value::Int(10), Value::Int(-1)]);
+        assert_eq!(result.unwrap(), Value::List(vec![]));
+
+        // range with float arguments (rounded to nearest integer)
+        // 2.7 rounds to 3, 5.2 rounds to 5, so range(3, 5) -> [3, 4]
+        let result = registry.call("range", &[Value::Float(2.7), Value::Float(5.2)]);
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![Value::Int(3), Value::Int(4)])
+        );
+    }
+
+    #[test]
+    fn test_range_errors() {
+        let registry = FunctionRegistry::new();
+
+        // Step cannot be zero
+        let result = registry.call("range", &[Value::Int(0), Value::Int(10), Value::Int(0)]);
+        assert!(result.is_err());
+
+        // Invalid argument type
+        let result = registry.call("range", &[Value::String("hello".to_string())]);
+        assert!(result.is_err());
     }
 }

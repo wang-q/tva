@@ -119,6 +119,20 @@
 - unique(list) -> list: Remove duplicates
 - slice(list, start, end?) -> list: Slice list
 
+### Range Generation
+
+- range(upto) -> list: Generate numbers from 0 to upto (exclusive), step 1
+- range(from, upto) -> list: Generate numbers from from (inclusive) to upto (exclusive), step 1
+- range(from, upto, by) -> list: Generate numbers from from (inclusive) to upto (exclusive), step by
+
+The range function produces a list of numbers. Similar to jq's range:
+- `range(4)` produces `[0, 1, 2, 3]`
+- `range(2, 4)` produces `[2, 3]`
+- `range(0, 10, 3)` produces `[0, 3, 6, 9]`
+- `range(0, -5, -1)` produces `[0, -1, -2, -3, -4]`
+
+Note: If step direction doesn't match the range direction (e.g., positive step with from > upto), returns empty list.
+
 ### Higher-Order Functions
 
 - map(list, lambda) -> list: Apply lambda to each element

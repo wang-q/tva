@@ -375,3 +375,114 @@ pub fn filter(args: &[Value]) -> Result<Value, EvalError> {
         )),
     }
 }
+
+/// Generate a range of numbers
+/// range(upto) -> [0, 1, ..., upto-1]
+/// range(from, upto) -> [from, from+1, ..., upto-1]
+/// range(from, upto, by) -> [from, from+by, ...] while < upto (or > upto if by is negative)
+pub fn range(args: &[Value]) -> Result<Value, EvalError> {
+    let (from, upto, by) = match args.len() {
+        1 => {
+            // range(upto): from=0, upto=arg, by=1
+            let upto = match &args[0] {
+                Value::Int(i) => *i,
+                Value::Float(f) => f.round() as i64,
+                v => {
+                    return Err(EvalError::TypeError(format!(
+                        "range: argument must be a number, got {}",
+                        v.type_name()
+                    )))
+                }
+            };
+            (0i64, upto, 1i64)
+        }
+        2 => {
+            // range(from, upto): by=1
+            let from = match &args[0] {
+                Value::Int(i) => *i,
+                Value::Float(f) => f.round() as i64,
+                v => {
+                    return Err(EvalError::TypeError(format!(
+                        "range: from must be a number, got {}",
+                        v.type_name()
+                    )))
+                }
+            };
+            let upto = match &args[1] {
+                Value::Int(i) => *i,
+                Value::Float(f) => f.round() as i64,
+                v => {
+                    return Err(EvalError::TypeError(format!(
+                        "range: upto must be a number, got {}",
+                        v.type_name()
+                    )))
+                }
+            };
+            (from, upto, 1i64)
+        }
+        3 => {
+            // range(from, upto, by)
+            let from = match &args[0] {
+                Value::Int(i) => *i,
+                Value::Float(f) => f.round() as i64,
+                v => {
+                    return Err(EvalError::TypeError(format!(
+                        "range: from must be a number, got {}",
+                        v.type_name()
+                    )))
+                }
+            };
+            let upto = match &args[1] {
+                Value::Int(i) => *i,
+                Value::Float(f) => f.round() as i64,
+                v => {
+                    return Err(EvalError::TypeError(format!(
+                        "range: upto must be a number, got {}",
+                        v.type_name()
+                    )))
+                }
+            };
+            let by = match &args[2] {
+                Value::Int(i) => *i,
+                Value::Float(f) => f.round() as i64,
+                v => {
+                    return Err(EvalError::TypeError(format!(
+                        "range: by must be a number, got {}",
+                        v.type_name()
+                    )))
+                }
+            };
+            if by == 0 {
+                return Err(EvalError::TypeError(
+                    "range: step cannot be zero".to_string(),
+                ));
+            }
+            (from, upto, by)
+        }
+        _ => {
+            return Err(EvalError::TypeError(
+                "range: expected 1, 2, or 3 arguments".to_string(),
+            ))
+        }
+    };
+
+    let mut result = Vec::new();
+
+    if by > 0 {
+        // Positive step: from < upto
+        let mut current = from;
+        while current < upto {
+            result.push(Value::Int(current));
+            current += by;
+        }
+    } else {
+        // Negative step: from > upto
+        let mut current = from;
+        while current > upto {
+            result.push(Value::Int(current));
+            current += by; // by is negative
+        }
+    }
+
+    Ok(Value::List(result))
+}
