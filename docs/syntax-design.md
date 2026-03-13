@@ -550,7 +550,7 @@ default(@nickname, @username)
 | `contains` | `contains(str, substr) -> bool` | 是否包含子串 | ✅ 已实现 | - |
 | `starts_with` | `starts_with(str, prefix) -> bool` | 是否以指定前缀开头 | ✅ 已实现 | - |
 | `ends_with` | `ends_with(str, suffix) -> bool` | 是否以指定后缀结尾 | ✅ 已实现 | - |
-| `replace` | `replace(str, from, to) -> str` | 字符串替换 | 📝 待实现 | Tera/xan |
+| `replace` | `replace(str, from, to) -> str` | 字符串替换 | ✅ 已实现 | Tera/xan |
 | `truncate` | `truncate(str, len, end?) -> str` | 截断字符串 | 📝 待实现 | Tera |
 | `wordcount` | `wordcount(str) -> int` | 单词计数 | 📝 待实现 | Tera |
 | `char_len` | `char_len(str) -> int` | 字符数 (UTF-8) | 📝 待实现 | - |
@@ -565,8 +565,8 @@ default(@nickname, @username)
 | `max` | `max(a, b, ...) -> num` | 最大值 | ✅ 已实现 | xan |
 | `int` | `int(val) -> int` | 解析为整数 | ✅ 已实现 | Python/Tera |
 | `float` | `float(val) -> float` | 解析为浮点数 | ✅ 已实现 | Python/Tera |
-| `ceil` | `ceil(num) -> int` | 向上取整 | 📝 待实现 | Tera |
-| `floor` | `floor(num) -> int` | 向下取整 | 📝 待实现 | Tera |
+| `ceil` | `ceil(num) -> int` | 向上取整 | ✅ 已实现 | Tera |
+| `floor` | `floor(num) -> int` | 向下取整 | ✅ 已实现 | Tera |
 | `sqrt` | `sqrt(num) -> float` | 平方根 | 📝 待实现 | - |
 | `pow` | `pow(base, exp) -> float` | 幂运算 | 📝 待实现 | - |
 
@@ -585,9 +585,9 @@ default(@nickname, @username)
 
 | 函数 | 签名 | 说明 | 状态 | 参考 |
 | :--- | :--- | :--- | :--- | :--- |
-| `join` | `join(list, sep) -> str` | 将列表连接成字符串 | 📝 待实现 | xan/jq |
-| `first` | `first(list) -> val` | 获取第一个元素 | 📝 待实现 | xan/jq |
-| `last` | `last(list) -> val` | 获取最后一个元素 | 📝 待实现 | xan/jq |
+| `join` | `join(list, sep) -> str` | 将列表连接成字符串 | ✅ 已实现 | xan/jq |
+| `first` | `first(list) -> val` | 获取第一个元素 | ✅ 已实现 | xan/jq |
+| `last` | `last(list) -> val` | 获取最后一个元素 | ✅ 已实现 | xan/jq |
 | `nth` | `nth(list, n) -> val` | 获取第 n 个元素 | 📝 待实现 | - |
 | `reverse` | `reverse(list) -> list` | 反转列表 | 📝 待实现 | - |
 | `sort` | `sort(list) -> list` | 排序 | 📝 待实现 | - |
@@ -786,9 +786,58 @@ src/libs/expr/
 
 **目标**: 将表达式引擎集成到 TVA 命令中
 
-**待实现**:
--   `tva filter -E` - 表达式过滤
--   `tva mutate` - 计算新列/修改列
+**实现规划**:
+
+**`tva mutate` - 计算新列/修改列**（优先实现，相对简单）
+
+*设计*:
+```bash
+tva mutate -E "@price * 1.1 as @new_price" data.tsv
+tva mutate -E "@first ++ ' ' ++ @last as @full_name" data.tsv
+```
+
+*实现要点*:
+-   复用现有 `TsvReader` 读取输入
+-   解析表达式，计算新列值
+-   输出原始列 + 新列（或替换现有列）
+-   支持 `--header` 模式自动添加新列表头
+
+*工作量*: 较小（1-2天）
+
+---
+
+**`tva filter -E` - 表达式过滤**（复杂，需深度整合现有 filter 模块）
+
+*设计*:
+```bash
+tva filter -E "@price > 100 and @stock > 0" data.tsv
+tva filter -E "@name | contains(_, 'John')" data.tsv
+```
+
+*实现规划*:
+
+1.  **架构改造** (`engine.rs`, `config.rs`)
+    -   新增 `TestKind::Expression { expr: Expr }` 测试类型
+    -   `FilterConfig` 添加 `expression: Option<String>` 字段
+    -   `-E` 参数与现有过滤条件互斥
+
+2.  **Builder 适配** (`builder.rs`)
+    -   表达式解析为 AST
+    -   列名静态解析（`@price` → 索引）
+    -   支持预编译优化
+
+3.  **Runner 集成** (`runner.rs`)
+    -   行处理循环中创建 `EvalContext`
+    -   表达式求值返回 bool 决定行是否保留
+    -   复用现有 header/label/invert 逻辑
+
+4.  **CLI 集成** (`cmd_tva/filter.rs`)
+    -   添加 `-E, --expression` 参数
+    -   参数互斥验证
+
+*工作量*: 较大（3-5天）
+
+*依赖*: 建议先完成 `tva mutate` 验证表达式引擎在命令集成中的稳定性
 
 ### 3.4 技术选型
 
