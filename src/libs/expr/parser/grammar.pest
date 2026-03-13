@@ -93,6 +93,9 @@ op_pipe = { "|" }
 // Variable binding
 op_as = { "as" }
 
+// Lambda arrow
+op_arrow = { "=>" }
+
 // Semicolon for multiple expressions
 op_semi = { ";" }
 
@@ -101,6 +104,8 @@ op_semi = { ";" }
 // ============================================
 
 // Primary expressions (highest precedence)
+// Order matters: ident must come before lambda_expr because lambda starts with ident
+// But we use a special rule to handle both
 primary = _{
     column_ref
   | list_literal
@@ -109,9 +114,18 @@ primary = _{
   | int
   | boolean
   | null
-  | ident
+  | ident_or_lambda
   | "(" ~ expr ~ ")"
 }
+
+// Handle identifier vs lambda ambiguity
+// Lambda has higher "priority" when followed by =>
+ident_or_lambda = { lambda_single_param | ident | lambda_multi_params }
+
+// Lambda expression: x => x + 1 or (x, y) => x + y
+// Body is a "bind" expression (full expression without semicolons)
+lambda_single_param = { ident ~ op_arrow ~ bind }
+lambda_multi_params = { "(" ~ (ident ~ ("," ~ ident)*)? ~ ")" ~ op_arrow ~ bind }
 
 // List literal: [1, 2, 3] or []
 list_literal = { "[" ~ (expr ~ ("," ~ expr)*)? ~ "]" }

@@ -1,5 +1,6 @@
-use crate::libs::expr::runtime::value::Value;
-use crate::libs::expr::runtime::EvalError;
+use crate::libs::expr::parser::ast::Expr;
+use crate::libs::expr::runtime::value::{LambdaValue, Value};
+use crate::libs::expr::runtime::{eval, EvalContext, EvalError};
 
 pub fn join(args: &[Value]) -> Result<Value, EvalError> {
     match &args[0] {
@@ -285,6 +286,93 @@ pub fn reduce(args: &[Value]) -> Result<Value, EvalError> {
         Value::Null => Ok(args[1].clone()),
         _ => Err(EvalError::TypeError(
             "reduce: first argument must be a list".to_string(),
+        )),
+    }
+}
+
+/// Apply a lambda function to each element of a list
+fn apply_lambda(
+    lambda: &LambdaValue,
+    item: &Value,
+    ctx: &mut EvalContext,
+) -> Result<Value, EvalError> {
+    // Set lambda parameters
+    if lambda.params.is_empty() {
+        return Err(EvalError::TypeError("lambda has no parameters".to_string()));
+    }
+
+    // Bind the first parameter to the item
+    ctx.set_lambda_param(lambda.params[0].clone(), item.clone());
+
+    // Evaluate the lambda body
+    let result = eval(&lambda.body, ctx);
+
+    // Clear lambda parameters after evaluation
+    ctx.clear_lambda_params();
+
+    result
+}
+
+pub fn map(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => {
+            let lambda = match &args[1] {
+                Value::Lambda(l) => l,
+                _ => {
+                    return Err(EvalError::TypeError(
+                        "map: second argument must be a lambda".to_string(),
+                    ))
+                }
+            };
+
+            // Create a dummy context for lambda evaluation
+            let dummy_row: Vec<String> = vec![];
+            let mut ctx = EvalContext::new(&dummy_row);
+
+            let mut result = Vec::with_capacity(list.len());
+            for item in list {
+                let mapped = apply_lambda(lambda, item, &mut ctx)?;
+                result.push(mapped);
+            }
+
+            Ok(Value::List(result))
+        }
+        Value::Null => Ok(Value::Null),
+        _ => Err(EvalError::TypeError(
+            "map: first argument must be a list".to_string(),
+        )),
+    }
+}
+
+pub fn filter(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => {
+            let lambda = match &args[1] {
+                Value::Lambda(l) => l,
+                _ => {
+                    return Err(EvalError::TypeError(
+                        "filter: second argument must be a lambda".to_string(),
+                    ))
+                }
+            };
+
+            // Create a dummy context for lambda evaluation
+            let dummy_row: Vec<String> = vec![];
+            let mut ctx = EvalContext::new(&dummy_row);
+
+            let mut result = Vec::new();
+            for item in list {
+                let keep = apply_lambda(lambda, item, &mut ctx)?;
+                if keep.as_bool() {
+                    result.push(item.clone());
+                }
+            }
+
+            Ok(Value::List(result))
+        }
+        Value::Null => Ok(Value::Null),
+        _ => Err(EvalError::TypeError(
+            "filter: first argument must be a list".to_string(),
         )),
     }
 }

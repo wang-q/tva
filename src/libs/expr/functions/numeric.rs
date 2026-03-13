@@ -25,6 +25,9 @@ pub fn abs(args: &[Value]) -> Result<Value, EvalError> {
         Value::DateTime(_) => Err(EvalError::TypeError(
             "abs: cannot convert datetime to number".to_string(),
         )),
+        Value::Lambda(_) => Err(EvalError::TypeError(
+            "abs: cannot convert lambda to number".to_string(),
+        )),
     }
 }
 
@@ -49,6 +52,9 @@ pub fn round(args: &[Value]) -> Result<Value, EvalError> {
         )),
         Value::DateTime(_) => Err(EvalError::TypeError(
             "round: cannot convert datetime to number".to_string(),
+        )),
+        Value::Lambda(_) => Err(EvalError::TypeError(
+            "round: cannot convert lambda to number".to_string(),
         )),
     }
 }
@@ -80,6 +86,7 @@ pub fn min(args: &[Value]) -> Result<Value, EvalError> {
             Value::Null => continue,
             Value::List(_) => continue,
             Value::DateTime(_) => continue,
+            Value::Lambda(_) => continue,
         };
         min_val = Some(min_val.map_or(val, |m| m.min(val)));
     }
@@ -118,6 +125,7 @@ pub fn max(args: &[Value]) -> Result<Value, EvalError> {
             Value::Null => continue,
             Value::List(_) => continue,
             Value::DateTime(_) => continue,
+            Value::Lambda(_) => continue,
         };
         max_val = Some(max_val.map_or(val, |m| m.max(val)));
     }
@@ -153,6 +161,9 @@ pub fn int(args: &[Value]) -> Result<Value, EvalError> {
         Value::DateTime(_) => Err(EvalError::TypeError(
             "int: cannot convert datetime to integer".to_string(),
         )),
+        Value::Lambda(_) => Err(EvalError::TypeError(
+            "int: cannot convert lambda to integer".to_string(),
+        )),
     }
 }
 
@@ -170,6 +181,9 @@ pub fn float(args: &[Value]) -> Result<Value, EvalError> {
         )),
         Value::DateTime(_) => Err(EvalError::TypeError(
             "float: cannot convert datetime to float".to_string(),
+        )),
+        Value::Lambda(_) => Err(EvalError::TypeError(
+            "float: cannot convert lambda to float".to_string(),
         )),
     }
 }
@@ -196,6 +210,9 @@ pub fn ceil(args: &[Value]) -> Result<Value, EvalError> {
         Value::DateTime(_) => Err(EvalError::TypeError(
             "ceil: cannot convert datetime to number".to_string(),
         )),
+        Value::Lambda(_) => Err(EvalError::TypeError(
+            "ceil: cannot convert lambda to number".to_string(),
+        )),
     }
 }
 
@@ -220,6 +237,9 @@ pub fn floor(args: &[Value]) -> Result<Value, EvalError> {
         )),
         Value::DateTime(_) => Err(EvalError::TypeError(
             "floor: cannot convert datetime to number".to_string(),
+        )),
+        Value::Lambda(_) => Err(EvalError::TypeError(
+            "floor: cannot convert lambda to number".to_string(),
         )),
     }
 }
@@ -247,6 +267,11 @@ pub fn sqrt(args: &[Value]) -> Result<Value, EvalError> {
         Value::DateTime(_) => {
             return Err(EvalError::TypeError(
                 "sqrt: cannot convert datetime to number".to_string(),
+            ))
+        }
+        Value::Lambda(_) => {
+            return Err(EvalError::TypeError(
+                "sqrt: cannot convert lambda to number".to_string(),
             ))
         }
     };
@@ -283,6 +308,11 @@ pub fn pow(args: &[Value]) -> Result<Value, EvalError> {
                 "pow: cannot convert datetime to number".to_string(),
             ))
         }
+        Value::Lambda(_) => {
+            return Err(EvalError::TypeError(
+                "pow: cannot convert lambda to number".to_string(),
+            ))
+        }
     };
     let exp = match &args[1] {
         Value::Int(n) => *n as f64,
@@ -306,6 +336,11 @@ pub fn pow(args: &[Value]) -> Result<Value, EvalError> {
         Value::DateTime(_) => {
             return Err(EvalError::TypeError(
                 "pow: cannot convert datetime to number".to_string(),
+            ))
+        }
+        Value::Lambda(_) => {
+            return Err(EvalError::TypeError(
+                "pow: cannot convert lambda to number".to_string(),
             ))
         }
     };
@@ -338,6 +373,11 @@ pub fn sin(args: &[Value]) -> Result<Value, EvalError> {
                 "sin: cannot convert datetime to number".to_string(),
             ))
         }
+        Value::Lambda(_) => {
+            return Err(EvalError::TypeError(
+                "sin: cannot convert lambda to number".to_string(),
+            ))
+        }
     };
     Ok(Value::Float(n.sin()))
 }
@@ -365,6 +405,11 @@ pub fn cos(args: &[Value]) -> Result<Value, EvalError> {
         Value::DateTime(_) => {
             return Err(EvalError::TypeError(
                 "cos: cannot convert datetime to number".to_string(),
+            ))
+        }
+        Value::Lambda(_) => {
+            return Err(EvalError::TypeError(
+                "cos: cannot convert lambda to number".to_string(),
             ))
         }
     };
@@ -396,6 +441,11 @@ pub fn tan(args: &[Value]) -> Result<Value, EvalError> {
                 "tan: cannot convert datetime to number".to_string(),
             ))
         }
+        Value::Lambda(_) => {
+            return Err(EvalError::TypeError(
+                "tan: cannot convert lambda to number".to_string(),
+            ))
+        }
     };
     Ok(Value::Float(n.tan()))
 }
@@ -424,6 +474,11 @@ pub fn ln(args: &[Value]) -> Result<Value, EvalError> {
         Value::DateTime(_) => {
             return Err(EvalError::TypeError(
                 "ln: cannot convert datetime to number".to_string(),
+            ))
+        }
+        Value::Lambda(_) => {
+            return Err(EvalError::TypeError(
+                "ln: cannot convert lambda to number".to_string(),
             ))
         }
     };
@@ -460,6 +515,11 @@ pub fn log10(args: &[Value]) -> Result<Value, EvalError> {
                 "log10: cannot convert datetime to number".to_string(),
             ))
         }
+        Value::Lambda(_) => {
+            return Err(EvalError::TypeError(
+                "log10: cannot convert lambda to number".to_string(),
+            ))
+        }
     };
     if n <= 0.0 {
         return Err(EvalError::TypeError(
@@ -492,6 +552,11 @@ pub fn exp(args: &[Value]) -> Result<Value, EvalError> {
         Value::DateTime(_) => {
             return Err(EvalError::TypeError(
                 "exp: cannot convert datetime to number".to_string(),
+            ))
+        }
+        Value::Lambda(_) => {
+            return Err(EvalError::TypeError(
+                "exp: cannot convert lambda to number".to_string(),
             ))
         }
     };

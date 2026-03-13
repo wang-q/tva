@@ -7,6 +7,8 @@ pub enum Expr {
     ColumnRef(ColumnRef),
     /// Variable reference: @var_name (bound by 'as')
     Variable(String),
+    /// Lambda parameter reference (resolved during lambda evaluation)
+    LambdaParam(String),
     /// Integer literal: 123
     Int(i64),
     /// Float literal: 3.14
@@ -43,6 +45,11 @@ pub enum Expr {
     },
     /// Variable binding: expr as @name
     Bind { expr: Box<Expr>, name: String },
+    /// Lambda expression: x => x + 1 or (x, y) => x + y
+    Lambda {
+        params: Vec<String>,
+        body: Box<Expr>,
+    },
     /// Multiple expressions separated by semicolons
     Block(Vec<Expr>),
 }

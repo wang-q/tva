@@ -35,6 +35,8 @@ pub struct EvalContext<'a> {
     pub headers: Option<&'a [String]>,
     /// Variable bindings (name -> value)
     pub variables: HashMap<String, Value>,
+    /// Lambda parameter bindings (name -> value)
+    pub lambda_params: HashMap<String, Value>,
 }
 
 impl<'a> EvalContext<'a> {
@@ -43,6 +45,7 @@ impl<'a> EvalContext<'a> {
             row,
             headers: None,
             variables: HashMap::new(),
+            lambda_params: HashMap::new(),
         }
     }
 
@@ -51,6 +54,7 @@ impl<'a> EvalContext<'a> {
             row,
             headers: Some(headers),
             variables: HashMap::new(),
+            lambda_params: HashMap::new(),
         }
     }
 
@@ -86,6 +90,24 @@ impl<'a> EvalContext<'a> {
     /// Set variable value
     fn set_variable(&mut self, name: String, value: Value) {
         self.variables.insert(name, value);
+    }
+
+    /// Get lambda parameter value
+    fn get_lambda_param(&self, name: &str) -> Result<Value, EvalError> {
+        self.lambda_params
+            .get(name)
+            .cloned()
+            .ok_or_else(|| EvalError::VariableNotFound(name.to_string()))
+    }
+
+    /// Set lambda parameter value
+    pub fn set_lambda_param(&mut self, name: String, value: Value) {
+        self.lambda_params.insert(name, value);
+    }
+
+    /// Clear all lambda parameters
+    pub fn clear_lambda_params(&mut self) {
+        self.lambda_params.clear();
     }
 }
 
@@ -124,6 +146,7 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
             }
         },
         Expr::Variable(name) => ctx.get_variable(name),
+        Expr::LambdaParam(name) => ctx.get_lambda_param(name),
         Expr::Int(n) => Ok(Value::Int(*n)),
         Expr::Float(n) => Ok(Value::Float(*n)),
         Expr::String(s) => Ok(Value::String(s.clone())),
@@ -225,6 +248,10 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
             }
             Ok(result)
         }
+        Expr::Lambda { params, body } => Ok(Value::Lambda(value::LambdaValue {
+            params: params.clone(),
+            body: *body.clone(),
+        })),
     }
 }
 
@@ -533,5 +560,41 @@ mod tests {
             eval(&expr, &mut ctx).unwrap(),
             Value::String("HELLO".to_string())
         );
+    }
+
+    #[test]
+    fn test_eval_lambda() {
+        // Test lambda expression: x => x + 1
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Lambda {
+            params: vec!["x".to_string()],
+            body: Box::new(Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::LambdaParam("x".to_string())),
+                right: Box::new(Expr::Int(1)),
+            }),
+        };
+
+        // Evaluate lambda should return Lambda value
+        let result = eval(&expr, &mut ctx).unwrap();
+        match result {
+            Value::Lambda(lambda) => {
+                assert_eq!(lambda.params, vec!["x"]);
+            }
+            _ => panic!("Expected Lambda value, got {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_eval_lambda_param() {
+        // Test lambda parameter resolution
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+        ctx.lambda_params.insert("x".to_string(), Value::Int(5));
+
+        let expr = Expr::LambdaParam("x".to_string());
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(5));
     }
 }

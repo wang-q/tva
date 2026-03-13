@@ -146,6 +146,8 @@ impl FunctionRegistry {
         self.register("unique", FunctionInfo::fixed(list::unique, 1));
         self.register("slice", FunctionInfo::variadic(list::slice, 2));
         self.register("reduce", FunctionInfo::fixed(list::reduce, 3));
+        self.register("map", FunctionInfo::fixed(list::map, 2));
+        self.register("filter", FunctionInfo::fixed(list::filter, 2));
 
         // Regex functions
         self.register("regex_match", FunctionInfo::fixed(regex::regex_match, 2));

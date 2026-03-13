@@ -1,6 +1,13 @@
 use std::fmt;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
+/// Lambda function value
+#[derive(Debug, Clone, PartialEq)]
+pub struct LambdaValue {
+    pub params: Vec<String>,
+    pub body: crate::libs::expr::parser::ast::Expr,
+}
+
 /// Runtime value type for expression evaluation
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -11,6 +18,7 @@ pub enum Value {
     String(String),
     List(Vec<Value>),
     DateTime(chrono::DateTime<chrono::Utc>),
+    Lambda(LambdaValue),
 }
 
 impl Value {
@@ -42,6 +50,7 @@ impl Value {
             Value::String(s) => !s.is_empty(),
             Value::List(list) => !list.is_empty(),
             Value::DateTime(_) => true,
+            Value::Lambda(_) => true,
         }
     }
 
@@ -65,6 +74,7 @@ impl Value {
             Value::String(_) => "string",
             Value::List(_) => "list",
             Value::DateTime(_) => "datetime",
+            Value::Lambda(_) => "lambda",
         }
     }
 
@@ -78,6 +88,7 @@ impl Value {
             Value::String(s) => s.clone(),
             Value::List(list) => format!("{:?}", list),
             Value::DateTime(dt) => dt.to_rfc3339(),
+            Value::Lambda(_) => "<lambda>".to_string(),
         }
     }
 
