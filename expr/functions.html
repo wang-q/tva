@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-ec0b5dc7.js";
+            window.path_to_searchindex_js = "../searchindex-051cc6b3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-963373c1.js"></script>
@@ -296,6 +296,20 @@
 <li>unique(list) -&gt; list: Remove duplicates</li>
 <li>slice(list, start, end?) -&gt; list: Slice list</li>
 </ul>
+<h3 id="range-generation"><a class="header" href="#range-generation">Range Generation</a></h3>
+<ul>
+<li>range(upto) -&gt; list: Generate numbers from 0 to upto (exclusive), step 1</li>
+<li>range(from, upto) -&gt; list: Generate numbers from from (inclusive) to upto (exclusive), step 1</li>
+<li>range(from, upto, by) -&gt; list: Generate numbers from from (inclusive) to upto (exclusive), step by</li>
+</ul>
+<p>The range function produces a list of numbers. Similar to jq’s range:</p>
+<ul>
+<li><code>range(4)</code> produces <code>[0, 1, 2, 3]</code></li>
+<li><code>range(2, 4)</code> produces <code>[2, 3]</code></li>
+<li><code>range(0, 10, 3)</code> produces <code>[0, 3, 6, 9]</code></li>
+<li><code>range(0, -5, -1)</code> produces <code>[0, -1, -2, -3, -4]</code></li>
+</ul>
+<p>Note: If step direction doesn’t match the range direction (e.g., positive step with from &gt; upto), returns empty list.</p>
 <h3 id="higher-order-functions"><a class="header" href="#higher-order-functions">Higher-Order Functions</a></h3>
 <ul>
 <li>map(list, lambda) -&gt; list: Apply lambda to each element</li>
