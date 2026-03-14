@@ -137,7 +137,13 @@ Note: If step direction doesn't match the range direction (e.g., positive step w
 
 - map(list, lambda) -> list: Apply lambda to each element
 - filter(list, lambda) -> list: Filter list elements
-- reduce(list, init, op) -> T: List reduction
+- reduce(list, init, lambda) -> value: Reduce list to single value
+
+Examples:
+
+    map([1, 2, 3], |x| x * 2)        produces [2, 4, 6]
+    filter([1, 2, 3, 4], |x| x > 2)  produces [3, 4]
+    reduce([1, 2, 3], 0, |acc, x| acc + x)  produces 6
 
 ### Regular Expressions
 

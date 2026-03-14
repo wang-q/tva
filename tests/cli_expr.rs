@@ -18,7 +18,15 @@ fn expr_simple_arithmetic() {
 #[test]
 fn expr_with_colnames_and_row() {
     let (stdout, _) = TvaCmd::new()
-        .args(&["expr", "-n", "price,qty", "-r", "100,2", "-E", "@price * @qty"])
+        .args(&[
+            "expr",
+            "-n",
+            "price,qty",
+            "-r",
+            "100,2",
+            "-E",
+            "@price * @qty",
+        ])
         .run();
 
     assert!(
@@ -33,10 +41,14 @@ fn expr_multiple_rows() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "expr",
-            "-n", "price,qty",
-            "-r", "100,2",
-            "-r", "200,3",
-            "-E", "@price * @qty",
+            "-n",
+            "price,qty",
+            "-r",
+            "100,2",
+            "-r",
+            "200,3",
+            "-E",
+            "@price * @qty",
         ])
         .run();
 
@@ -59,9 +71,12 @@ fn expr_string_function() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "expr",
-            "-n", "name",
-            "-r", "  alice  ",
-            "-E", "upper(trim(@name))",
+            "-n",
+            "name",
+            "-r",
+            "  alice  ",
+            "-E",
+            "upper(trim(@name))",
         ])
         .run();
 
@@ -77,9 +92,12 @@ fn expr_conditional_expression() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "expr",
-            "-n", "score",
-            "-r", "85",
-            "-E", "if(@score >= 70, \"pass\", \"fail\")",
+            "-n",
+            "score",
+            "-r",
+            "85",
+            "-E",
+            "if(@score >= 70, \"pass\", \"fail\")",
         ])
         .run();
 
@@ -95,9 +113,12 @@ fn expr_conditional_expression_false() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "expr",
-            "-n", "score",
-            "-r", "65",
-            "-E", "if(@score >= 70, \"pass\", \"fail\")",
+            "-n",
+            "score",
+            "-r",
+            "65",
+            "-E",
+            "if(@score >= 70, \"pass\", \"fail\")",
         ])
         .run();
 

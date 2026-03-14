@@ -184,100 +184,38 @@ pub fn slice(args: &[Value]) -> Result<Value, EvalError> {
 pub fn reduce(args: &[Value]) -> Result<Value, EvalError> {
     match &args[0] {
         Value::List(list) => {
-            if list.is_empty() {
-                return Ok(args[1].clone());
+            let lambda = match &args[2] {
+                Value::Lambda(l) => l,
+                _ => {
+                    return Err(EvalError::TypeError(
+                        "reduce: third argument must be a lambda".to_string(),
+                    ))
+                }
+            };
+
+            if lambda.params.len() < 2 {
+                return Err(EvalError::TypeError(
+                    "reduce: lambda must have at least 2 parameters (acc, item)"
+                        .to_string(),
+                ));
             }
 
-            let op = args[2].as_string();
             let mut result = args[1].clone();
 
+            // Create a dummy context for lambda evaluation
+            let dummy_row: Vec<String> = vec![];
+            let mut ctx = EvalContext::new(&dummy_row);
+
             for item in list.iter() {
-                result = match op.as_str() {
-                    "+" | "add" => match (&result, item) {
-                        (Value::Int(a), Value::Int(b)) => Value::Int(a + b),
-                        (Value::Float(a), Value::Float(b)) => Value::Float(a + b),
-                        (Value::Int(a), Value::Float(b)) => Value::Float(*a as f64 + b),
-                        (Value::Float(a), Value::Int(b)) => Value::Float(a + *b as f64),
-                        (Value::String(a), Value::String(b)) => {
-                            Value::String(format!("{}{}", a, b))
-                        }
-                        _ => {
-                            return Err(EvalError::TypeError(format!(
-                                "reduce: cannot add {:?} and {:?}",
-                                result, item
-                            )))
-                        }
-                    },
-                    "-" | "sub" => match (&result, item) {
-                        (Value::Int(a), Value::Int(b)) => Value::Int(a - b),
-                        (Value::Float(a), Value::Float(b)) => Value::Float(a - b),
-                        (Value::Int(a), Value::Float(b)) => Value::Float(*a as f64 - b),
-                        (Value::Float(a), Value::Int(b)) => Value::Float(a - *b as f64),
-                        _ => {
-                            return Err(EvalError::TypeError(format!(
-                                "reduce: cannot subtract {:?} from {:?}",
-                                item, result
-                            )))
-                        }
-                    },
-                    "*" | "mul" => match (&result, item) {
-                        (Value::Int(a), Value::Int(b)) => Value::Int(a * b),
-                        (Value::Float(a), Value::Float(b)) => Value::Float(a * b),
-                        (Value::Int(a), Value::Float(b)) => Value::Float(*a as f64 * b),
-                        (Value::Float(a), Value::Int(b)) => Value::Float(a * *b as f64),
-                        _ => {
-                            return Err(EvalError::TypeError(format!(
-                                "reduce: cannot multiply {:?} and {:?}",
-                                result, item
-                            )))
-                        }
-                    },
-                    "/" | "div" => match (&result, item) {
-                        (Value::Int(a), Value::Int(b)) => {
-                            if *b == 0 {
-                                return Err(EvalError::TypeError(
-                                    "reduce: division by zero".to_string(),
-                                ));
-                            }
-                            Value::Int(a / b)
-                        }
-                        (Value::Float(a), Value::Float(b)) => Value::Float(a / b),
-                        (Value::Int(a), Value::Float(b)) => Value::Float(*a as f64 / b),
-                        (Value::Float(a), Value::Int(b)) => Value::Float(a / *b as f64),
-                        _ => {
-                            return Err(EvalError::TypeError(format!(
-                                "reduce: cannot divide {:?} by {:?}",
-                                result, item
-                            )))
-                        }
-                    },
-                    "min" => match (&result, item) {
-                        (Value::Int(a), Value::Int(b)) => Value::Int(*a.min(b)),
-                        (Value::Float(a), Value::Float(b)) => Value::Float(a.min(*b)),
-                        _ => {
-                            return Err(EvalError::TypeError(format!(
-                                "reduce: cannot compare {:?} and {:?}",
-                                result, item
-                            )))
-                        }
-                    },
-                    "max" => match (&result, item) {
-                        (Value::Int(a), Value::Int(b)) => Value::Int(*a.max(b)),
-                        (Value::Float(a), Value::Float(b)) => Value::Float(a.max(*b)),
-                        _ => {
-                            return Err(EvalError::TypeError(format!(
-                                "reduce: cannot compare {:?} and {:?}",
-                                result, item
-                            )))
-                        }
-                    },
-                    _ => {
-                        return Err(EvalError::TypeError(format!(
-                            "reduce: unknown operator '{}'",
-                            op
-                        )))
-                    }
-                };
+                // Bind accumulator to first parameter, item to second parameter
+                ctx.set_lambda_param(lambda.params[0].clone(), result);
+                ctx.set_lambda_param(lambda.params[1].clone(), item.clone());
+
+                // Evaluate the lambda body
+                result = eval(&lambda.body, &mut ctx)?;
+
+                // Clear lambda parameters after evaluation
+                ctx.clear_lambda_params();
             }
 
             Ok(result)

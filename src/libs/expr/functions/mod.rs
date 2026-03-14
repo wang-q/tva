@@ -948,74 +948,132 @@ mod tests {
 
     #[test]
     fn test_reduce() {
+        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+
         let registry = FunctionRegistry::new();
 
-        // Sum
+        // Sum: |acc, x| acc + x
+        let sum_lambda = Value::Lambda(LambdaValue {
+            params: vec!["acc".to_string(), "x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::LambdaParam("acc".to_string())),
+                right: Box::new(Expr::LambdaParam("x".to_string())),
+            },
+        });
         let result = registry.call(
             "reduce",
             &[
                 Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]),
                 Value::Int(0),
-                Value::String("+".to_string()),
+                sum_lambda,
             ],
         );
         assert_eq!(result.unwrap(), Value::Int(6));
 
-        // Product
+        // Product: |acc, x| acc * x
+        let mul_lambda = Value::Lambda(LambdaValue {
+            params: vec!["acc".to_string(), "x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Mul,
+                left: Box::new(Expr::LambdaParam("acc".to_string())),
+                right: Box::new(Expr::LambdaParam("x".to_string())),
+            },
+        });
         let result = registry.call(
             "reduce",
             &[
                 Value::List(vec![Value::Int(2), Value::Int(3), Value::Int(4)]),
                 Value::Int(1),
-                Value::String("*".to_string()),
+                mul_lambda,
             ],
         );
         assert_eq!(result.unwrap(), Value::Int(24));
 
-        // String concat
+        // Subtraction: |acc, x| acc - x
+        let sub_lambda = Value::Lambda(LambdaValue {
+            params: vec!["acc".to_string(), "x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Sub,
+                left: Box::new(Expr::LambdaParam("acc".to_string())),
+                right: Box::new(Expr::LambdaParam("x".to_string())),
+            },
+        });
         let result = registry.call(
             "reduce",
             &[
-                Value::List(vec![
-                    Value::String("a".to_string()),
-                    Value::String("b".to_string()),
-                    Value::String("c".to_string()),
-                ]),
-                Value::String("".to_string()),
-                Value::String("+".to_string()),
+                Value::List(vec![Value::Int(10), Value::Int(3), Value::Int(2)]),
+                Value::Int(100),
+                sub_lambda,
             ],
         );
-        assert_eq!(result.unwrap(), Value::String("abc".to_string()));
+        // 100 - 10 - 3 - 2 = 85
+        assert_eq!(result.unwrap(), Value::Int(85));
 
         // Empty list returns initial value
+        let sum_lambda2 = Value::Lambda(LambdaValue {
+            params: vec!["acc".to_string(), "x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::LambdaParam("acc".to_string())),
+                right: Box::new(Expr::LambdaParam("x".to_string())),
+            },
+        });
         let result = registry.call(
             "reduce",
-            &[
-                Value::List(vec![]),
-                Value::Int(42),
-                Value::String("+".to_string()),
-            ],
+            &[Value::List(vec![]), Value::Int(42), sum_lambda2],
         );
         assert_eq!(result.unwrap(), Value::Int(42));
 
-        // Min
+        // Min: |acc, x| if(acc < x, acc, x)
+        let min_lambda = Value::Lambda(LambdaValue {
+            params: vec!["acc".to_string(), "x".to_string()],
+            body: Expr::Call {
+                name: "if".to_string(),
+                args: vec![
+                    Expr::Binary {
+                        op: BinaryOp::Lt,
+                        left: Box::new(Expr::LambdaParam("acc".to_string())),
+                        right: Box::new(Expr::LambdaParam("x".to_string())),
+                    },
+                    Expr::LambdaParam("acc".to_string()),
+                    Expr::LambdaParam("x".to_string()),
+                ],
+            },
+        });
         let result = registry.call(
             "reduce",
             &[
                 Value::List(vec![Value::Int(5), Value::Int(2), Value::Int(8)]),
                 Value::Int(10),
-                Value::String("min".to_string()),
+                min_lambda,
             ],
         );
         assert_eq!(result.unwrap(), Value::Int(2));
 
-        // Max
+        // Max: |acc, x| if(acc > x, acc, x)
+        let max_lambda = Value::Lambda(LambdaValue {
+            params: vec!["acc".to_string(), "x".to_string()],
+            body: Expr::Call {
+                name: "if".to_string(),
+                args: vec![
+                    Expr::Binary {
+                        op: BinaryOp::Gt,
+                        left: Box::new(Expr::LambdaParam("acc".to_string())),
+                        right: Box::new(Expr::LambdaParam("x".to_string())),
+                    },
+                    Expr::LambdaParam("acc".to_string()),
+                    Expr::LambdaParam("x".to_string()),
+                ],
+            },
+        });
         let result = registry.call(
             "reduce",
             &[
                 Value::List(vec![Value::Int(5), Value::Int(2), Value::Int(8)]),
                 Value::Int(0),
-                Value::String("max".to_string()),
+                max_lambda,
             ],
         );
         assert_eq!(result.unwrap(), Value::Int(8));
@@ -1098,7 +1156,7 @@ mod tests {
     fn test_map() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
-        
+
         // Test map with lambda: map([1, 2, 3], |x| x * 2) -> [2, 4, 6]
         let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
         let lambda = Value::Lambda(LambdaValue {
@@ -1126,7 +1184,7 @@ mod tests {
     fn test_filter() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
-        
+
         // Test filter with lambda: filter([1, 2, 3, 4], |x| x > 2) -> [3, 4]
         let list = Value::List(vec![
             Value::Int(1),
@@ -1162,7 +1220,12 @@ mod tests {
         let result = registry.call("range", &[Value::Int(4)]);
         assert_eq!(
             result.unwrap(),
-            Value::List(vec![Value::Int(0), Value::Int(1), Value::Int(2), Value::Int(3)])
+            Value::List(vec![
+                Value::Int(0),
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3)
+            ])
         );
 
         // range(2, 4) -> [2, 3]
@@ -1173,14 +1236,21 @@ mod tests {
         );
 
         // range(0, 10, 3) -> [0, 3, 6, 9]
-        let result = registry.call("range", &[Value::Int(0), Value::Int(10), Value::Int(3)]);
+        let result =
+            registry.call("range", &[Value::Int(0), Value::Int(10), Value::Int(3)]);
         assert_eq!(
             result.unwrap(),
-            Value::List(vec![Value::Int(0), Value::Int(3), Value::Int(6), Value::Int(9)])
+            Value::List(vec![
+                Value::Int(0),
+                Value::Int(3),
+                Value::Int(6),
+                Value::Int(9)
+            ])
         );
 
         // range(0, -5, -1) -> [0, -1, -2, -3, -4]
-        let result = registry.call("range", &[Value::Int(0), Value::Int(-5), Value::Int(-1)]);
+        let result =
+            registry.call("range", &[Value::Int(0), Value::Int(-5), Value::Int(-1)]);
         assert_eq!(
             result.unwrap(),
             Value::List(vec![
@@ -1193,7 +1263,8 @@ mod tests {
         );
 
         // range(0, 10, -1) -> [] (step direction doesn't match range direction)
-        let result = registry.call("range", &[Value::Int(0), Value::Int(10), Value::Int(-1)]);
+        let result =
+            registry.call("range", &[Value::Int(0), Value::Int(10), Value::Int(-1)]);
         assert_eq!(result.unwrap(), Value::List(vec![]));
 
         // range with float arguments (rounded to nearest integer)
@@ -1210,7 +1281,8 @@ mod tests {
         let registry = FunctionRegistry::new();
 
         // Step cannot be zero
-        let result = registry.call("range", &[Value::Int(0), Value::Int(10), Value::Int(0)]);
+        let result =
+            registry.call("range", &[Value::Int(0), Value::Int(10), Value::Int(0)]);
         assert!(result.is_err());
 
         // Invalid argument type
