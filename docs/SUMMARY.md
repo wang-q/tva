@@ -20,8 +20,14 @@
 - [Common Conventions](conventions.md)
 
 # Expression Language
-- [Syntax Overview](expr/syntax.md)
-- [Functions & Operators](expr/functions.md)
+- [Introduction](expr/introduction.md)
+- [Literals & Types](expr/literals.md)
+- [Variables](expr/variables.md)
+- [Expressions](expr/expressions.md)
+- [Operators](expr/operators.md)
+- [Functions](expr/functions.md)
+- [Rosetta Code](expr/rosetta.md)
+- [Other Tools](expr/others.md)
 
 # Command Reference
 - [select](help/select.md)
