@@ -119,6 +119,20 @@
 - unique(list) -> list: Remove duplicates
 - slice(list, start, end?) -> list: Slice list
 
+```bash
+# Basic list operations
+tva expr -E 'first([1, 2, 3])'           # Returns: 1
+tva expr -E 'last([1, 2, 3])'            # Returns: 3
+tva expr -E 'nth([1, 2, 3], 1)'          # Returns: 2 (0-based index)
+
+# Using variables with multiple expressions
+tva expr -E '
+    [1, 2, 3] as @list;
+    first(@list) + last(@list)
+'
+# Returns: 4
+```
+
 ### Range Generation
 
 - range(upto) -> list: Generate numbers from 0 to upto (exclusive), step 1
