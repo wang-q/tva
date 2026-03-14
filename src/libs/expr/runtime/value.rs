@@ -391,43 +391,97 @@ mod tests {
 
     #[test]
     fn test_value_compare_null() {
-        assert_eq!(Value::Null.compare(&Value::Null), Some(std::cmp::Ordering::Equal));
-        assert_eq!(Value::Null.compare(&Value::Int(1)), Some(std::cmp::Ordering::Less));
-        assert_eq!(Value::Int(1).compare(&Value::Null), Some(std::cmp::Ordering::Greater));
+        assert_eq!(
+            Value::Null.compare(&Value::Null),
+            Some(std::cmp::Ordering::Equal)
+        );
+        assert_eq!(
+            Value::Null.compare(&Value::Int(1)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Int(1).compare(&Value::Null),
+            Some(std::cmp::Ordering::Greater)
+        );
     }
 
     #[test]
     fn test_value_compare_bool() {
-        assert_eq!(Value::Bool(false).compare(&Value::Bool(true)), Some(std::cmp::Ordering::Less));
-        assert_eq!(Value::Bool(true).compare(&Value::Bool(true)), Some(std::cmp::Ordering::Equal));
-        assert_eq!(Value::Bool(true).compare(&Value::Bool(false)), Some(std::cmp::Ordering::Greater));
+        assert_eq!(
+            Value::Bool(false).compare(&Value::Bool(true)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Bool(true).compare(&Value::Bool(true)),
+            Some(std::cmp::Ordering::Equal)
+        );
+        assert_eq!(
+            Value::Bool(true).compare(&Value::Bool(false)),
+            Some(std::cmp::Ordering::Greater)
+        );
     }
 
     #[test]
     fn test_value_compare_int() {
-        assert_eq!(Value::Int(1).compare(&Value::Int(2)), Some(std::cmp::Ordering::Less));
-        assert_eq!(Value::Int(5).compare(&Value::Int(5)), Some(std::cmp::Ordering::Equal));
-        assert_eq!(Value::Int(10).compare(&Value::Int(3)), Some(std::cmp::Ordering::Greater));
+        assert_eq!(
+            Value::Int(1).compare(&Value::Int(2)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Int(5).compare(&Value::Int(5)),
+            Some(std::cmp::Ordering::Equal)
+        );
+        assert_eq!(
+            Value::Int(10).compare(&Value::Int(3)),
+            Some(std::cmp::Ordering::Greater)
+        );
     }
 
     #[test]
     fn test_value_compare_float() {
-        assert_eq!(Value::Float(1.5).compare(&Value::Float(2.5)), Some(std::cmp::Ordering::Less));
-        assert_eq!(Value::Float(3.0).compare(&Value::Float(3.0)), Some(std::cmp::Ordering::Equal));
+        assert_eq!(
+            Value::Float(1.5).compare(&Value::Float(2.5)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Float(3.0).compare(&Value::Float(3.0)),
+            Some(std::cmp::Ordering::Equal)
+        );
     }
 
     #[test]
     fn test_value_compare_int_float() {
-        assert_eq!(Value::Int(1).compare(&Value::Float(2.0)), Some(std::cmp::Ordering::Less));
-        assert_eq!(Value::Int(5).compare(&Value::Float(5.0)), Some(std::cmp::Ordering::Equal));
-        assert_eq!(Value::Float(1.5).compare(&Value::Int(2)), Some(std::cmp::Ordering::Less));
+        assert_eq!(
+            Value::Int(1).compare(&Value::Float(2.0)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Int(5).compare(&Value::Float(5.0)),
+            Some(std::cmp::Ordering::Equal)
+        );
+        assert_eq!(
+            Value::Float(1.5).compare(&Value::Int(2)),
+            Some(std::cmp::Ordering::Less)
+        );
     }
 
     #[test]
     fn test_value_compare_string() {
-        assert_eq!(Value::String("apple".to_string()).compare(&Value::String("banana".to_string())), Some(std::cmp::Ordering::Less));
-        assert_eq!(Value::String("zebra".to_string()).compare(&Value::String("apple".to_string())), Some(std::cmp::Ordering::Greater));
-        assert_eq!(Value::String("same".to_string()).compare(&Value::String("same".to_string())), Some(std::cmp::Ordering::Equal));
+        assert_eq!(
+            Value::String("apple".to_string())
+                .compare(&Value::String("banana".to_string())),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::String("zebra".to_string())
+                .compare(&Value::String("apple".to_string())),
+            Some(std::cmp::Ordering::Greater)
+        );
+        assert_eq!(
+            Value::String("same".to_string())
+                .compare(&Value::String("same".to_string())),
+            Some(std::cmp::Ordering::Equal)
+        );
     }
 
     #[test]
@@ -436,9 +490,15 @@ mod tests {
         let empty: Vec<Value> = vec![];
         let list1 = Value::List(vec![Value::Int(1)]);
         let list_empty = Value::List(empty.clone());
-        assert_eq!(list_empty.compare(&list_empty), Some(std::cmp::Ordering::Equal));
+        assert_eq!(
+            list_empty.compare(&list_empty),
+            Some(std::cmp::Ordering::Equal)
+        );
         assert_eq!(list_empty.compare(&list1), Some(std::cmp::Ordering::Less));
-        assert_eq!(list1.compare(&list_empty), Some(std::cmp::Ordering::Greater));
+        assert_eq!(
+            list1.compare(&list_empty),
+            Some(std::cmp::Ordering::Greater)
+        );
 
         // List with same elements
         let a = Value::List(vec![Value::Int(1), Value::Int(2)]);
@@ -455,18 +515,36 @@ mod tests {
         assert_eq!(a.compare(&d), Some(std::cmp::Ordering::Greater));
 
         // Nested list comparison
-        let nested1 = Value::List(vec![Value::List(vec![Value::Int(1), Value::Int(2)]), Value::Int(3)]);
-        let nested2 = Value::List(vec![Value::List(vec![Value::Int(1), Value::Int(2)]), Value::Int(4)]);
+        let nested1 = Value::List(vec![
+            Value::List(vec![Value::Int(1), Value::Int(2)]),
+            Value::Int(3),
+        ]);
+        let nested2 = Value::List(vec![
+            Value::List(vec![Value::Int(1), Value::Int(2)]),
+            Value::Int(4),
+        ]);
         assert_eq!(nested1.compare(&nested2), Some(std::cmp::Ordering::Less));
     }
 
     #[test]
     fn test_value_compare_mixed_types() {
         // Type priority: null < bool < int/float < string < list
-        assert_eq!(Value::Null.compare(&Value::Bool(true)), Some(std::cmp::Ordering::Less));
-        assert_eq!(Value::Bool(false).compare(&Value::Int(0)), Some(std::cmp::Ordering::Less));
-        assert_eq!(Value::Int(100).compare(&Value::String("a".to_string())), Some(std::cmp::Ordering::Less));
-        assert_eq!(Value::String("z".to_string()).compare(&Value::List(vec![])), Some(std::cmp::Ordering::Less));
+        assert_eq!(
+            Value::Null.compare(&Value::Bool(true)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Bool(false).compare(&Value::Int(0)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Int(100).compare(&Value::String("a".to_string())),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::String("z".to_string()).compare(&Value::List(vec![])),
+            Some(std::cmp::Ordering::Less)
+        );
     }
 
     #[test]

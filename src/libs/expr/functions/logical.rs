@@ -17,3 +17,43 @@ pub fn default_fn(args: &[Value]) -> Result<Value, EvalError> {
         Ok(args[0].clone())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_if_fn() {
+        assert_eq!(
+            if_fn(&[Value::Bool(true), Value::Int(1), Value::Int(0)]).unwrap(),
+            Value::Int(1)
+        );
+        assert_eq!(
+            if_fn(&[Value::Bool(false), Value::Int(1), Value::Int(0)]).unwrap(),
+            Value::Int(0)
+        );
+    }
+
+    #[test]
+    fn test_default_fn() {
+        // null returns fallback
+        assert_eq!(
+            default_fn(&[Value::Null, Value::String("fallback".to_string())]).unwrap(),
+            Value::String("fallback".to_string())
+        );
+        // false returns fallback
+        assert_eq!(
+            default_fn(&[Value::Bool(false), Value::Int(0)]).unwrap(),
+            Value::Int(0)
+        );
+        // non-null returns original
+        assert_eq!(
+            default_fn(&[
+                Value::String("value".to_string()),
+                Value::String("fallback".to_string()),
+            ])
+            .unwrap(),
+            Value::String("value".to_string())
+        );
+    }
+}

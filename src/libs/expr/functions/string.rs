@@ -119,3 +119,186 @@ pub fn truncate(args: &[Value]) -> Result<Value, EvalError> {
         Ok(Value::String(format!("{}{}", truncated, end)))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trim() {
+        assert_eq!(
+            trim(&[Value::String("  hello  ".to_string())]).unwrap(),
+            Value::String("hello".to_string())
+        );
+    }
+
+    #[test]
+    fn test_upper() {
+        assert_eq!(
+            upper(&[Value::String("hello".to_string())]).unwrap(),
+            Value::String("HELLO".to_string())
+        );
+    }
+
+    #[test]
+    fn test_lower() {
+        assert_eq!(
+            lower(&[Value::String("HELLO".to_string())]).unwrap(),
+            Value::String("hello".to_string())
+        );
+    }
+
+    #[test]
+    fn test_len() {
+        assert_eq!(
+            len(&[Value::String("hello".to_string())]).unwrap(),
+            Value::Int(5)
+        );
+        // Null returns 0
+        assert_eq!(len(&[Value::Null]).unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_substr() {
+        assert_eq!(
+            substr(&[
+                Value::String("hello world".to_string()),
+                Value::Int(0),
+                Value::Int(5),
+            ])
+            .unwrap(),
+            Value::String("hello".to_string())
+        );
+    }
+
+    #[test]
+    fn test_split() {
+        match split(&[
+            Value::String("a,b,c".to_string()),
+            Value::String(",".to_string()),
+        ])
+        .unwrap()
+        {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 3);
+                assert_eq!(vals[0], Value::String("a".to_string()));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_contains() {
+        assert_eq!(
+            contains(&[
+                Value::String("hello world".to_string()),
+                Value::String("world".to_string()),
+            ])
+            .unwrap(),
+            Value::Bool(true)
+        );
+    }
+
+    #[test]
+    fn test_starts_with() {
+        assert_eq!(
+            starts_with(&[
+                Value::String("hello".to_string()),
+                Value::String("he".to_string()),
+            ])
+            .unwrap(),
+            Value::Bool(true)
+        );
+    }
+
+    #[test]
+    fn test_ends_with() {
+        assert_eq!(
+            ends_with(&[
+                Value::String("hello".to_string()),
+                Value::String("lo".to_string()),
+            ])
+            .unwrap(),
+            Value::Bool(true)
+        );
+    }
+
+    #[test]
+    fn test_replace() {
+        assert_eq!(
+            replace(&[
+                Value::String("hello world".to_string()),
+                Value::String("world".to_string()),
+                Value::String("rust".to_string()),
+            ])
+            .unwrap(),
+            Value::String("hello rust".to_string())
+        );
+    }
+
+    #[test]
+    fn test_truncate() {
+        // "hello world" is 11 bytes, limit 8, end "..." is 3 bytes
+        assert_eq!(
+            truncate(&[Value::String("hello world".to_string()), Value::Int(8)])
+                .unwrap(),
+            Value::String("hello...".to_string())
+        );
+
+        // Custom ending
+        assert_eq!(
+            truncate(&[
+                Value::String("hello world".to_string()),
+                Value::Int(8),
+                Value::String(">>".to_string()),
+            ])
+            .unwrap(),
+            Value::String("hello >>".to_string())
+        );
+
+        // String shorter than limit - return as-is
+        assert_eq!(
+            truncate(&[Value::String("hi".to_string()), Value::Int(10)]).unwrap(),
+            Value::String("hi".to_string())
+        );
+    }
+
+    #[test]
+    fn test_wordcount() {
+        assert_eq!(
+            wordcount(&[Value::String("hello world foo bar".to_string())]).unwrap(),
+            Value::Int(4)
+        );
+        assert_eq!(
+            wordcount(&[Value::String("   multiple   spaces   ".to_string())]).unwrap(),
+            Value::Int(2)
+        );
+        assert_eq!(
+            wordcount(&[Value::String("".to_string())]).unwrap(),
+            Value::Int(0)
+        );
+    }
+
+    #[test]
+    fn test_char_len() {
+        assert_eq!(
+            char_len(&[Value::String("hello".to_string())]).unwrap(),
+            Value::Int(5)
+        );
+        // UTF-8 characters
+        assert_eq!(
+            char_len(&[Value::String("你好世界".to_string())]).unwrap(),
+            Value::Int(4)
+        );
+    }
+
+    #[test]
+    fn test_trim_null() {
+        assert_eq!(trim(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_len_null() {
+        assert_eq!(len(&[Value::Null]).unwrap(), Value::Int(0));
+    }
+}

@@ -27,7 +27,11 @@ pub fn env_fn(args: &[Value]) -> Result<Value, EvalError> {
     }
     let name = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(EvalError::TypeError("env() requires a string argument".to_string())),
+        _ => {
+            return Err(EvalError::TypeError(
+                "env() requires a string argument".to_string(),
+            ))
+        }
     };
     match env::var(name) {
         Ok(val) => Ok(Value::String(val)),
