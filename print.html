@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-07c5515d.js";
+            window.path_to_searchindex_js = "searchindex-1b52719f.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-963373c1.js"></script>
+        <script src="toc-745324d1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -347,6 +347,14 @@ Copyright by Qiang Wang.</p>
 <li>Aim for single-pass processing.</li>
 <li>Avoid unnecessary allocations and sorting.</li>
 </ul>
+<h3 id="6-single-threaded-by-default"><a class="header" href="#6-single-threaded-by-default">6. Single-Threaded by Default</a></h3>
+<p><strong>Core Philosophy: Single-threaded extreme performance + external parallel tools</strong></p>
+<p><code>tva</code> adopts a <strong>single-threaded</strong> model for most data processing scenarios. This is not a technical limitation, but an active choice based on Unix philosophy:</p>
+<ol>
+<li><strong>Do One Thing Well</strong>: <code>tva</code> focuses on streaming data parsing, transformation, and statistics, leaving parallel scheduling complexity to specialized tools (like GNU Parallel).</li>
+<li><strong>Don’t Reinvent the Wheel</strong>: GNU Parallel is already a mature, powerful parallel task scheduler. Rather than implementing complex thread pools and task distribution inside <code>tva</code>, it’s better to make <code>tva</code> the best partner for Parallel.</li>
+<li><strong>Determinism and Simplicity</strong>: Single-threaded models make data processing order naturally deterministic, debugging easier, and greatly reduce memory management complexity and overhead (lock-free, zero-copy easier to achieve).</li>
+</ol>
 <h2 id="implementation-details"><a class="header" href="#implementation-details">Implementation Details</a></h2>
 <p><code>tva</code> adopts several optimization strategies similar to <code>tsv-utils</code> to ensure high performance:</p>
 <h3 id="1-buffered-io"><a class="header" href="#1-buffered-io">1. Buffered I/O</a></h3>
@@ -524,6 +532,17 @@ We don’t need complex hybrid state machines. We just need an optimized <code>m
 <li><code>tva sample</code> adds specific data science sampling methods: weighted sampling (by column value) and Bernoulli sampling.</li>
 </ul>
 </li>
+</ul>
+<h2 id="tva-expression-design-principles"><a class="header" href="#tva-expression-design-principles">TVA Expression Design Principles</a></h2>
+<p>The expression language in <code>tva</code> follows these core design principles:</p>
+<ul>
+<li><strong>Conciseness</strong>: Syntax should be as short as possible for common operations (like column references).</li>
+<li><strong>Type-aware</strong>: Able to recognize numbers, dates, etc. when needed, but treats data as byte strings by default for speed.</li>
+<li><strong>Shell-friendly</strong>: Syntax avoids conflicts with Shell special characters (like <code>$</code>, <code>!</code>, <code>`</code>), reducing user escaping burden. Since expressions typically run in command lines and are wrapped in quotes, they should avoid triggering Shell variable substitution (like <code>$var</code>).</li>
+<li><strong>Streaming</strong>: Expressions are evaluated row-by-row with no global state, suitable for big data processing.</li>
+<li><strong>Error Handling</strong>: Defaults to permissive mode where invalid operations return <code>null</code> instead of errors, but can be changed via strict mode switches.</li>
+<li><strong>Consistency</strong>: Maintains similarity with existing tools (like jq, xan) to reduce learning costs.</li>
+<li><strong>Parallel Compatible</strong>: When users need parallel processing, it’s typically <code>parallel</code> calling <code>tva</code> (e.g., <code>parallel "tva ... {}"</code>), so <code>tva</code>’s internal syntax should not interfere with <code>parallel</code>’s parameter replacement mechanism.</li>
 </ul>
 <h2 id="aggregation-architecture"><a class="header" href="#aggregation-architecture">Aggregation Architecture</a></h2>
 <p>This section provides a deep dive into the architectural differences between <code>tva</code> and other tools like <code>xan</code> (Rust) and <code>tsv-utils</code> (D Language) in their aggregation module designs.</p>
@@ -2351,230 +2370,412 @@ must be escaped with <code>\</code>.</li>
 </code></pre>
 <p>Serious errors return non-zero exit codes.</p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="表达式语法"><a class="header" href="#表达式语法">表达式语法</a></h1>
-<p>TVA 表达式是一种简洁、强大的数据处理语言，用于在 <code>tva filter</code>、<code>tva mutate</code> 等命令中进行数据转换和计算。</p>
-<h2 id="目录"><a class="header" href="#目录">目录</a></h2>
-<ul>
-<li><a href="#快速开始">快速开始</a></li>
-<li><a href="#字面量">字面量</a></li>
-<li><a href="#列引用">列引用</a></li>
-<li><a href="#变量绑定">变量绑定</a></li>
-<li><a href="#操作符">操作符</a></li>
-<li><a href="#函数调用">函数调用</a></li>
-<li><a href="#lambda-表达式">Lambda 表达式</a></li>
-<li><a href="#类型系统">类型系统</a></li>
-<li><a href="#完整示例">完整示例</a></li>
-</ul>
-<hr>
-<h2 id="快速开始"><a class="header" href="#快速开始">快速开始</a></h2>
-<pre><code class="language-bash"># 过滤：价格大于100的记录
+<h1 id="expression-introduction"><a class="header" href="#expression-introduction">Expression Introduction</a></h1>
+<p>TVA Expression is a concise data processing language for <code>tva expr</code>, <code>tva filter</code>, and <code>tva mutate</code> commands.</p>
+<h2 id="quick-examples"><a class="header" href="#quick-examples">Quick Examples</a></h2>
+<pre><code class="language-bash"># Basic arithmetic
+tva expr -E '42 + 3.14'
+
+# Filter records
 tva filter -E "@price &gt; 100" data.tsv
 
-# 计算：添加含税价格列
+# Compute new column
 tva mutate -E "@price * 1.1 as @price_with_tax" data.tsv
-
-# 字符串处理：格式化姓名
-tva mutate -E "@first ++ ' ' ++ @last as @full_name" data.tsv
 </code></pre>
-<hr>
-<h2 id="字面量"><a class="header" href="#字面量">字面量</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>类型</th><th>语法</th><th>示例</th></tr>
-</thead>
-<tbody>
-<tr><td>整数</td><td>数字序列</td><td><code>42</code>, <code>-10</code></td></tr>
-<tr><td>浮点数</td><td>小数点</td><td><code>3.14</code>, <code>-0.5</code></td></tr>
-<tr><td>字符串</td><td>单/双引号</td><td><code>"hello"</code>, <code>'world'</code></td></tr>
-<tr><td>布尔</td><td><code>true</code> / <code>false</code></td><td><code>true</code>, <code>false</code></td></tr>
-<tr><td>空值</td><td><code>null</code></td><td><code>null</code></td></tr>
-<tr><td>列表</td><td>方括号</td><td><code>[1, 2, 3]</code>, <code>["a", "b"]</code></td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="示例"><a class="header" href="#示例">示例</a></h3>
+<h2 id="topics"><a class="header" href="#topics">Topics</a></h2>
+<h3 id="literals"><a class="header" href="#literals"><a href="#expression-literals">Literals</a></a></h3>
+<p>Integer, float, string, boolean, null, and list literals.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>42 + @age           // 整数运算
-3.14 * @radius      // 浮点数运算
-"Hello, " ++ @name  // 字符串拼接
-[1, 2, 3]           // 列表字面量
+</span>42, 3.14, "hello", true, null, [1, 2, 3]
 <span class="boring">}</span></code></pre>
-<hr>
-<h2 id="列引用"><a class="header" href="#列引用">列引用</a></h2>
-<p>使用 <code>@</code> 前缀引用列，避免与 Shell 变量冲突：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>语法</th><th>含义</th><th>示例</th></tr>
-</thead>
-<tbody>
-<tr><td><code>@1</code>, <code>@2</code></td><td>1-based 列索引</td><td><code>@1</code> 表示第1列</td></tr>
-<tr><td><code>@col_name</code></td><td>列名引用</td><td><code>@price</code> 表示 price 列</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="示例-1"><a class="header" href="#示例-1">示例</a></h3>
+<h3 id="column-references"><a class="header" href="#column-references"><a href="#column-references-1">Column References</a></a></h3>
+<p>Use <code>@</code> prefix to reference columns.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>@1 + @2                 // 第1列加第2列
-@price * @qty           // 使用列名
-@name | trim() | upper() // 列值链式处理
+</span>@1, @col_name, @"col name"
 <span class="boring">}</span></code></pre>
-<hr>
-<h2 id="变量绑定"><a class="header" href="#变量绑定">变量绑定</a></h2>
-<p>使用 <code>as</code> 关键字将表达式结果绑定到变量，在后续管道中复用：</p>
+<h3 id="variable-binding"><a class="header" href="#variable-binding"><a href="#variable-binding-1">Variable Binding</a></a></h3>
+<p>Use <code>as</code> to bind values to variables.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// 基本语法
-@price * @qty as @total | @total * 1.1
-
-// 多变量绑定
-@price as @p | @qty as @q | @p * @q
+</span>@price * @qty as @total; @total * 1.1
 <span class="boring">}</span></code></pre>
-<h3 id="规则"><a class="header" href="#规则">规则</a></h3>
-<ul>
-<li>变量在当前行内有效</li>
-<li>可遮蔽同名列引用</li>
-<li>列引用优先检查变量，再回退到列名查找</li>
-</ul>
-<hr>
-<h2 id="操作符"><a class="header" href="#操作符">操作符</a></h2>
-<h3 id="优先级表从高到低"><a class="header" href="#优先级表从高到低">优先级表（从高到低）</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>优先级</th><th>操作符</th><th>说明</th></tr>
-</thead>
-<tbody>
-<tr><td>1</td><td><code>()</code></td><td>分组</td></tr>
-<tr><td>2</td><td><code>-</code> (一元)</td><td>负号</td></tr>
-<tr><td>3</td><td><code>**</code></td><td>乘方</td></tr>
-<tr><td>4</td><td><code>*</code>, <code>/</code>, <code>%</code></td><td>乘除模</td></tr>
-<tr><td>5</td><td><code>+</code>, <code>-</code></td><td>加减</td></tr>
-<tr><td>6</td><td><code>++</code></td><td>字符串拼接</td></tr>
-<tr><td>7</td><td><code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code></td><td>数值比较</td></tr>
-<tr><td>8</td><td><code>eq</code>, <code>ne</code>, <code>lt</code>, <code>le</code>, <code>gt</code>, <code>ge</code></td><td>字符串比较</td></tr>
-<tr><td>9</td><td><code>and</code></td><td>逻辑与</td></tr>
-<tr><td>10</td><td><code>or</code></td><td>逻辑或</td></tr>
-<tr><td>11</td><td><code>|</code></td><td>管道</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="示例-2"><a class="header" href="#示例-2">示例</a></h3>
+<h3 id="operators"><a class="header" href="#operators"><a href="#expression-operators">Operators</a></a></h3>
+<p>Arithmetic, comparison, logical, and pipe operators.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// 数值比较
-@age &gt;= 18 and @age &lt; 65
-
-// 字符串比较
-@name eq "Alice" and @status ne "deleted"
-
-// 算术运算
-(@price + @tax) * @qty
-
-// 逻辑运算
-@age &gt; 18 or @status eq "vip"
+</span>+ - * / %, == != &lt; &gt;, and or, |
 <span class="boring">}</span></code></pre>
-<hr>
-<h2 id="函数调用"><a class="header" href="#函数调用">函数调用</a></h2>
-<h3 id="前缀调用"><a class="header" href="#前缀调用">前缀调用</a></h3>
+<h3 id="function-calls"><a class="header" href="#function-calls"><a href="#expression-syntax-guide">Function Calls</a></a></h3>
+<p>Prefix calls, pipe calls, and method calls.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>trim(@name)
-substr(@desc, 0, 50)
-<span class="boring">}</span></code></pre>
-<h3 id="管道调用"><a class="header" href="#管道调用">管道调用</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// 单参数函数（_ 可省略）
 @name | trim() | upper()
-
-// 多参数函数（使用 _ 占位符）
-@desc | substr(_, 0, 50) | upper()
+@name.trim().upper()
 <span class="boring">}</span></code></pre>
-<h3 id="方法调用"><a class="header" href="#方法调用">方法调用</a></h3>
-<p>方法调用是函数调用的语法糖：</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>@name.trim().upper()
-// 等价于 @name | trim() | upper()
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="lambda-表达式"><a class="header" href="#lambda-表达式">Lambda 表达式</a></h2>
-<p>Lambda 用于创建匿名函数，主要用于 <code>map</code>、<code>filter</code> 等高阶函数。</p>
-<h3 id="语法"><a class="header" href="#语法">语法</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// 单参数
-x =&gt; x + 1
-
-// 多参数
-(x, y) =&gt; x + y
-
-// 无参数
-() =&gt; 42
-<span class="boring">}</span></code></pre>
-<h3 id="示例-3"><a class="header" href="#示例-3">示例</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// 对列表每个元素加3
-map([1, 2, 3], x =&gt; x + 3)           // [4, 5, 6]
-
-// 过滤大于2的元素
-filter([1, 2, 3, 4], x =&gt; x &gt; 2)     // [3, 4]
-
-// 使用列值
-map(split(@tags, ","), t =&gt; trim(t))
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="类型系统"><a class="header" href="#类型系统">类型系统</a></h2>
-<p>TVA 采用动态类型系统：</p>
+<h2 id="documentation-index"><a class="header" href="#documentation-index">Documentation Index</a></h2>
+<ul>
+<li><a href="#expression-literals">Literals</a> - Literal syntax and type system</li>
+<li><a href="#expression-variables">Variables</a> - Column references and variable binding</li>
+<li><a href="#expression-syntax-guide">Expressions</a> - Function calls, pipelines, multiple expressions</li>
+<li><a href="#expression-operators">Operators</a> - Operator precedence and details</li>
+<li><a href="#expression-functions">Functions</a> - Complete function reference</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="expression-literals"><a class="header" href="#expression-literals">Expression Literals</a></h1>
+<h2 id="literal-syntax"><a class="header" href="#literal-syntax">Literal Syntax</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>类型</th><th>说明</th><th>示例</th></tr>
+<tr><th style="text-align: left">Type</th><th style="text-align: left">Syntax</th><th style="text-align: left">Examples</th></tr>
 </thead>
 <tbody>
-<tr><td><code>Int</code></td><td>64位有符号整数</td><td><code>42</code></td></tr>
-<tr><td><code>Float</code></td><td>64位浮点数</td><td><code>3.14</code></td></tr>
-<tr><td><code>String</code></td><td>UTF-8 字符串</td><td><code>"hello"</code></td></tr>
-<tr><td><code>Bool</code></td><td>布尔值</td><td><code>true</code></td></tr>
-<tr><td><code>Null</code></td><td>空值</td><td><code>null</code></td></tr>
-<tr><td><code>List</code></td><td>异构列表</td><td><code>[1, "a", true]</code></td></tr>
+<tr><td style="text-align: left">Integer</td><td style="text-align: left">Digit sequence</td><td style="text-align: left"><code>42</code>, <code>-10</code>, <code>1_000_000</code></td></tr>
+<tr><td style="text-align: left">Float</td><td style="text-align: left">Decimal point or exponent</td><td style="text-align: left"><code>3.14</code>, <code>-0.5</code>, <code>1e10</code></td></tr>
+<tr><td style="text-align: left">String</td><td style="text-align: left">Single or double quotes</td><td style="text-align: left"><code>"hello"</code>, <code>'world'</code></td></tr>
+<tr><td style="text-align: left">Boolean</td><td style="text-align: left"><code>true</code> / <code>false</code></td><td style="text-align: left"><code>true</code>, <code>false</code></td></tr>
+<tr><td style="text-align: left">Null</td><td style="text-align: left"><code>null</code></td><td style="text-align: left"><code>null</code></td></tr>
+<tr><td style="text-align: left">List</td><td style="text-align: left">Square brackets</td><td style="text-align: left"><code>[1, 2, 3]</code>, <code>["a", "b"]</code></td></tr>
+<tr><td style="text-align: left">Lambda</td><td style="text-align: left">Arrow function</td><td style="text-align: left"><code>x =&gt; x + 1</code>, <code>(x, y) =&gt; x + y</code></td></tr>
 </tbody>
 </table>
 </div>
-<h3 id="类型转换"><a class="header" href="#类型转换">类型转换</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>int("42")       // 42
-float("3.14")   // 3.14
-string(42)      // "42"
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="完整示例"><a class="header" href="#完整示例">完整示例</a></h2>
-<pre><code class="language-bash"># 过滤：价格大于100且库存大于0
-tva filter -E "@price &gt; 100 and @stock &gt; 0" data.tsv
+<pre><code class="language-bash"># Integer and float literals
+tva expr -E '42 + 3.14'           # Returns: 45.14
 
-# 计算：总价（含税）
-tva mutate -E "@price * (1 + @tax_rate) as @total" data.tsv
+# String literals
+tva expr -E '"hello" ++ " " ++ "world"'  # Returns: hello world
 
-# 字符串处理：格式化姓名
-tva mutate -E "@first | trim() | upper() ++ ' ' ++ @last | trim() | upper() as @full_name" data.tsv
+# Boolean literals
+tva expr -E 'true and false'      # Returns: false
 
-# 条件：根据年龄分组
-tva mutate -E "if(@age &lt; 18, 'minor', if(@age &lt; 60, 'adult', 'senior')) as @group" data.tsv
+# Null literal
+tva expr -E 'default(null, "fallback")'  # Returns: fallback
 
-# 列表处理：分割并处理标签
-tva mutate -E "split(@tags, ',') | map(_, t =&gt; trim(t)) | join(_, '; ') as @clean_tags" data.tsv
+# List literal
+tva expr -E '[1, 2, 3]'           # Returns: [1, 2, 3]
+
+# Lambda literal
+tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'  # Returns: [2, 4, 6]
 </code></pre>
-<hr>
-<h2 id="相关文档"><a class="header" href="#相关文档">相关文档</a></h2>
+<h2 id="type-system"><a class="header" href="#type-system">Type System</a></h2>
+<p>TVA uses a dynamic type system with automatic type recognition at runtime:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Type</th><th style="text-align: left">Description</th><th style="text-align: left">Conversion Rules</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>Int</code></td><td style="text-align: left">64-bit signed integer</td><td style="text-align: left">Returns <code>null</code> on string parse failure</td></tr>
+<tr><td style="text-align: left"><code>Float</code></td><td style="text-align: left">64-bit floating point</td><td style="text-align: left">Integers automatically promoted to float</td></tr>
+<tr><td style="text-align: left"><code>String</code></td><td style="text-align: left">UTF-8 string</td><td style="text-align: left">Numbers/booleans can be explicitly converted</td></tr>
+<tr><td style="text-align: left"><code>Bool</code></td><td style="text-align: left">Boolean value</td><td style="text-align: left">Empty string, 0, <code>null</code> are falsy</td></tr>
+<tr><td style="text-align: left"><code>Null</code></td><td style="text-align: left">Null value</td><td style="text-align: left">Represents missing or invalid data</td></tr>
+<tr><td style="text-align: left"><code>List</code></td><td style="text-align: left">Heterogeneous list</td><td style="text-align: left">Elements can be any type</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="type-conversion"><a class="header" href="#type-conversion">Type Conversion</a></h2>
 <ul>
-<li><a href="#expression-functions">函数参考</a> - 完整的函数列表</li>
-<li><a href="expr/operators.html">操作符详解</a> - 操作符详细说明</li>
+<li><strong>Explicit conversion</strong>: Use <code>int()</code>, <code>float()</code>, <code>string()</code> functions</li>
+<li><strong>Numeric operations</strong>: Mixed int/float operations promote result to float</li>
+<li><strong>String concatenation</strong>: <code>++</code> operator converts operands to strings</li>
+<li><strong>Comparison</strong>: Same-type comparison only; different types always return <code>false</code></li>
+</ul>
+<h2 id="string-escape-sequences"><a class="header" href="#string-escape-sequences">String Escape Sequences</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Escape</th><th style="text-align: left">Meaning</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>\n</code></td><td style="text-align: left">Newline</td><td style="text-align: left"><code>"line1\nline2"</code></td></tr>
+<tr><td style="text-align: left"><code>\t</code></td><td style="text-align: left">Tab</td><td style="text-align: left"><code>"col1\tcol2"</code></td></tr>
+<tr><td style="text-align: left"><code>\r</code></td><td style="text-align: left">Carriage return</td><td style="text-align: left"><code>"\r\n"</code> (Windows line ending)</td></tr>
+<tr><td style="text-align: left"><code>\\</code></td><td style="text-align: left">Backslash</td><td style="text-align: left"><code>"C:\\Users\\name"</code></td></tr>
+<tr><td style="text-align: left"><code>\"</code></td><td style="text-align: left">Double quote</td><td style="text-align: left"><code>"say \"hello\""</code></td></tr>
+<tr><td style="text-align: left"><code>\'</code></td><td style="text-align: left">Single quote</td><td style="text-align: left"><code>'it\'s ok'</code></td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="expression-variables"><a class="header" href="#expression-variables">Expression Variables</a></h1>
+<h2 id="column-references-1"><a class="header" href="#column-references-1">Column References</a></h2>
+<p>Use <code>@</code> prefix to reference columns, avoiding conflicts with Shell variables:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Syntax</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>@0</code></td><td style="text-align: left">Entire row content</td><td style="text-align: left"><code>@0</code> represents all columns</td></tr>
+<tr><td style="text-align: left"><code>@1</code>, <code>@2</code></td><td style="text-align: left">1-based column index</td><td style="text-align: left"><code>@1</code> represents the first column</td></tr>
+<tr><td style="text-align: left"><code>@col_name</code></td><td style="text-align: left">Column name reference</td><td style="text-align: left"><code>@price</code> represents the price column</td></tr>
+<tr><td style="text-align: left"><code> @"col name"</code></td><td style="text-align: left">Column name with spaces</td><td style="text-align: left"><code> @"user name"</code> represents column “user name”</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Design rationale</strong>:</p>
+<ul>
+<li><strong>Shell-friendly</strong>: <code>@</code> has no special meaning in bash/zsh, no escaping needed</li>
+<li><strong>Concise</strong>: Only 2 characters (<code>Shift+2</code>)</li>
+</ul>
+<p><strong>Type behavior</strong>:</p>
+<ul>
+<li>Column references return <code>String</code> by default (raw bytes)</li>
+<li>Numeric operations automatically attempt parsing; failure yields <code>null</code></li>
+<li>Use <code>int(@col)</code> or <code>float(@col)</code> for explicit type specification</li>
+</ul>
+<h2 id="variable-binding-1"><a class="header" href="#variable-binding-1">Variable Binding</a></h2>
+<p>Use <code>as</code> keyword to bind expression results to variables for reuse in subsequent pipes:</p>
+<pre><code class="language-bash"># Basic syntax: bind calculation result
+tva expr -n "price,qty,tax_rate" -r "10,5,0.1" -E '@price * @qty as @total; @total * (1 + @tax_rate)'
+# Returns: 55
+
+# Reuse intermediate results
+tva expr -n "name" -r "John Smith" -E '@name | split(" ") as @parts; first(@parts) ++ "." ++ last(@parts)'
+# Returns: John.Smith
+
+# Multiple variable bindings
+tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
+# Returns: 50
+</code></pre>
+<p><strong>Rules</strong>:</p>
+<ul>
+<li>Variables are valid within the current row only, cleared when entering next row</li>
+<li>Can shadow column references (<code>@price as @price</code>)</li>
+<li>Column references check variables first, then fall back to column name lookup</li>
+</ul>
+<p><strong>Design notes</strong>:</p>
+<ul>
+<li><code>as</code> aligns with pipe semantics (“name the result from the left…”)</li>
+<li>Unified <code>@</code> prefix reduces cognitive burden</li>
+<li>References jq syntax but removes <code>$</code> to avoid Shell conflicts</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="expression-syntax-guide"><a class="header" href="#expression-syntax-guide">Expression Syntax Guide</a></h1>
+<p>This document provides a comprehensive guide to TVA expression syntax, covering function calls, pipelines, and multi-expression evaluation.</p>
+<h2 id="expression-elements"><a class="header" href="#expression-elements">Expression Elements</a></h2>
+<p>TVA expressions are composed of the following atomic elements:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Element</th><th style="text-align: left">Syntax</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Column Reference</strong></td><td style="text-align: left"><code>@1</code>, <code>@col_name</code></td><td style="text-align: left">Reference input data columns</td></tr>
+<tr><td style="text-align: left"><strong>Variable</strong></td><td style="text-align: left"><code>@var_name</code></td><td style="text-align: left">Variables bound via <code>as</code></td></tr>
+<tr><td style="text-align: left"><strong>Literal</strong></td><td style="text-align: left"><code>42</code>, <code>"hello"</code>, <code>true</code>, <code>null</code>, <code>[1, 2, 3]</code></td><td style="text-align: left">Constant values</td></tr>
+<tr><td style="text-align: left"><strong>Function Call</strong></td><td style="text-align: left"><code>func(args...)</code></td><td style="text-align: left">Built-in functions</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="evaluation-rules"><a class="header" href="#evaluation-rules">Evaluation Rules</a></h2>
+<ul>
+<li>Expressions are evaluated left-to-right according to operator precedence</li>
+<li>The pipe operator <code>|</code> has the lowest precedence, used to connect multiple processing steps</li>
+</ul>
+<h2 id="function-call-syntax"><a class="header" href="#function-call-syntax">Function Call Syntax</a></h2>
+<h3 id="prefix-call"><a class="header" href="#prefix-call">Prefix Call</a></h3>
+<p><code>func(arg1, arg2, ...)</code> - Traditional function call syntax.</p>
+<pre><code class="language-bash">tva expr -E 'trim("  hello  ")'             # Returns: hello
+tva expr -E 'substr("hello world", 0, 5)'   # Returns: hello
+</code></pre>
+<h3 id="method-call"><a class="header" href="#method-call">Method Call</a></h3>
+<p>Method call is syntactic sugar for function calls:</p>
+<pre><code class="language-bash"># Method call is equivalent to function call
+@name.trim()           # Equivalent to: trim(@name)
+@price.round()         # Equivalent to: round(@price)
+
+# Method chaining
+@name.trim().upper().substr(0, 5)
+# Equivalent to: substr(upper(trim(@name)), 0, 5)
+
+# Method call with arguments
+@name.substr(0, 5)     # Equivalent to: substr(@name, 0, 5)
+@price.pow(2)          # Equivalent to: pow(@price, 2)
+</code></pre>
+<h3 id="pipe-call-single-argument"><a class="header" href="#pipe-call-single-argument">Pipe Call (Single Argument)</a></h3>
+<p><code>arg | func()</code> - Pipe left value to function. The <code>_</code> placeholder can be omitted for single-argument functions.</p>
+<pre><code class="language-bash">tva expr -E '"hello" | upper()'             # Returns: HELLO
+tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
+</code></pre>
+<h3 id="pipe-call-multiple-arguments"><a class="header" href="#pipe-call-multiple-arguments">Pipe Call (Multiple Arguments)</a></h3>
+<p><code>arg | func(_, arg2)</code> - Use <code>_</code> to represent the piped value as the first argument.</p>
+<pre><code class="language-bash">tva expr -E '"hello world" | substr(_, 0, 5)'   # Returns: hello
+tva expr -E '"a,b,c" | split(_, ",")'           # Returns: ["a", "b", "c"]
+</code></pre>
+<h2 id="expression-composition"><a class="header" href="#expression-composition">Expression Composition</a></h2>
+<p>Expressions can be combined in several ways:</p>
+<ul>
+<li><strong>Operator Composition</strong>: <code>@a + @b</code>, <code>@x &gt; 10 and @y &lt; 20</code></li>
+<li><strong>Pipe Composition</strong>: <code>@name | trim() | upper()</code></li>
+<li><strong>Variable Binding</strong>: <code>expr as @var; @var + 1</code></li>
+<li><strong>Function Nesting</strong>: <code>if(@age &gt; 18, "adult", "minor")</code></li>
+</ul>
+<h2 id="lambda-expressions"><a class="header" href="#lambda-expressions">Lambda Expressions</a></h2>
+<p>Lambda expressions create anonymous functions, primarily used with higher-order functions like <code>map</code>, <code>filter</code>, and <code>reduce</code>:</p>
+<h3 id="syntax"><a class="header" href="#syntax">Syntax</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Form</th><th style="text-align: left">Syntax</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Single parameter</td><td style="text-align: left"><code>param =&gt; expr</code></td><td style="text-align: left"><code>x =&gt; x + 1</code></td></tr>
+<tr><td style="text-align: left">Multiple parameters</td><td style="text-align: left"><code>(p1, p2, ...) =&gt; expr</code></td><td style="text-align: left"><code>(x, y) =&gt; x + y</code></td></tr>
+<tr><td style="text-align: left">No parameters</td><td style="text-align: left"><code>() =&gt; expr</code></td><td style="text-align: left"><code>() =&gt; 42</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-12"><a class="header" href="#examples-12">Examples</a></h3>
+<pre><code class="language-bash"># Single-parameter lambda
+tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
+# Returns: [2, 4, 6]
+
+# Multi-parameter lambda
+tva expr -E 'reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x)'
+# Returns: 6
+
+# Filter with lambda
+tva expr -E 'filter([1, 2, 3, 4], x =&gt; x &gt; 2)'
+# Returns: [3, 4]
+</code></pre>
+<p>Lambda bodies can reference columns (<code>@col</code>) and variables (<code>@var</code>) from the outer scope.</p>
+<h2 id="complex-pipelines"><a class="header" href="#complex-pipelines">Complex Pipelines</a></h2>
+<p>The pipe operator <code>|</code> enables powerful function chaining:</p>
+<pre><code class="language-bash"># Chain single-argument functions
+tva expr -n "name" -r "  john doe  " -E '@name | trim() | upper()'
+# Returns: JOHN DOE
+
+# Mix single and multi-argument functions
+tva expr -n "desc" -r "hello world" -E '@desc | substr(_, 0, 5) | upper()'
+# Returns: HELLO
+
+# Complex validation pipeline
+tva expr -n "email" -r "  Test@Example.COM  " -E '@email | trim() | lower() | regex_match(_, ".*@.*\\.com")'
+# Returns: true
+</code></pre>
+<h2 id="multiple-expressions"><a class="header" href="#multiple-expressions">Multiple Expressions</a></h2>
+<p>Use <code>;</code> to separate multiple expressions, evaluated sequentially:</p>
+<pre><code class="language-bash"># Multiple expressions with variable binding
+tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
+# Returns: 50
+
+# Pipeline and semicolons
+tva expr -n "price,qty" -r "10,5" -E '
+    @price | int() as @p;
+    @p * 2 as @p;
+    @qty | int() as @q;
+    @q * 3 as @q;
+    @p + @q
+'
+# Returns: 35
+</code></pre>
+<p><strong>Rules</strong>:</p>
+<ul>
+<li>Each expression can have side effects (like variable binding)</li>
+<li>Only the last expression’s value is returned</li>
+</ul>
+<h2 id="comments"><a class="header" href="#comments">Comments</a></h2>
+<p>TVA supports line comments starting with <code>//</code>. Comments are only valid inside expressions; comments in command line are handled by the Shell.</p>
+<pre><code class="language-bash"># With comments explaining the logic
+tva expr -n "total,tax" -r "100,0.1" -E '
+    @total | int() as @t;  // Convert to integer
+    @tax | float() as @r;  // Convert tax rate to float
+    @t * (1 + @r)          // Calculate total with tax
+'
+# Returns: 110
+
+tva expr -n "price,qty,tax_rate" -r "10,5,0.1" -E '
+    // Calculate total price
+    @price * @qty as @total;
+    @total * (1 + @tax_rate)  // With tax
+'
+# Returns: 55
+</code></pre>
+<h2 id="output-behavior"><a class="header" href="#output-behavior">Output Behavior</a></h2>
+<p>In <code>tva expr</code>, the last expression’s value is printed to stdout:</p>
+<pre><code class="language-bash"># Simple expression output
+tva expr -E '42 + 3.14'           # Prints: 45.14
+
+# Column reference output
+tva expr -n "name" -r "John" -E '@name'   # Prints: John
+</code></pre>
+<p>The <code>print(val, ...)</code> function outputs multiple arguments sequentially and returns the last argument’s value. If <code>print()</code> is the last expression, the value won’t be printed twice:</p>
+<pre><code class="language-bash"># Print intermediate values
+tva expr -n "price,qty" -r "10,5" -E '
+    @price | print("price:", _);
+    print("qty:", @qty);
+    @price * @qty
+'
+# Prints: price: 10
+#         qty: 5
+#         50
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="expression-operators"><a class="header" href="#expression-operators">Expression Operators</a></h1>
+<h2 id="operator-precedence-high-to-low"><a class="header" href="#operator-precedence-high-to-low">Operator Precedence (high to low)</a></h2>
+<ol>
+<li><code>()</code> - Grouping</li>
+<li><code>-</code> (unary) - Negation</li>
+<li><code>**</code> - Power</li>
+<li><code>*</code>, <code>/</code>, <code>%</code> - Multiply, Divide, Modulo</li>
+<li><code>+</code>, <code>-</code> (binary) - Add, Subtract</li>
+<li><code>++</code> - String concatenation</li>
+<li><code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code> - Numeric comparison</li>
+<li><code>eq</code>, <code>ne</code>, <code>lt</code>, <code>le</code>, <code>gt</code>, <code>ge</code> - String comparison</li>
+<li><code>not</code> - Logical NOT</li>
+<li><code>and</code> - Logical AND</li>
+<li><code>or</code> - Logical OR</li>
+<li><code>|</code> - Pipe</li>
+</ol>
+<h2 id="arithmetic-operators"><a class="header" href="#arithmetic-operators">Arithmetic Operators</a></h2>
+<ul>
+<li><code>-x</code>: Negation</li>
+<li><code>a + b</code>: Addition</li>
+<li><code>a - b</code>: Subtraction</li>
+<li><code>a * b</code>: Multiplication</li>
+<li><code>a / b</code>: Division</li>
+<li><code>a % b</code>: Modulo</li>
+<li><code>a ** b</code>: Power</li>
+</ul>
+<h2 id="string-operators"><a class="header" href="#string-operators">String Operators</a></h2>
+<ul>
+<li><code>a ++ b</code>: String concatenation</li>
+</ul>
+<h2 id="comparison-operators"><a class="header" href="#comparison-operators">Comparison Operators</a></h2>
+<p><strong>Numeric:</strong></p>
+<ul>
+<li><code>a == b</code>: Equal</li>
+<li><code>a != b</code>: Not equal</li>
+<li><code>a &lt; b</code>: Less than</li>
+<li><code>a &lt;= b</code>: Less than or equal</li>
+<li><code>a &gt; b</code>: Greater than</li>
+<li><code>a &gt;= b</code>: Greater than or equal</li>
+</ul>
+<p><strong>String:</strong></p>
+<ul>
+<li><code>a eq b</code>: String equal</li>
+<li><code>a ne b</code>: String not equal</li>
+<li><code>a lt b</code>: String less than (lexicographic)</li>
+<li><code>a le b</code>: String less than or equal</li>
+<li><code>a gt b</code>: String greater than</li>
+<li><code>a ge b</code>: String greater than or equal</li>
+</ul>
+<p><strong>Note</strong>: No implicit type conversion. Use string comparison operators for string comparison.</p>
+<h2 id="logical-operators"><a class="header" href="#logical-operators">Logical Operators</a></h2>
+<ul>
+<li><code>not a</code>: Logical NOT</li>
+<li><code>a and b</code>: Logical AND</li>
+<li><code>a or b</code>: Logical OR</li>
+</ul>
+<h2 id="pipe-operator"><a class="header" href="#pipe-operator">Pipe Operator</a></h2>
+<ul>
+<li><code>a | f()</code>: Pipe left value to function (left value becomes first argument)</li>
+<li><code>a | f(_, arg)</code>: Pipe with placeholder</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="expression-functions"><a class="header" href="#expression-functions">Expression Functions</a></h1>
@@ -2711,6 +2912,383 @@ tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) =&gt; if(x &gt; acc, x, acc))'
 <ul>
 <li>print(val, …): Print to stdout, returns last argument</li>
 <li>eprint(val, …): Print to stderr, returns last argument</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="rosetta-code-with-tva-expression-engine"><a class="header" href="#rosetta-code-with-tva-expression-engine">Rosetta Code with TVA Expression Engine</a></h1>
+<p>This document demonstrates the capabilities of TVA’s expression engine by implementing tasks from <a href="https://rosettacode.org/">Rosetta Code</a>.</p>
+<h2 id="basic-usage-7"><a class="header" href="#basic-usage-7">Basic Usage</a></h2>
+<p>Most examples use the <code>tva expr</code> command for standalone expression evaluation:</p>
+<pre><code class="language-bash"># Simple arithmetic
+tva expr -E "2 + 2"
+
+# With input data
+tva expr -n "x,y" -r "3,4" -E "@x * @y"
+
+# Using higher-order functions
+tva expr -E "map([1,2,3,4,5], x =&gt; x * x)"
+</code></pre>
+<h2 id="tasks"><a class="header" href="#tasks">Tasks</a></h2>
+<h3 id="hello-world"><a class="header" href="#hello-world">Hello World</a></h3>
+<p>Display the string “Hello world!” on a text console.</p>
+<pre><code class="language-bash">tva expr -E '"Hello world!"'
+</code></pre>
+<p>Output:</p>
+<pre><code>Hello world!
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li><code>tva expr</code> - Command for standalone expression evaluation</li>
+<li>The result of the last expression is printed to stdout</li>
+</ul>
+<h3 id="99-bottles-of-beer"><a class="header" href="#99-bottles-of-beer">99 Bottles of Beer</a></h3>
+<p>Display the complete lyrics for the song: 99 Bottles of Beer on the Wall.</p>
+<p>Using <code>range()</code> and string concatenation:</p>
+<pre><code class="language-bash">tva expr -E '
+map(
+    range(99, 0, -1),
+    n =&gt; 
+    n ++ " bottles of beer on the wall,\n" ++
+    n ++ " bottles of beer!\n" ++
+    "Take one down, pass it around,\n" ++
+    (n - 1) ++ " bottles of beer on the wall!\n"
+) | join(_, "\n")
+'
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li><code>range(99, 0, -1)</code> - Generate countdown from 99 to 1</li>
+<li><code>.map()</code> method with lambda - Transform each number to a verse</li>
+<li><code>++</code> for string concatenation</li>
+<li><code>.join()</code> method to combine verses with double newlines</li>
+</ul>
+<h3 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h3>
+<p>Write a program that prints the integers from 1 to 100 (inclusive). But for multiples of three, print “Fizz” instead of the number; for multiples of five, print “Buzz”; for multiples of both three and five, print “FizzBuzz”.</p>
+<pre><code class="language-bash">tva expr -E '
+map(
+    range(1, 101),
+    n =&gt;
+    if(n % 15 == 0, "FizzBuzz",
+        if(n % 3 == 0, "Fizz",
+            if(n % 5 == 0, "Buzz", n)
+        )
+    )
+) | join(_, "\n")
+'
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li><code>range(1, 101)</code> - Generate numbers from 1 to 100</li>
+<li>Nested <code>if()</code> for multiple conditions</li>
+<li>Modulo operator <code>%</code> for divisibility checks</li>
+<li><code>.join("\n")</code> to output one item per line</li>
+</ul>
+<h3 id="factorial"><a class="header" href="#factorial">Factorial</a></h3>
+<p>The factorial of 0 is defined as 1. The factorial of a positive integer n is defined as the product n × (n-1) × (n-2) × … × 1.</p>
+<p>Using <code>reduce()</code> for iterative approach:</p>
+<pre><code class="language-bash"># Factorial of 5: 5! = 5 × 4 × 3 × 2 × 1 = 120
+tva expr -E 'reduce(range(1, 6), 1, (acc, n) =&gt; acc * n)'
+</code></pre>
+<p>Output:</p>
+<pre><code>120
+</code></pre>
+<p>Computing factorials for 0 through 10:</p>
+<pre><code class="language-bash">tva expr -E 'map(
+    range(0, 11),
+    n =&gt; if(n == 0, 1, 
+        reduce(range(1, n + 1), 1, (acc, x) =&gt; acc * x))
+) | join(_, "\n")'
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li><code>reduce(list, init, op)</code> - Aggregate list values with an accumulator</li>
+<li>Lambda with two parameters <code>(acc, n)</code> for accumulator and current item</li>
+<li>Special case handling for <code>0! = 1</code></li>
+</ul>
+<h3 id="fibonacci-sequence"><a class="header" href="#fibonacci-sequence">Fibonacci sequence</a></h3>
+<p>The Fibonacci sequence is a sequence Fn of natural numbers defined recursively:</p>
+<ul>
+<li>F0 = 0</li>
+<li>F1 = 1</li>
+<li>Fn = Fn-1 + Fn-2, if n &gt; 1</li>
+</ul>
+<p>Generate the first 20 Fibonacci numbers:</p>
+<pre><code class="language-bash">tva expr -E '
+map(
+    range(0, 20),
+    n =&gt; if(n == 0, 0,
+        if(n == 1, 1,
+            reduce(
+                range(2, n + 1),
+                [0, 1],
+                (acc, _) =&gt; [acc.nth(1), acc.nth(0) + acc.nth(1)]
+            ).nth(1)
+        )
+    )
+) | join(_, ", ")
+'
+</code></pre>
+<p>Output:</p>
+<pre><code>0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li>Iterative Fibonacci computation using <code>reduce()</code></li>
+<li>Tuple-like list <code>[prev, curr]</code> to track state</li>
+<li>List access with <code>.nth()</code> method to get previous values</li>
+<li><code>range(2, n + 1)</code> to iterate (n-1) times for the nth Fibonacci number</li>
+</ul>
+<h3 id="palindrome-detection"><a class="header" href="#palindrome-detection">Palindrome detection</a></h3>
+<p>A palindrome is a phrase which reads the same backward and forward.</p>
+<p>Check if a string is a palindrome:</p>
+<pre><code class="language-bash">tva expr -E '
+"A man, a plan, a canal: Panama" |
+    lower() |
+    regex_replace(_, "[^a-z0-9]", "") as @cleaned;
+@cleaned.split("").reverse().join("") as @reversed;
+@cleaned == @reversed
+'
+</code></pre>
+<p>Output:</p>
+<pre><code>true
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li><code>lower()</code> - Convert to lowercase for case-insensitive comparison</li>
+<li><code>regex_replace()</code> - Remove non-alphanumeric characters</li>
+<li><code>as @var</code> - Bind intermediate results to variables</li>
+<li>Method chaining - <code>split().reverse().join()</code> to reverse a string</li>
+</ul>
+<h3 id="word-frequency"><a class="header" href="#word-frequency">Word frequency</a></h3>
+<p>Given a text file and an integer <code>n</code>, print/display the <code>n</code> most common words in the file (and the number of their occurrences) in decreasing frequency.</p>
+<p>Count unique words (simplified version without sorting):</p>
+<pre><code class="language-bash">tva expr -E '
+"the quick brown fox jumps over the lazy dog the quick brown fox"
+| lower()
+| split(_, " ") as @words;
+
+// Get unique words
+@words | unique() as @unique_words;
+
+// Count occurrences of each unique word
+map(@unique_words, word =&gt;
+    filter(@words, w =&gt; w == word) | len() as @count |
+    [word, @count]
+)
+'
+</code></pre>
+<p>Output:</p>
+<pre><code>[["the", 3], ["quick", 2], ["brown", 2], ["fox", 2], ["jumps", 1], ["over", 1], ["lazy", 1], ["dog", 1]]
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li><code>unique()</code> - Remove duplicate words</li>
+<li>Nested <code>map</code> and <code>filter</code> - For each unique word, count occurrences</li>
+<li><code>len()</code> - Get list length as count</li>
+<li>List construction - Build <code>[word, count]</code> pairs</li>
+</ul>
+<h2 id="list"><a class="header" href="#list">list</a></h2>
+<p>进阶级（字符串、数据结构、算法）
+Word count
+Prime numbers
+Greatest common divisor
+Sorting algorithms / Bubble sort / Quick sort
+Binary search
+Stack
+Queue
+Linked list / Reverse a linked list
+高级 / 工程级（文件、并发、经典问题）
+Read a file line by line
+CSV manipulation
+Concurrent computing / Print in order
+Towers of Hanoi
+Eight queens puzzle
+Conway’s Game of Life</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="other-tools-analysis"><a class="header" href="#other-tools-analysis">Other Tools Analysis</a></h1>
+<p>This document analyzes existing solutions for data processing expression languages, providing context for TVA’s design decisions.</p>
+<h2 id="gnu-parallel-template-substitution"><a class="header" href="#gnu-parallel-template-substitution">GNU Parallel: Template Substitution</a></h2>
+<p>GNU Parallel uses a <strong>string replacement</strong> based placeholder mechanism, particularly suited for building Shell commands.</p>
+<ul>
+<li><strong>Core Mechanism</strong>: Predefined placeholders with string interpolation at execution time.</li>
+<li><strong>Placeholder Syntax</strong>:
+<ul>
+<li><code>{1}</code>, <code>{2}</code>: Column reference by index.</li>
+<li><code>{-1}</code>: Reverse index reference.</li>
+<li><code>{col_name}</code>: Header column name reference.</li>
+<li><code>{= perl_expr =}</code>: Embedded Perl expression for immediate evaluation.</li>
+</ul>
+</li>
+<li><strong>Pros</strong>:
+<ul>
+<li>Intuitive, fits Shell scripting habits.</li>
+<li>Suitable for “command construction” scenarios.</li>
+</ul>
+</li>
+<li><strong>Cons</strong>:
+<ul>
+<li>Essentially text processing, lacks a type system.</li>
+<li>Difficult to handle complex logic (unless embedding Perl, which has performance costs).</li>
+</ul>
+</li>
+</ul>
+<h2 id="awk-record-and-field-processing-model"><a class="header" href="#awk-record-and-field-processing-model">AWK: Record and Field Processing Model</a></h2>
+<p>AWK is a classic Unix text processing tool centered around <strong>Records</strong> and <strong>Fields</strong>.</p>
+<ul>
+<li>
+<p><strong>Core Mechanism</strong>:</p>
+<ul>
+<li><strong>Record Splitting</strong>: Input is split into records (default by line, controlled by <code>RS</code>). <code>NR</code> tracks current record number, <code>FNR</code> tracks current file’s record number.</li>
+<li><strong>Field Splitting</strong>: Each record is further split into fields (default by whitespace, controlled by <code>FS</code>). <code>NF</code> tracks field count.</li>
+<li><strong>Field Reference</strong>: <code>$n</code> syntax references the nth field, <code>$0</code> represents the entire record. Field numbers can be variables or expressions (e.g., <code>$NF</code> for last field).</li>
+</ul>
+</li>
+<li>
+<p><strong>Syntax Features</strong>:</p>
+<ul>
+<li><strong>Pattern-Action</strong>: <code>pattern { action }</code> structure executes when pattern matches.</li>
+<li><strong>Built-in Variables</strong>: <code>NR</code>, <code>NF</code>, <code>FS</code>, <code>RS</code>, <code>OFS</code>, <code>ORS</code> control I/O behavior.</li>
+<li><strong>Implicit Type Conversion</strong>: Strings and numbers convert automatically based on context.</li>
+</ul>
+</li>
+<li>
+<p><strong>Pros</strong>:</p>
+<ul>
+<li><strong>Concise and Efficient</strong>: Optimized for text processing, complex tasks in single lines.</li>
+<li><strong>Streaming</strong>: Naturally supports line-by-line processing with low memory usage.</li>
+<li><strong>Widely Available</strong>: Pre-installed on almost all Unix-like systems.</li>
+</ul>
+</li>
+<li>
+<p><strong>Cons</strong>:</p>
+<ul>
+<li><strong>Ancient Syntax</strong>: Differs significantly from modern languages, steep learning curve.</li>
+<li><strong>Weak Type System</strong>: Implicit conversions convenient but error-prone.</li>
+<li><strong>Limited Features</strong>: Standard AWK lacks modern features (JSON support, rich string functions).</li>
+</ul>
+</li>
+</ul>
+<h2 id="xan-moonblade-dynamic-expression-engine"><a class="header" href="#xan-moonblade-dynamic-expression-engine">xan (Moonblade): Dynamic Expression Engine</a></h2>
+<p>xan includes <strong>Moonblade</strong>, a dynamic scripting language similar to simplified Python/JavaScript, optimized for CSV processing.</p>
+<ul>
+<li>
+<p><strong>Core Mechanism</strong>:</p>
+<ul>
+<li><strong>Parser &amp; Interpreter</strong>: PEG parser (Pest) builds AST, uses Tree-Walker Interpreter.</li>
+<li><strong>Concretization</strong>: Static analysis optimization before execution, e.g., resolving column names to indices to avoid runtime hash lookups.</li>
+<li><strong>Arc-based Types</strong>: Uses <code>Arc&lt;T&gt;</code> for strings and complex objects to minimize deep copies, suitable for streaming.</li>
+</ul>
+</li>
+<li>
+<p><strong>Syntax Features</strong>:</p>
+<ul>
+<li><strong>Columns as Variables</strong>: Use column names directly (e.g., <code>count &gt; 10</code>), or <code>col("name")</code>/<code>col(index)</code>.</li>
+<li><strong>Operator Distinction</strong>: Distinguishes string (<code>eq</code>, <code>++</code>) and numeric (<code>==</code>, <code>+</code>) operators (Perl-like design), avoiding implicit conversion ambiguity.</li>
+<li><strong>Rich Built-ins</strong>: String, Math, Date, Regex, Hashing, plus CSS Selector-style HTML scraping.</li>
+<li><strong>Higher-Order Functions</strong>: Supports <code>map</code>, <code>filter</code>, <code>reduce</code> with Lambda expressions (e.g., <code>map(list, x =&gt; x + 1)</code>).</li>
+</ul>
+</li>
+<li>
+<p><strong>Pros</strong>:</p>
+<ul>
+<li><strong>Extremely Expressive</strong>: Handles complex business logic (JSON parsing, date calculations, fuzzy matching).</li>
+<li><strong>Relatively High Performance</strong>: Optimized for CSV structure (Header/Row) compared to general scripting languages.</li>
+</ul>
+</li>
+<li>
+<p><strong>Cons</strong>:</p>
+<ul>
+<li><strong>High Implementation Complexity</strong>: Maintaining a complete interpreter, type system, and function library is costly.</li>
+<li><strong>Runtime Overhead</strong>: Despite optimizations, AST traversal and dynamic dispatch per row have some cost compared to pure Native code.</li>
+</ul>
+</li>
+</ul>
+<h2 id="jq-json-processor--stream-computing"><a class="header" href="#jq-json-processor--stream-computing">jq: JSON Processor &amp; Stream Computing</a></h2>
+<p><code>jq</code> is the de facto standard for JSON processing, built on a specialized stack-based VM with backtracking and generators.</p>
+<ul>
+<li>
+<p><strong>Core Mechanism</strong>:</p>
+<ul>
+<li><strong>Bytecode Compiler &amp; VM</strong>: Compiles queries (Filters) to bytecode executed in an interpreter loop. Unlike xan’s Tree-walker, this provides a more compact execution model.</li>
+<li><strong>Backtracking</strong>: jq’s killer feature. Via <code>FORK</code> and <code>BACKTRACK</code> instructions, one input can produce zero, one, or multiple outputs (e.g., <code>.[]</code>). This makes jq essentially a streaming generator engine.</li>
+<li><strong>Reference Counting</strong>: Data represented via <code>jv</code> struct (in <code>jv.h</code>), using reference counting. Allows efficient “shallow copies” (Copy-on-write), but has overhead with high-frequency allocation.</li>
+</ul>
+</li>
+<li>
+<p><strong>Architecture</strong>:</p>
+<ul>
+<li><strong><code>jv</code> Type System</strong>: Unified JSON value representation (Tagged Union): Null, Bool, Number, String, Array, Object.</li>
+<li><strong>Hybrid Stdlib</strong>: Many standard library functions (<code>map</code>, <code>select</code>, <code>recurse</code>) written in jq language (<code>builtin.jq</code>), only low-level primitives (<code>type</code>, <code>keys</code>) in C. Easy to extend.</li>
+<li><strong>Stack Machine</strong>: VM maintains value stack and frame stack, supports closures and complex control flow.</li>
+</ul>
+</li>
+<li>
+<p><strong>Syntax Features</strong>:</p>
+<ul>
+<li><strong>Filters</strong>: Everything is a filter. Input -&gt; Filter -&gt; Output stream.</li>
+<li><strong>Pipe (<code>|</code>)</strong>: Primary way to compose filters. <code>a | b</code> runs <code>b</code> with <strong>each</strong> output of <code>a</code> as input.</li>
+<li><strong>Context (<code>.</code>)</strong>: Explicit reference to current context value.</li>
+<li><strong>Variables (<code>$var</code>)</strong>: Bound via <code>... as $x | ...</code>, lexically scoped.</li>
+</ul>
+</li>
+<li>
+<p><strong>Pros</strong>:</p>
+<ul>
+<li><strong>Minimal Streaming Syntax</strong>: Extremely efficient for nested JSON.</li>
+<li><strong>Powerful Composition</strong>: Pipes and backtracking enable Cartesian products, permutations, etc.</li>
+<li><strong>Mature Ecosystem</strong>: Pre-installed almost everywhere, no dependencies.</li>
+</ul>
+</li>
+<li>
+<p><strong>Cons</strong>:</p>
+<ul>
+<li><strong>Performance Bottleneck</strong>: Compared to columnar engines (xan/polars), jq’s per-object processing and interpreter overhead is significant.</li>
+<li><strong>Mental Model</strong>: Backtracking is hard to understand for users from traditional programming (e.g., why <code>debug</code> prints multiple times).</li>
+</ul>
+</li>
+</ul>
+<h2 id="tera-template-engine--rust-ecosystem"><a class="header" href="#tera-template-engine--rust-ecosystem">Tera: Template Engine &amp; Rust Ecosystem</a></h2>
+<p><code>Tera</code> is Rust’s most popular template engine, inspired by Jinja2 and Django templates. While mainly for HTML generation, its design patterns are highly relevant for expression languages.</p>
+<ul>
+<li>
+<p><strong>Core Mechanism</strong>:</p>
+<ul>
+<li><strong>Pest Parser</strong>: Uses PEG (Parsing Expression Grammar) parser (<code>pest</code>) to define syntax (<code>tera.pest</code>) and generate AST (<code>ast.rs</code>). Provides extreme syntax flexibility.</li>
+<li><strong>Renderer &amp; CallStack</strong>: Tree-walker pattern. <code>CallStack</code> (<code>call_stack.rs</code>) manages <code>StackFrame</code> (<code>stack_frame.rs</code>) for scope, loops (<code>ForLoop</code>), and macro calls.</li>
+<li><strong>JSON-centric</strong>: Data model built entirely on <code>serde_json::Value</code>. <code>Context</code> is essentially <code>BTreeMap&lt;String, Value&gt;</code>. Seamlessly handles any Rust data serializable to JSON.</li>
+</ul>
+</li>
+<li>
+<p><strong>Architecture</strong>:</p>
+<ul>
+<li><strong>Function/Filter/Test Traits</strong>: Highly extensible. Implement <code>Function</code>, <code>Filter</code>, <code>Test</code> traits (<code>builtins/mod.rs</code>) to inject custom logic.</li>
+<li><strong>Inheritance</strong>: Supports <code>extends</code> and <code>block</code> for template reuse and override, useful for complex document structures.</li>
+<li><strong>Whitespace Control</strong>: <code>{%-</code> and <code>-%}</code> for precise whitespace control (<code>parser/whitespace.rs</code>), crucial for format-sensitive text (code or specific data formats).</li>
+</ul>
+</li>
+<li>
+<p><strong>Syntax Features</strong>:</p>
+<ul>
+<li><strong>Delimiters</strong>: Variables <code>{{ ... }}</code>, tags <code>{% ... %}</code>, comments <code>{# ... #}</code>.</li>
+<li><strong>Filters</strong>: Pipe style <code>value | filter(arg=1)</code>.</li>
+<li><strong>Control Flow</strong>: Rich <code>if</code>, <code>for</code>, <code>include</code>, <code>macro</code> support.</li>
+<li><strong>Tests</strong>: <code>is</code> operator, e.g., <code>if variable is defined</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>Pros</strong>:</p>
+<ul>
+<li><strong>Balance of Type Safety and Dynamism</strong>: Rust-based but provides dynamic type experience (JSON Value).</li>
+<li><strong>Extremely Mature Syntax</strong>: Jinja2 style has stood the test of time, low cognitive burden.</li>
+<li><strong>Error Handling</strong>: Detailed error location and context (<code>errors.rs</code>).</li>
+</ul>
+</li>
+<li>
+<p><strong>Cons</strong>:</p>
+<ul>
+<li><strong>Allocation Heavy</strong>: Rendering involves significant <code>String</code> allocation and <code>Value</code> cloning (Clone-on-write via <code>Cow</code>), potentially too costly for high-performance streaming data processing (like tva’s goal).</li>
+<li><strong>Text-oriented</strong>: Core goal is text concatenation, not data structure transformation.</li>
+</ul>
+</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="select"><a class="header" href="#select">select</a></h1>
