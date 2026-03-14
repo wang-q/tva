@@ -51,7 +51,7 @@ tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 tva expr -n "score" -r "85" -E 'if(@score >= 60, "pass", "fail")'
 
 # Process TSV file - calculate price per carat
-tva expr -E "@price / @carat" docs/data/diamonds.tsv
+tva expr -H -E "@price / @carat" docs/data/diamonds.tsv
 ```
 
 ### `tva filter` - Filter Rows

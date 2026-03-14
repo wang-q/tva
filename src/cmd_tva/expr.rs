@@ -114,13 +114,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // Otherwise, process input files (default to stdin if no files specified)
-    let infiles = if infiles.is_empty() {
-        vec!["stdin".to_string()]
-    } else {
-        infiles
-    };
-
     // Build HeaderConfig from arguments
     let header_config =
         build_header_config(args, false).map_err(|e| anyhow::anyhow!(e))?;
@@ -165,9 +158,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         .split(|c| c == delimiter)
                         .map(|s| s.to_string())
                         .collect();
-                    // Write header from expression result
-                    // TODO: Parse "as @colname" from expression to build proper header
-                    writeln!(writer, "{}", expr_str)?;
+                    // Write header from the last expression's formatted representation
+                    let header_name = parsed_expr.last_expr().format();
+                    writeln!(writer, "{}", header_name)?;
                     header_written = true;
                 }
             } else {
