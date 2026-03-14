@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9c951220.js";
+            window.path_to_searchindex_js = "searchindex-e4eea1a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d1513fcf.js"></script>
@@ -181,15 +181,19 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="plotting-documentation"><a class="header" href="#plotting-documentation">Plotting Documentation</a></h1>
-<p>This document explains how to use the plotting commands in <code>tva</code>: <strong><code>plot point</code></strong>. These commands bring data visualization capabilities to the terminal, inspired by the grammar of graphics philosophy of <code>ggplot2</code>.</p>
+<p>This document explains how to use the plotting commands in <code>tva</code>: <strong><code>plot point</code></strong>. These commands
+bring data visualization capabilities to the terminal, inspired by the grammar of graphics
+philosophy of <code>ggplot2</code>.</p>
 <h2 id="introduction"><a class="header" href="#introduction">Introduction</a></h2>
-<p>Terminal-based plotting allows you to quickly visualize data without leaving the command line. <code>tva</code> provides plotting tools that render directly in your terminal using ASCII/Unicode characters:</p>
+<p>Terminal-based plotting allows you to quickly visualize data without leaving the command line. <code>tva</code>
+provides plotting tools that render directly in your terminal using ASCII/Unicode characters:</p>
 <ul>
 <li><strong><code>plot point</code></strong>: Draws scatter plots or line charts from TSV data.</li>
 <li><strong><code>plot box</code></strong>: Draws box plots (box-and-whisker plots) from TSV data.</li>
 </ul>
 <h2 id="plot-point-scatter-plots-and-line-charts"><a class="header" href="#plot-point-scatter-plots-and-line-charts"><code>plot point</code> (Scatter Plots and Line Charts)</a></h2>
-<p>The <code>plot point</code> command creates scatter plots or line charts directly in your terminal. It maps TSV columns to visual aesthetics (position, color) and renders the chart using ASCII/Unicode characters.</p>
+<p>The <code>plot point</code> command creates scatter plots or line charts directly in your terminal. It maps TSV
+columns to visual aesthetics (position, color) and renders the chart using ASCII/Unicode characters.</p>
 <h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
 <pre><code class="language-bash">tva plot point [input_file] --x &lt;column&gt; --y &lt;column&gt; [options]
 </code></pre>
@@ -239,11 +243,13 @@
  4                                       6                                     8
 </code></pre>
 <h3 id="2-grouped-by-category-color"><a class="header" href="#2-grouped-by-category-color">2. Grouped by Category (Color)</a></h3>
-<p>Use the <code>--color</code> option to group points by a categorical column. Each unique value gets a different color.</p>
+<p>Use the <code>--color</code> option to group points by a categorical column. Each unique value gets a different
+color.</p>
 <pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x petal_length -y petal_width --color label --cols 1.0 --rows 1.0
 </code></pre>
 <p><img src="images/plot_point_iris_color.png" alt="iris scatter plot with color"></p>
-<p>This creates a scatter plot with three colors, one for each iris species (setosa, versicolor, virginica).</p>
+<p>This creates a scatter plot with three colors, one for each iris species (setosa, versicolor,
+virginica).</p>
 <p>The output will show three distinct clusters with different markers/colors:</p>
 <ul>
 <li><strong>Setosa</strong>: Small petals, clustered at bottom-left</li>
@@ -280,7 +286,8 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m dot
 tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
 </code></pre>
 <h3 id="7-regression-line"><a class="header" href="#7-regression-line">7. Regression Line</a></h3>
-<p>Use <code>--regression</code> to overlay a linear regression line (least squares fit) on the scatter plot. This helps visualize trends in the data.</p>
+<p>Use <code>--regression</code> to overlay a linear regression line (least squares fit) on the scatter plot. This
+helps visualize trends in the data.</p>
 <pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot --regression
 </code></pre>
 <p>When combined with <code>--color</code>, a separate regression line is drawn for each group:</p>
@@ -330,14 +337,18 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
 </tbody>
 </table>
 </div>
-<p><code>tva plot point</code> brings the core concepts of the grammar of graphics to the command line, allowing for quick data exploration without leaving your terminal.</p>
+<p><code>tva plot point</code> brings the core concepts of the grammar of graphics to the command line, allowing
+for quick data exploration without leaving your terminal.</p>
 <h2 id="plot-box-box-plots"><a class="header" href="#plot-box-box-plots"><code>plot box</code> (Box Plots)</a></h2>
-<p>The <code>plot box</code> command creates box plots (box-and-whisker plots) directly in your terminal. It visualizes the distribution of a numeric variable, showing the median, quartiles, and potential outliers.</p>
+<p>The <code>plot box</code> command creates box plots (box-and-whisker plots) directly in your terminal. It
+visualizes the distribution of a numeric variable, showing the median, quartiles, and potential
+outliers.</p>
 <h3 id="basic-usage-1"><a class="header" href="#basic-usage-1">Basic Usage</a></h3>
 <pre><code class="language-bash">tva plot box [input_file] --y &lt;column&gt; [options]
 </code></pre>
 <ul>
-<li><strong><code>-y</code> / <code>--y</code></strong>: The column(s) to plot (required). Can specify multiple columns separated by commas.</li>
+<li><strong><code>-y</code> / <code>--y</code></strong>: The column(s) to plot (required). Can specify multiple columns separated by
+commas.</li>
 <li><strong><code>--color</code></strong>: Column for grouping/coloring boxes by category (optional).</li>
 <li><strong><code>--outliers</code></strong>: Show outlier points beyond the whiskers.</li>
 </ul>
@@ -375,7 +386,8 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
 <pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y sepal_length --color label --cols 1.0 --rows 1.0
 </code></pre>
 <p><img src="images/plot_box_grouped.png" alt="Grouped box plot by species"></p>
-<p>This creates three box plots side by side, one for each iris species (setosa, versicolor, virginica).</p>
+<p>This creates three box plots side by side, one for each iris species (setosa, versicolor,
+virginica).</p>
 <h4 id="3-multiple-columns"><a class="header" href="#3-multiple-columns">3. Multiple Columns</a></h4>
 <p>Plot multiple numeric columns for comparison:</p>
 <pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y "sepal_length,sepal_width" --color label --cols 1.0 --rows 1.0
@@ -440,22 +452,27 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
 </table>
 </div>
 <h2 id="plot-bin2d-2d-binning-heatmap"><a class="header" href="#plot-bin2d-2d-binning-heatmap"><code>plot bin2d</code> (2D Binning Heatmap)</a></h2>
-<p>The <code>plot bin2d</code> command creates 2D binning heatmaps directly in your terminal. It divides the plane into rectangles, counts the number of cases in each rectangle, and visualizes the density using character intensity. This is a useful alternative to <code>plot point</code> in the presence of overplotting.</p>
-<p><strong>Workflow</strong>: Use <code>plot bin2d</code> for quick exploration with automatic binning, then use <code>bin</code> with manually determined parameters for precise processing.</p>
+<p>The <code>plot bin2d</code> command creates 2D binning heatmaps directly in your terminal. It divides the plane
+into rectangles, counts the number of cases in each rectangle, and visualizes the density using
+character intensity. This is a useful alternative to <code>plot point</code> in the presence of overplotting.</p>
+<p><strong>Workflow</strong>: Use <code>plot bin2d</code> for quick exploration with automatic binning, then use <code>bin</code> with
+manually determined parameters for precise processing.</p>
 <h3 id="basic-usage-2"><a class="header" href="#basic-usage-2">Basic Usage</a></h3>
 <pre><code class="language-bash">tva plot bin2d [input_file] --x &lt;column&gt; --y &lt;column&gt; [options]
 </code></pre>
 <ul>
 <li><strong><code>-x</code> / <code>--x</code></strong>: The column for X-axis position (required).</li>
 <li><strong><code>-y</code> / <code>--y</code></strong>: The column for Y-axis position (required).</li>
-<li><strong><code>-b</code> / <code>--bins</code></strong>: Number of bins in each direction (default: 30, or <code>x,y</code> for different counts).</li>
+<li><strong><code>-b</code> / <code>--bins</code></strong>: Number of bins in each direction (default: 30, or <code>x,y</code> for different
+counts).</li>
 <li><strong><code>-S</code> / <code>--strategy</code></strong>: Automatic bin count strategy: <code>freedman-diaconis</code>, <code>sqrt</code>, <code>sturges</code>.</li>
 <li><strong><code>--binwidth</code></strong>: Width of bins (or <code>x,y</code> for different widths).</li>
 </ul>
 <h3 id="examples-2"><a class="header" href="#examples-2">Examples</a></h3>
 <h4 id="1-basic-2d-binning"><a class="header" href="#1-basic-2d-binning">1. Basic 2D Binning</a></h4>
 <p>Using the <code>docs/data/diamonds.tsv</code> dataset (diamond physical dimensions):</p>
-<p>This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The output shows the concentration of diamonds in different size ranges.</p>
+<p>This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The
+output shows the concentration of diamonds in different size ranges.</p>
 <p>For better visualization of the main data cluster, you can filter the data first:</p>
 <pre><code class="language-bash">tva plot bin2d docs/data/diamonds.48.tsv -x x -y y
 </code></pre>
@@ -572,7 +589,8 @@ tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --bins 30,15
 </code></pre>
 </li>
 <li>
-<p><strong>Viewing output</strong>: The chart is rendered directly to stdout. Use a terminal with good Unicode support for best results with Braille markers.</p>
+<p><strong>Viewing output</strong>: The chart is rendered directly to stdout. Use a terminal with good Unicode
+support for best results with Braille markers.</p>
 </li>
 </ol>
 

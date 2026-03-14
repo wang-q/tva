@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9c951220.js";
+            window.path_to_searchindex_js = "searchindex-e4eea1a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d1513fcf.js"></script>
@@ -181,15 +181,20 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="statistics-documentation"><a class="header" href="#statistics-documentation">Statistics Documentation</a></h1>
-<p>This document explains how to use the statistics and summary commands in <code>tva</code>: <strong><code>stats</code></strong>, <strong><code>bin</code></strong>, and <strong><code>uniq</code></strong>. These commands allow you to summarize data, discretize values, and deduplicate rows.</p>
+<p>This document explains how to use the statistics and summary commands in <code>tva</code>: <strong><code>stats</code></strong>, **<code>bin</code>
+**, and <strong><code>uniq</code></strong>. These commands allow you to summarize data, discretize values, and deduplicate
+rows.</p>
 <h2 id="introduction"><a class="header" href="#introduction">Introduction</a></h2>
 <ul>
-<li><strong><code>stats</code></strong>: Calculates summary statistics (like sum, mean, max) for fields, optionally grouping by key fields.</li>
+<li><strong><code>stats</code></strong>: Calculates summary statistics (like sum, mean, max) for fields, optionally grouping
+by key fields.</li>
 <li><strong><code>bin</code></strong>: Discretizes numeric values into bins (useful for histograms).</li>
-<li><strong><code>uniq</code></strong>: Deduplicates rows based on a key, with options for equivalence classes and occurrence numbering.</li>
+<li><strong><code>uniq</code></strong>: Deduplicates rows based on a key, with options for equivalence classes and occurrence
+numbering.</li>
 </ul>
 <h2 id="stats-summary-statistics"><a class="header" href="#stats-summary-statistics"><code>stats</code> (Summary Statistics)</a></h2>
-<p>The <code>stats</code> command calculates summary statistics for specified fields. It mimics the functionality of <code>tsv-summarize</code>.</p>
+<p>The <code>stats</code> command calculates summary statistics for specified fields. It mimics the functionality
+of <code>tsv-summarize</code>.</p>
 <h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
 <pre><code class="language-bash">tva stats [input_files...] [options]
 </code></pre>
@@ -242,7 +247,8 @@ Arizona	2
 Arkansas	2
 </code></pre>
 <h2 id="bin-discretize-values"><a class="header" href="#bin-discretize-values"><code>bin</code> (Discretize Values)</a></h2>
-<p>The <code>bin</code> command discretizes numeric values into bins. This is useful for creating histograms or grouping continuous data.</p>
+<p>The <code>bin</code> command discretizes numeric values into bins. This is useful for creating histograms or
+grouping continuous data.</p>
 <h3 id="basic-usage-1"><a class="header" href="#basic-usage-1">Basic Usage</a></h3>
 <pre><code class="language-bash">tva bin [input_files...] --width &lt;width&gt; --field &lt;field&gt; [options]
 </code></pre>
@@ -257,7 +263,8 @@ Arkansas	2
 <h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
 <ul>
 <li>Formula: <code>floor((value - min) / width) * width + min</code></li>
-<li>Replaces the value in the target field with the bin start (lower bound) unless <code>--new-name</code> is used.</li>
+<li>Replaces the value in the target field with the bin start (lower bound) unless <code>--new-name</code> is
+used.</li>
 </ul>
 <h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
 <h4 id="1-bin-a-numeric-column"><a class="header" href="#1-bin-a-numeric-column">1. Bin a numeric column</a></h4>
@@ -294,7 +301,8 @@ A	L	54	50
 A	M	18	10
 </code></pre>
 <h2 id="uniq-deduplicate-rows"><a class="header" href="#uniq-deduplicate-rows"><code>uniq</code> (Deduplicate Rows)</a></h2>
-<p>The <code>uniq</code> command deduplicates rows of one or more TSV files without sorting. It uses a hash set to track unique keys.</p>
+<p>The <code>uniq</code> command deduplicates rows of one or more TSV files without sorting. It uses a hash set to
+track unique keys.</p>
 <h3 id="basic-usage-2"><a class="header" href="#basic-usage-2">Basic Usage</a></h3>
 <pre><code class="language-bash">tva uniq [input_files...] [options]
 </code></pre>

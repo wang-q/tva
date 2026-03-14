@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9c951220.js";
+            window.path_to_searchindex_js = "../searchindex-e4eea1a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d1513fcf.js"></script>
@@ -181,7 +181,8 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="expression-introduction"><a class="header" href="#expression-introduction">Expression Introduction</a></h1>
-<p>TVA Expression is a concise data processing language for <code>tva expr</code>, <code>tva filter</code>, and <code>tva mutate</code> commands.</p>
+<p>TVA Expression is a concise data processing language for <code>tva expr</code>, <code>tva filter</code>, and <code>tva mutate</code>
+commands.</p>
 <h2 id="quick-examples"><a class="header" href="#quick-examples">Quick Examples</a></h2>
 <pre><code class="language-bash"># Basic arithmetic
 tva expr -E '42 + 3.14'
@@ -203,13 +204,13 @@ tva mutate -E "@price * 1.1 as @price_with_tax" data.tsv
 <p>Use <code>@</code> prefix to reference columns.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>@1, @col_name, @"col name"
+</span>@1, @ col_name, @ "col name"
 <span class="boring">}</span></code></pre>
 <h3 id="variable-binding"><a class="header" href="#variable-binding"><a href="variables.html#variable-binding">Variable Binding</a></a></h3>
 <p>Use <code>as</code> to bind values to variables.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>@price * @qty as @total; @total * 1.1
+</span>@price * @ qty as @ total; @ total * 1.1
 <span class="boring">}</span></code></pre>
 <h3 id="operators"><a class="header" href="#operators"><a href="operators.html">Operators</a></a></h3>
 <p>Arithmetic, comparison, logical, and pipe operators.</p>
@@ -221,9 +222,9 @@ tva mutate -E "@price * 1.1 as @price_with_tax" data.tsv
 <p>Prefix calls, pipe calls, and method calls.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>trim(@name)
-@name | trim() | upper()
-@name.trim().upper()
+</span>trim( @ name)
+@ name | trim() | upper()
+@ name.trim().upper()
 <span class="boring">}</span></code></pre>
 <h2 id="documentation-index"><a class="header" href="#documentation-index">Documentation Index</a></h2>
 <ul>

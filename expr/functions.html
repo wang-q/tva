@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9c951220.js";
+            window.path_to_searchindex_js = "../searchindex-e4eea1a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d1513fcf.js"></script>
@@ -184,21 +184,21 @@
 <h2 id="numeric-operations"><a class="header" href="#numeric-operations">Numeric Operations</a></h2>
 <ul>
 <li>abs(x) -&gt; number: Absolute value</li>
-<li>round(x) -&gt; int: Round to nearest integer</li>
 <li>ceil(x) -&gt; int: Ceiling (round up)</li>
-<li>floor(x) -&gt; int: Floor (round down)</li>
-<li>sqrt(x) -&gt; float: Square root</li>
-<li>pow(base, exp) -&gt; float: Power operation</li>
-<li>min(a, b, *n) -&gt; number: Minimum value</li>
-<li>max(a, b, *n) -&gt; number: Maximum value</li>
-<li>int(val) -&gt; int: Convert to integer, returns null on failure</li>
-<li>float(val) -&gt; float: Convert to float, returns null on failure</li>
-<li>sin(x) -&gt; float: Sine (radians)</li>
 <li>cos(x) -&gt; float: Cosine (radians)</li>
-<li>tan(x) -&gt; float: Tangent (radians)</li>
+<li>exp(x) -&gt; float: Exponential function e^x</li>
+<li>float(val) -&gt; float: Convert to float, returns null on failure</li>
+<li>floor(x) -&gt; int: Floor (round down)</li>
+<li>int(val) -&gt; int: Convert to integer, returns null on failure</li>
 <li>ln(x) -&gt; float: Natural logarithm</li>
 <li>log10(x) -&gt; float: Common logarithm (base 10)</li>
-<li>exp(x) -&gt; float: Exponential function e^x</li>
+<li>max(a, b, *n) -&gt; number: Maximum value</li>
+<li>min(a, b, *n) -&gt; number: Minimum value</li>
+<li>pow(base, exp) -&gt; float: Power operation</li>
+<li>round(x) -&gt; int: Round to nearest integer</li>
+<li>sin(x) -&gt; float: Sine (radians)</li>
+<li>sqrt(x) -&gt; float: Square root</li>
+<li>tan(x) -&gt; float: Tangent (radians)</li>
 </ul>
 <h2 id="string-manipulation"><a class="header" href="#string-manipulation">String Manipulation</a></h2>
 <ul>
@@ -216,23 +216,40 @@
 <li>truncate(string, len, end?) -&gt; string: Truncate string</li>
 <li>wordcount(string) -&gt; int: Word count</li>
 </ul>
-<pre><code class="language-bash"># Basic list operations
+<pre><code class="language-bash"># String manipulation examples
+tva expr -E 'upper("hello")'                # Returns: "HELLO"
+tva expr -E 'lower("WORLD")'                # Returns: "world"
+tva expr -E 'len("hello")'                  # Returns: 5
+tva expr -E 'char_len("你好")'               # Returns: 2 (UTF-8 characters)
+tva expr -E 'substr("hello", 1, 3)'         # Returns: "ell"
+
 tva expr -E 'split("1,2,3", ",")'           # Returns: ["1", "2", "3"]
 tva expr -E 'split("1-2-3", "-").reverse()' # Returns: ["3", "2", "1"]
 
+tva expr -E 'contains("hello", "ll")'       # Returns: true
+tva expr -E 'starts_with("hello", "he")'    # Returns: true
+tva expr -E 'ends_with("hello", "lo")'      # Returns: true
+
+tva expr -E 'replace("hello", "l", "x")'    # Returns: "hexxo"
+tva expr -E 'truncate("hello world", 5)'    # Returns: "he..."
+tva expr -E 'wordcount("hello world")'      # Returns: 2
+tva expr -E 'wordcount("one two three four")'  # Returns: 4
 </code></pre>
 <h2 id="list-operations"><a class="header" href="#list-operations">List Operations</a></h2>
-<p><em>Note: These functions operate on expression <code>List</code> type (e.g., returned by <code>split()</code>), different from column-level aggregation in <code>stats</code> command.</em></p>
 <ul>
 <li>first(list) -&gt; T: First element</li>
-<li>last(list) -&gt; T: Last element</li>
-<li>nth(list, n) -&gt; T: nth element (0-based)</li>
 <li>join(list, sep) -&gt; string: Join list elements</li>
+<li>last(list) -&gt; T: Last element</li>
+<li>len(list) -&gt; int: List length (number of elements)</li>
+<li>nth(list, n) -&gt; T: nth element (0-based, negative indices return null)</li>
 <li>reverse(list) -&gt; list: Reverse list</li>
+<li>replace_nth(list, n, value) -&gt; list: Return new list with nth element replaced by value (original list unchanged)</li>
+<li>slice(list, start, end?) -&gt; list: Slice list</li>
 <li>sort(list) -&gt; list: Sort list</li>
 <li>unique(list) -&gt; list: Remove duplicates</li>
-<li>slice(list, start, end?) -&gt; list: Slice list</li>
 </ul>
+<p><em>Note: These functions operate on expression <code>List</code> type (e.g., returned by <code>split()</code>), different
+from column-level aggregation in <code>stats</code> command.</em></p>
 <pre><code class="language-bash"># Basic list operations
 tva expr -E 'first([1, 2, 3])'           # Returns: 1
 tva expr -E 'last([1, 2, 3])'            # Returns: 3
@@ -244,6 +261,24 @@ tva expr -E '
     first(@list) + last(@list)
 '
 # Returns: 4
+
+# List length
+tva expr -E 'len([1, 2, 3, 4, 5])'        # Returns: 5
+tva expr -E 'len(split("a,b,c", ","))'    # Returns: 3
+tva expr -E '
+    [1, 2, 3] as @list;
+    @list.len()
+'
+# Returns: 3
+
+# Replace element at index (returns new list, original unchanged)
+tva expr -E 'replace_nth([1, 2, 3], 1, 99)'    # Returns: [1, 99, 3]
+tva expr -E '
+    [1, 2, 3] as @list;
+    replace_nth(@list, 0, 100) as @new_list;
+    [@list, @new_list]
+'
+# Returns: [[1, 2, 3], [100, 2, 3]]
 </code></pre>
 <h2 id="range-generation"><a class="header" href="#range-generation">Range Generation</a></h2>
 <ul>
@@ -258,10 +293,12 @@ tva expr -E '
 <li><code>range(0, 10, 3)</code> produces <code>[0, 3, 6, 9]</code></li>
 <li><code>range(0, -5, -1)</code> produces <code>[0, -1, -2, -3, -4]</code></li>
 </ul>
-<p>Note: If step direction doesn’t match the range direction (e.g., positive step with from &gt; upto), returns empty list.</p>
+<p>Note: If step direction doesn’t match the range direction (e.g., positive step with from &gt; upto),
+returns empty list.</p>
 <h2 id="logic--control"><a class="header" href="#logic--control">Logic &amp; Control</a></h2>
 <ul>
-<li>if(cond, then, else?) -&gt; T: Conditional expression, returns then if cond is true, else otherwise (or null)</li>
+<li>if(cond, then, else?) -&gt; T: Conditional expression, returns then if cond is true, else otherwise (
+or null)</li>
 <li>default(val, fallback) -&gt; T: Returns fallback if val is null or empty</li>
 </ul>
 <h2 id="higher-order-functions"><a class="header" href="#higher-order-functions">Higher-Order Functions</a></h2>
@@ -269,6 +306,7 @@ tva expr -E '
 <li>map(list, lambda) -&gt; list: Apply lambda to each element</li>
 <li>filter(list, lambda) -&gt; list: Filter list elements</li>
 <li>reduce(list, init, lambda) -&gt; value: Reduce list to single value</li>
+<li>sort_by(list, lambda) -&gt; list: Sort list by lambda expression</li>
 </ul>
 <pre><code class="language-bash"># Double each number
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
@@ -289,6 +327,26 @@ tva expr -E 'reduce(["a", "b", "c"], 0, (acc, _) =&gt; acc + 1)'
 # Find maximum value
 tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) =&gt; if(x &gt; acc, x, acc))'
 # Returns: 5
+
+# Sort by string length
+tva expr -E 'sort_by(["cherry", "apple", "pear"], s =&gt; len(s))'
+# Returns: ["pear", "apple", "cherry"]
+
+# Sort by absolute value
+tva expr -E 'sort_by([-5, 3, -1, 4], x =&gt; abs(x))'
+# Returns: [-1, 3, 4, -5]
+
+# Sort records by first element
+tva expr -E 'sort_by([[3, "c"], [1, "a"], [2, "b"]], r =&gt; r.first())'
+# Returns: [[1, "a"], [2, "b"], [3, "c"]]
+
+# Sort strings case-insensitively
+tva expr -E 'sort_by(["Banana", "apple", "Cherry"], s =&gt; lower(s))'
+# Returns: ["apple", "Banana", "Cherry"]
+
+# Sort by multiple criteria (composite key)
+tva expr -E 'sort_by([[2, "b"], [1, "c"], [1, "a"]], r =&gt; [r.nth(0), r.nth(1)])'
+# Returns: [[1, "a"], [1, "c"], [2, "b"]]
 </code></pre>
 <h2 id="regular-expressions"><a class="header" href="#regular-expressions">Regular Expressions</a></h2>
 <p><em>Note: Regex operations can be expensive, use with caution.</em></p>
@@ -315,6 +373,46 @@ tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) =&gt; if(x &gt; acc, x, acc))'
 <li>print(val, …): Print to stdout, returns last argument</li>
 <li>eprint(val, …): Print to stderr, returns last argument</li>
 </ul>
+<h2 id="meta-functions"><a class="header" href="#meta-functions">Meta Functions</a></h2>
+<ul>
+<li>type(value) -&gt; string: Returns the type name of the value
+<ul>
+<li>Returns: “int”, “float”, “string”, “bool”, “null”, or “list”</li>
+</ul>
+</li>
+<li>env(name) -&gt; string: Get environment variable value
+<ul>
+<li>Returns <code>null</code> if variable not set</li>
+</ul>
+</li>
+<li>cwd() -&gt; string: Returns the current working directory</li>
+<li>version() -&gt; string: Returns the TVA version</li>
+<li>platform() -&gt; string: Returns the operating system name
+<ul>
+<li>Returns: “windows”, “macos”, “linux”, or “unknown”</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-bash"># type() examples
+tva expr -E '[[1,2], "string", true, null, -5]'
+# [List([Int(1), Int(2)]), String("string"), Bool(true), Null, Int(-5)]
+
+tva expr -E '[[1,2], "string", true, null, -5, x =&gt; x + 1].map(x =&gt; type(x)).join(",")'
+# list,string,bool,null,int,lambda
+
+# env() examples
+tva expr -E 'env("HOME")'        # Returns: "/home/user"
+tva expr -E 'env("PATH")'        # Returns: "/usr/bin:/bin"
+tva expr -E 'default(env("DEBUG"), "false")'  # Returns: "false" (if DEBUG not set)
+
+# version() and platform() examples
+tva expr -E 'version()'          # Returns: "0.2.5"
+tva expr -E 'platform()'         # Returns: "windows" / "macos" / "linux"
+
+# cwd() example
+tva expr -E 'cwd()'              # Returns: "/path/to/current/dir"
+
+</code></pre>
 
                     </main>
 

@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9c951220.js";
+            window.path_to_searchindex_js = "searchindex-e4eea1a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d1513fcf.js"></script>
@@ -191,7 +191,8 @@
 <h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
 <pre><code class="language-bash">tva check [files...]
 </code></pre>
-<p>It validates that every line in the file has the same number of fields as the first line. If a mismatch is found, it reports the error line and exits with a non-zero status.</p>
+<p>It validates that every line in the file has the same number of fields as the first line. If a
+mismatch is found, it reports the error line and exits with a non-zero status.</p>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <p>Check a single file:</p>
 <pre><code class="language-bash">tva check docs/data/household.tsv
@@ -206,8 +207,10 @@
 </code></pre>
 <p>Options:</p>
 <ul>
-<li><code>-H</code> / <code>--header</code>: Treat the first line as a header. The header line is not numbered, and a “line” column is added to the header.</li>
-<li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies <code>-H</code>).</li>
+<li><code>-H</code> / <code>--header</code>: Treat the first line as a header. The header line is not numbered, and a “line”
+column is added to the header.</li>
+<li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies
+<code>-H</code>).</li>
 <li><code>-n &lt;N&gt;</code> / <code>--start-number &lt;N&gt;</code>: Start numbering from N (default: 1).</li>
 </ul>
 <h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
@@ -230,7 +233,9 @@
 <h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
 <pre><code class="language-bash">tva keep-header [files...] -- &lt;command&gt; [args...]
 </code></pre>
-<p>The first line of the first input file is printed immediately. The remaining lines (and all lines from subsequent files) are piped to the specified command. The output of the command is then printed.</p>
+<p>The first line of the first input file is printed immediately. The remaining lines (and all lines
+from subsequent files) are piped to the specified command. The output of the command is then
+printed.</p>
 <h3 id="examples-2"><a class="header" href="#examples-2">Examples</a></h3>
 <p>Sort a file while keeping the header at the top:</p>
 <pre><code class="language-bash">tva keep-header data.tsv -- sort

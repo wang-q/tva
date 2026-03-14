@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9c951220.js";
+            window.path_to_searchindex_js = "../searchindex-e4eea1a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d1513fcf.js"></script>
@@ -181,9 +181,11 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="other-tools-analysis"><a class="header" href="#other-tools-analysis">Other Tools Analysis</a></h1>
-<p>This document analyzes existing solutions for data processing expression languages, providing context for TVA’s design decisions.</p>
+<p>This document analyzes existing solutions for data processing expression languages, providing
+context for TVA’s design decisions.</p>
 <h2 id="gnu-parallel-template-substitution"><a class="header" href="#gnu-parallel-template-substitution">GNU Parallel: Template Substitution</a></h2>
-<p>GNU Parallel uses a <strong>string replacement</strong> based placeholder mechanism, particularly suited for building Shell commands.</p>
+<p>GNU Parallel uses a <strong>string replacement</strong> based placeholder mechanism, particularly suited for
+building Shell commands.</p>
 <ul>
 <li><strong>Core Mechanism</strong>: Predefined placeholders with string interpolation at execution time.</li>
 <li><strong>Placeholder Syntax</strong>:
@@ -213,9 +215,12 @@
 <li>
 <p><strong>Core Mechanism</strong>:</p>
 <ul>
-<li><strong>Record Splitting</strong>: Input is split into records (default by line, controlled by <code>RS</code>). <code>NR</code> tracks current record number, <code>FNR</code> tracks current file’s record number.</li>
-<li><strong>Field Splitting</strong>: Each record is further split into fields (default by whitespace, controlled by <code>FS</code>). <code>NF</code> tracks field count.</li>
-<li><strong>Field Reference</strong>: <code>$n</code> syntax references the nth field, <code>$0</code> represents the entire record. Field numbers can be variables or expressions (e.g., <code>$NF</code> for last field).</li>
+<li><strong>Record Splitting</strong>: Input is split into records (default by line, controlled by <code>RS</code>). <code>NR</code>
+tracks current record number, <code>FNR</code> tracks current file’s record number.</li>
+<li><strong>Field Splitting</strong>: Each record is further split into fields (default by whitespace,
+controlled by <code>FS</code>). <code>NF</code> tracks field count.</li>
+<li><strong>Field Reference</strong>: <code>$n</code> syntax references the nth field, <code>$0</code> represents the entire record.
+Field numbers can be variables or expressions (e.g., <code>$NF</code> for last field).</li>
 </ul>
 </li>
 <li>
@@ -239,69 +244,90 @@
 <ul>
 <li><strong>Ancient Syntax</strong>: Differs significantly from modern languages, steep learning curve.</li>
 <li><strong>Weak Type System</strong>: Implicit conversions convenient but error-prone.</li>
-<li><strong>Limited Features</strong>: Standard AWK lacks modern features (JSON support, rich string functions).</li>
+<li><strong>Limited Features</strong>: Standard AWK lacks modern features (JSON support, rich string
+functions).</li>
 </ul>
 </li>
 </ul>
 <h2 id="xan-moonblade-dynamic-expression-engine"><a class="header" href="#xan-moonblade-dynamic-expression-engine">xan (Moonblade): Dynamic Expression Engine</a></h2>
-<p>xan includes <strong>Moonblade</strong>, a dynamic scripting language similar to simplified Python/JavaScript, optimized for CSV processing.</p>
+<p>xan includes <strong>Moonblade</strong>, a dynamic scripting language similar to simplified Python/JavaScript,
+optimized for CSV processing.</p>
 <ul>
 <li>
 <p><strong>Core Mechanism</strong>:</p>
 <ul>
 <li><strong>Parser &amp; Interpreter</strong>: PEG parser (Pest) builds AST, uses Tree-Walker Interpreter.</li>
-<li><strong>Concretization</strong>: Static analysis optimization before execution, e.g., resolving column names to indices to avoid runtime hash lookups.</li>
-<li><strong>Arc-based Types</strong>: Uses <code>Arc&lt;T&gt;</code> for strings and complex objects to minimize deep copies, suitable for streaming.</li>
+<li><strong>Concretization</strong>: Static analysis optimization before execution, e.g., resolving column
+names to indices to avoid runtime hash lookups.</li>
+<li><strong>Arc-based Types</strong>: Uses <code>Arc&lt;T&gt;</code> for strings and complex objects to minimize deep copies,
+suitable for streaming.</li>
 </ul>
 </li>
 <li>
 <p><strong>Syntax Features</strong>:</p>
 <ul>
-<li><strong>Columns as Variables</strong>: Use column names directly (e.g., <code>count &gt; 10</code>), or <code>col("name")</code>/<code>col(index)</code>.</li>
-<li><strong>Operator Distinction</strong>: Distinguishes string (<code>eq</code>, <code>++</code>) and numeric (<code>==</code>, <code>+</code>) operators (Perl-like design), avoiding implicit conversion ambiguity.</li>
+<li><strong>Columns as Variables</strong>: Use column names directly (e.g., <code>count &gt; 10</code>), or <code>col("name")</code>/
+<code>col(index)</code>.</li>
+<li><strong>Operator Distinction</strong>: Distinguishes string (<code>eq</code>, <code>++</code>) and numeric (<code>==</code>, <code>+</code>)
+operators (Perl-like design), avoiding implicit conversion ambiguity.</li>
 <li><strong>Rich Built-ins</strong>: String, Math, Date, Regex, Hashing, plus CSS Selector-style HTML scraping.</li>
-<li><strong>Higher-Order Functions</strong>: Supports <code>map</code>, <code>filter</code>, <code>reduce</code> with Lambda expressions (e.g., <code>map(list, x =&gt; x + 1)</code>).</li>
+<li><strong>Higher-Order Functions</strong>: Supports <code>map</code>, <code>filter</code>, <code>reduce</code> with Lambda expressions (e.g.,
+<code>map(list, x =&gt; x + 1)</code>).</li>
 </ul>
 </li>
 <li>
 <p><strong>Pros</strong>:</p>
 <ul>
-<li><strong>Extremely Expressive</strong>: Handles complex business logic (JSON parsing, date calculations, fuzzy matching).</li>
-<li><strong>Relatively High Performance</strong>: Optimized for CSV structure (Header/Row) compared to general scripting languages.</li>
+<li><strong>Extremely Expressive</strong>: Handles complex business logic (JSON parsing, date calculations,
+fuzzy matching).</li>
+<li><strong>Relatively High Performance</strong>: Optimized for CSV structure (Header/Row) compared to general
+scripting languages.</li>
 </ul>
 </li>
 <li>
 <p><strong>Cons</strong>:</p>
 <ul>
-<li><strong>High Implementation Complexity</strong>: Maintaining a complete interpreter, type system, and function library is costly.</li>
-<li><strong>Runtime Overhead</strong>: Despite optimizations, AST traversal and dynamic dispatch per row have some cost compared to pure Native code.</li>
+<li><strong>High Implementation Complexity</strong>: Maintaining a complete interpreter, type system, and
+function library is costly.</li>
+<li><strong>Runtime Overhead</strong>: Despite optimizations, AST traversal and dynamic dispatch per row have
+some cost compared to pure Native code.</li>
 </ul>
 </li>
 </ul>
 <h2 id="jq-json-processor--stream-computing"><a class="header" href="#jq-json-processor--stream-computing">jq: JSON Processor &amp; Stream Computing</a></h2>
-<p><code>jq</code> is the de facto standard for JSON processing, built on a specialized stack-based VM with backtracking and generators.</p>
+<p><code>jq</code> is the de facto standard for JSON processing, built on a specialized stack-based VM with
+backtracking and generators.</p>
 <ul>
 <li>
 <p><strong>Core Mechanism</strong>:</p>
 <ul>
-<li><strong>Bytecode Compiler &amp; VM</strong>: Compiles queries (Filters) to bytecode executed in an interpreter loop. Unlike xan’s Tree-walker, this provides a more compact execution model.</li>
-<li><strong>Backtracking</strong>: jq’s killer feature. Via <code>FORK</code> and <code>BACKTRACK</code> instructions, one input can produce zero, one, or multiple outputs (e.g., <code>.[]</code>). This makes jq essentially a streaming generator engine.</li>
-<li><strong>Reference Counting</strong>: Data represented via <code>jv</code> struct (in <code>jv.h</code>), using reference counting. Allows efficient “shallow copies” (Copy-on-write), but has overhead with high-frequency allocation.</li>
+<li><strong>Bytecode Compiler &amp; VM</strong>: Compiles queries (Filters) to bytecode executed in an interpreter
+loop. Unlike xan’s Tree-walker, this provides a more compact execution model.</li>
+<li><strong>Backtracking</strong>: jq’s killer feature. Via <code>FORK</code> and <code>BACKTRACK</code> instructions, one input can
+produce zero, one, or multiple outputs (e.g., <code>.[]</code>). This makes jq essentially a streaming
+generator engine.</li>
+<li><strong>Reference Counting</strong>: Data represented via <code>jv</code> struct (in <code>jv.h</code>), using reference
+counting. Allows efficient “shallow copies” (Copy-on-write), but has overhead with
+high-frequency allocation.</li>
 </ul>
 </li>
 <li>
 <p><strong>Architecture</strong>:</p>
 <ul>
-<li><strong><code>jv</code> Type System</strong>: Unified JSON value representation (Tagged Union): Null, Bool, Number, String, Array, Object.</li>
-<li><strong>Hybrid Stdlib</strong>: Many standard library functions (<code>map</code>, <code>select</code>, <code>recurse</code>) written in jq language (<code>builtin.jq</code>), only low-level primitives (<code>type</code>, <code>keys</code>) in C. Easy to extend.</li>
-<li><strong>Stack Machine</strong>: VM maintains value stack and frame stack, supports closures and complex control flow.</li>
+<li><strong><code>jv</code> Type System</strong>: Unified JSON value representation (Tagged Union): Null, Bool, Number,
+String, Array, Object.</li>
+<li><strong>Hybrid Stdlib</strong>: Many standard library functions (<code>map</code>, <code>select</code>, <code>recurse</code>) written in jq
+language (<code>builtin.jq</code>), only low-level primitives (<code>type</code>, <code>keys</code>) in C. Easy to extend.</li>
+<li><strong>Stack Machine</strong>: VM maintains value stack and frame stack, supports closures and complex
+control flow.</li>
 </ul>
 </li>
 <li>
 <p><strong>Syntax Features</strong>:</p>
 <ul>
 <li><strong>Filters</strong>: Everything is a filter. Input -&gt; Filter -&gt; Output stream.</li>
-<li><strong>Pipe (<code>|</code>)</strong>: Primary way to compose filters. <code>a | b</code> runs <code>b</code> with <strong>each</strong> output of <code>a</code> as input.</li>
+<li><strong>Pipe (<code>|</code>)</strong>: Primary way to compose filters. <code>a | b</code> runs <code>b</code> with <strong>each</strong> output of <code>a</code>
+as input.</li>
 <li><strong>Context (<code>.</code>)</strong>: Explicit reference to current context value.</li>
 <li><strong>Variables (<code>$var</code>)</strong>: Bound via <code>... as $x | ...</code>, lexically scoped.</li>
 </ul>
@@ -317,28 +343,37 @@
 <li>
 <p><strong>Cons</strong>:</p>
 <ul>
-<li><strong>Performance Bottleneck</strong>: Compared to columnar engines (xan/polars), jq’s per-object processing and interpreter overhead is significant.</li>
-<li><strong>Mental Model</strong>: Backtracking is hard to understand for users from traditional programming (e.g., why <code>debug</code> prints multiple times).</li>
+<li><strong>Performance Bottleneck</strong>: Compared to columnar engines (xan/polars), jq’s per-object
+processing and interpreter overhead is significant.</li>
+<li><strong>Mental Model</strong>: Backtracking is hard to understand for users from traditional programming (
+e.g., why <code>debug</code> prints multiple times).</li>
 </ul>
 </li>
 </ul>
 <h2 id="tera-template-engine--rust-ecosystem"><a class="header" href="#tera-template-engine--rust-ecosystem">Tera: Template Engine &amp; Rust Ecosystem</a></h2>
-<p><code>Tera</code> is Rust’s most popular template engine, inspired by Jinja2 and Django templates. While mainly for HTML generation, its design patterns are highly relevant for expression languages.</p>
+<p><code>Tera</code> is Rust’s most popular template engine, inspired by Jinja2 and Django templates. While mainly
+for HTML generation, its design patterns are highly relevant for expression languages.</p>
 <ul>
 <li>
 <p><strong>Core Mechanism</strong>:</p>
 <ul>
-<li><strong>Pest Parser</strong>: Uses PEG (Parsing Expression Grammar) parser (<code>pest</code>) to define syntax (<code>tera.pest</code>) and generate AST (<code>ast.rs</code>). Provides extreme syntax flexibility.</li>
-<li><strong>Renderer &amp; CallStack</strong>: Tree-walker pattern. <code>CallStack</code> (<code>call_stack.rs</code>) manages <code>StackFrame</code> (<code>stack_frame.rs</code>) for scope, loops (<code>ForLoop</code>), and macro calls.</li>
-<li><strong>JSON-centric</strong>: Data model built entirely on <code>serde_json::Value</code>. <code>Context</code> is essentially <code>BTreeMap&lt;String, Value&gt;</code>. Seamlessly handles any Rust data serializable to JSON.</li>
+<li><strong>Pest Parser</strong>: Uses PEG (Parsing Expression Grammar) parser (<code>pest</code>) to define syntax (
+<code>tera.pest</code>) and generate AST (<code>ast.rs</code>). Provides extreme syntax flexibility.</li>
+<li><strong>Renderer &amp; CallStack</strong>: Tree-walker pattern. <code>CallStack</code> (<code>call_stack.rs</code>) manages
+<code>StackFrame</code> (<code>stack_frame.rs</code>) for scope, loops (<code>ForLoop</code>), and macro calls.</li>
+<li><strong>JSON-centric</strong>: Data model built entirely on <code>serde_json::Value</code>. <code>Context</code> is essentially
+<code>BTreeMap&lt;String, Value&gt;</code>. Seamlessly handles any Rust data serializable to JSON.</li>
 </ul>
 </li>
 <li>
 <p><strong>Architecture</strong>:</p>
 <ul>
-<li><strong>Function/Filter/Test Traits</strong>: Highly extensible. Implement <code>Function</code>, <code>Filter</code>, <code>Test</code> traits (<code>builtins/mod.rs</code>) to inject custom logic.</li>
-<li><strong>Inheritance</strong>: Supports <code>extends</code> and <code>block</code> for template reuse and override, useful for complex document structures.</li>
-<li><strong>Whitespace Control</strong>: <code>{%-</code> and <code>-%}</code> for precise whitespace control (<code>parser/whitespace.rs</code>), crucial for format-sensitive text (code or specific data formats).</li>
+<li><strong>Function/Filter/Test Traits</strong>: Highly extensible. Implement <code>Function</code>, <code>Filter</code>, <code>Test</code>
+traits (<code>builtins/mod.rs</code>) to inject custom logic.</li>
+<li><strong>Inheritance</strong>: Supports <code>extends</code> and <code>block</code> for template reuse and override, useful for
+complex document structures.</li>
+<li><strong>Whitespace Control</strong>: <code>{%-</code> and <code>-%}</code> for precise whitespace control (
+<code>parser/whitespace.rs</code>), crucial for format-sensitive text (code or specific data formats).</li>
 </ul>
 </li>
 <li>
@@ -353,7 +388,8 @@
 <li>
 <p><strong>Pros</strong>:</p>
 <ul>
-<li><strong>Balance of Type Safety and Dynamism</strong>: Rust-based but provides dynamic type experience (JSON Value).</li>
+<li><strong>Balance of Type Safety and Dynamism</strong>: Rust-based but provides dynamic type experience (JSON
+Value).</li>
 <li><strong>Extremely Mature Syntax</strong>: Jinja2 style has stood the test of time, low cognitive burden.</li>
 <li><strong>Error Handling</strong>: Detailed error location and context (<code>errors.rs</code>).</li>
 </ul>
@@ -361,7 +397,9 @@
 <li>
 <p><strong>Cons</strong>:</p>
 <ul>
-<li><strong>Allocation Heavy</strong>: Rendering involves significant <code>String</code> allocation and <code>Value</code> cloning (Clone-on-write via <code>Cow</code>), potentially too costly for high-performance streaming data processing (like tva’s goal).</li>
+<li><strong>Allocation Heavy</strong>: Rendering involves significant <code>String</code> allocation and <code>Value</code> cloning (
+Clone-on-write via <code>Cow</code>), potentially too costly for high-performance streaming data
+processing (like tva’s goal).</li>
 <li><strong>Text-oriented</strong>: Core goal is text concatenation, not data structure transformation.</li>
 </ul>
 </li>

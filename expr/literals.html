@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9c951220.js";
+            window.path_to_searchindex_js = "../searchindex-e4eea1a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d1513fcf.js"></script>
@@ -212,12 +212,15 @@ tva expr -E 'default(null, "fallback")'  # Returns: fallback
 
 # List literal
 tva expr -E '[1, 2, 3]'           # Returns: [1, 2, 3]
+tva expr -E '[[1,2], "string", true, null, -5]'
 
 # Lambda literal
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'  # Returns: [2, 4, 6]
 </code></pre>
 <h2 id="type-system"><a class="header" href="#type-system">Type System</a></h2>
-<p>TVA uses a dynamic type system with automatic type recognition at runtime:</p>
+<p>TVA uses a dynamic type system with automatic type recognition at runtime. Since TSV files store all
+data as strings, TVA automatically converts values to appropriate types during expression
+evaluation:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -233,7 +236,6 @@ tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'  # Returns: [2, 4, 6]
 </tbody>
 </table>
 </div>
-<h2 id="type-conversion"><a class="header" href="#type-conversion">Type Conversion</a></h2>
 <ul>
 <li><strong>Explicit conversion</strong>: Use <code>int()</code>, <code>float()</code>, <code>string()</code> functions</li>
 <li><strong>Numeric operations</strong>: Mixed int/float operations promote result to float</li>

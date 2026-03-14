@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9c951220.js";
+            window.path_to_searchindex_js = "searchindex-e4eea1a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d1513fcf.js"></script>
@@ -181,21 +181,26 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="ordering-documentation"><a class="header" href="#ordering-documentation">Ordering Documentation</a></h1>
-<p>This document explains how to use the ordering commands in <code>tva</code>: <strong><code>sort</code></strong>, <strong><code>reverse</code></strong>, and <strong><code>transpose</code></strong>. These commands allow you to rearrange the rows and columns of your data.</p>
+<p>This document explains how to use the ordering commands in <code>tva</code>: <strong><code>sort</code></strong>, <strong><code>reverse</code></strong>, and *
+*<code>transpose</code>**. These commands allow you to rearrange the rows and columns of your data.</p>
 <h2 id="introduction"><a class="header" href="#introduction">Introduction</a></h2>
-<p>Ordering is a crucial step in data preparation and analysis. You might need to sort data to find the top items, reverse the order to see the most recent entries first, or transpose a matrix to swap rows and columns.</p>
+<p>Ordering is a crucial step in data preparation and analysis. You might need to sort data to find the
+top items, reverse the order to see the most recent entries first, or transpose a matrix to swap
+rows and columns.</p>
 <ul>
 <li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
 <li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
 <li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
 </ul>
 <h2 id="sort-external-sort"><a class="header" href="#sort-external-sort"><code>sort</code> (External Sort)</a></h2>
-<p>The <code>sort</code> command sorts the lines of a TSV file based on the values in specified columns. It supports both lexicographic (string) and numeric sorting.</p>
+<p>The <code>sort</code> command sorts the lines of a TSV file based on the values in specified columns. It
+supports both lexicographic (string) and numeric sorting.</p>
 <h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
 <pre><code class="language-bash">tva sort [input_files...] [options]
 </code></pre>
 <ul>
-<li><strong><code>--key</code> / <code>-k</code></strong>: Specify the field(s) to use as the sort key. You can use 1-based indices (e.g., <code>1</code>, <code>2</code>) or ranges (e.g., <code>2,4-5</code>).</li>
+<li><strong><code>--key</code> / <code>-k</code></strong>: Specify the field(s) to use as the sort key. You can use 1-based indices (
+e.g., <code>1</code>, <code>2</code>) or ranges (e.g., <code>2,4-5</code>).</li>
 <li><strong><code>--numeric</code> / <code>-n</code></strong>: Compare the key fields numerically instead of lexicographically.</li>
 <li><strong><code>--reverse</code> / <code>-r</code></strong>: Reverse the sort result (descending order).</li>
 </ul>
@@ -227,7 +232,8 @@
 <pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 1,2
 </code></pre>
 <h2 id="reverse-reverse-lines"><a class="header" href="#reverse-reverse-lines"><code>reverse</code> (Reverse Lines)</a></h2>
-<p>The <code>reverse</code> command reverses the order of lines in the input. This is similar to the Unix <code>tac</code> command but includes features specifically for tabular data, such as header preservation.</p>
+<p>The <code>reverse</code> command reverses the order of lines in the input. This is similar to the Unix <code>tac</code>
+command but includes features specifically for tabular data, such as header preservation.</p>
 <h3 id="basic-usage-1"><a class="header" href="#basic-usage-1">Basic Usage</a></h3>
 <pre><code class="language-bash">tva reverse [input_files...] [options]
 </code></pre>
@@ -247,13 +253,16 @@
 05	Arkansas	income	23789	165
 </code></pre>
 <h2 id="transpose-matrix-transpose"><a class="header" href="#transpose-matrix-transpose"><code>transpose</code> (Matrix Transpose)</a></h2>
-<p>The <code>transpose</code> command swaps the rows and columns of a TSV file. It reads the entire file into memory and performs a matrix transposition.</p>
+<p>The <code>transpose</code> command swaps the rows and columns of a TSV file. It reads the entire file into
+memory and performs a matrix transposition.</p>
 <h3 id="basic-usage-2"><a class="header" href="#basic-usage-2">Basic Usage</a></h3>
 <pre><code class="language-bash">tva transpose [input_file] [options]
 </code></pre>
 <h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
 <ul>
-<li><strong>Strict Mode</strong>: <code>transpose</code> expects a rectangular matrix. All rows must have the same number of columns as the first row. If the file is jagged (rows have different lengths), the command will fail with an error.</li>
+<li><strong>Strict Mode</strong>: <code>transpose</code> expects a rectangular matrix. All rows must have the same number of
+columns as the first row. If the file is jagged (rows have different lengths), the command will
+fail with an error.</li>
 <li><strong>Memory Usage</strong>: Since it reads the whole file, be cautious with very large files.</li>
 </ul>
 <h3 id="examples-2"><a class="header" href="#examples-2">Examples</a></h3>

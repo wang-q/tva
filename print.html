@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9c951220.js";
+            window.path_to_searchindex_js = "searchindex-e4eea1a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d1513fcf.js"></script>
@@ -281,12 +281,16 @@ cd tva
 Copyright by Qiang Wang.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="tva-design"><a class="header" href="#tva-design">tva Design</a></h1>
-<p>This document outlines the core design decisions behind <code>tva</code>, drawing inspiration from the original <a href="https://github.com/eBay/tsv-utils">TSV Utilities</a> by eBay.</p>
+<p>This document outlines the core design decisions behind <code>tva</code>, drawing inspiration from the
+original <a href="https://github.com/eBay/tsv-utils">TSV Utilities</a> by eBay.</p>
 <h2 id="why-tsv"><a class="header" href="#why-tsv">Why TSV?</a></h2>
-<p>The Tab-Separated Values (TSV) format is chosen over Comma-Separated Values (CSV) for several key reasons, especially in data mining and large-scale data processing contexts:</p>
+<p>The Tab-Separated Values (TSV) format is chosen over Comma-Separated Values (CSV) for several key
+reasons, especially in data mining and large-scale data processing contexts:</p>
 <h3 id="1-no-escapes--reliability--speed"><a class="header" href="#1-no-escapes--reliability--speed">1. No Escapes = Reliability &amp; Speed</a></h3>
 <ul>
-<li><strong>CSV Complexity</strong>: CSV uses escape characters (usually quotes) to handle delimiters (commas) and newlines within fields. Parsing this requires a state machine, which is slower and prone to errors in ad-hoc scripts.</li>
+<li><strong>CSV Complexity</strong>: CSV uses escape characters (usually quotes) to handle delimiters (commas) and
+newlines within fields. Parsing this requires a state machine, which is slower and prone to errors
+in ad-hoc scripts.</li>
 <li><strong>TSV Simplicity</strong>: TSV disallows tabs and newlines within fields. This means:
 <ul>
 <li><strong>Parsing is trivial</strong>: <code>split('\t')</code> works reliably.</li>
@@ -298,22 +302,31 @@ Copyright by Qiang Wang.</p>
 </ul>
 <h3 id="2-unix-tool-compatibility"><a class="header" href="#2-unix-tool-compatibility">2. Unix Tool Compatibility</a></h3>
 <ul>
-<li>Traditional Unix tools (<code>cut</code>, <code>awk</code>, <code>sort</code>, <code>join</code>, <code>uniq</code>) work seamlessly with TSV files by specifying the delimiter (e.g., <code>cut -f1</code>).</li>
-<li><strong>The CSV Problem</strong>: Standard Unix tools fail on CSV files with quoted fields or newlines. This forces CSV toolkits (like <code>xsv</code>) to re-implement standard operations (sorting, joining) just to handle parsing correctly.</li>
-<li><strong>The TSV Advantage</strong>: <code>tva</code> leverages the simplicity of TSV. While <code>tva</code> provides its own <code>sort</code> and <code>join</code> for header awareness and Windows support, the underlying data remains compatible with the vast ecosystem of standard Unix text processing tools.</li>
+<li>Traditional Unix tools (<code>cut</code>, <code>awk</code>, <code>sort</code>, <code>join</code>, <code>uniq</code>) work seamlessly with TSV files by
+specifying the delimiter (e.g., <code>cut -f1</code>).</li>
+<li><strong>The CSV Problem</strong>: Standard Unix tools fail on CSV files with quoted fields or newlines. This
+forces CSV toolkits (like <code>xsv</code>) to re-implement standard operations (sorting, joining) just to
+handle parsing correctly.</li>
+<li><strong>The TSV Advantage</strong>: <code>tva</code> leverages the simplicity of TSV. While <code>tva</code> provides its own <code>sort</code>
+and <code>join</code> for header awareness and Windows support, the underlying data remains compatible with
+the vast ecosystem of standard Unix text processing tools.</li>
 </ul>
 <h2 id="why-rust"><a class="header" href="#why-rust">Why Rust?</a></h2>
 <p><code>tva</code> is implemented in Rust, differing from the original TSV Utilities (written in D).</p>
 <h3 id="1-safety--performance"><a class="header" href="#1-safety--performance">1. Safety &amp; Performance</a></h3>
 <ul>
-<li><strong>Memory Safety</strong>: Rust’s ownership model ensures memory safety without a garbage collector, crucial for high-performance data processing tools.</li>
-<li><strong>Zero-Cost Abstractions</strong>: High-level constructs (iterators, closures) compile down to efficient machine code, often matching or beating C/C++.</li>
+<li><strong>Memory Safety</strong>: Rust’s ownership model ensures memory safety without a garbage collector,
+crucial for high-performance data processing tools.</li>
+<li><strong>Zero-Cost Abstractions</strong>: High-level constructs (iterators, closures) compile down to efficient
+machine code, often matching or beating C/C++.</li>
 <li><strong>Predictable Performance</strong>: No GC pauses means consistent throughput for large datasets.</li>
 </ul>
 <h3 id="2-cross-platform--deployment"><a class="header" href="#2-cross-platform--deployment">2. Cross-Platform &amp; Deployment</a></h3>
 <ul>
-<li><strong>Single Binary</strong>: Rust compiles to a static binary with no runtime dependencies (unlike Python or Java).</li>
-<li><strong>Windows Support</strong>: Rust has first-class support for Windows, making <code>tva</code> easily deployable on non-Unix environments (a key differentiator from many Unix-centric tools).</li>
+<li><strong>Single Binary</strong>: Rust compiles to a static binary with no runtime dependencies (unlike Python or
+Java).</li>
+<li><strong>Windows Support</strong>: Rust has first-class support for Windows, making <code>tva</code> easily deployable on
+non-Unix environments (a key differentiator from many Unix-centric tools).</li>
 </ul>
 <h2 id="design-goals"><a class="header" href="#design-goals">Design Goals</a></h2>
 <h3 id="1-unix-philosophy"><a class="header" href="#1-unix-philosophy">1. Unix Philosophy</a></h3>
@@ -329,7 +342,8 @@ Copyright by Qiang Wang.</p>
 <ul>
 <li>Unlike generic Unix tools, <code>tva</code> is aware of headers.</li>
 <li><strong>Field Selection</strong>: Columns can be selected by name (<code>--fields user_id</code>) rather than just index.</li>
-<li><strong>Header Preservation</strong>: Operations like <code>filter</code> or <code>sample</code> automatically preserve the header row.</li>
+<li><strong>Header Preservation</strong>: Operations like <code>filter</code> or <code>sample</code> automatically preserve the header
+row.</li>
 </ul>
 <h3 id="3-tsv-first"><a class="header" href="#3-tsv-first">3. TSV-first</a></h3>
 <ul>
@@ -340,7 +354,8 @@ Copyright by Qiang Wang.</p>
 <h3 id="4-explicit-cli--fail-fast"><a class="header" href="#4-explicit-cli--fail-fast">4. Explicit CLI &amp; Fail-fast</a></h3>
 <ul>
 <li>Options should be explicit (no “magic” behavior).</li>
-<li>Strict error handling: mismatched field counts or broken headers result in immediate error exit (stderr + non-zero status), rather than silent truncation.</li>
+<li>Strict error handling: mismatched field counts or broken headers result in immediate error exit (
+stderr + non-zero status), rather than silent truncation.</li>
 </ul>
 <h3 id="5-high-performance"><a class="header" href="#5-high-performance">5. High Performance</a></h3>
 <ul>
@@ -349,26 +364,38 @@ Copyright by Qiang Wang.</p>
 </ul>
 <h3 id="6-single-threaded-by-default"><a class="header" href="#6-single-threaded-by-default">6. Single-Threaded by Default</a></h3>
 <p><strong>Core Philosophy: Single-threaded extreme performance + external parallel tools</strong></p>
-<p><code>tva</code> adopts a <strong>single-threaded</strong> model for most data processing scenarios. This is not a technical limitation, but an active choice based on Unix philosophy:</p>
+<p><code>tva</code> adopts a <strong>single-threaded</strong> model for most data processing scenarios. This is not a technical
+limitation, but an active choice based on Unix philosophy:</p>
 <ol>
-<li><strong>Do One Thing Well</strong>: <code>tva</code> focuses on streaming data parsing, transformation, and statistics, leaving parallel scheduling complexity to specialized tools (like GNU Parallel).</li>
-<li><strong>Don’t Reinvent the Wheel</strong>: GNU Parallel is already a mature, powerful parallel task scheduler. Rather than implementing complex thread pools and task distribution inside <code>tva</code>, it’s better to make <code>tva</code> the best partner for Parallel.</li>
-<li><strong>Determinism and Simplicity</strong>: Single-threaded models make data processing order naturally deterministic, debugging easier, and greatly reduce memory management complexity and overhead (lock-free, zero-copy easier to achieve).</li>
+<li><strong>Do One Thing Well</strong>: <code>tva</code> focuses on streaming data parsing, transformation, and statistics,
+leaving parallel scheduling complexity to specialized tools (like GNU Parallel).</li>
+<li><strong>Don’t Reinvent the Wheel</strong>: GNU Parallel is already a mature, powerful parallel task scheduler.
+Rather than implementing complex thread pools and task distribution inside <code>tva</code>, it’s better to
+make <code>tva</code> the best partner for Parallel.</li>
+<li><strong>Determinism and Simplicity</strong>: Single-threaded models make data processing order naturally
+deterministic, debugging easier, and greatly reduce memory management complexity and overhead (
+lock-free, zero-copy easier to achieve).</li>
 </ol>
 <h2 id="implementation-details"><a class="header" href="#implementation-details">Implementation Details</a></h2>
 <p><code>tva</code> adopts several optimization strategies similar to <code>tsv-utils</code> to ensure high performance:</p>
 <h3 id="1-buffered-io"><a class="header" href="#1-buffered-io">1. Buffered I/O</a></h3>
 <ul>
-<li><strong>Input</strong>: Uses <code>std::io::BufReader</code> to minimize system calls when reading large files. Transparently handles <code>.gz</code> files (via <code>flate2</code>).</li>
-<li><strong>Output</strong>: Uses <code>std::io::BufWriter</code> to batch writes, significantly improving throughput for commands that produce large output.</li>
+<li><strong>Input</strong>: Uses <code>std::io::BufReader</code> to minimize system calls when reading large files.
+Transparently handles <code>.gz</code> files (via <code>flate2</code>).</li>
+<li><strong>Output</strong>: Uses <code>std::io::BufWriter</code> to batch writes, significantly improving throughput for
+commands that produce large output.</li>
 </ul>
 <h3 id="2-zero-copy--re-use"><a class="header" href="#2-zero-copy--re-use">2. Zero-Copy &amp; Re-use</a></h3>
 <ul>
-<li><strong>String Reuse</strong>: Where possible, <code>tva</code> reuses allocated string buffers (e.g., via <code>read_line</code> into a cleared String) to avoid the overhead of repeated memory allocation and deallocation.</li>
-<li><strong>Iterator-Based Processing</strong>: Leverages Rust’s iterator lazy evaluation to process data line-by-line without loading entire files into memory, enabling processing of datasets larger than RAM.</li>
+<li><strong>String Reuse</strong>: Where possible, <code>tva</code> reuses allocated string buffers (e.g., via <code>read_line</code>
+into a cleared String) to avoid the overhead of repeated memory allocation and deallocation.</li>
+<li><strong>Iterator-Based Processing</strong>: Leverages Rust’s iterator lazy evaluation to process data
+line-by-line without loading entire files into memory, enabling processing of datasets larger than
+RAM.</li>
 </ul>
 <h2 id="performance-architecture--benchmarks"><a class="header" href="#performance-architecture--benchmarks">Performance Architecture &amp; Benchmarks</a></h2>
-<p><code>tva</code> is built on a philosophy of “Zero-Copy” and “SIMD-First”. We continuously benchmark different parsing strategies to ensure <code>tva</code> remains the fastest tool for TSV processing.</p>
+<p><code>tva</code> is built on a philosophy of “Zero-Copy” and “SIMD-First”. We continuously benchmark different
+parsing strategies to ensure <code>tva</code> remains the fastest tool for TSV processing.</p>
 <h3 id="parsing-strategy-evolution"><a class="header" href="#parsing-strategy-evolution">Parsing Strategy Evolution</a></h3>
 <p>We compared multiple parsing strategies to find the optimal balance between speed and correctness.</p>
 <h3 id="latest-benchmark-results"><a class="header" href="#latest-benchmark-results">Latest Benchmark Results</a></h3>
@@ -389,24 +416,31 @@ Copyright by Qiang Wang.</p>
 </div>
 <p><strong>Key Findings</strong>:</p>
 <ol>
-<li><strong>Performance Leap</strong>: Our new <code>Tva TsvReader</code> (1.00 GiB/s) is <strong>2.6x faster</strong> than the old version, reaching <strong>95%</strong> of <code>simd-csv</code> performance.</li>
+<li><strong>Performance Leap</strong>: Our new <code>Tva TsvReader</code> (1.00 GiB/s) is <strong>2.6x faster</strong> than the old
+version, reaching <strong>95%</strong> of <code>simd-csv</code> performance.</li>
 <li><strong>Bottleneck Shift</strong>: The bottleneck has moved from “memory allocation/IO” to “field iteration”.</li>
 </ol>
 <h3 id="key-insights"><a class="header" href="#key-insights">Key Insights</a></h3>
 <ol>
-<li><strong>I/O is the Bottleneck</strong>: <code>BufReader::lines()</code> allocates a new <code>String</code> per line, capping throughput at ~400 MiB/s. Chunked reading with zero-copy slicing breaks this barrier.</li>
-<li><strong>TSV &gt; CSV</strong>: By enforcing no quotes/escapes, we use simpler SIMD (<code>memchr2</code>) that outperforms optimized CSV parsers.</li>
-<li><strong>Zero Allocation</strong>: The fastest parser allocates nothing. <code>tva</code> reuses buffers and yields slices (<code>&amp;[u8]</code>).</li>
+<li><strong>I/O is the Bottleneck</strong>: <code>BufReader::lines()</code> allocates a new <code>String</code> per line, capping
+throughput at ~400 MiB/s. Chunked reading with zero-copy slicing breaks this barrier.</li>
+<li><strong>TSV &gt; CSV</strong>: By enforcing no quotes/escapes, we use simpler SIMD (<code>memchr2</code>) that outperforms
+optimized CSV parsers.</li>
+<li><strong>Zero Allocation</strong>: The fastest parser allocates nothing. <code>tva</code> reuses buffers and yields
+slices (<code>&amp;[u8]</code>).</li>
 </ol>
 <h3 id="why-is-simd-csv-still-faster"><a class="header" href="#why-is-simd-csv-still-faster">Why is <code>simd-csv</code> still faster?</a></h3>
 <p><code>simd-csv</code> (1.15 GiB/s) outperforms our <code>Chunked Reader</code> (875 MiB/s) by ~30% due to:</p>
 <ol>
-<li><strong>Instruction-Level Parallelism</strong>: Hand-written AVX2 intrinsics process 32+ byte blocks with speculative execution.</li>
+<li><strong>Instruction-Level Parallelism</strong>: Hand-written AVX2 intrinsics process 32+ byte blocks with
+speculative execution.</li>
 <li><strong>L1 Cache Efficiency</strong>: <code>simd-csv</code>’s hybrid state machine is extremely compact.</li>
-<li><strong>The “Good Enough” Threshold</strong>: At 875 MiB/s, we parse 1GB in ~1.2 seconds—already faster than most I/O subsystems. Further optimization requires <code>unsafe</code> assembly with diminishing returns.</li>
+<li><strong>The “Good Enough” Threshold</strong>: At 875 MiB/s, we parse 1GB in ~1.2 seconds—already faster than
+most I/O subsystems. Further optimization requires <code>unsafe</code> assembly with diminishing returns.</li>
 </ol>
 <h2 id="tsv-parser-design"><a class="header" href="#tsv-parser-design">TSV Parser Design</a></h2>
-<p>This section details the design of <code>tva</code>’s custom TSV parser, which leverages the simplicity of the TSV format to achieve high performance.</p>
+<p>This section details the design of <code>tva</code>’s custom TSV parser, which leverages the simplicity of the
+TSV format to achieve high performance.</p>
 <h3 id="format-differences-csv-vs-tsv"><a class="header" href="#format-differences-csv-vs-tsv">Format Differences: CSV vs TSV</a></h3>
 <div class="table-wrapper">
 <table>
@@ -424,20 +458,32 @@ Copyright by Qiang Wang.</p>
 <h3 id="design-goals-1"><a class="header" href="#design-goals-1">Design Goals</a></h3>
 <p>The goal is to build a TSV parser that is faster than <code>rust-csv</code> and lighter than <code>simd-csv</code>:</p>
 <ol>
-<li><strong>Pure SIMD Scanning</strong>: Without quote handling, we can use SIMD (<code>memchr</code> or <code>std::simd</code>) to blindly scan for <code>\t</code> and <code>\n</code>. No backtracking, no state maintenance.</li>
-<li><strong>Absolute Zero-Copy</strong>: CSV parsers must copy memory when encountering escaped quotes (<code>Cow&lt;str&gt;</code>). TSV parsers can always return slices (<code>&amp;str</code> or <code>&amp;[u8]</code>) from the original buffer, completely avoiding allocation.</li>
-<li><strong>Line-Level Parallelism</strong>: Since <code>\n</code> has unique semantics in TSV (record separator), we can safely split large files into chunks, align at <code>\n</code> boundaries, and parse in parallel. This is difficult in CSV where <code>\n</code> might be inside quotes.</li>
+<li><strong>Pure SIMD Scanning</strong>: Without quote handling, we can use SIMD (<code>memchr</code> or <code>std::simd</code>) to
+blindly scan for <code>\t</code> and <code>\n</code>. No backtracking, no state maintenance.</li>
+<li><strong>Absolute Zero-Copy</strong>: CSV parsers must copy memory when encountering escaped quotes (
+<code>Cow&lt;str&gt;</code>). TSV parsers can always return slices (<code>&amp;str</code> or <code>&amp;[u8]</code>) from the original buffer,
+completely avoiding allocation.</li>
+<li><strong>Line-Level Parallelism</strong>: Since <code>\n</code> has unique semantics in TSV (record separator), we can
+safely split large files into chunks, align at <code>\n</code> boundaries, and parse in parallel. This is
+difficult in CSV where <code>\n</code> might be inside quotes.</li>
 </ol>
 <h3 id="can-we-do-better"><a class="header" href="#can-we-do-better">Can We Do Better?</a></h3>
-<p><strong>TSV’s Advantage</strong>: TSV has <strong>no quotes</strong>. This means we don’t need to check if a <code>memchr</code> hit is inside quotes or maintain a <code>Quoted</code> state like <code>simd-csv</code> does.</p>
-<p><strong>Simpler SIMD</strong>: We only need to find <code>\t</code> and <code>\n</code>. This is fewer special characters than CSV’s 3-4, reducing register pressure.</p>
-<p><strong>Theoretical Limit</strong>: If <code>simd-csv</code> can achieve 1.12 GiB/s while handling quote logic, a pure TSV parser should theoretically reach memory bandwidth limits (or at least 2-3 GiB/s).</p>
+<p><strong>TSV’s Advantage</strong>: TSV has <strong>no quotes</strong>. This means we don’t need to check if a <code>memchr</code> hit is
+inside quotes or maintain a <code>Quoted</code> state like <code>simd-csv</code> does.</p>
+<p><strong>Simpler SIMD</strong>: We only need to find <code>\t</code> and <code>\n</code>. This is fewer special characters than CSV’s
+3-4, reducing register pressure.</p>
+<p><strong>Theoretical Limit</strong>: If <code>simd-csv</code> can achieve 1.12 GiB/s while handling quote logic, a pure TSV
+parser should theoretically reach memory bandwidth limits (or at least 2-3 GiB/s).</p>
 <p><strong>Action Items</strong>:
-We don’t need complex hybrid state machines. We just need an optimized <code>memchr2(b'\t', b'\n')</code> loop with efficient buffer management. Our <code>Memchr Reused Buffer</code> (806 MiB/s) already validates this approach.</p>
+We don’t need complex hybrid state machines. We just need an optimized <code>memchr2(b'\t', b'\n')</code> loop
+with efficient buffer management. Our <code>Memchr Reused Buffer</code> (806 MiB/s) already validates this
+approach.</p>
 <h2 id="common-behavior--syntax"><a class="header" href="#common-behavior--syntax">Common Behavior &amp; Syntax</a></h2>
-<p><code>tva</code> tools share a consistent set of behaviors and syntax conventions, making them easy to learn and combine.</p>
+<p><code>tva</code> tools share a consistent set of behaviors and syntax conventions, making them easy to learn
+and combine.</p>
 <h3 id="field-syntax"><a class="header" href="#field-syntax">Field Syntax</a></h3>
-<p>All tools use a unified syntax to identify fields (columns). See <a href="help/fields.html">Field Syntax Documentation</a> for details.</p>
+<p>All tools use a unified syntax to identify fields (columns).
+See <a href="help/fields.html">Field Syntax Documentation</a> for details.</p>
 <ul>
 <li><strong>Index</strong>: <code>1</code> (first column), <code>2</code> (second column).</li>
 <li><strong>Range</strong>: <code>1-3</code> (columns 1, 2, 3).</li>
@@ -448,13 +494,16 @@ We don’t need complex hybrid state machines. We just need an optimized <code>m
 </ul>
 <h3 id="header-processing"><a class="header" href="#header-processing">Header Processing</a></h3>
 <ul>
-<li><strong>Input</strong>: Most tools accept a <code>--header</code> (or <code>-H</code>) flag to indicate the first line of input is a header. This enables field selection by name.
+<li><strong>Input</strong>: Most tools accept a <code>--header</code> (or <code>-H</code>) flag to indicate the first line of input is a
+header. This enables field selection by name.
 <ul>
 <li>Note: The <code>longer</code> and <code>wider</code> commands assume a header by default.</li>
 </ul>
 </li>
-<li><strong>Output</strong>: When <code>--header</code> is used, <code>tva</code> ensures the header is preserved in the output (unless explicitly suppressed).</li>
-<li><strong>No Header</strong>: Without this flag, the first row is treated as data. Field selection is limited to indices (no names).</li>
+<li><strong>Output</strong>: When <code>--header</code> is used, <code>tva</code> ensures the header is preserved in the output (unless
+explicitly suppressed).</li>
+<li><strong>No Header</strong>: Without this flag, the first row is treated as data. Field selection is limited to
+indices (no names).</li>
 <li><strong>Multiple Files</strong>: If processing multiple files with <code>--header</code>:
 <ul>
 <li>The header from the <strong>first</strong> file is written to output.</li>
@@ -465,15 +514,19 @@ We don’t need complex hybrid state machines. We just need an optimized <code>m
 </ul>
 <h3 id="multiple-files--standard-input"><a class="header" href="#multiple-files--standard-input">Multiple Files &amp; Standard Input</a></h3>
 <ul>
-<li><strong>Standard Input</strong>: If no files are provided, or if <code>-</code> is used as a filename, <code>tva</code> reads from standard input (stdin).</li>
-<li><strong>Concatenation</strong>: When multiple files are provided, <code>tva</code> processes them sequentially as a single continuous stream of data (logical concatenation).
+<li><strong>Standard Input</strong>: If no files are provided, or if <code>-</code> is used as a filename, <code>tva</code> reads from
+standard input (stdin).</li>
+<li><strong>Concatenation</strong>: When multiple files are provided, <code>tva</code> processes them sequentially as a single
+continuous stream of data (logical concatenation).
 <ul>
 <li>Example: <code>tva filter --gt value:10 file1.tsv file2.tsv</code> processes both files.</li>
 </ul>
 </li>
 </ul>
 <h2 id="comparison-with-other-tools"><a class="header" href="#comparison-with-other-tools">Comparison with Other Tools</a></h2>
-<p><code>tva</code> is designed to coexist with and complement other excellent open-source tools for tabular data. It combines the strict, high-performance nature of <code>tsv-utils</code> with the cross-platform accessibility and modern ecosystem of Rust.</p>
+<p><code>tva</code> is designed to coexist with and complement other excellent open-source tools for tabular data.
+It combines the strict, high-performance nature of <code>tsv-utils</code> with the cross-platform accessibility
+and modern ecosystem of Rust.</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -494,7 +547,8 @@ We don’t need complex hybrid state machines. We just need an optimized <code>m
 <li>
 <p><strong><a href="https://github.com/eBay/tsv-utils-d">tsv-utils</a></strong> (D):</p>
 <ul>
-<li>The direct inspiration for <code>tva</code>. <code>tva</code> aims to be a Rust-based alternative that is easier to install (no D compiler needed) and extends functionality (e.g., <code>sample</code>, <code>slice</code>).</li>
+<li>The direct inspiration for <code>tva</code>. <code>tva</code> aims to be a Rust-based alternative that is easier to
+install (no D compiler needed) and extends functionality (e.g., <code>sample</code>, <code>slice</code>).</li>
 </ul>
 </li>
 <li>
@@ -502,65 +556,90 @@ We don’t need complex hybrid state machines. We just need an optimized <code>m
 <ul>
 <li>The premier tools for <strong>CSV</strong> processing.</li>
 <li>Because they must handle CSV escapes, they are inherently more complex than TSV-only tools.</li>
-<li>Use these if you must work with CSVs directly; use <code>tva</code> if you can convert to TSV for faster, simpler processing.</li>
+<li>Use these if you must work with CSVs directly; use <code>tva</code> if you can convert to TSV for faster,
+simpler processing.</li>
 </ul>
 </li>
 <li>
 <p><strong><a href="https://www.gnu.org/software/datamash/">GNU Datamash</a></strong> (C):</p>
 <ul>
 <li>Excellent for statistical operations (groupby, pivot) on TSV files.</li>
-<li><code>tva stats</code> is similar but adds header awareness and named field selection, making it friendlier for interactive use.</li>
+<li><code>tva stats</code> is similar but adds header awareness and named field selection, making it
+friendlier for interactive use.</li>
 </ul>
 </li>
 <li>
 <p><strong><a href="https://github.com/johnkerl/miller">Miller (mlr)</a></strong> (C):</p>
 <ul>
 <li>A powerful “awk for CSV/TSV/JSON”. Supports many formats and complex transformations.</li>
-<li>Miller is a DSL (Domain Specific Language); <code>tva</code> follows the “do one thing well” Unix philosophy with separate subcommands.</li>
+<li>Miller is a DSL (Domain Specific Language); <code>tva</code> follows the “do one thing well” Unix
+philosophy with separate subcommands.</li>
 </ul>
 </li>
 <li>
 <p><strong><a href="https://github.com/wireservice/csvkit">csvkit</a></strong> (Python):</p>
 <ul>
-<li>Very feature-rich but slower due to Python overhead. Great for converting obscure formats (XLSX, DBF) to CSV/TSV.</li>
+<li>Very feature-rich but slower due to Python overhead. Great for converting obscure formats (
+XLSX, DBF) to CSV/TSV.</li>
 </ul>
 </li>
 <li>
 <p><strong><a href="https://www.gnu.org/software/coreutils/">GNU shuf</a></strong> (C):</p>
 <ul>
 <li>Standard tool for random permutations.</li>
-<li><code>tva sample</code> adds specific data science sampling methods: weighted sampling (by column value) and Bernoulli sampling.</li>
+<li><code>tva sample</code> adds specific data science sampling methods: weighted sampling (by column value)
+and Bernoulli sampling.</li>
 </ul>
 </li>
 </ul>
 <h2 id="tva-expression-design-principles"><a class="header" href="#tva-expression-design-principles">TVA Expression Design Principles</a></h2>
 <p>The expression language in <code>tva</code> follows these core design principles:</p>
 <ul>
-<li><strong>Conciseness</strong>: Syntax should be as short as possible for common operations (like column references).</li>
-<li><strong>Type-aware</strong>: Able to recognize numbers, dates, etc. when needed, but treats data as byte strings by default for speed.</li>
-<li><strong>Shell-friendly</strong>: Syntax avoids conflicts with Shell special characters (like <code>$</code>, <code>!</code>, <code>`</code>), reducing user escaping burden. Since expressions typically run in command lines and are wrapped in quotes, they should avoid triggering Shell variable substitution (like <code>$var</code>).</li>
-<li><strong>Streaming</strong>: Expressions are evaluated row-by-row with no global state, suitable for big data processing.</li>
-<li><strong>Error Handling</strong>: Defaults to permissive mode where invalid operations return <code>null</code> instead of errors, but can be changed via strict mode switches.</li>
+<li><strong>Conciseness</strong>: Syntax should be as short as possible for common operations (like column
+references).</li>
+<li><strong>Type-aware</strong>: Able to recognize numbers, dates, etc. when needed, but treats data as byte
+strings by default for speed.</li>
+<li><strong>Shell-friendly</strong>: Syntax avoids conflicts with Shell special characters (like <code>$</code>, <code>!</code>,
+<code>`</code>), reducing user escaping burden. Since expressions typically run in command lines and are
+wrapped in quotes, they should avoid triggering Shell variable substitution (like <code>$var</code>).</li>
+<li><strong>Streaming</strong>: Expressions are evaluated row-by-row with no global state, suitable for big data
+processing.</li>
+<li><strong>Error Handling</strong>: Defaults to permissive mode where invalid operations return <code>null</code> instead of
+errors, but can be changed via strict mode switches.</li>
 <li><strong>Consistency</strong>: Maintains similarity with existing tools (like jq, xan) to reduce learning costs.</li>
-<li><strong>Parallel Compatible</strong>: When users need parallel processing, it’s typically <code>parallel</code> calling <code>tva</code> (e.g., <code>parallel "tva ... {}"</code>), so <code>tva</code>’s internal syntax should not interfere with <code>parallel</code>’s parameter replacement mechanism.</li>
+<li><strong>Parallel Compatible</strong>: When users need parallel processing, it’s typically <code>parallel</code> calling
+<code>tva</code> (e.g., <code>parallel "tva ... {}"</code>), so <code>tva</code>’s internal syntax should not interfere with
+<code>parallel</code>’s parameter replacement mechanism.</li>
 </ul>
 <h2 id="aggregation-architecture"><a class="header" href="#aggregation-architecture">Aggregation Architecture</a></h2>
-<p>This section provides a deep dive into the architectural differences between <code>tva</code> and other tools like <code>xan</code> (Rust) and <code>tsv-utils</code> (D Language) in their aggregation module designs.</p>
+<p>This section provides a deep dive into the architectural differences between <code>tva</code> and other tools
+like <code>xan</code> (Rust) and <code>tsv-utils</code> (D Language) in their aggregation module designs.</p>
 <h3 id="tva-runtime-polymorphism-with-soa-memory-layout"><a class="header" href="#tva-runtime-polymorphism-with-soa-memory-layout">tva: Runtime Polymorphism with SoA Memory Layout</a></h3>
-<p><strong>Design</strong>: Hybrid Struct-of-Arrays (SoA). The Schema (<code>StatsProcessor</code>) builds the computation graph at runtime, while the State (<code>Aggregator</code>) uses compact columnar storage (<code>Vec&lt;f64&gt;</code>, <code>Vec&lt;String&gt;</code>). Computation logic is dynamically dispatched via <code>Box&lt;dyn Calculator&gt;</code> trait objects.</p>
+<p><strong>Design</strong>: Hybrid Struct-of-Arrays (SoA). The Schema (<code>StatsProcessor</code>) builds the computation
+graph at runtime, while the State (<code>Aggregator</code>) uses compact columnar storage (<code>Vec&lt;f64&gt;</code>,
+<code>Vec&lt;String&gt;</code>). Computation logic is dynamically dispatched via <code>Box&lt;dyn Calculator&gt;</code> trait objects.</p>
 <p><strong>Advantages</strong>:</p>
 <ul>
-<li><strong>Memory Efficient</strong>: Even with millions of groups, each group’s <code>Aggregator</code> overhead is minimal (only a few <code>Vec</code> headers).</li>
-<li><strong>Modular</strong>: Adding new operators only requires implementing the <code>Calculator</code> trait, completely decoupled from existing code.</li>
-<li><strong>Fast Compilation</strong>: Compared to generic/template bloat, <code>dyn Trait</code> significantly reduces compile times and binary size.</li>
-<li><strong>Deterministic</strong>: Uses <code>IndexMap</code> to guarantee that GroupBy output order matches the first-occurrence order in the input.</li>
+<li><strong>Memory Efficient</strong>: Even with millions of groups, each group’s <code>Aggregator</code> overhead is
+minimal (only a few <code>Vec</code> headers).</li>
+<li><strong>Modular</strong>: Adding new operators only requires implementing the <code>Calculator</code> trait, completely
+decoupled from existing code.</li>
+<li><strong>Fast Compilation</strong>: Compared to generic/template bloat, <code>dyn Trait</code> significantly reduces
+compile times and binary size.</li>
+<li><strong>Deterministic</strong>: Uses <code>IndexMap</code> to guarantee that GroupBy output order matches the
+first-occurrence order in the input.</li>
 </ul>
-<p><strong>Trade-offs</strong>: Virtual function calls (<code>vtable</code>) have a tiny overhead compared to inlined code in extremely high-frequency loops (e.g., 10 calls per row), but this is usually negligible in I/O-bound CLI tools.</p>
+<p><strong>Trade-offs</strong>: Virtual function calls (<code>vtable</code>) have a tiny overhead compared to inlined code in
+extremely high-frequency loops (e.g., 10 calls per row), but this is usually negligible in I/O-bound
+CLI tools.</p>
 <h3 id="other-tools"><a class="header" href="#other-tools">Other Tools</a></h3>
-<p><strong>xan</strong>: Uses enum dispatch (<code>enum Agg { Sum(SumState), ... }</code>) to avoid heap allocation, but requires modifying core enum definitions to add new operators.</p>
-<p><strong>tsv-utils (D)</strong>: Uses compile-time template specialization for extreme performance, but has long compile times and high code complexity.</p>
+<p><strong>xan</strong>: Uses enum dispatch (<code>enum Agg { Sum(SumState), ... }</code>) to avoid heap allocation, but
+requires modifying core enum definitions to add new operators.</p>
+<p><strong>tsv-utils (D)</strong>: Uses compile-time template specialization for extreme performance, but has long
+compile times and high code complexity.</p>
 <p><strong>datamash (C)</strong>: Uses sort-based grouping with O(1) memory, but requires pre-sorted input.</p>
-<p><strong>dplyr (R)</strong>: Uses vectorized mask evaluation, but depends on columnar storage and is unsuitable for streaming.</p>
+<p><strong>dplyr (R)</strong>: Uses vectorized mask evaluation, but depends on columnar storage and is unsuitable
+for streaming.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="性能基准测试计划"><a class="header" href="#性能基准测试计划">性能基准测试计划</a></h1>
 <p>我们旨在重现 <a href="https://github.com/eBay/tsv-utils/blob/master/docs/comparative-benchmarks-2017.md">tsv-utils</a> 使用的严格基准测试策略。</p>
@@ -859,7 +938,9 @@ print('Plot saved to benchmark_plot.png')
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="selection--sampling-documentation"><a class="header" href="#selection--sampling-documentation">Selection &amp; Sampling Documentation</a></h1>
-<p>This document explains how to use the selection and sampling commands in <code>tva</code>: <strong><code>select</code></strong>, <strong><code>slice</code></strong>, and <strong><code>sample</code></strong>. These commands allow you to subset your data based on structure (columns) or position (rows).</p>
+<p>This document explains how to use the selection and sampling commands in <code>tva</code>: <strong><code>select</code></strong>, *
+*<code>slice</code>**, and <strong><code>sample</code></strong>. These commands allow you to subset your data based on structure (
+columns) or position (rows).</p>
 <h2 id="introduction"><a class="header" href="#introduction">Introduction</a></h2>
 <p>Data analysis often begins with selecting the relevant subset of data:</p>
 <ul>
@@ -868,7 +949,8 @@ print('Plot saved to benchmark_plot.png')
 <li><strong><code>sample</code></strong>: Randomly selects a subset of rows.</li>
 </ul>
 <h2 id="field-syntax-1"><a class="header" href="#field-syntax-1">Field Syntax</a></h2>
-<p>All tools use a unified syntax to identify fields (columns). See <a href="help/fields.html">Field Syntax Documentation</a> for details.</p>
+<p>All tools use a unified syntax to identify fields (columns).
+See <a href="help/fields.html">Field Syntax Documentation</a> for details.</p>
 <h2 id="select-column-selection"><a class="header" href="#select-column-selection"><code>select</code> (Column Selection)</a></h2>
 <p>The <code>select</code> command allows you to keep only specific columns and reorder them.</p>
 <h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
@@ -932,7 +1014,8 @@ income	32940	Alaska
 <pre><code class="language-bash">tva slice [input_files...] --rows &lt;range&gt; [options]
 </code></pre>
 <ul>
-<li><strong><code>--rows</code> / <code>-r</code></strong>: The range of rows to keep (e.g., <code>1-10</code>, <code>5</code>, <code>100-</code>). Can be specified multiple times.</li>
+<li><strong><code>--rows</code> / <code>-r</code></strong>: The range of rows to keep (e.g., <code>1-10</code>, <code>5</code>, <code>100-</code>). Can be specified
+multiple times.</li>
 <li><strong><code>--invert</code> / <code>-v</code></strong>: Invert selection (drop the specified rows).</li>
 <li><strong><code>--header</code> / <code>-H</code></strong>: Always preserve the first row (header).</li>
 </ul>
@@ -989,9 +1072,11 @@ income	32940	Alaska
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="row-filtering-documentation"><a class="header" href="#row-filtering-documentation">Row Filtering Documentation</a></h1>
-<p>This document explains how to use the <strong><code>filter</code></strong> command in <code>tva</code>. This command allows you to subset your data based on row values.</p>
+<p>This document explains how to use the <strong><code>filter</code></strong> command in <code>tva</code>. This command allows you to
+subset your data based on row values.</p>
 <h2 id="filter-row-filtering"><a class="header" href="#filter-row-filtering"><code>filter</code> (Row Filtering)</a></h2>
-<p>The <code>filter</code> command selects rows where a condition is true. It supports numeric, string, regular expression, and date comparisons.</p>
+<p>The <code>filter</code> command selects rows where a condition is true. It supports numeric, string, regular
+expression, and date comparisons.</p>
 <h3 id="basic-usage-3"><a class="header" href="#basic-usage-3">Basic Usage</a></h3>
 <pre><code class="language-bash">tva filter [input_files...] [options] &lt;criteria&gt;
 </code></pre>
@@ -1011,7 +1096,8 @@ income	32940	Alaska
 </ul>
 <h3 id="examples-3"><a class="header" href="#examples-3">Examples</a></h3>
 <h4 id="1-numeric-filtering"><a class="header" href="#1-numeric-filtering">1. Numeric Filtering</a></h4>
-<p>Filter rows where the value in column <code>estimate</code> is greater than 30,000 in <code>docs/data/us_rent_income.tsv</code>:</p>
+<p>Filter rows where the value in column <code>estimate</code> is greater than 30,000 in
+<code>docs/data/us_rent_income.tsv</code>:</p>
 <pre><code class="language-bash">tva filter docs/data/us_rent_income.tsv --gt estimate:30000
 </code></pre>
 <p>Output:</p>
@@ -1049,21 +1135,26 @@ Beenie Man	Girls Dem Sugar	87	70	63
 <p>(Note: Ensure your date format is ISO 8601 YYYY-MM-DD)</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="ordering-documentation"><a class="header" href="#ordering-documentation">Ordering Documentation</a></h1>
-<p>This document explains how to use the ordering commands in <code>tva</code>: <strong><code>sort</code></strong>, <strong><code>reverse</code></strong>, and <strong><code>transpose</code></strong>. These commands allow you to rearrange the rows and columns of your data.</p>
+<p>This document explains how to use the ordering commands in <code>tva</code>: <strong><code>sort</code></strong>, <strong><code>reverse</code></strong>, and *
+*<code>transpose</code>**. These commands allow you to rearrange the rows and columns of your data.</p>
 <h2 id="introduction-1"><a class="header" href="#introduction-1">Introduction</a></h2>
-<p>Ordering is a crucial step in data preparation and analysis. You might need to sort data to find the top items, reverse the order to see the most recent entries first, or transpose a matrix to swap rows and columns.</p>
+<p>Ordering is a crucial step in data preparation and analysis. You might need to sort data to find the
+top items, reverse the order to see the most recent entries first, or transpose a matrix to swap
+rows and columns.</p>
 <ul>
 <li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
 <li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
 <li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
 </ul>
 <h2 id="sort-external-sort"><a class="header" href="#sort-external-sort"><code>sort</code> (External Sort)</a></h2>
-<p>The <code>sort</code> command sorts the lines of a TSV file based on the values in specified columns. It supports both lexicographic (string) and numeric sorting.</p>
+<p>The <code>sort</code> command sorts the lines of a TSV file based on the values in specified columns. It
+supports both lexicographic (string) and numeric sorting.</p>
 <h3 id="basic-usage-4"><a class="header" href="#basic-usage-4">Basic Usage</a></h3>
 <pre><code class="language-bash">tva sort [input_files...] [options]
 </code></pre>
 <ul>
-<li><strong><code>--key</code> / <code>-k</code></strong>: Specify the field(s) to use as the sort key. You can use 1-based indices (e.g., <code>1</code>, <code>2</code>) or ranges (e.g., <code>2,4-5</code>).</li>
+<li><strong><code>--key</code> / <code>-k</code></strong>: Specify the field(s) to use as the sort key. You can use 1-based indices (
+e.g., <code>1</code>, <code>2</code>) or ranges (e.g., <code>2,4-5</code>).</li>
 <li><strong><code>--numeric</code> / <code>-n</code></strong>: Compare the key fields numerically instead of lexicographically.</li>
 <li><strong><code>--reverse</code> / <code>-r</code></strong>: Reverse the sort result (descending order).</li>
 </ul>
@@ -1095,7 +1186,8 @@ Beenie Man	Girls Dem Sugar	87	70	63
 <pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 1,2
 </code></pre>
 <h2 id="reverse-reverse-lines"><a class="header" href="#reverse-reverse-lines"><code>reverse</code> (Reverse Lines)</a></h2>
-<p>The <code>reverse</code> command reverses the order of lines in the input. This is similar to the Unix <code>tac</code> command but includes features specifically for tabular data, such as header preservation.</p>
+<p>The <code>reverse</code> command reverses the order of lines in the input. This is similar to the Unix <code>tac</code>
+command but includes features specifically for tabular data, such as header preservation.</p>
 <h3 id="basic-usage-1-1"><a class="header" href="#basic-usage-1-1">Basic Usage</a></h3>
 <pre><code class="language-bash">tva reverse [input_files...] [options]
 </code></pre>
@@ -1115,13 +1207,16 @@ Beenie Man	Girls Dem Sugar	87	70	63
 05	Arkansas	income	23789	165
 </code></pre>
 <h2 id="transpose-matrix-transpose"><a class="header" href="#transpose-matrix-transpose"><code>transpose</code> (Matrix Transpose)</a></h2>
-<p>The <code>transpose</code> command swaps the rows and columns of a TSV file. It reads the entire file into memory and performs a matrix transposition.</p>
+<p>The <code>transpose</code> command swaps the rows and columns of a TSV file. It reads the entire file into
+memory and performs a matrix transposition.</p>
 <h3 id="basic-usage-2-1"><a class="header" href="#basic-usage-2-1">Basic Usage</a></h3>
 <pre><code class="language-bash">tva transpose [input_file] [options]
 </code></pre>
 <h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
 <ul>
-<li><strong>Strict Mode</strong>: <code>transpose</code> expects a rectangular matrix. All rows must have the same number of columns as the first row. If the file is jagged (rows have different lengths), the command will fail with an error.</li>
+<li><strong>Strict Mode</strong>: <code>transpose</code> expects a rectangular matrix. All rows must have the same number of
+columns as the first row. If the file is jagged (rows have different lengths), the command will
+fail with an error.</li>
 <li><strong>Memory Usage</strong>: Since it reads the whole file, be cautious with very large files.</li>
 </ul>
 <h3 id="examples-2-1"><a class="header" href="#examples-2-1">Examples</a></h3>
@@ -1138,15 +1233,20 @@ $30-40k	81	25	34
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="statistics-documentation"><a class="header" href="#statistics-documentation">Statistics Documentation</a></h1>
-<p>This document explains how to use the statistics and summary commands in <code>tva</code>: <strong><code>stats</code></strong>, <strong><code>bin</code></strong>, and <strong><code>uniq</code></strong>. These commands allow you to summarize data, discretize values, and deduplicate rows.</p>
+<p>This document explains how to use the statistics and summary commands in <code>tva</code>: <strong><code>stats</code></strong>, **<code>bin</code>
+**, and <strong><code>uniq</code></strong>. These commands allow you to summarize data, discretize values, and deduplicate
+rows.</p>
 <h2 id="introduction-2"><a class="header" href="#introduction-2">Introduction</a></h2>
 <ul>
-<li><strong><code>stats</code></strong>: Calculates summary statistics (like sum, mean, max) for fields, optionally grouping by key fields.</li>
+<li><strong><code>stats</code></strong>: Calculates summary statistics (like sum, mean, max) for fields, optionally grouping
+by key fields.</li>
 <li><strong><code>bin</code></strong>: Discretizes numeric values into bins (useful for histograms).</li>
-<li><strong><code>uniq</code></strong>: Deduplicates rows based on a key, with options for equivalence classes and occurrence numbering.</li>
+<li><strong><code>uniq</code></strong>: Deduplicates rows based on a key, with options for equivalence classes and occurrence
+numbering.</li>
 </ul>
 <h2 id="stats-summary-statistics"><a class="header" href="#stats-summary-statistics"><code>stats</code> (Summary Statistics)</a></h2>
-<p>The <code>stats</code> command calculates summary statistics for specified fields. It mimics the functionality of <code>tsv-summarize</code>.</p>
+<p>The <code>stats</code> command calculates summary statistics for specified fields. It mimics the functionality
+of <code>tsv-summarize</code>.</p>
 <h3 id="basic-usage-5"><a class="header" href="#basic-usage-5">Basic Usage</a></h3>
 <pre><code class="language-bash">tva stats [input_files...] [options]
 </code></pre>
@@ -1199,7 +1299,8 @@ Arizona	2
 Arkansas	2
 </code></pre>
 <h2 id="bin-discretize-values"><a class="header" href="#bin-discretize-values"><code>bin</code> (Discretize Values)</a></h2>
-<p>The <code>bin</code> command discretizes numeric values into bins. This is useful for creating histograms or grouping continuous data.</p>
+<p>The <code>bin</code> command discretizes numeric values into bins. This is useful for creating histograms or
+grouping continuous data.</p>
 <h3 id="basic-usage-1-2"><a class="header" href="#basic-usage-1-2">Basic Usage</a></h3>
 <pre><code class="language-bash">tva bin [input_files...] --width &lt;width&gt; --field &lt;field&gt; [options]
 </code></pre>
@@ -1214,7 +1315,8 @@ Arkansas	2
 <h3 id="notes-1"><a class="header" href="#notes-1">Notes</a></h3>
 <ul>
 <li>Formula: <code>floor((value - min) / width) * width + min</code></li>
-<li>Replaces the value in the target field with the bin start (lower bound) unless <code>--new-name</code> is used.</li>
+<li>Replaces the value in the target field with the bin start (lower bound) unless <code>--new-name</code> is
+used.</li>
 </ul>
 <h3 id="examples-1-2"><a class="header" href="#examples-1-2">Examples</a></h3>
 <h4 id="1-bin-a-numeric-column"><a class="header" href="#1-bin-a-numeric-column">1. Bin a numeric column</a></h4>
@@ -1251,7 +1353,8 @@ A	L	54	50
 A	M	18	10
 </code></pre>
 <h2 id="uniq-deduplicate-rows"><a class="header" href="#uniq-deduplicate-rows"><code>uniq</code> (Deduplicate Rows)</a></h2>
-<p>The <code>uniq</code> command deduplicates rows of one or more TSV files without sorting. It uses a hash set to track unique keys.</p>
+<p>The <code>uniq</code> command deduplicates rows of one or more TSV files without sorting. It uses a hash set to
+track unique keys.</p>
 <h3 id="basic-usage-2-2"><a class="header" href="#basic-usage-2-2">Basic Usage</a></h3>
 <pre><code class="language-bash">tva uniq [input_files...] [options]
 </code></pre>
@@ -1300,9 +1403,12 @@ A	M	18	10
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="reshaping-documentation"><a class="header" href="#reshaping-documentation">Reshaping Documentation</a></h1>
-<p>This document explains how to use the reshaping commands in <code>tva</code>: <strong><code>longer</code></strong>, <strong><code>wider</code></strong>, <strong><code>fill</code></strong>, and <strong><code>blank</code></strong>. These commands are inspired by the data tidying philosophy of the R package <code>tidyr</code>.</p>
+<p>This document explains how to use the reshaping commands in <code>tva</code>: <strong><code>longer</code></strong>, <strong><code>wider</code></strong>, *
+*<code>fill</code>**, and <strong><code>blank</code></strong>. These commands are inspired by the data tidying philosophy of the R
+package <code>tidyr</code>.</p>
 <h2 id="introduction-3"><a class="header" href="#introduction-3">Introduction</a></h2>
-<p>Data reshaping involves changing the structure of a dataset without necessarily changing the information it contains. <code>tva</code> provides a suite of tools for these tasks:</p>
+<p>Data reshaping involves changing the structure of a dataset without necessarily changing the
+information it contains. <code>tva</code> provides a suite of tools for these tasks:</p>
 <ul>
 <li><strong>Pivoting</strong>:
 <ul>
@@ -1319,18 +1425,25 @@ A	M	18	10
 </ul>
 <p><img src="images/reshape_diagram.svg" alt="Reshape Diagram"></p>
 <h2 id="longer-wide-to-long"><a class="header" href="#longer-wide-to-long"><code>longer</code> (Wide to Long)</a></h2>
-<p>The <code>longer</code> command is designed to reshape “wide” data into a “long” format. “Wide” data often has column names that are actually values of a variable. For example, a table might have columns like <code>2020</code>, <code>2021</code>, <code>2022</code> representing years. <code>longer</code> gathers these columns into a pair of key-value columns (e.g., <code>year</code> and <code>population</code>), making the data “longer” (more rows, fewer columns) and easier to analyze.</p>
+<p>The <code>longer</code> command is designed to reshape “wide” data into a “long” format. “Wide” data often has
+column names that are actually values of a variable. For example, a table might have columns like
+<code>2020</code>, <code>2021</code>, <code>2022</code> representing years. <code>longer</code> gathers these columns into a pair of key-value
+columns (e.g., <code>year</code> and <code>population</code>), making the data “longer” (more rows, fewer columns) and
+easier to analyze.</p>
 <h3 id="basic-usage-6"><a class="header" href="#basic-usage-6">Basic Usage</a></h3>
 <pre><code class="language-bash">tva longer [input_files...] --cols &lt;columns&gt; [options]
 </code></pre>
 <ul>
-<li><strong><code>--cols</code> / <code>-c</code></strong>: Specifies which columns to reshape. You can use column names, indices (1-based), or ranges (e.g., <code>3-5</code>, <code>wk*</code>).</li>
-<li><strong><code>--names-to</code></strong>: The name of the new column that will store the original column headers (default: “name”).</li>
+<li><strong><code>--cols</code> / <code>-c</code></strong>: Specifies which columns to reshape. You can use column names, indices (
+1-based), or ranges (e.g., <code>3-5</code>, <code>wk*</code>).</li>
+<li><strong><code>--names-to</code></strong>: The name of the new column that will store the original column headers (
+default: “name”).</li>
 <li><strong><code>--values-to</code></strong>: The name of the new column that will store the data values (default: “value”).</li>
 </ul>
 <h2 id="examples-6"><a class="header" href="#examples-6">Examples</a></h2>
 <h3 id="1-string-data-in-column-names"><a class="header" href="#1-string-data-in-column-names">1. String Data in Column Names</a></h3>
-<p>Consider a dataset <code>docs/data/relig_income.tsv</code> where income brackets are spread across column names:</p>
+<p>Consider a dataset <code>docs/data/relig_income.tsv</code> where income brackets are spread across column
+names:</p>
 <pre><code class="language-tsv">religion	&lt;$10k	$10-20k	$20-30k
 Agnostic	27	34	60
 Atheist	12	27	37
@@ -1366,7 +1479,8 @@ Agnostic	$20-30k	60
 ...
 </code></pre>
 <h3 id="3-many-variables-in-column-names-regex-extraction"><a class="header" href="#3-many-variables-in-column-names-regex-extraction">3. Many Variables in Column Names (Regex Extraction)</a></h3>
-<p>Sometimes column names contain multiple pieces of information. For example, in the <code>docs/data/who.tsv</code> dataset, columns like <code>new_sp_m014</code> encode:</p>
+<p>Sometimes column names contain multiple pieces of information. For example, in the
+<code>docs/data/who.tsv</code> dataset, columns like <code>new_sp_m014</code> encode:</p>
 <ul>
 <li><code>new</code>: new cases (constant)</li>
 <li><code>sp</code>: diagnosis method</li>
@@ -1376,7 +1490,8 @@ Agnostic	$20-30k	60
 <pre><code class="language-tsv">country	iso2	iso3	year	new_sp_m014	new_sp_f014
 Afghanistan	AF	AFG	1980	NA	NA
 </code></pre>
-<p>We can use <strong><code>--names-pattern</code></strong> with a regular expression to extract these parts into multiple columns:</p>
+<p>We can use <strong><code>--names-pattern</code></strong> with a regular expression to extract these parts into multiple
+columns:</p>
 <pre><code class="language-bash">tva longer docs/data/who.tsv --cols "new_*" --names-to diagnosis gender age --names-pattern "new_?(.*)_(.)(.*)"
 </code></pre>
 <ul>
@@ -1414,17 +1529,21 @@ Bob	2020	2	82
 Bob	2021	1	80
 </code></pre>
 <h2 id="wider-long-to-wide"><a class="header" href="#wider-long-to-wide"><code>wider</code> (Long to Wide)</a></h2>
-<p>The <code>wider</code> command is the inverse of <code>longer</code>. It spreads a key-value pair across multiple columns, increasing the number of columns and decreasing the number of rows. This is useful for creating summary tables or reshaping data for tools that expect a matrix-like format.</p>
+<p>The <code>wider</code> command is the inverse of <code>longer</code>. It spreads a key-value pair across multiple columns,
+increasing the number of columns and decreasing the number of rows. This is useful for creating
+summary tables or reshaping data for tools that expect a matrix-like format.</p>
 <h3 id="basic-usage-1-3"><a class="header" href="#basic-usage-1-3">Basic Usage</a></h3>
 <pre><code class="language-bash">tva wider [input_files...] --names-from &lt;column&gt; --values-from &lt;column&gt; [options]
 </code></pre>
 <ul>
 <li><strong><code>--names-from</code></strong>: The column containing the new column names.</li>
 <li><strong><code>--values-from</code></strong>: The column containing the new column values.</li>
-<li><strong><code>--id-cols</code></strong>: (Optional) Columns that uniquely identify each row. If not specified, all columns except <code>names-from</code> and <code>values-from</code> are used.</li>
+<li><strong><code>--id-cols</code></strong>: (Optional) Columns that uniquely identify each row. If not specified, all columns
+except <code>names-from</code> and <code>values-from</code> are used.</li>
 <li><strong><code>--values-fill</code></strong>: (Optional) Value to use for missing cells (default: empty).</li>
 <li><strong><code>--names-sort</code></strong>: (Optional) Sort the new column headers alphabetically.</li>
-<li><strong><code>--op</code></strong>: (Optional) Aggregation operation (e.g., <code>sum</code>, <code>mean</code>, <code>count</code>, <code>last</code>). Default: <code>last</code>.</li>
+<li><strong><code>--op</code></strong>: (Optional) Aggregation operation (e.g., <code>sum</code>, <code>mean</code>, <code>count</code>, <code>last</code>). Default:
+<code>last</code>.</li>
 </ul>
 <p><strong>Comparison: <code>stats</code> vs <code>wider</code></strong></p>
 <div class="table-wrapper">
@@ -1446,7 +1565,8 @@ Bob	2021	1	80
 02	Alaska	income	32940	508
 02	Alaska	rent	1200	13
 </code></pre>
-<p>Here, <code>variable</code> contains the type of measurement (<code>income</code> or <code>rent</code>), and <code>estimate</code> contains the value. To make this easier to compare, we can widen the data:</p>
+<p>Here, <code>variable</code> contains the type of measurement (<code>income</code> or <code>rent</code>), and <code>estimate</code> contains the
+value. To make this easier to compare, we can widen the data:</p>
 <pre><code class="language-bash">tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estimate
 </code></pre>
 <p>Output:</p>
@@ -1458,13 +1578,16 @@ Bob	2021	1	80
 ...
 </code></pre>
 <p><strong>Understanding ID Columns</strong>:
-By default, <code>wider</code> uses all columns <em>except</em> <code>names-from</code> and <code>values-from</code> as ID columns. In this example, <code>GEOID</code>, <code>NAME</code>, and <code>moe</code> are treated as IDs.
-Because <code>moe</code> (margin of error) is different for the <code>income</code> row (136) and the <code>rent</code> row (3), <code>wider</code> keeps them as separate rows to preserve data.</p>
+By default, <code>wider</code> uses all columns <em>except</em> <code>names-from</code> and <code>values-from</code> as ID columns. In this
+example, <code>GEOID</code>, <code>NAME</code>, and <code>moe</code> are treated as IDs.
+Because <code>moe</code> (margin of error) is different for the <code>income</code> row (136) and the <code>rent</code> row (3),
+<code>wider</code> keeps them as separate rows to preserve data.</p>
 <p>To explicitly specify that only <code>GEOID</code> and <code>NAME</code> identify a row (and drop <code>moe</code>):</p>
 <pre><code class="language-bash">tva wider docs/data/us_rent_income.tsv --names-from variable --values-from estimate --id-cols GEOID,NAME
 </code></pre>
 <h3 id="example-2-capture-recapture-data-filling-missing-values"><a class="header" href="#example-2-capture-recapture-data-filling-missing-values">Example 2: Capture-Recapture Data (Filling Missing Values)</a></h3>
-<p>The <code>docs/data/fish_encounters.tsv</code> dataset describes when fish were detected by monitoring stations. Some fish are seen at some stations but not others.</p>
+<p>The <code>docs/data/fish_encounters.tsv</code> dataset describes when fish were detected by monitoring
+stations. Some fish are seen at some stations but not others.</p>
 <pre><code class="language-tsv">fish	station	seen
 4842	Release	1
 4842	I80_1	1
@@ -1473,7 +1596,8 @@ Because <code>moe</code> (margin of error) is different for the <code>income</co
 4843	I80_1	1
 4844	Release	1
 </code></pre>
-<p>If we widen this by <code>station</code>, we will have missing values for stations where a fish wasn’t seen. We can use <strong><code>--values-fill</code></strong> to fill these gaps with <code>0</code>.</p>
+<p>If we widen this by <code>station</code>, we will have missing values for stations where a fish wasn’t seen. We
+can use <strong><code>--values-fill</code></strong> to fill these gaps with <code>0</code>.</p>
 <pre><code class="language-bash">tva wider docs/data/fish_encounters.tsv --names-from station --values-from seen --values-fill 0
 </code></pre>
 <p>Output:</p>
@@ -1484,7 +1608,8 @@ Because <code>moe</code> (margin of error) is different for the <code>income</co
 </code></pre>
 <p>Without <code>--values-fill 0</code>, the missing cells would be empty strings (default).</p>
 <h2 id="complex-reshaping-longer-then-wider"><a class="header" href="#complex-reshaping-longer-then-wider">Complex Reshaping: Longer then Wider</a></h2>
-<p>Sometimes data requires multiple steps to be fully tidy. A common pattern is to make data longer to fix column headers, and then wider to separate variables.</p>
+<p>Sometimes data requires multiple steps to be fully tidy. A common pattern is to make data longer to
+fix column headers, and then wider to separate variables.</p>
 <p>Consider the <code>docs/data/world_bank_pop.tsv</code> dataset (a subset):</p>
 <pre><code class="language-tsv">country	indicator	2000	2001
 ABW	SP.URB.TOTL	42444	43048
@@ -1492,13 +1617,15 @@ ABW	SP.URB.GROW	1.18	1.41
 AFG	SP.URB.TOTL	4436311	4648139
 AFG	SP.URB.GROW	3.91	4.66
 </code></pre>
-<p>Here, years are in columns (needs <code>longer</code>) and variables are in the <code>indicator</code> column (needs <code>wider</code>). We can pipe <code>tva</code> commands to solve this:</p>
+<p>Here, years are in columns (needs <code>longer</code>) and variables are in the <code>indicator</code> column (needs
+<code>wider</code>). We can pipe <code>tva</code> commands to solve this:</p>
 <pre><code class="language-bash">tva longer docs/data/world_bank_pop.tsv --cols 3-4 --names-to year --values-to value | \
 tva wider --names-from indicator --values-from value
 </code></pre>
 <ol>
 <li><strong><code>longer</code></strong>: Reshapes years (cols 3-4) into <code>year</code> and <code>value</code>.</li>
-<li><strong><code>wider</code></strong>: Takes the stream, uses <code>indicator</code> for new column names, and fills them with <code>value</code>. <code>country</code> and <code>year</code> automatically become ID columns.</li>
+<li><strong><code>wider</code></strong>: Takes the stream, uses <code>indicator</code> for new column names, and fills them with
+<code>value</code>. <code>country</code> and <code>year</code> automatically become ID columns.</li>
 </ol>
 <p>Output:</p>
 <pre><code class="language-tsv">country	year	SP.URB.TOTL	SP.URB.GROW
@@ -1514,8 +1641,10 @@ AFG	2001	4648139	4.66
 <li><strong><code>tva</code></strong>: Supports aggregation via the <strong><code>--op</code></strong> argument.</li>
 </ul>
 <p>By default (<code>--op last</code>), <code>tva</code> <strong>overwrites</strong> previous values with the <strong>last observed value</strong>.</p>
-<p>However, you can specify an operation to aggregate these values, similar to <code>values_fn</code> in <code>tidyr</code> or <code>crosstab</code> in <code>datamash</code>.</p>
-<p>Supported operations: <code>count</code>, <code>sum</code>, <code>mean</code>, <code>min</code>, <code>max</code>, <code>first</code>, <code>last</code>, <code>median</code>, <code>mode</code>, <code>stdev</code>, <code>variance</code>, etc.</p>
+<p>However, you can specify an operation to aggregate these values, similar to <code>values_fn</code> in <code>tidyr</code>
+or <code>crosstab</code> in <code>datamash</code>.</p>
+<p>Supported operations: <code>count</code>, <code>sum</code>, <code>mean</code>, <code>min</code>, <code>max</code>, <code>first</code>, <code>last</code>, <code>median</code>, <code>mode</code>,
+<code>stdev</code>, <code>variance</code>, etc.</p>
 <h3 id="example-summing-values"><a class="header" href="#example-summing-values">Example: Summing values</a></h3>
 <p>Example using <code>docs/data/warpbreaks.tsv</code>:</p>
 <pre><code class="language-tsv">wool	tension	breaks
@@ -1535,7 +1664,9 @@ H	81	96
 </code></pre>
 <p>(For A-L: 26 + 30 + 54 = 110)</p>
 <h3 id="example-crosstab-counting"><a class="header" href="#example-crosstab-counting">Example: Crosstab (Counting)</a></h3>
-<p>You can also use <code>wider</code> to create a frequency table (crosstab) by using <code>--op count</code>. In this case, <code>--values-from</code> is optional. But to get a proper crosstab, you usually want to group by the other factor (here, <code>tension</code>), so you should specify it as the ID column.</p>
+<p>You can also use <code>wider</code> to create a frequency table (crosstab) by using <code>--op count</code>. In this case,
+<code>--values-from</code> is optional. But to get a proper crosstab, you usually want to group by the other
+factor (here, <code>tension</code>), so you should specify it as the ID column.</p>
 <pre><code class="language-bash">tva wider docs/data/warpbreaks.tsv --names-from wool --op count --id-cols tension
 </code></pre>
 <p>Output:</p>
@@ -1546,7 +1677,8 @@ H	3	3
 </code></pre>
 <p>(Each combination appears 3 times in this dataset)</p>
 <h3 id="comparison-stats-vs-wider-aggregation"><a class="header" href="#comparison-stats-vs-wider-aggregation">Comparison: <code>stats</code> vs <code>wider</code> (Aggregation)</a></h3>
-<p>Both <code>tva stats</code> (if available) and <code>tva wider --op ...</code> can aggregate data, but they produce different <strong>structures</strong>:</p>
+<p>Both <code>tva stats</code> (if available) and <code>tva wider --op ...</code> can aggregate data, but they produce
+different <strong>structures</strong>:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1581,7 +1713,9 @@ B       30  40
 </code></pre>
 <p>(Spreads categories horizontally)</p>
 <h2 id="fill-fill-missing-values"><a class="header" href="#fill-fill-missing-values"><code>fill</code> (Fill Missing Values)</a></h2>
-<p>The <code>fill</code> command fills missing values in selected columns using the previous non-missing value (Last Observation Carried Forward, or LOCF) or a constant. This is common in time-series data or reports where values are only listed when they change.</p>
+<p>The <code>fill</code> command fills missing values in selected columns using the previous non-missing value (
+Last Observation Carried Forward, or LOCF) or a constant. This is common in time-series data or
+reports where values are only listed when they change.</p>
 <h3 id="basic-usage-2-3"><a class="header" href="#basic-usage-2-3">Basic Usage</a></h3>
 <pre><code class="language-bash">tva fill [options]
 </code></pre>
@@ -1614,7 +1748,9 @@ Cat	Tom	4
 <pre><code class="language-bash">tva fill -H -f Pet -v "Unknown" docs/data/pet_names.tsv
 </code></pre>
 <h2 id="blank-sparsify--inverse-fill"><a class="header" href="#blank-sparsify--inverse-fill"><code>blank</code> (Sparsify / Inverse Fill)</a></h2>
-<p>The <code>blank</code> command replaces repeated values in selected columns with an empty string (or a custom placeholder). This is the inverse of <code>fill</code> and is useful for creating human-readable reports where repeated group labels are visually redundant.</p>
+<p>The <code>blank</code> command replaces repeated values in selected columns with an empty string (or a custom
+placeholder). This is the inverse of <code>fill</code> and is useful for creating human-readable reports where
+repeated group labels are visually redundant.</p>
 <h3 id="basic-usage-3-1"><a class="header" href="#basic-usage-3-1">Basic Usage</a></h3>
 <pre><code class="language-bash">tva blank [options]
 </code></pre>
@@ -1698,18 +1834,23 @@ B	1
 </tbody>
 </table>
 </div>
-<p><code>tva</code> brings the power of tidy data reshaping to the command line, allowing for efficient processing of large TSV files without loading them entirely into memory.</p>
+<p><code>tva</code> brings the power of tidy data reshaping to the command line, allowing for efficient processing
+of large TSV files without loading them entirely into memory.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="plotting-documentation"><a class="header" href="#plotting-documentation">Plotting Documentation</a></h1>
-<p>This document explains how to use the plotting commands in <code>tva</code>: <strong><code>plot point</code></strong>. These commands bring data visualization capabilities to the terminal, inspired by the grammar of graphics philosophy of <code>ggplot2</code>.</p>
+<p>This document explains how to use the plotting commands in <code>tva</code>: <strong><code>plot point</code></strong>. These commands
+bring data visualization capabilities to the terminal, inspired by the grammar of graphics
+philosophy of <code>ggplot2</code>.</p>
 <h2 id="introduction-4"><a class="header" href="#introduction-4">Introduction</a></h2>
-<p>Terminal-based plotting allows you to quickly visualize data without leaving the command line. <code>tva</code> provides plotting tools that render directly in your terminal using ASCII/Unicode characters:</p>
+<p>Terminal-based plotting allows you to quickly visualize data without leaving the command line. <code>tva</code>
+provides plotting tools that render directly in your terminal using ASCII/Unicode characters:</p>
 <ul>
 <li><strong><code>plot point</code></strong>: Draws scatter plots or line charts from TSV data.</li>
 <li><strong><code>plot box</code></strong>: Draws box plots (box-and-whisker plots) from TSV data.</li>
 </ul>
 <h2 id="plot-point-scatter-plots-and-line-charts"><a class="header" href="#plot-point-scatter-plots-and-line-charts"><code>plot point</code> (Scatter Plots and Line Charts)</a></h2>
-<p>The <code>plot point</code> command creates scatter plots or line charts directly in your terminal. It maps TSV columns to visual aesthetics (position, color) and renders the chart using ASCII/Unicode characters.</p>
+<p>The <code>plot point</code> command creates scatter plots or line charts directly in your terminal. It maps TSV
+columns to visual aesthetics (position, color) and renders the chart using ASCII/Unicode characters.</p>
 <h3 id="basic-usage-7"><a class="header" href="#basic-usage-7">Basic Usage</a></h3>
 <pre><code class="language-bash">tva plot point [input_file] --x &lt;column&gt; --y &lt;column&gt; [options]
 </code></pre>
@@ -1759,11 +1900,13 @@ B	1
  4                                       6                                     8
 </code></pre>
 <h3 id="2-grouped-by-category-color"><a class="header" href="#2-grouped-by-category-color">2. Grouped by Category (Color)</a></h3>
-<p>Use the <code>--color</code> option to group points by a categorical column. Each unique value gets a different color.</p>
+<p>Use the <code>--color</code> option to group points by a categorical column. Each unique value gets a different
+color.</p>
 <pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x petal_length -y petal_width --color label --cols 1.0 --rows 1.0
 </code></pre>
 <p><img src="images/plot_point_iris_color.png" alt="iris scatter plot with color"></p>
-<p>This creates a scatter plot with three colors, one for each iris species (setosa, versicolor, virginica).</p>
+<p>This creates a scatter plot with three colors, one for each iris species (setosa, versicolor,
+virginica).</p>
 <p>The output will show three distinct clusters with different markers/colors:</p>
 <ul>
 <li><strong>Setosa</strong>: Small petals, clustered at bottom-left</li>
@@ -1800,7 +1943,8 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m dot
 tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
 </code></pre>
 <h3 id="7-regression-line"><a class="header" href="#7-regression-line">7. Regression Line</a></h3>
-<p>Use <code>--regression</code> to overlay a linear regression line (least squares fit) on the scatter plot. This helps visualize trends in the data.</p>
+<p>Use <code>--regression</code> to overlay a linear regression line (least squares fit) on the scatter plot. This
+helps visualize trends in the data.</p>
 <pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot --regression
 </code></pre>
 <p>When combined with <code>--color</code>, a separate regression line is drawn for each group:</p>
@@ -1850,14 +1994,18 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
 </tbody>
 </table>
 </div>
-<p><code>tva plot point</code> brings the core concepts of the grammar of graphics to the command line, allowing for quick data exploration without leaving your terminal.</p>
+<p><code>tva plot point</code> brings the core concepts of the grammar of graphics to the command line, allowing
+for quick data exploration without leaving your terminal.</p>
 <h2 id="plot-box-box-plots"><a class="header" href="#plot-box-box-plots"><code>plot box</code> (Box Plots)</a></h2>
-<p>The <code>plot box</code> command creates box plots (box-and-whisker plots) directly in your terminal. It visualizes the distribution of a numeric variable, showing the median, quartiles, and potential outliers.</p>
+<p>The <code>plot box</code> command creates box plots (box-and-whisker plots) directly in your terminal. It
+visualizes the distribution of a numeric variable, showing the median, quartiles, and potential
+outliers.</p>
 <h3 id="basic-usage-1-4"><a class="header" href="#basic-usage-1-4">Basic Usage</a></h3>
 <pre><code class="language-bash">tva plot box [input_file] --y &lt;column&gt; [options]
 </code></pre>
 <ul>
-<li><strong><code>-y</code> / <code>--y</code></strong>: The column(s) to plot (required). Can specify multiple columns separated by commas.</li>
+<li><strong><code>-y</code> / <code>--y</code></strong>: The column(s) to plot (required). Can specify multiple columns separated by
+commas.</li>
 <li><strong><code>--color</code></strong>: Column for grouping/coloring boxes by category (optional).</li>
 <li><strong><code>--outliers</code></strong>: Show outlier points beyond the whiskers.</li>
 </ul>
@@ -1895,7 +2043,8 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
 <pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y sepal_length --color label --cols 1.0 --rows 1.0
 </code></pre>
 <p><img src="images/plot_box_grouped.png" alt="Grouped box plot by species"></p>
-<p>This creates three box plots side by side, one for each iris species (setosa, versicolor, virginica).</p>
+<p>This creates three box plots side by side, one for each iris species (setosa, versicolor,
+virginica).</p>
 <h4 id="3-multiple-columns"><a class="header" href="#3-multiple-columns">3. Multiple Columns</a></h4>
 <p>Plot multiple numeric columns for comparison:</p>
 <pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y "sepal_length,sepal_width" --color label --cols 1.0 --rows 1.0
@@ -1960,22 +2109,27 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
 </table>
 </div>
 <h2 id="plot-bin2d-2d-binning-heatmap"><a class="header" href="#plot-bin2d-2d-binning-heatmap"><code>plot bin2d</code> (2D Binning Heatmap)</a></h2>
-<p>The <code>plot bin2d</code> command creates 2D binning heatmaps directly in your terminal. It divides the plane into rectangles, counts the number of cases in each rectangle, and visualizes the density using character intensity. This is a useful alternative to <code>plot point</code> in the presence of overplotting.</p>
-<p><strong>Workflow</strong>: Use <code>plot bin2d</code> for quick exploration with automatic binning, then use <code>bin</code> with manually determined parameters for precise processing.</p>
+<p>The <code>plot bin2d</code> command creates 2D binning heatmaps directly in your terminal. It divides the plane
+into rectangles, counts the number of cases in each rectangle, and visualizes the density using
+character intensity. This is a useful alternative to <code>plot point</code> in the presence of overplotting.</p>
+<p><strong>Workflow</strong>: Use <code>plot bin2d</code> for quick exploration with automatic binning, then use <code>bin</code> with
+manually determined parameters for precise processing.</p>
 <h3 id="basic-usage-2-4"><a class="header" href="#basic-usage-2-4">Basic Usage</a></h3>
 <pre><code class="language-bash">tva plot bin2d [input_file] --x &lt;column&gt; --y &lt;column&gt; [options]
 </code></pre>
 <ul>
 <li><strong><code>-x</code> / <code>--x</code></strong>: The column for X-axis position (required).</li>
 <li><strong><code>-y</code> / <code>--y</code></strong>: The column for Y-axis position (required).</li>
-<li><strong><code>-b</code> / <code>--bins</code></strong>: Number of bins in each direction (default: 30, or <code>x,y</code> for different counts).</li>
+<li><strong><code>-b</code> / <code>--bins</code></strong>: Number of bins in each direction (default: 30, or <code>x,y</code> for different
+counts).</li>
 <li><strong><code>-S</code> / <code>--strategy</code></strong>: Automatic bin count strategy: <code>freedman-diaconis</code>, <code>sqrt</code>, <code>sturges</code>.</li>
 <li><strong><code>--binwidth</code></strong>: Width of bins (or <code>x,y</code> for different widths).</li>
 </ul>
 <h3 id="examples-2-3"><a class="header" href="#examples-2-3">Examples</a></h3>
 <h4 id="1-basic-2d-binning"><a class="header" href="#1-basic-2d-binning">1. Basic 2D Binning</a></h4>
 <p>Using the <code>docs/data/diamonds.tsv</code> dataset (diamond physical dimensions):</p>
-<p>This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The output shows the concentration of diamonds in different size ranges.</p>
+<p>This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The
+output shows the concentration of diamonds in different size ranges.</p>
 <p>For better visualization of the main data cluster, you can filter the data first:</p>
 <pre><code class="language-bash">tva plot bin2d docs/data/diamonds.48.tsv -x x -y y
 </code></pre>
@@ -2092,17 +2246,20 @@ tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --bins 30,15
 </code></pre>
 </li>
 <li>
-<p><strong>Viewing output</strong>: The chart is rendered directly to stdout. Use a terminal with good Unicode support for best results with Braille markers.</p>
+<p><strong>Viewing output</strong>: The chart is rendered directly to stdout. Use a terminal with good Unicode
+support for best results with Braille markers.</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="combining--splitting-documentation"><a class="header" href="#combining--splitting-documentation">Combining &amp; Splitting Documentation</a></h1>
-<p>This document explains how to use the combining and splitting commands in <code>tva</code>: <strong><code>join</code></strong>, <strong><code>append</code></strong>, and <strong><code>split</code></strong>.</p>
+<p>This document explains how to use the combining and splitting commands in <code>tva</code>: <strong><code>join</code></strong>, *
+*<code>append</code>**, and <strong><code>split</code></strong>.</p>
 <h2 id="join"><a class="header" href="#join"><code>join</code></a></h2>
 <p>Joins lines from a TSV data stream against a filter file using one or more key fields.</p>
 <h3 id="examples-8"><a class="header" href="#examples-8">Examples</a></h3>
 <h4 id="1-join-two-files-by-a-common-key"><a class="header" href="#1-join-two-files-by-a-common-key">1. Join two files by a common key</a></h4>
-<p>Using <code>docs/data/who.tsv</code> (contains <code>iso3</code>) and <code>docs/data/world_bank_pop.tsv</code> (contains <code>country</code> with ISO3 codes):</p>
+<p>Using <code>docs/data/who.tsv</code> (contains <code>iso3</code>) and <code>docs/data/world_bank_pop.tsv</code> (contains <code>country</code>
+with ISO3 codes):</p>
 <pre><code class="language-bash">tva join -H --filter-file docs/data/who.tsv --key-fields iso3 --data-fields country docs/data/world_bank_pop.tsv
 </code></pre>
 <p>Output:</p>
@@ -2171,7 +2328,8 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 <h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
 <pre><code class="language-bash">tva check [files...]
 </code></pre>
-<p>It validates that every line in the file has the same number of fields as the first line. If a mismatch is found, it reports the error line and exits with a non-zero status.</p>
+<p>It validates that every line in the file has the same number of fields as the first line. If a
+mismatch is found, it reports the error line and exits with a non-zero status.</p>
 <h3 id="examples-9"><a class="header" href="#examples-9">Examples</a></h3>
 <p>Check a single file:</p>
 <pre><code class="language-bash">tva check docs/data/household.tsv
@@ -2186,8 +2344,10 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 </code></pre>
 <p>Options:</p>
 <ul>
-<li><code>-H</code> / <code>--header</code>: Treat the first line as a header. The header line is not numbered, and a “line” column is added to the header.</li>
-<li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies <code>-H</code>).</li>
+<li><code>-H</code> / <code>--header</code>: Treat the first line as a header. The header line is not numbered, and a “line”
+column is added to the header.</li>
+<li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies
+<code>-H</code>).</li>
 <li><code>-n &lt;N&gt;</code> / <code>--start-number &lt;N&gt;</code>: Start numbering from N (default: 1).</li>
 </ul>
 <h3 id="examples-1-5"><a class="header" href="#examples-1-5">Examples</a></h3>
@@ -2210,7 +2370,9 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 <h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
 <pre><code class="language-bash">tva keep-header [files...] -- &lt;command&gt; [args...]
 </code></pre>
-<p>The first line of the first input file is printed immediately. The remaining lines (and all lines from subsequent files) are piped to the specified command. The output of the command is then printed.</p>
+<p>The first line of the first input file is printed immediately. The remaining lines (and all lines
+from subsequent files) are piped to the specified command. The output of the command is then
+printed.</p>
 <h3 id="examples-2-4"><a class="header" href="#examples-2-4">Examples</a></h3>
 <p>Sort a file while keeping the header at the top:</p>
 <pre><code class="language-bash">tva keep-header data.tsv -- sort
@@ -2237,7 +2399,8 @@ AFG	SP.URB.GROW	3.91	4.66
 </ul>
 <hr>
 <h2 id="tva-from-csv"><a class="header" href="#tva-from-csv"><code>tva from csv</code></a></h2>
-<p>Converts Comma-Separated Values (CSV) files to TSV. It handles standard CSV escaping, quoting, and different delimiters.</p>
+<p>Converts Comma-Separated Values (CSV) files to TSV. It handles standard CSV escaping, quoting, and
+different delimiters.</p>
 <h3 id="usage-1-2"><a class="header" href="#usage-1-2">Usage</a></h3>
 <pre><code class="language-bash">tva from csv [input] [options]
 </code></pre>
@@ -2430,11 +2593,13 @@ Mega Gadget     $29.99  /buy/gadget
 |  1.00 | Alabama    | rent     |    747.00 |   3.00 |
 |  2.00 | Alaska     | income   | 32,940.00 | 508.00 |
 |  2.00 | Alaska     | rent     |  1,200.00 |  13.00 |
+
 ...
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="css-selectors-reference"><a class="header" href="#css-selectors-reference">CSS Selectors Reference</a></h1>
-<p><code>tva from html</code> uses the <code>scraper</code> crate which implements a robust subset of CSS selectors. This document provides a comprehensive reference and examples, inspired by <code>pup</code>.</p>
+<p><code>tva from html</code> uses the <code>scraper</code> crate which implements a robust subset of CSS selectors. This
+document provides a comprehensive reference and examples, inspired by <code>pup</code>.</p>
 <h2 id="basic-selectors"><a class="header" href="#basic-selectors">Basic Selectors</a></h2>
 <div class="table-wrapper">
 <table>
@@ -2530,7 +2695,8 @@ Mega Gadget     $29.99  /buy/gadget
 </table>
 </div>
 <h2 id="display-functions"><a class="header" href="#display-functions">Display Functions</a></h2>
-<p>When using <code>tva from html -q</code>, you can append a display function to format the output. If omitted, the full HTML of selected elements is printed.</p>
+<p>When using <code>tva from html -q</code>, you can append a display function to format the output. If omitted,
+the full HTML of selected elements is printed.</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -2544,7 +2710,8 @@ Mega Gadget     $29.99  /buy/gadget
 </table>
 </div>
 <blockquote>
-<p>Note: <code>pup</code> supports <code>json{}</code>, but <code>tva</code> currently focuses on TSV/Text extraction. Use <code>Struct Mode</code> (<code>--row</code>/<code>--col</code>) for structured data extraction.</p>
+<p>Note: <code>pup</code> supports <code>json{}</code>, but <code>tva</code> currently focuses on TSV/Text extraction. Use
+<code>Struct Mode</code> (<code>--row</code>/<code>--col</code>) for structured data extraction.</p>
 </blockquote>
 <h2 id="known-limitations"><a class="header" href="#known-limitations">Known Limitations</a></h2>
 <p>The following features from <code>pup</code> are <strong>not planned</strong> for implementation:</p>
@@ -2573,13 +2740,17 @@ Mega Gadget     $29.99  /buy/gadget
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="tva-common-conventions"><a class="header" href="#tva-common-conventions">tva Common Conventions</a></h1>
-<p>This document defines the naming and behavior conventions for parameters shared across tva subcommands to ensure a consistent user experience.</p>
+<p>This document defines the naming and behavior conventions for parameters shared across tva
+subcommands to ensure a consistent user experience.</p>
 <h2 id="header-handling"><a class="header" href="#header-handling">Header Handling</a></h2>
-<p>Headers are the column name rows in data files. Different commands have different header processing requirements, but parameter naming should remain consistent.</p>
+<p>Headers are the column name rows in data files. Different commands have different header processing
+requirements, but parameter naming should remain consistent.</p>
 <p><strong>Quick Selection:</strong></p>
 <ul>
-<li>Need column names for field references? Use <code>--header</code> (standard TSV) or <code>--header-hash1</code> (TSV with comments).</li>
-<li>Just skip header lines? Use <code>--header-lines N</code> (first N lines) or <code>--header-hash</code> (comment lines only).</li>
+<li>Need column names for field references? Use <code>--header</code> (standard TSV) or <code>--header-hash1</code> (TSV
+with comments).</li>
+<li>Just skip header lines? Use <code>--header-lines N</code> (first N lines) or <code>--header-hash</code> (comment lines
+only).</li>
 </ul>
 <p><strong>Header Detection Modes</strong> (mutually exclusive):</p>
 <ul>
@@ -2598,12 +2769,15 @@ Mega Gadget     $29.99  /buy/gadget
 <p><code>--header-hash1</code>: <strong>HashLines1</strong> mode</p>
 <ul>
 <li>Takes consecutive <code>#</code> lines plus the next line as header.</li>
-<li><strong>Graceful degradation</strong>: If no <code>#</code> lines exist, uses the first line as column names (behaves like <code>--header</code>).</li>
-<li><code>lines</code> contains only <code>#</code> lines (empty if no <code>#</code> lines); column names line is stored separately.</li>
+<li><strong>Graceful degradation</strong>: If no <code>#</code> lines exist, uses the first line as column names (
+behaves like <code>--header</code>).</li>
+<li><code>lines</code> contains only <code>#</code> lines (empty if no <code>#</code> lines); column names line is stored
+separately.</li>
 </ul>
 </li>
 </ul>
-<p>Commands using these modes: <code>append</code>, <code>bin</code>, <code>blank</code>, <code>fill</code>, <code>filter</code>, <code>join</code>, <code>longer</code>, <code>nl</code>, <code>reverse</code>, <code>select</code>, <code>stats</code>, <code>uniq</code>, <code>wider</code>.</p>
+<p>Commands using these modes: <code>append</code>, <code>bin</code>, <code>blank</code>, <code>fill</code>, <code>filter</code>, <code>join</code>, <code>longer</code>, <code>nl</code>,
+<code>reverse</code>, <code>select</code>, <code>stats</code>, <code>uniq</code>, <code>wider</code>.</p>
 </li>
 <li>
 <p><strong>Modes that don’t provide column names</strong> (<code>header_args()</code>):</p>
@@ -2634,7 +2808,8 @@ Mega Gadget     $29.99  /buy/gadget
 <li>Returns <code>HeaderInfo { lines, column_names_line }</code> where:
 <ul>
 <li><code>lines</code>: all header lines read from input</li>
-<li><code>column_names_line</code>: the line containing column names (None if mode doesn’t provide column names)</li>
+<li><code>column_names_line</code>: the line containing column names (None if mode doesn’t provide column
+names)</li>
 </ul>
 </li>
 <li>Mode behavior:
@@ -2642,20 +2817,24 @@ Mega Gadget     $29.99  /buy/gadget
 <li><code>FirstLine</code>: <code>lines</code> is empty, <code>column_names_line</code> is the first line</li>
 <li><code>LinesN(n)</code>: <code>lines</code> contains up to n lines read, <code>column_names_line</code> is None</li>
 <li><code>HashLines</code>: <code>lines</code> contains all consecutive <code>#</code> lines, <code>column_names_line</code> is None</li>
-<li><code>HashLines1</code>: <code>lines</code> contains only <code>#</code> lines (empty if no <code>#</code> lines), <code>column_names_line</code> is the column names line</li>
+<li><code>HashLines1</code>: <code>lines</code> contains only <code>#</code> lines (empty if no <code>#</code> lines), <code>column_names_line</code> is
+the column names line</li>
 </ul>
 </li>
 </ul>
 <p><strong>Special Commands:</strong></p>
 <ul>
-<li><code>split</code>: Uses <code>--header-in-out</code> (input has header, output writes header, default) or <code>--header-in-only</code> (input has header, output does not write header). <code>--header</code> is an alias for <code>--header-in-out</code>.</li>
+<li><code>split</code>: Uses <code>--header-in-out</code> (input has header, output writes header, default) or
+<code>--header-in-only</code> (input has header, output does not write header). <code>--header</code> is an alias for
+<code>--header-in-out</code>.</li>
 <li><code>keep-header</code>: Uses <code>--lines N</code> / <code>-n</code> to specify number of header lines (default: 1)</li>
 <li><code>sample</code>: Uses simple <code>--header</code> / <code>-H</code> flag (treats first non-empty line as header)</li>
 <li><code>transpose</code>: Does not support header modes (processes all lines as data)</li>
 </ul>
 <p><strong>Multi-file Header Behavior:</strong></p>
 <ul>
-<li>When using multiple input files with header mode enabled, the header from the first file is read and written to output.</li>
+<li>When using multiple input files with header mode enabled, the header from the first file is read
+and written to output.</li>
 <li>Headers from subsequent files are skipped.</li>
 </ul>
 <h2 id="inputoutput-conventions"><a class="header" href="#inputoutput-conventions">Input/Output Conventions</a></h2>
@@ -2767,7 +2946,8 @@ must be escaped with <code>\</code>.</li>
 <p>Serious errors return non-zero exit codes.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="expression-introduction"><a class="header" href="#expression-introduction">Expression Introduction</a></h1>
-<p>TVA Expression is a concise data processing language for <code>tva expr</code>, <code>tva filter</code>, and <code>tva mutate</code> commands.</p>
+<p>TVA Expression is a concise data processing language for <code>tva expr</code>, <code>tva filter</code>, and <code>tva mutate</code>
+commands.</p>
 <h2 id="quick-examples"><a class="header" href="#quick-examples">Quick Examples</a></h2>
 <pre><code class="language-bash"># Basic arithmetic
 tva expr -E '42 + 3.14'
@@ -2789,13 +2969,13 @@ tva mutate -E "@price * 1.1 as @price_with_tax" data.tsv
 <p>Use <code>@</code> prefix to reference columns.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>@1, @col_name, @"col name"
+</span>@1, @ col_name, @ "col name"
 <span class="boring">}</span></code></pre>
 <h3 id="variable-binding"><a class="header" href="#variable-binding"><a href="#variable-binding-1">Variable Binding</a></a></h3>
 <p>Use <code>as</code> to bind values to variables.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>@price * @qty as @total; @total * 1.1
+</span>@price * @ qty as @ total; @ total * 1.1
 <span class="boring">}</span></code></pre>
 <h3 id="operators"><a class="header" href="#operators"><a href="#expression-operators">Operators</a></a></h3>
 <p>Arithmetic, comparison, logical, and pipe operators.</p>
@@ -2807,9 +2987,9 @@ tva mutate -E "@price * 1.1 as @price_with_tax" data.tsv
 <p>Prefix calls, pipe calls, and method calls.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>trim(@name)
-@name | trim() | upper()
-@name.trim().upper()
+</span>trim( @ name)
+@ name | trim() | upper()
+@ name.trim().upper()
 <span class="boring">}</span></code></pre>
 <h2 id="documentation-index"><a class="header" href="#documentation-index">Documentation Index</a></h2>
 <ul>
@@ -2852,12 +3032,15 @@ tva expr -E 'default(null, "fallback")'  # Returns: fallback
 
 # List literal
 tva expr -E '[1, 2, 3]'           # Returns: [1, 2, 3]
+tva expr -E '[[1,2], "string", true, null, -5]'
 
 # Lambda literal
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'  # Returns: [2, 4, 6]
 </code></pre>
 <h2 id="type-system"><a class="header" href="#type-system">Type System</a></h2>
-<p>TVA uses a dynamic type system with automatic type recognition at runtime:</p>
+<p>TVA uses a dynamic type system with automatic type recognition at runtime. Since TSV files store all
+data as strings, TVA automatically converts values to appropriate types during expression
+evaluation:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -2873,7 +3056,6 @@ tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'  # Returns: [2, 4, 6]
 </tbody>
 </table>
 </div>
-<h2 id="type-conversion"><a class="header" href="#type-conversion">Type Conversion</a></h2>
 <ul>
 <li><strong>Explicit conversion</strong>: Use <code>int()</code>, <code>float()</code>, <code>string()</code> functions</li>
 <li><strong>Numeric operations</strong>: Mixed int/float operations promote result to float</li>
@@ -2952,7 +3134,8 @@ tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="expression-syntax-guide"><a class="header" href="#expression-syntax-guide">Expression Syntax Guide</a></h1>
-<p>This document provides a comprehensive guide to TVA expression syntax, covering function calls, pipelines, and multi-expression evaluation.</p>
+<p>This document provides a comprehensive guide to TVA expression syntax, covering function calls,
+pipelines, and multi-expression evaluation.</p>
 <h2 id="expression-elements"><a class="header" href="#expression-elements">Expression Elements</a></h2>
 <p>TVA expressions are composed of the following atomic elements:</p>
 <div class="table-wrapper">
@@ -2994,7 +3177,8 @@ tva expr -E 'substr("hello world", 0, 5)'   # Returns: hello
 @price.pow(2)          # Equivalent to: pow(@price, 2)
 </code></pre>
 <h3 id="pipe-call-single-argument"><a class="header" href="#pipe-call-single-argument">Pipe Call (Single Argument)</a></h3>
-<p><code>arg | func()</code> - Pipe left value to function. The <code>_</code> placeholder can be omitted for single-argument functions.</p>
+<p><code>arg | func()</code> - Pipe left value to function. The <code>_</code> placeholder can be omitted for single-argument
+functions.</p>
 <pre><code class="language-bash">tva expr -E '"hello" | upper()'             # Returns: HELLO
 tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
 </code></pre>
@@ -3012,7 +3196,8 @@ tva expr -E '"a,b,c" | split(_, ",")'           # Returns: ["a", "b", "c"]
 <li><strong>Function Nesting</strong>: <code>if(@age &gt; 18, "adult", "minor")</code></li>
 </ul>
 <h2 id="lambda-expressions"><a class="header" href="#lambda-expressions">Lambda Expressions</a></h2>
-<p>Lambda expressions create anonymous functions, primarily used with higher-order functions like <code>map</code>, <code>filter</code>, and <code>reduce</code>:</p>
+<p>Lambda expressions create anonymous functions, primarily used with higher-order functions like
+<code>map</code>, <code>filter</code>, and <code>reduce</code>:</p>
 <h3 id="syntax"><a class="header" href="#syntax">Syntax</a></h3>
 <div class="table-wrapper">
 <table>
@@ -3026,7 +3211,8 @@ tva expr -E '"a,b,c" | split(_, ",")'           # Returns: ["a", "b", "c"]
 </tbody>
 </table>
 </div>
-<p><strong>Note</strong>: Lambda parameters are <strong>lexically scoped</strong> and do not use the <code>@</code> prefix. This distinguishes them from column references (<code>@col</code>) and variables (<code>@var</code>).</p>
+<p><strong>Note</strong>: Lambda parameters are <strong>lexically scoped</strong> and do not use the <code>@</code> prefix. This
+distinguishes them from column references (<code>@col</code>) and variables (<code>@var</code>).</p>
 <h3 id="examples-13"><a class="header" href="#examples-13">Examples</a></h3>
 <pre><code class="language-bash"># Single-parameter lambda
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
@@ -3077,7 +3263,8 @@ tva expr -n "price,qty" -r "10,5" -E '
 <li>Only the last expression’s value is returned</li>
 </ul>
 <h2 id="comments"><a class="header" href="#comments">Comments</a></h2>
-<p>TVA supports line comments starting with <code>//</code>. Comments are only valid inside expressions; comments in command line are handled by the Shell.</p>
+<p>TVA supports line comments starting with <code>//</code>. Comments are only valid inside expressions; comments
+in command line are handled by the Shell.</p>
 <pre><code class="language-bash"># With comments explaining the logic
 tva expr -n "total,tax" -r "100,0.1" -E '
     @total | int() as @t;  // Convert to integer
@@ -3101,7 +3288,8 @@ tva expr -E '42 + 3.14'           # Prints: 45.14
 # Column reference output
 tva expr -n "name" -r "John" -E '@name'   # Prints: John
 </code></pre>
-<p>The <code>print(val, ...)</code> function outputs multiple arguments sequentially and returns the last argument’s value. If <code>print()</code> is the last expression, the value won’t be printed twice:</p>
+<p>The <code>print(val, ...)</code> function outputs multiple arguments sequentially and returns the last
+argument’s value. If <code>print()</code> is the last expression, the value won’t be printed twice:</p>
 <pre><code class="language-bash"># Print intermediate values
 tva expr -n "price,qty" -r "10,5" -E '
     @price | print("price:", _);
@@ -3179,21 +3367,21 @@ tva expr -n "price,qty" -r "10,5" -E '
 <h2 id="numeric-operations"><a class="header" href="#numeric-operations">Numeric Operations</a></h2>
 <ul>
 <li>abs(x) -&gt; number: Absolute value</li>
-<li>round(x) -&gt; int: Round to nearest integer</li>
 <li>ceil(x) -&gt; int: Ceiling (round up)</li>
-<li>floor(x) -&gt; int: Floor (round down)</li>
-<li>sqrt(x) -&gt; float: Square root</li>
-<li>pow(base, exp) -&gt; float: Power operation</li>
-<li>min(a, b, *n) -&gt; number: Minimum value</li>
-<li>max(a, b, *n) -&gt; number: Maximum value</li>
-<li>int(val) -&gt; int: Convert to integer, returns null on failure</li>
-<li>float(val) -&gt; float: Convert to float, returns null on failure</li>
-<li>sin(x) -&gt; float: Sine (radians)</li>
 <li>cos(x) -&gt; float: Cosine (radians)</li>
-<li>tan(x) -&gt; float: Tangent (radians)</li>
+<li>exp(x) -&gt; float: Exponential function e^x</li>
+<li>float(val) -&gt; float: Convert to float, returns null on failure</li>
+<li>floor(x) -&gt; int: Floor (round down)</li>
+<li>int(val) -&gt; int: Convert to integer, returns null on failure</li>
 <li>ln(x) -&gt; float: Natural logarithm</li>
 <li>log10(x) -&gt; float: Common logarithm (base 10)</li>
-<li>exp(x) -&gt; float: Exponential function e^x</li>
+<li>max(a, b, *n) -&gt; number: Maximum value</li>
+<li>min(a, b, *n) -&gt; number: Minimum value</li>
+<li>pow(base, exp) -&gt; float: Power operation</li>
+<li>round(x) -&gt; int: Round to nearest integer</li>
+<li>sin(x) -&gt; float: Sine (radians)</li>
+<li>sqrt(x) -&gt; float: Square root</li>
+<li>tan(x) -&gt; float: Tangent (radians)</li>
 </ul>
 <h2 id="string-manipulation"><a class="header" href="#string-manipulation">String Manipulation</a></h2>
 <ul>
@@ -3211,23 +3399,40 @@ tva expr -n "price,qty" -r "10,5" -E '
 <li>truncate(string, len, end?) -&gt; string: Truncate string</li>
 <li>wordcount(string) -&gt; int: Word count</li>
 </ul>
-<pre><code class="language-bash"># Basic list operations
+<pre><code class="language-bash"># String manipulation examples
+tva expr -E 'upper("hello")'                # Returns: "HELLO"
+tva expr -E 'lower("WORLD")'                # Returns: "world"
+tva expr -E 'len("hello")'                  # Returns: 5
+tva expr -E 'char_len("你好")'               # Returns: 2 (UTF-8 characters)
+tva expr -E 'substr("hello", 1, 3)'         # Returns: "ell"
+
 tva expr -E 'split("1,2,3", ",")'           # Returns: ["1", "2", "3"]
 tva expr -E 'split("1-2-3", "-").reverse()' # Returns: ["3", "2", "1"]
 
+tva expr -E 'contains("hello", "ll")'       # Returns: true
+tva expr -E 'starts_with("hello", "he")'    # Returns: true
+tva expr -E 'ends_with("hello", "lo")'      # Returns: true
+
+tva expr -E 'replace("hello", "l", "x")'    # Returns: "hexxo"
+tva expr -E 'truncate("hello world", 5)'    # Returns: "he..."
+tva expr -E 'wordcount("hello world")'      # Returns: 2
+tva expr -E 'wordcount("one two three four")'  # Returns: 4
 </code></pre>
 <h2 id="list-operations"><a class="header" href="#list-operations">List Operations</a></h2>
-<p><em>Note: These functions operate on expression <code>List</code> type (e.g., returned by <code>split()</code>), different from column-level aggregation in <code>stats</code> command.</em></p>
 <ul>
 <li>first(list) -&gt; T: First element</li>
-<li>last(list) -&gt; T: Last element</li>
-<li>nth(list, n) -&gt; T: nth element (0-based)</li>
 <li>join(list, sep) -&gt; string: Join list elements</li>
+<li>last(list) -&gt; T: Last element</li>
+<li>len(list) -&gt; int: List length (number of elements)</li>
+<li>nth(list, n) -&gt; T: nth element (0-based, negative indices return null)</li>
 <li>reverse(list) -&gt; list: Reverse list</li>
+<li>replace_nth(list, n, value) -&gt; list: Return new list with nth element replaced by value (original list unchanged)</li>
+<li>slice(list, start, end?) -&gt; list: Slice list</li>
 <li>sort(list) -&gt; list: Sort list</li>
 <li>unique(list) -&gt; list: Remove duplicates</li>
-<li>slice(list, start, end?) -&gt; list: Slice list</li>
 </ul>
+<p><em>Note: These functions operate on expression <code>List</code> type (e.g., returned by <code>split()</code>), different
+from column-level aggregation in <code>stats</code> command.</em></p>
 <pre><code class="language-bash"># Basic list operations
 tva expr -E 'first([1, 2, 3])'           # Returns: 1
 tva expr -E 'last([1, 2, 3])'            # Returns: 3
@@ -3239,6 +3444,24 @@ tva expr -E '
     first(@list) + last(@list)
 '
 # Returns: 4
+
+# List length
+tva expr -E 'len([1, 2, 3, 4, 5])'        # Returns: 5
+tva expr -E 'len(split("a,b,c", ","))'    # Returns: 3
+tva expr -E '
+    [1, 2, 3] as @list;
+    @list.len()
+'
+# Returns: 3
+
+# Replace element at index (returns new list, original unchanged)
+tva expr -E 'replace_nth([1, 2, 3], 1, 99)'    # Returns: [1, 99, 3]
+tva expr -E '
+    [1, 2, 3] as @list;
+    replace_nth(@list, 0, 100) as @new_list;
+    [@list, @new_list]
+'
+# Returns: [[1, 2, 3], [100, 2, 3]]
 </code></pre>
 <h2 id="range-generation"><a class="header" href="#range-generation">Range Generation</a></h2>
 <ul>
@@ -3253,10 +3476,12 @@ tva expr -E '
 <li><code>range(0, 10, 3)</code> produces <code>[0, 3, 6, 9]</code></li>
 <li><code>range(0, -5, -1)</code> produces <code>[0, -1, -2, -3, -4]</code></li>
 </ul>
-<p>Note: If step direction doesn’t match the range direction (e.g., positive step with from &gt; upto), returns empty list.</p>
+<p>Note: If step direction doesn’t match the range direction (e.g., positive step with from &gt; upto),
+returns empty list.</p>
 <h2 id="logic--control"><a class="header" href="#logic--control">Logic &amp; Control</a></h2>
 <ul>
-<li>if(cond, then, else?) -&gt; T: Conditional expression, returns then if cond is true, else otherwise (or null)</li>
+<li>if(cond, then, else?) -&gt; T: Conditional expression, returns then if cond is true, else otherwise (
+or null)</li>
 <li>default(val, fallback) -&gt; T: Returns fallback if val is null or empty</li>
 </ul>
 <h2 id="higher-order-functions"><a class="header" href="#higher-order-functions">Higher-Order Functions</a></h2>
@@ -3264,6 +3489,7 @@ tva expr -E '
 <li>map(list, lambda) -&gt; list: Apply lambda to each element</li>
 <li>filter(list, lambda) -&gt; list: Filter list elements</li>
 <li>reduce(list, init, lambda) -&gt; value: Reduce list to single value</li>
+<li>sort_by(list, lambda) -&gt; list: Sort list by lambda expression</li>
 </ul>
 <pre><code class="language-bash"># Double each number
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
@@ -3284,6 +3510,26 @@ tva expr -E 'reduce(["a", "b", "c"], 0, (acc, _) =&gt; acc + 1)'
 # Find maximum value
 tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) =&gt; if(x &gt; acc, x, acc))'
 # Returns: 5
+
+# Sort by string length
+tva expr -E 'sort_by(["cherry", "apple", "pear"], s =&gt; len(s))'
+# Returns: ["pear", "apple", "cherry"]
+
+# Sort by absolute value
+tva expr -E 'sort_by([-5, 3, -1, 4], x =&gt; abs(x))'
+# Returns: [-1, 3, 4, -5]
+
+# Sort records by first element
+tva expr -E 'sort_by([[3, "c"], [1, "a"], [2, "b"]], r =&gt; r.first())'
+# Returns: [[1, "a"], [2, "b"], [3, "c"]]
+
+# Sort strings case-insensitively
+tva expr -E 'sort_by(["Banana", "apple", "Cherry"], s =&gt; lower(s))'
+# Returns: ["apple", "Banana", "Cherry"]
+
+# Sort by multiple criteria (composite key)
+tva expr -E 'sort_by([[2, "b"], [1, "c"], [1, "a"]], r =&gt; [r.nth(0), r.nth(1)])'
+# Returns: [[1, "a"], [1, "c"], [2, "b"]]
 </code></pre>
 <h2 id="regular-expressions"><a class="header" href="#regular-expressions">Regular Expressions</a></h2>
 <p><em>Note: Regex operations can be expensive, use with caution.</em></p>
@@ -3310,9 +3556,50 @@ tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) =&gt; if(x &gt; acc, x, acc))'
 <li>print(val, …): Print to stdout, returns last argument</li>
 <li>eprint(val, …): Print to stderr, returns last argument</li>
 </ul>
+<h2 id="meta-functions"><a class="header" href="#meta-functions">Meta Functions</a></h2>
+<ul>
+<li>type(value) -&gt; string: Returns the type name of the value
+<ul>
+<li>Returns: “int”, “float”, “string”, “bool”, “null”, or “list”</li>
+</ul>
+</li>
+<li>env(name) -&gt; string: Get environment variable value
+<ul>
+<li>Returns <code>null</code> if variable not set</li>
+</ul>
+</li>
+<li>cwd() -&gt; string: Returns the current working directory</li>
+<li>version() -&gt; string: Returns the TVA version</li>
+<li>platform() -&gt; string: Returns the operating system name
+<ul>
+<li>Returns: “windows”, “macos”, “linux”, or “unknown”</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-bash"># type() examples
+tva expr -E '[[1,2], "string", true, null, -5]'
+# [List([Int(1), Int(2)]), String("string"), Bool(true), Null, Int(-5)]
+
+tva expr -E '[[1,2], "string", true, null, -5, x =&gt; x + 1].map(x =&gt; type(x)).join(",")'
+# list,string,bool,null,int,lambda
+
+# env() examples
+tva expr -E 'env("HOME")'        # Returns: "/home/user"
+tva expr -E 'env("PATH")'        # Returns: "/usr/bin:/bin"
+tva expr -E 'default(env("DEBUG"), "false")'  # Returns: "false" (if DEBUG not set)
+
+# version() and platform() examples
+tva expr -E 'version()'          # Returns: "0.2.5"
+tva expr -E 'platform()'         # Returns: "windows" / "macos" / "linux"
+
+# cwd() example
+tva expr -E 'cwd()'              # Returns: "/path/to/current/dir"
+
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="rosetta-code-with-tva-expression-engine"><a class="header" href="#rosetta-code-with-tva-expression-engine">Rosetta Code with TVA Expression Engine</a></h1>
-<p>This document demonstrates the capabilities of TVA’s expression engine by implementing tasks from <a href="https://rosettacode.org/">Rosetta Code</a>.</p>
+<p>This document demonstrates the capabilities of TVA’s expression engine by implementing tasks
+from <a href="https://rosettacode.org/">Rosetta Code</a>.</p>
 <h2 id="basic-usage-8"><a class="header" href="#basic-usage-8">Basic Usage</a></h2>
 <p>Most examples use the <code>tva expr</code> command for standalone expression evaluation:</p>
 <pre><code class="language-bash"># Simple arithmetic
@@ -3359,7 +3646,9 @@ map(
 <li><code>.join()</code> method to combine verses with double newlines</li>
 </ul>
 <h3 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h3>
-<p>Write a program that prints the integers from 1 to 100 (inclusive). But for multiples of three, print “Fizz” instead of the number; for multiples of five, print “Buzz”; for multiples of both three and five, print “FizzBuzz”.</p>
+<p>Write a program that prints the integers from 1 to 100 (inclusive). But for multiples of three,
+print “Fizz” instead of the number; for multiples of five, print “Buzz”; for multiples of both three
+and five, print “FizzBuzz”.</p>
 <pre><code class="language-bash">tva expr -E '
 map(
     range(1, 101),
@@ -3380,7 +3669,8 @@ map(
 <li><code>.join("\n")</code> to output one item per line</li>
 </ul>
 <h3 id="factorial"><a class="header" href="#factorial">Factorial</a></h3>
-<p>The factorial of 0 is defined as 1. The factorial of a positive integer n is defined as the product n × (n-1) × (n-2) × … × 1.</p>
+<p>The factorial of 0 is defined as 1. The factorial of a positive integer n is defined as the product
+n × (n-1) × (n-2) × … × 1.</p>
 <p>Using <code>reduce()</code> for iterative approach:</p>
 <pre><code class="language-bash"># Factorial of 5: 5! = 5 × 4 × 3 × 2 × 1 = 120
 tva expr -E 'reduce(range(1, 6), 1, (acc, n) =&gt; acc * n)'
@@ -3456,25 +3746,37 @@ map(
 <li>Method chaining - <code>split().reverse().join()</code> to reverse a string</li>
 </ul>
 <h3 id="word-frequency"><a class="header" href="#word-frequency">Word frequency</a></h3>
-<p>Given a text file and an integer <code>n</code>, print/display the <code>n</code> most common words in the file (and the number of their occurrences) in decreasing frequency.</p>
-<p>Count unique words (simplified version without sorting):</p>
+<p>Given a text file and an integer <code>n</code>, print/display the <code>n</code> most common words in the file (and the
+number of their occurrences) in decreasing frequency.</p>
 <pre><code class="language-bash">tva expr -E '
-"the quick brown fox jumps over the lazy dog the quick brown fox"
-| lower()
-| split(_, " ") as @words;
+"the quick brown fox jumps over the lazy dog the quick brown fox" |
+    lower() |
+    split(_, " ") as @words;
 
 // Get unique words
 @words | unique() as @unique_words;
 
 // Count occurrences of each unique word
+// Note: Lambda body must be a single expression, so we use nested function calls
 map(@unique_words, word =&gt;
-    filter(@words, w =&gt; w == word) | len() as @count |
-    [word, @count]
-)
+    [word, filter(@words, w =&gt; w == word) | len()]
+) as @word_counts;
+
+// Sort by count in descending order
+sort_by(@word_counts, pair =&gt; [-pair.nth(1), pair.nth(0)])
+    .map(pair =&gt; pair.join(": "))
+    .join("\n")
 '
 </code></pre>
 <p>Output:</p>
-<pre><code>[["the", 3], ["quick", 2], ["brown", 2], ["fox", 2], ["jumps", 1], ["over", 1], ["lazy", 1], ["dog", 1]]
+<pre><code>the: 3
+brown: 2
+fox: 2
+quick: 2
+dog: 1
+jumps: 1
+lazy: 1
+over: 1
 </code></pre>
 <p>This demonstrates:</p>
 <ul>
@@ -3482,11 +3784,53 @@ map(@unique_words, word =&gt;
 <li>Nested <code>map</code> and <code>filter</code> - For each unique word, count occurrences</li>
 <li><code>len()</code> - Get list length as count</li>
 <li>List construction - Build <code>[word, count]</code> pairs</li>
+<li><code>sort_by()</code> - Sort by frequency (using negation for descending order)</li>
+</ul>
+<h3 id="sieve-of-eratosthenes"><a class="header" href="#sieve-of-eratosthenes">Sieve of Eratosthenes</a></h3>
+<p>Implement the Sieve of Eratosthenes algorithm, with the only allowed optimization that the outer loop can stop at the square root of the limit, and the inner loop may start at the square of the prime just found.</p>
+<p>Find all prime numbers up to 100:</p>
+<pre><code class="language-bash">tva expr -E '
+100 as @limit;
+int(sqrt(@limit)) as @sqrt_limit;
+
+// Initialize: all numbers &gt;= 2 are potentially prime
+map(range(0, @limit + 1), n =&gt; n &gt;= 2) as @is_prime;
+
+// Sieve: for each prime p, mark its multiples as not prime
+// Outer loop stops at sqrt(limit), inner loop starts at p*p
+reduce(
+    range(2, @sqrt_limit + 1),
+    @is_prime,
+    (primes, p) =&gt;
+        if(primes.nth(p),
+            reduce(
+                range(p * p, @limit + 1, p),
+                primes,
+                (acc, m) =&gt; acc.replace_nth(m, false)
+            ),
+            primes
+        )
+) as @sieved;
+
+// Collect all prime numbers
+filter(range(2, @limit + 1), n =&gt; @sieved.nth(n)) |
+    join(_, ", ")
+'
+</code></pre>
+<p>Output:</p>
+<pre><code>2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li><code>sqrt()</code> and <code>int()</code> - Calculate square root for outer loop limit</li>
+<li>Boolean list as sieve - Index represents number, value represents primality</li>
+<li>Nested <code>reduce()</code> - Outer loop iterates candidates, inner loop marks multiples</li>
+<li><code>replace_nth()</code> - Immutable list update for marking composites</li>
+<li><code>filter()</code> with predicate - Collect numbers where sieve value is true</li>
+<li>Optimization: inner loop starts at <code>p * p</code> (smaller multiples already marked)</li>
 </ul>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
 <p>进阶级（字符串、数据结构、算法）
-Word count
-Prime numbers
 Greatest common divisor
 Sorting algorithms / Bubble sort / Quick sort
 Binary search
@@ -3502,9 +3846,11 @@ Eight queens puzzle
 Conway’s Game of Life</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="other-tools-analysis"><a class="header" href="#other-tools-analysis">Other Tools Analysis</a></h1>
-<p>This document analyzes existing solutions for data processing expression languages, providing context for TVA’s design decisions.</p>
+<p>This document analyzes existing solutions for data processing expression languages, providing
+context for TVA’s design decisions.</p>
 <h2 id="gnu-parallel-template-substitution"><a class="header" href="#gnu-parallel-template-substitution">GNU Parallel: Template Substitution</a></h2>
-<p>GNU Parallel uses a <strong>string replacement</strong> based placeholder mechanism, particularly suited for building Shell commands.</p>
+<p>GNU Parallel uses a <strong>string replacement</strong> based placeholder mechanism, particularly suited for
+building Shell commands.</p>
 <ul>
 <li><strong>Core Mechanism</strong>: Predefined placeholders with string interpolation at execution time.</li>
 <li><strong>Placeholder Syntax</strong>:
@@ -3534,9 +3880,12 @@ Conway’s Game of Life</p>
 <li>
 <p><strong>Core Mechanism</strong>:</p>
 <ul>
-<li><strong>Record Splitting</strong>: Input is split into records (default by line, controlled by <code>RS</code>). <code>NR</code> tracks current record number, <code>FNR</code> tracks current file’s record number.</li>
-<li><strong>Field Splitting</strong>: Each record is further split into fields (default by whitespace, controlled by <code>FS</code>). <code>NF</code> tracks field count.</li>
-<li><strong>Field Reference</strong>: <code>$n</code> syntax references the nth field, <code>$0</code> represents the entire record. Field numbers can be variables or expressions (e.g., <code>$NF</code> for last field).</li>
+<li><strong>Record Splitting</strong>: Input is split into records (default by line, controlled by <code>RS</code>). <code>NR</code>
+tracks current record number, <code>FNR</code> tracks current file’s record number.</li>
+<li><strong>Field Splitting</strong>: Each record is further split into fields (default by whitespace,
+controlled by <code>FS</code>). <code>NF</code> tracks field count.</li>
+<li><strong>Field Reference</strong>: <code>$n</code> syntax references the nth field, <code>$0</code> represents the entire record.
+Field numbers can be variables or expressions (e.g., <code>$NF</code> for last field).</li>
 </ul>
 </li>
 <li>
@@ -3560,69 +3909,90 @@ Conway’s Game of Life</p>
 <ul>
 <li><strong>Ancient Syntax</strong>: Differs significantly from modern languages, steep learning curve.</li>
 <li><strong>Weak Type System</strong>: Implicit conversions convenient but error-prone.</li>
-<li><strong>Limited Features</strong>: Standard AWK lacks modern features (JSON support, rich string functions).</li>
+<li><strong>Limited Features</strong>: Standard AWK lacks modern features (JSON support, rich string
+functions).</li>
 </ul>
 </li>
 </ul>
 <h2 id="xan-moonblade-dynamic-expression-engine"><a class="header" href="#xan-moonblade-dynamic-expression-engine">xan (Moonblade): Dynamic Expression Engine</a></h2>
-<p>xan includes <strong>Moonblade</strong>, a dynamic scripting language similar to simplified Python/JavaScript, optimized for CSV processing.</p>
+<p>xan includes <strong>Moonblade</strong>, a dynamic scripting language similar to simplified Python/JavaScript,
+optimized for CSV processing.</p>
 <ul>
 <li>
 <p><strong>Core Mechanism</strong>:</p>
 <ul>
 <li><strong>Parser &amp; Interpreter</strong>: PEG parser (Pest) builds AST, uses Tree-Walker Interpreter.</li>
-<li><strong>Concretization</strong>: Static analysis optimization before execution, e.g., resolving column names to indices to avoid runtime hash lookups.</li>
-<li><strong>Arc-based Types</strong>: Uses <code>Arc&lt;T&gt;</code> for strings and complex objects to minimize deep copies, suitable for streaming.</li>
+<li><strong>Concretization</strong>: Static analysis optimization before execution, e.g., resolving column
+names to indices to avoid runtime hash lookups.</li>
+<li><strong>Arc-based Types</strong>: Uses <code>Arc&lt;T&gt;</code> for strings and complex objects to minimize deep copies,
+suitable for streaming.</li>
 </ul>
 </li>
 <li>
 <p><strong>Syntax Features</strong>:</p>
 <ul>
-<li><strong>Columns as Variables</strong>: Use column names directly (e.g., <code>count &gt; 10</code>), or <code>col("name")</code>/<code>col(index)</code>.</li>
-<li><strong>Operator Distinction</strong>: Distinguishes string (<code>eq</code>, <code>++</code>) and numeric (<code>==</code>, <code>+</code>) operators (Perl-like design), avoiding implicit conversion ambiguity.</li>
+<li><strong>Columns as Variables</strong>: Use column names directly (e.g., <code>count &gt; 10</code>), or <code>col("name")</code>/
+<code>col(index)</code>.</li>
+<li><strong>Operator Distinction</strong>: Distinguishes string (<code>eq</code>, <code>++</code>) and numeric (<code>==</code>, <code>+</code>)
+operators (Perl-like design), avoiding implicit conversion ambiguity.</li>
 <li><strong>Rich Built-ins</strong>: String, Math, Date, Regex, Hashing, plus CSS Selector-style HTML scraping.</li>
-<li><strong>Higher-Order Functions</strong>: Supports <code>map</code>, <code>filter</code>, <code>reduce</code> with Lambda expressions (e.g., <code>map(list, x =&gt; x + 1)</code>).</li>
+<li><strong>Higher-Order Functions</strong>: Supports <code>map</code>, <code>filter</code>, <code>reduce</code> with Lambda expressions (e.g.,
+<code>map(list, x =&gt; x + 1)</code>).</li>
 </ul>
 </li>
 <li>
 <p><strong>Pros</strong>:</p>
 <ul>
-<li><strong>Extremely Expressive</strong>: Handles complex business logic (JSON parsing, date calculations, fuzzy matching).</li>
-<li><strong>Relatively High Performance</strong>: Optimized for CSV structure (Header/Row) compared to general scripting languages.</li>
+<li><strong>Extremely Expressive</strong>: Handles complex business logic (JSON parsing, date calculations,
+fuzzy matching).</li>
+<li><strong>Relatively High Performance</strong>: Optimized for CSV structure (Header/Row) compared to general
+scripting languages.</li>
 </ul>
 </li>
 <li>
 <p><strong>Cons</strong>:</p>
 <ul>
-<li><strong>High Implementation Complexity</strong>: Maintaining a complete interpreter, type system, and function library is costly.</li>
-<li><strong>Runtime Overhead</strong>: Despite optimizations, AST traversal and dynamic dispatch per row have some cost compared to pure Native code.</li>
+<li><strong>High Implementation Complexity</strong>: Maintaining a complete interpreter, type system, and
+function library is costly.</li>
+<li><strong>Runtime Overhead</strong>: Despite optimizations, AST traversal and dynamic dispatch per row have
+some cost compared to pure Native code.</li>
 </ul>
 </li>
 </ul>
 <h2 id="jq-json-processor--stream-computing"><a class="header" href="#jq-json-processor--stream-computing">jq: JSON Processor &amp; Stream Computing</a></h2>
-<p><code>jq</code> is the de facto standard for JSON processing, built on a specialized stack-based VM with backtracking and generators.</p>
+<p><code>jq</code> is the de facto standard for JSON processing, built on a specialized stack-based VM with
+backtracking and generators.</p>
 <ul>
 <li>
 <p><strong>Core Mechanism</strong>:</p>
 <ul>
-<li><strong>Bytecode Compiler &amp; VM</strong>: Compiles queries (Filters) to bytecode executed in an interpreter loop. Unlike xan’s Tree-walker, this provides a more compact execution model.</li>
-<li><strong>Backtracking</strong>: jq’s killer feature. Via <code>FORK</code> and <code>BACKTRACK</code> instructions, one input can produce zero, one, or multiple outputs (e.g., <code>.[]</code>). This makes jq essentially a streaming generator engine.</li>
-<li><strong>Reference Counting</strong>: Data represented via <code>jv</code> struct (in <code>jv.h</code>), using reference counting. Allows efficient “shallow copies” (Copy-on-write), but has overhead with high-frequency allocation.</li>
+<li><strong>Bytecode Compiler &amp; VM</strong>: Compiles queries (Filters) to bytecode executed in an interpreter
+loop. Unlike xan’s Tree-walker, this provides a more compact execution model.</li>
+<li><strong>Backtracking</strong>: jq’s killer feature. Via <code>FORK</code> and <code>BACKTRACK</code> instructions, one input can
+produce zero, one, or multiple outputs (e.g., <code>.[]</code>). This makes jq essentially a streaming
+generator engine.</li>
+<li><strong>Reference Counting</strong>: Data represented via <code>jv</code> struct (in <code>jv.h</code>), using reference
+counting. Allows efficient “shallow copies” (Copy-on-write), but has overhead with
+high-frequency allocation.</li>
 </ul>
 </li>
 <li>
 <p><strong>Architecture</strong>:</p>
 <ul>
-<li><strong><code>jv</code> Type System</strong>: Unified JSON value representation (Tagged Union): Null, Bool, Number, String, Array, Object.</li>
-<li><strong>Hybrid Stdlib</strong>: Many standard library functions (<code>map</code>, <code>select</code>, <code>recurse</code>) written in jq language (<code>builtin.jq</code>), only low-level primitives (<code>type</code>, <code>keys</code>) in C. Easy to extend.</li>
-<li><strong>Stack Machine</strong>: VM maintains value stack and frame stack, supports closures and complex control flow.</li>
+<li><strong><code>jv</code> Type System</strong>: Unified JSON value representation (Tagged Union): Null, Bool, Number,
+String, Array, Object.</li>
+<li><strong>Hybrid Stdlib</strong>: Many standard library functions (<code>map</code>, <code>select</code>, <code>recurse</code>) written in jq
+language (<code>builtin.jq</code>), only low-level primitives (<code>type</code>, <code>keys</code>) in C. Easy to extend.</li>
+<li><strong>Stack Machine</strong>: VM maintains value stack and frame stack, supports closures and complex
+control flow.</li>
 </ul>
 </li>
 <li>
 <p><strong>Syntax Features</strong>:</p>
 <ul>
 <li><strong>Filters</strong>: Everything is a filter. Input -&gt; Filter -&gt; Output stream.</li>
-<li><strong>Pipe (<code>|</code>)</strong>: Primary way to compose filters. <code>a | b</code> runs <code>b</code> with <strong>each</strong> output of <code>a</code> as input.</li>
+<li><strong>Pipe (<code>|</code>)</strong>: Primary way to compose filters. <code>a | b</code> runs <code>b</code> with <strong>each</strong> output of <code>a</code>
+as input.</li>
 <li><strong>Context (<code>.</code>)</strong>: Explicit reference to current context value.</li>
 <li><strong>Variables (<code>$var</code>)</strong>: Bound via <code>... as $x | ...</code>, lexically scoped.</li>
 </ul>
@@ -3638,28 +4008,37 @@ Conway’s Game of Life</p>
 <li>
 <p><strong>Cons</strong>:</p>
 <ul>
-<li><strong>Performance Bottleneck</strong>: Compared to columnar engines (xan/polars), jq’s per-object processing and interpreter overhead is significant.</li>
-<li><strong>Mental Model</strong>: Backtracking is hard to understand for users from traditional programming (e.g., why <code>debug</code> prints multiple times).</li>
+<li><strong>Performance Bottleneck</strong>: Compared to columnar engines (xan/polars), jq’s per-object
+processing and interpreter overhead is significant.</li>
+<li><strong>Mental Model</strong>: Backtracking is hard to understand for users from traditional programming (
+e.g., why <code>debug</code> prints multiple times).</li>
 </ul>
 </li>
 </ul>
 <h2 id="tera-template-engine--rust-ecosystem"><a class="header" href="#tera-template-engine--rust-ecosystem">Tera: Template Engine &amp; Rust Ecosystem</a></h2>
-<p><code>Tera</code> is Rust’s most popular template engine, inspired by Jinja2 and Django templates. While mainly for HTML generation, its design patterns are highly relevant for expression languages.</p>
+<p><code>Tera</code> is Rust’s most popular template engine, inspired by Jinja2 and Django templates. While mainly
+for HTML generation, its design patterns are highly relevant for expression languages.</p>
 <ul>
 <li>
 <p><strong>Core Mechanism</strong>:</p>
 <ul>
-<li><strong>Pest Parser</strong>: Uses PEG (Parsing Expression Grammar) parser (<code>pest</code>) to define syntax (<code>tera.pest</code>) and generate AST (<code>ast.rs</code>). Provides extreme syntax flexibility.</li>
-<li><strong>Renderer &amp; CallStack</strong>: Tree-walker pattern. <code>CallStack</code> (<code>call_stack.rs</code>) manages <code>StackFrame</code> (<code>stack_frame.rs</code>) for scope, loops (<code>ForLoop</code>), and macro calls.</li>
-<li><strong>JSON-centric</strong>: Data model built entirely on <code>serde_json::Value</code>. <code>Context</code> is essentially <code>BTreeMap&lt;String, Value&gt;</code>. Seamlessly handles any Rust data serializable to JSON.</li>
+<li><strong>Pest Parser</strong>: Uses PEG (Parsing Expression Grammar) parser (<code>pest</code>) to define syntax (
+<code>tera.pest</code>) and generate AST (<code>ast.rs</code>). Provides extreme syntax flexibility.</li>
+<li><strong>Renderer &amp; CallStack</strong>: Tree-walker pattern. <code>CallStack</code> (<code>call_stack.rs</code>) manages
+<code>StackFrame</code> (<code>stack_frame.rs</code>) for scope, loops (<code>ForLoop</code>), and macro calls.</li>
+<li><strong>JSON-centric</strong>: Data model built entirely on <code>serde_json::Value</code>. <code>Context</code> is essentially
+<code>BTreeMap&lt;String, Value&gt;</code>. Seamlessly handles any Rust data serializable to JSON.</li>
 </ul>
 </li>
 <li>
 <p><strong>Architecture</strong>:</p>
 <ul>
-<li><strong>Function/Filter/Test Traits</strong>: Highly extensible. Implement <code>Function</code>, <code>Filter</code>, <code>Test</code> traits (<code>builtins/mod.rs</code>) to inject custom logic.</li>
-<li><strong>Inheritance</strong>: Supports <code>extends</code> and <code>block</code> for template reuse and override, useful for complex document structures.</li>
-<li><strong>Whitespace Control</strong>: <code>{%-</code> and <code>-%}</code> for precise whitespace control (<code>parser/whitespace.rs</code>), crucial for format-sensitive text (code or specific data formats).</li>
+<li><strong>Function/Filter/Test Traits</strong>: Highly extensible. Implement <code>Function</code>, <code>Filter</code>, <code>Test</code>
+traits (<code>builtins/mod.rs</code>) to inject custom logic.</li>
+<li><strong>Inheritance</strong>: Supports <code>extends</code> and <code>block</code> for template reuse and override, useful for
+complex document structures.</li>
+<li><strong>Whitespace Control</strong>: <code>{%-</code> and <code>-%}</code> for precise whitespace control (
+<code>parser/whitespace.rs</code>), crucial for format-sensitive text (code or specific data formats).</li>
 </ul>
 </li>
 <li>
@@ -3674,7 +4053,8 @@ Conway’s Game of Life</p>
 <li>
 <p><strong>Pros</strong>:</p>
 <ul>
-<li><strong>Balance of Type Safety and Dynamism</strong>: Rust-based but provides dynamic type experience (JSON Value).</li>
+<li><strong>Balance of Type Safety and Dynamism</strong>: Rust-based but provides dynamic type experience (JSON
+Value).</li>
 <li><strong>Extremely Mature Syntax</strong>: Jinja2 style has stood the test of time, low cognitive burden.</li>
 <li><strong>Error Handling</strong>: Detailed error location and context (<code>errors.rs</code>).</li>
 </ul>
@@ -3682,7 +4062,9 @@ Conway’s Game of Life</p>
 <li>
 <p><strong>Cons</strong>:</p>
 <ul>
-<li><strong>Allocation Heavy</strong>: Rendering involves significant <code>String</code> allocation and <code>Value</code> cloning (Clone-on-write via <code>Cow</code>), potentially too costly for high-performance streaming data processing (like tva’s goal).</li>
+<li><strong>Allocation Heavy</strong>: Rendering involves significant <code>String</code> allocation and <code>Value</code> cloning (
+Clone-on-write via <code>Cow</code>), potentially too costly for high-performance streaming data
+processing (like tva’s goal).</li>
 <li><strong>Text-oriented</strong>: Core goal is text concatenation, not data structure transformation.</li>
 </ul>
 </li>

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9c951220.js";
+            window.path_to_searchindex_js = "../searchindex-e4eea1a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d1513fcf.js"></script>
@@ -181,7 +181,8 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="rosetta-code-with-tva-expression-engine"><a class="header" href="#rosetta-code-with-tva-expression-engine">Rosetta Code with TVA Expression Engine</a></h1>
-<p>This document demonstrates the capabilities of TVA’s expression engine by implementing tasks from <a href="https://rosettacode.org/">Rosetta Code</a>.</p>
+<p>This document demonstrates the capabilities of TVA’s expression engine by implementing tasks
+from <a href="https://rosettacode.org/">Rosetta Code</a>.</p>
 <h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
 <p>Most examples use the <code>tva expr</code> command for standalone expression evaluation:</p>
 <pre><code class="language-bash"># Simple arithmetic
@@ -228,7 +229,9 @@ map(
 <li><code>.join()</code> method to combine verses with double newlines</li>
 </ul>
 <h3 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h3>
-<p>Write a program that prints the integers from 1 to 100 (inclusive). But for multiples of three, print “Fizz” instead of the number; for multiples of five, print “Buzz”; for multiples of both three and five, print “FizzBuzz”.</p>
+<p>Write a program that prints the integers from 1 to 100 (inclusive). But for multiples of three,
+print “Fizz” instead of the number; for multiples of five, print “Buzz”; for multiples of both three
+and five, print “FizzBuzz”.</p>
 <pre><code class="language-bash">tva expr -E '
 map(
     range(1, 101),
@@ -249,7 +252,8 @@ map(
 <li><code>.join("\n")</code> to output one item per line</li>
 </ul>
 <h3 id="factorial"><a class="header" href="#factorial">Factorial</a></h3>
-<p>The factorial of 0 is defined as 1. The factorial of a positive integer n is defined as the product n × (n-1) × (n-2) × … × 1.</p>
+<p>The factorial of 0 is defined as 1. The factorial of a positive integer n is defined as the product
+n × (n-1) × (n-2) × … × 1.</p>
 <p>Using <code>reduce()</code> for iterative approach:</p>
 <pre><code class="language-bash"># Factorial of 5: 5! = 5 × 4 × 3 × 2 × 1 = 120
 tva expr -E 'reduce(range(1, 6), 1, (acc, n) =&gt; acc * n)'
@@ -325,25 +329,37 @@ map(
 <li>Method chaining - <code>split().reverse().join()</code> to reverse a string</li>
 </ul>
 <h3 id="word-frequency"><a class="header" href="#word-frequency">Word frequency</a></h3>
-<p>Given a text file and an integer <code>n</code>, print/display the <code>n</code> most common words in the file (and the number of their occurrences) in decreasing frequency.</p>
-<p>Count unique words (simplified version without sorting):</p>
+<p>Given a text file and an integer <code>n</code>, print/display the <code>n</code> most common words in the file (and the
+number of their occurrences) in decreasing frequency.</p>
 <pre><code class="language-bash">tva expr -E '
-"the quick brown fox jumps over the lazy dog the quick brown fox"
-| lower()
-| split(_, " ") as @words;
+"the quick brown fox jumps over the lazy dog the quick brown fox" |
+    lower() |
+    split(_, " ") as @words;
 
 // Get unique words
 @words | unique() as @unique_words;
 
 // Count occurrences of each unique word
+// Note: Lambda body must be a single expression, so we use nested function calls
 map(@unique_words, word =&gt;
-    filter(@words, w =&gt; w == word) | len() as @count |
-    [word, @count]
-)
+    [word, filter(@words, w =&gt; w == word) | len()]
+) as @word_counts;
+
+// Sort by count in descending order
+sort_by(@word_counts, pair =&gt; [-pair.nth(1), pair.nth(0)])
+    .map(pair =&gt; pair.join(": "))
+    .join("\n")
 '
 </code></pre>
 <p>Output:</p>
-<pre><code>[["the", 3], ["quick", 2], ["brown", 2], ["fox", 2], ["jumps", 1], ["over", 1], ["lazy", 1], ["dog", 1]]
+<pre><code>the: 3
+brown: 2
+fox: 2
+quick: 2
+dog: 1
+jumps: 1
+lazy: 1
+over: 1
 </code></pre>
 <p>This demonstrates:</p>
 <ul>
@@ -351,11 +367,53 @@ map(@unique_words, word =&gt;
 <li>Nested <code>map</code> and <code>filter</code> - For each unique word, count occurrences</li>
 <li><code>len()</code> - Get list length as count</li>
 <li>List construction - Build <code>[word, count]</code> pairs</li>
+<li><code>sort_by()</code> - Sort by frequency (using negation for descending order)</li>
+</ul>
+<h3 id="sieve-of-eratosthenes"><a class="header" href="#sieve-of-eratosthenes">Sieve of Eratosthenes</a></h3>
+<p>Implement the Sieve of Eratosthenes algorithm, with the only allowed optimization that the outer loop can stop at the square root of the limit, and the inner loop may start at the square of the prime just found.</p>
+<p>Find all prime numbers up to 100:</p>
+<pre><code class="language-bash">tva expr -E '
+100 as @limit;
+int(sqrt(@limit)) as @sqrt_limit;
+
+// Initialize: all numbers &gt;= 2 are potentially prime
+map(range(0, @limit + 1), n =&gt; n &gt;= 2) as @is_prime;
+
+// Sieve: for each prime p, mark its multiples as not prime
+// Outer loop stops at sqrt(limit), inner loop starts at p*p
+reduce(
+    range(2, @sqrt_limit + 1),
+    @is_prime,
+    (primes, p) =&gt;
+        if(primes.nth(p),
+            reduce(
+                range(p * p, @limit + 1, p),
+                primes,
+                (acc, m) =&gt; acc.replace_nth(m, false)
+            ),
+            primes
+        )
+) as @sieved;
+
+// Collect all prime numbers
+filter(range(2, @limit + 1), n =&gt; @sieved.nth(n)) |
+    join(_, ", ")
+'
+</code></pre>
+<p>Output:</p>
+<pre><code>2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li><code>sqrt()</code> and <code>int()</code> - Calculate square root for outer loop limit</li>
+<li>Boolean list as sieve - Index represents number, value represents primality</li>
+<li>Nested <code>reduce()</code> - Outer loop iterates candidates, inner loop marks multiples</li>
+<li><code>replace_nth()</code> - Immutable list update for marking composites</li>
+<li><code>filter()</code> with predicate - Collect numbers where sieve value is true</li>
+<li>Optimization: inner loop starts at <code>p * p</code> (smaller multiples already marked)</li>
 </ul>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
 <p>进阶级（字符串、数据结构、算法）
-Word count
-Prime numbers
 Greatest common divisor
 Sorting algorithms / Bubble sort / Quick sort
 Binary search
