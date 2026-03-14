@@ -363,3 +363,45 @@ fn expr_with_real_file_variable_binding() {
         lines[1]
     );
 }
+
+#[test]
+fn expr_header_format_single_expression() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "@estimate * 2",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Header should be the formatted expression
+    assert_eq!(
+        lines[0], "@estimate * 2",
+        "Expected header '@estimate * 2', got: {}",
+        lines[0]
+    );
+}
+
+#[test]
+fn expr_header_format_last_expression() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "@estimate as @e; @e + 100",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Header should be the last expression, not the whole expression string
+    assert_eq!(
+        lines[0], "@e + 100",
+        "Expected header '@e + 100' (last expression), got: {}",
+        lines[0]
+    );
+}
