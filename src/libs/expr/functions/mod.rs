@@ -7,6 +7,7 @@ mod hash;
 mod io;
 mod list;
 mod logical;
+mod meta;
 mod numeric;
 mod regex;
 mod string;
@@ -171,6 +172,13 @@ impl FunctionRegistry {
         self.register("now", FunctionInfo::fixed(datetime::now, 0));
         self.register("strptime", FunctionInfo::fixed(datetime::strptime, 2));
         self.register("strftime", FunctionInfo::fixed(datetime::strftime, 2));
+
+        // Meta functions
+        self.register("type", FunctionInfo::fixed(meta::type_fn, 1));
+        self.register("env", FunctionInfo::fixed(meta::env_fn, 1));
+        self.register("cwd", FunctionInfo::fixed(meta::cwd_fn, 0));
+        self.register("version", FunctionInfo::fixed(meta::version_fn, 0));
+        self.register("platform", FunctionInfo::fixed(meta::platform_fn, 0));
     }
 }
 

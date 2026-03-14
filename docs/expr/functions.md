@@ -145,3 +145,36 @@ tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) => if(x > acc, x, acc))'
 
 - print(val, ...): Print to stdout, returns last argument
 - eprint(val, ...): Print to stderr, returns last argument
+
+## Meta Functions
+
+- type(value) -> string: Returns the type name of the value
+  - Returns: "int", "float", "string", "bool", "null", or "list"
+- env(name) -> string: Get environment variable value
+  - Returns `null` if variable not set
+- cwd() -> string: Returns the current working directory
+- version() -> string: Returns the TVA version
+- platform() -> string: Returns the operating system name
+  - Returns: "windows", "macos", "linux", or "unknown"
+
+```bash
+# type() examples
+tva expr -E '[[1,2], "string", true, null, -5]'
+# [List([Int(1), Int(2)]), String("string"), Bool(true), Null, Int(-5)]
+
+tva expr -E '[[1,2], "string", true, null, -5, x => x + 1].map(x => type(x)).join(",")'
+# list,string,bool,null,int,lambda
+
+# env() examples
+tva expr -E 'env("HOME")'        # Returns: "/home/user"
+tva expr -E 'env("PATH")'        # Returns: "/usr/bin:/bin"
+tva expr -E 'default(env("DEBUG"), "false")'  # Returns: "false" (if DEBUG not set)
+
+# version() and platform() examples
+tva expr -E 'version()'          # Returns: "0.2.5"
+tva expr -E 'platform()'         # Returns: "windows" / "macos" / "linux"
+
+# cwd() example
+tva expr -E 'cwd()'              # Returns: "/path/to/current/dir"
+
+```
