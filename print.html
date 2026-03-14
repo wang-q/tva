@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-051cc6b3.js";
+            window.path_to_searchindex_js = "searchindex-07c5515d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-963373c1.js"></script>
@@ -2573,80 +2573,12 @@ tva mutate -E "split(@tags, ',') | map(_, t =&gt; trim(t)) | join(_, '; ') as @c
 <hr>
 <h2 id="相关文档"><a class="header" href="#相关文档">相关文档</a></h2>
 <ul>
-<li><a href="#expression-functions--operators">函数参考</a> - 完整的函数列表</li>
+<li><a href="#expression-functions">函数参考</a> - 完整的函数列表</li>
 <li><a href="expr/operators.html">操作符详解</a> - 操作符详细说明</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="expression-functions--operators"><a class="header" href="#expression-functions--operators">Expression Functions &amp; Operators</a></h1>
-<h2 id="operators"><a class="header" href="#operators">Operators</a></h2>
-<h3 id="operator-precedence-high-to-low"><a class="header" href="#operator-precedence-high-to-low">Operator Precedence (high to low)</a></h3>
-<ol>
-<li><code>()</code> - Grouping</li>
-<li><code>-</code> (unary) - Negation</li>
-<li><code>**</code> - Power</li>
-<li><code>*</code>, <code>/</code>, <code>%</code> - Multiply, Divide, Modulo</li>
-<li><code>+</code>, <code>-</code> (binary) - Add, Subtract</li>
-<li><code>++</code> - String concatenation</li>
-<li><code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code> - Numeric comparison</li>
-<li><code>eq</code>, <code>ne</code>, <code>lt</code>, <code>le</code>, <code>gt</code>, <code>ge</code> - String comparison</li>
-<li><code>not</code> - Logical NOT</li>
-<li><code>and</code> - Logical AND</li>
-<li><code>or</code> - Logical OR</li>
-<li><code>|</code> - Pipe</li>
-</ol>
-<h3 id="arithmetic-operators"><a class="header" href="#arithmetic-operators">Arithmetic Operators</a></h3>
-<ul>
-<li><code>-x</code>: Negation</li>
-<li><code>a + b</code>: Addition</li>
-<li><code>a - b</code>: Subtraction</li>
-<li><code>a * b</code>: Multiplication</li>
-<li><code>a / b</code>: Division</li>
-<li><code>a % b</code>: Modulo</li>
-<li><code>a ** b</code>: Power</li>
-</ul>
-<h3 id="string-operators"><a class="header" href="#string-operators">String Operators</a></h3>
-<ul>
-<li><code>a ++ b</code>: String concatenation</li>
-</ul>
-<h3 id="comparison-operators"><a class="header" href="#comparison-operators">Comparison Operators</a></h3>
-<p><strong>Numeric:</strong></p>
-<ul>
-<li><code>a == b</code>: Equal</li>
-<li><code>a != b</code>: Not equal</li>
-<li><code>a &lt; b</code>: Less than</li>
-<li><code>a &lt;= b</code>: Less than or equal</li>
-<li><code>a &gt; b</code>: Greater than</li>
-<li><code>a &gt;= b</code>: Greater than or equal</li>
-</ul>
-<p><strong>String:</strong></p>
-<ul>
-<li><code>a eq b</code>: String equal</li>
-<li><code>a ne b</code>: String not equal</li>
-<li><code>a lt b</code>: String less than (lexicographic)</li>
-<li><code>a le b</code>: String less than or equal</li>
-<li><code>a gt b</code>: String greater than</li>
-<li><code>a ge b</code>: String greater than or equal</li>
-</ul>
-<p><strong>Note</strong>: No implicit type conversion. Use string comparison operators for string comparison.</p>
-<h3 id="logical-operators"><a class="header" href="#logical-operators">Logical Operators</a></h3>
-<ul>
-<li><code>not a</code>: Logical NOT</li>
-<li><code>a and b</code>: Logical AND</li>
-<li><code>a or b</code>: Logical OR</li>
-</ul>
-<h3 id="pipe-operator"><a class="header" href="#pipe-operator">Pipe Operator</a></h3>
-<ul>
-<li><code>a | f()</code>: Pipe left value to function (left value becomes first argument)</li>
-<li><code>a | f(_, arg)</code>: Pipe with placeholder</li>
-</ul>
-<hr>
-<h2 id="functions"><a class="header" href="#functions">Functions</a></h2>
-<h3 id="logic--control"><a class="header" href="#logic--control">Logic &amp; Control</a></h3>
-<ul>
-<li>if(cond, then, else?) -&gt; T: Conditional expression, returns then if cond is true, else otherwise (or null)</li>
-<li>default(val, fallback) -&gt; T: Returns fallback if val is null or empty</li>
-</ul>
-<h3 id="numeric-operations"><a class="header" href="#numeric-operations">Numeric Operations</a></h3>
+<h1 id="expression-functions"><a class="header" href="#expression-functions">Expression Functions</a></h1>
+<h2 id="numeric-operations"><a class="header" href="#numeric-operations">Numeric Operations</a></h2>
 <ul>
 <li>abs(x) -&gt; number: Absolute value</li>
 <li>round(x) -&gt; int: Round to nearest integer</li>
@@ -2665,7 +2597,7 @@ tva mutate -E "split(@tags, ',') | map(_, t =&gt; trim(t)) | join(_, '; ') as @c
 <li>log10(x) -&gt; float: Common logarithm (base 10)</li>
 <li>exp(x) -&gt; float: Exponential function e^x</li>
 </ul>
-<h3 id="string-manipulation"><a class="header" href="#string-manipulation">String Manipulation</a></h3>
+<h2 id="string-manipulation"><a class="header" href="#string-manipulation">String Manipulation</a></h2>
 <ul>
 <li>trim(string) -&gt; string: Remove leading and trailing whitespace</li>
 <li>upper(string) -&gt; string: Convert to uppercase</li>
@@ -2681,7 +2613,12 @@ tva mutate -E "split(@tags, ',') | map(_, t =&gt; trim(t)) | join(_, '; ') as @c
 <li>truncate(string, len, end?) -&gt; string: Truncate string</li>
 <li>wordcount(string) -&gt; int: Word count</li>
 </ul>
-<h3 id="list-operations"><a class="header" href="#list-operations">List Operations</a></h3>
+<pre><code class="language-bash"># Basic list operations
+tva expr -E 'split("1,2,3", ",")'           # Returns: ["1", "2", "3"]
+tva expr -E 'split("1-2-3", "-").reverse()' # Returns: ["3", "2", "1"]
+
+</code></pre>
+<h2 id="list-operations"><a class="header" href="#list-operations">List Operations</a></h2>
 <p><em>Note: These functions operate on expression <code>List</code> type (e.g., returned by <code>split()</code>), different from column-level aggregation in <code>stats</code> command.</em></p>
 <ul>
 <li>first(list) -&gt; T: First element</li>
@@ -2693,7 +2630,19 @@ tva mutate -E "split(@tags, ',') | map(_, t =&gt; trim(t)) | join(_, '; ') as @c
 <li>unique(list) -&gt; list: Remove duplicates</li>
 <li>slice(list, start, end?) -&gt; list: Slice list</li>
 </ul>
-<h3 id="range-generation"><a class="header" href="#range-generation">Range Generation</a></h3>
+<pre><code class="language-bash"># Basic list operations
+tva expr -E 'first([1, 2, 3])'           # Returns: 1
+tva expr -E 'last([1, 2, 3])'            # Returns: 3
+tva expr -E 'nth([1, 2, 3], 1)'          # Returns: 2 (0-based index)
+
+# Using variables with multiple expressions
+tva expr -E '
+    [1, 2, 3] as @list;
+    first(@list) + last(@list)
+'
+# Returns: 4
+</code></pre>
+<h2 id="range-generation"><a class="header" href="#range-generation">Range Generation</a></h2>
 <ul>
 <li>range(upto) -&gt; list: Generate numbers from 0 to upto (exclusive), step 1</li>
 <li>range(from, upto) -&gt; list: Generate numbers from from (inclusive) to upto (exclusive), step 1</li>
@@ -2707,33 +2656,58 @@ tva mutate -E "split(@tags, ',') | map(_, t =&gt; trim(t)) | join(_, '; ') as @c
 <li><code>range(0, -5, -1)</code> produces <code>[0, -1, -2, -3, -4]</code></li>
 </ul>
 <p>Note: If step direction doesn’t match the range direction (e.g., positive step with from &gt; upto), returns empty list.</p>
-<h3 id="higher-order-functions"><a class="header" href="#higher-order-functions">Higher-Order Functions</a></h3>
+<h2 id="logic--control"><a class="header" href="#logic--control">Logic &amp; Control</a></h2>
+<ul>
+<li>if(cond, then, else?) -&gt; T: Conditional expression, returns then if cond is true, else otherwise (or null)</li>
+<li>default(val, fallback) -&gt; T: Returns fallback if val is null or empty</li>
+</ul>
+<h2 id="higher-order-functions"><a class="header" href="#higher-order-functions">Higher-Order Functions</a></h2>
 <ul>
 <li>map(list, lambda) -&gt; list: Apply lambda to each element</li>
 <li>filter(list, lambda) -&gt; list: Filter list elements</li>
-<li>reduce(list, init, op) -&gt; T: List reduction</li>
+<li>reduce(list, init, lambda) -&gt; value: Reduce list to single value</li>
 </ul>
-<h3 id="regular-expressions"><a class="header" href="#regular-expressions">Regular Expressions</a></h3>
+<pre><code class="language-bash"># Double each number
+tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
+# Returns: [2, 4, 6]
+
+# Keep numbers greater than 2
+tva expr -E 'filter([1, 2, 3, 4], x =&gt; x &gt; 2)'
+# Returns: [3, 4]
+
+# Sum all numbers (0 + 1 + 2 + 3)
+tva expr -E 'reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x)'
+# Returns: 6
+
+# Count elements in a list
+tva expr -E 'reduce(["a", "b", "c"], 0, (acc, _) =&gt; acc + 1)'
+# Returns: 3
+
+# Find maximum value
+tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) =&gt; if(x &gt; acc, x, acc))'
+# Returns: 5
+</code></pre>
+<h2 id="regular-expressions"><a class="header" href="#regular-expressions">Regular Expressions</a></h2>
 <p><em>Note: Regex operations can be expensive, use with caution.</em></p>
 <ul>
 <li>regex_match(string, pattern) -&gt; bool: Check if matches regex</li>
 <li>regex_extract(string, pattern, group?) -&gt; string: Extract capture group</li>
 <li>regex_replace(string, pattern, to) -&gt; string: Regex replace</li>
 </ul>
-<h3 id="encoding--hashing"><a class="header" href="#encoding--hashing">Encoding &amp; Hashing</a></h3>
+<h2 id="encoding--hashing"><a class="header" href="#encoding--hashing">Encoding &amp; Hashing</a></h2>
 <ul>
 <li>md5(string) -&gt; string: MD5 hash (hex)</li>
 <li>sha256(string) -&gt; string: SHA256 hash (hex)</li>
 <li>base64(string) -&gt; string: Base64 encode</li>
 <li>unbase64(string) -&gt; string: Base64 decode</li>
 </ul>
-<h3 id="date--time"><a class="header" href="#date--time">Date &amp; Time</a></h3>
+<h2 id="date--time"><a class="header" href="#date--time">Date &amp; Time</a></h2>
 <ul>
 <li>now() -&gt; datetime: Current time</li>
 <li>strptime(string, format) -&gt; datetime: Parse datetime</li>
 <li>strftime(datetime, format) -&gt; string: Format datetime</li>
 </ul>
-<h3 id="io"><a class="header" href="#io">IO</a></h3>
+<h2 id="io"><a class="header" href="#io">IO</a></h2>
 <ul>
 <li>print(val, …): Print to stdout, returns last argument</li>
 <li>eprint(val, …): Print to stderr, returns last argument</li>
