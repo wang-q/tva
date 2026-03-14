@@ -153,10 +153,70 @@ This demonstrates:
 - List access with `.nth()` method to get previous values
 - `range(2, n + 1)` to iterate (n-1) times for the nth Fibonacci number
 
+### Palindrome detection
+
+A palindrome is a phrase which reads the same backward and forward.
+
+Check if a string is a palindrome:
+
+```bash
+tva expr -E '
+"A man, a plan, a canal: Panama" |
+    lower() |
+    regex_replace(_, "[^a-z0-9]", "") as @cleaned;
+@cleaned.split("").reverse().join("") as @reversed;
+@cleaned == @reversed
+'
+```
+
+Output:
+```
+true
+```
+
+This demonstrates:
+- `lower()` - Convert to lowercase for case-insensitive comparison
+- `regex_replace()` - Remove non-alphanumeric characters
+- `as @var` - Bind intermediate results to variables
+- Method chaining - `split().reverse().join()` to reverse a string
+
+### Word frequency
+
+Given a text file and an integer `n`, print/display the `n` most common words in the file (and the number of their occurrences) in decreasing frequency.
+
+Count unique words (simplified version without sorting):
+
+```bash
+tva expr -E '
+"the quick brown fox jumps over the lazy dog the quick brown fox"
+| lower()
+| split(_, " ") as @words;
+
+// Get unique words
+@words | unique() as @unique_words;
+
+// Count occurrences of each unique word
+map(@unique_words, word =>
+    filter(@words, w => w == word) | len() as @count |
+    [word, @count]
+)
+'
+```
+
+Output:
+```
+[["the", 3], ["quick", 2], ["brown", 2], ["fox", 2], ["jumps", 1], ["over", 1], ["lazy", 1], ["dog", 1]]
+```
+
+This demonstrates:
+- `unique()` - Remove duplicate words
+- Nested `map` and `filter` - For each unique word, count occurrences
+- `len()` - Get list length as count
+- List construction - Build `[word, count]` pairs
+
 ## list
 
 进阶级（字符串、数据结构、算法）
-Palindrome detection
 Word count
 Prime numbers
 Greatest common divisor
