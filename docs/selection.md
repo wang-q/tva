@@ -1,18 +1,21 @@
 # Selection & Sampling Documentation
 
-This document explains how to use the selection and sampling commands in `tva`: **`select`**, **`slice`**, and **`sample`**. These commands allow you to subset your data based on structure (columns) or position (rows).
+This document explains how to use the selection and sampling commands in `tva`: **`select`**, *
+*`slice`**, and **`sample`**. These commands allow you to subset your data based on structure (
+columns) or position (rows).
 
 ## Introduction
 
 Data analysis often begins with selecting the relevant subset of data:
 
-*   **`select`**: Selects and reorders columns (e.g., "keep only `name` and `email`").
-*   **`slice`**: Selects rows by their position (index) in the file (e.g., "keep rows 10-20").
-*   **`sample`**: Randomly selects a subset of rows.
+* **`select`**: Selects and reorders columns (e.g., "keep only `name` and `email`").
+* **`slice`**: Selects rows by their position (index) in the file (e.g., "keep rows 10-20").
+* **`sample`**: Randomly selects a subset of rows.
 
 ## Field Syntax
 
-All tools use a unified syntax to identify fields (columns). See [Field Syntax Documentation](help/fields.md) for details.
+All tools use a unified syntax to identify fields (columns).
+See [Field Syntax Documentation](help/fields.md) for details.
 
 ## `select` (Column Selection)
 
@@ -24,11 +27,11 @@ The `select` command allows you to keep only specific columns and reorder them.
 tva select [input_files...] --fields <columns>
 ```
 
-*   **`--fields` / `-f`**: Comma-separated list of columns to select.
-    *   **Names**: `name`, `email`
-    *   **Indices**: `1`, `3` (1-based)
-    *   **Ranges**: `1-3`, `start_col-end_col`
-    *   **Wildcards**: `user_*`, `*_id`
+* **`--fields` / `-f`**: Comma-separated list of columns to select.
+    * **Names**: `name`, `email`
+    * **Indices**: `1`, `3` (1-based)
+    * **Ranges**: `1-3`, `start_col-end_col`
+    * **Wildcards**: `user_*`, `*_id`
 
 ### Examples
 
@@ -51,6 +54,7 @@ tva select docs/data/us_rent_income.tsv -f NAME,estimate
 ```
 
 Output:
+
 ```tsv
 NAME	estimate
 Alabama	24476
@@ -68,6 +72,7 @@ tva select docs/data/us_rent_income.tsv -f variable,estimate,NAME
 ```
 
 Output:
+
 ```tsv
 variable	estimate	NAME
 income	24476	Alabama
@@ -108,9 +113,10 @@ The `slice` command selects rows based on their integer index (position). Indice
 tva slice [input_files...] --rows <range> [options]
 ```
 
-*   **`--rows` / `-r`**: The range of rows to keep (e.g., `1-10`, `5`, `100-`). Can be specified multiple times.
-*   **`--invert` / `-v`**: Invert selection (drop the specified rows).
-*   **`--header` / `-H`**: Always preserve the first row (header).
+* **`--rows` / `-r`**: The range of rows to keep (e.g., `1-10`, `5`, `100-`). Can be specified
+  multiple times.
+* **`--invert` / `-v`**: Invert selection (drop the specified rows).
+* **`--header` / `-H`**: Always preserve the first row (header).
 
 ### Examples
 
@@ -123,6 +129,7 @@ tva slice docs/data/billboard.tsv -r 1-5
 ```
 
 Output:
+
 ```tsv
 artist	track	wk1	wk2	wk3
 2 Pac	Baby Don't Cry	87	82	72
@@ -139,6 +146,7 @@ tva slice docs/data/billboard.tsv -r 1 --invert
 ```
 
 Output:
+
 ```tsv
 2 Pac	Baby Don't Cry	87	82	72
 2Ge+her	The Hardest Part	91	87	92
@@ -165,9 +173,9 @@ The `sample` command randomly selects a subset of rows. This is useful for explo
 tva sample [input_files...] [options]
 ```
 
-*   **`--rate` / `-r`**: Sampling rate (probability 0.0-1.0). (Bernoulli sampling)
-*   **`--n` / `-n`**: Exact number of rows to sample. (Reservoir sampling)
-*   **`--seed` / `-s`**: Random seed for reproducibility.
+* **`--rate` / `-r`**: Sampling rate (probability 0.0-1.0). (Bernoulli sampling)
+* **`--n` / `-n`**: Exact number of rows to sample. (Reservoir sampling)
+* **`--seed` / `-s`**: Random seed for reproducibility.
 
 ### Examples
 
@@ -188,6 +196,7 @@ tva sample docs/data/us_rent_income.tsv -n 5
 ```
 
 Output (example):
+
 ```tsv
 GEOID	NAME	variable	estimate	moe
 35	New Mexico	rent	809	11

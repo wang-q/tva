@@ -1,22 +1,23 @@
 # Expression Syntax Guide
 
-This document provides a comprehensive guide to TVA expression syntax, covering function calls, pipelines, and multi-expression evaluation.
+This document provides a comprehensive guide to TVA expression syntax, covering function calls,
+pipelines, and multi-expression evaluation.
 
 ## Expression Elements
 
 TVA expressions are composed of the following atomic elements:
 
-| Element | Syntax | Description |
-| :--- | :--- | :--- |
-| **Column Reference** | `@1`, `@col_name` | Reference input data columns |
-| **Variable** | `@var_name` | Variables bound via `as` |
-| **Literal** | `42`, `"hello"`, `true`, `null`, `[1, 2, 3]` | Constant values |
-| **Function Call** | `func(args...)` | Built-in functions |
+| Element              | Syntax                                       | Description                  |
+|:---------------------|:---------------------------------------------|:-----------------------------|
+| **Column Reference** | `@1`, `@col_name`                            | Reference input data columns |
+| **Variable**         | `@var_name`                                  | Variables bound via `as`     |
+| **Literal**          | `42`, `"hello"`, `true`, `null`, `[1, 2, 3]` | Constant values              |
+| **Function Call**    | `func(args...)`                              | Built-in functions           |
 
 ## Evaluation Rules
 
-*   Expressions are evaluated left-to-right according to operator precedence
-*   The pipe operator `|` has the lowest precedence, used to connect multiple processing steps
+* Expressions are evaluated left-to-right according to operator precedence
+* The pipe operator `|` has the lowest precedence, used to connect multiple processing steps
 
 ## Function Call Syntax
 
@@ -49,7 +50,8 @@ Method call is syntactic sugar for function calls:
 
 ### Pipe Call (Single Argument)
 
-`arg | func()` - Pipe left value to function. The `_` placeholder can be omitted for single-argument functions.
+`arg | func()` - Pipe left value to function. The `_` placeholder can be omitted for single-argument
+functions.
 
 ```bash
 tva expr -E '"hello" | upper()'             # Returns: HELLO
@@ -69,24 +71,26 @@ tva expr -E '"a,b,c" | split(_, ",")'           # Returns: ["a", "b", "c"]
 
 Expressions can be combined in several ways:
 
-*   **Operator Composition**: `@a + @b`, `@x > 10 and @y < 20`
-*   **Pipe Composition**: `@name | trim() | upper()`
-*   **Variable Binding**: `expr as @var; @var + 1`
-*   **Function Nesting**: `if(@age > 18, "adult", "minor")`
+* **Operator Composition**: `@a + @b`, `@x > 10 and @y < 20`
+* **Pipe Composition**: `@name | trim() | upper()`
+* **Variable Binding**: `expr as @var; @var + 1`
+* **Function Nesting**: `if(@age > 18, "adult", "minor")`
 
 ## Lambda Expressions
 
-Lambda expressions create anonymous functions, primarily used with higher-order functions like `map`, `filter`, and `reduce`:
+Lambda expressions create anonymous functions, primarily used with higher-order functions like
+`map`, `filter`, and `reduce`:
 
 ### Syntax
 
-| Form | Syntax | Example |
-| :--- | :--- | :--- |
-| Single parameter | `param => expr` | `x => x + 1` |
+| Form                | Syntax                  | Example           |
+|:--------------------|:------------------------|:------------------|
+| Single parameter    | `param => expr`         | `x => x + 1`      |
 | Multiple parameters | `(p1, p2, ...) => expr` | `(x, y) => x + y` |
-| No parameters | `() => expr` | `() => 42` |
+| No parameters       | `() => expr`            | `() => 42`        |
 
-**Note**: Lambda parameters are **lexically scoped** and do not use the `@` prefix. This distinguishes them from column references (`@col`) and variables (`@var`).
+**Note**: Lambda parameters are **lexically scoped** and do not use the `@` prefix. This
+distinguishes them from column references (`@col`) and variables (`@var`).
 
 ### Examples
 
@@ -145,12 +149,14 @@ tva expr -n "price,qty" -r "10,5" -E '
 ```
 
 **Rules**:
+
 - Each expression can have side effects (like variable binding)
 - Only the last expression's value is returned
 
 ## Comments
 
-TVA supports line comments starting with `//`. Comments are only valid inside expressions; comments in command line are handled by the Shell.
+TVA supports line comments starting with `//`. Comments are only valid inside expressions; comments
+in command line are handled by the Shell.
 
 ```bash
 # With comments explaining the logic
@@ -181,7 +187,8 @@ tva expr -E '42 + 3.14'           # Prints: 45.14
 tva expr -n "name" -r "John" -E '@name'   # Prints: John
 ```
 
-The `print(val, ...)` function outputs multiple arguments sequentially and returns the last argument's value. If `print()` is the last expression, the value won't be printed twice:
+The `print(val, ...)` function outputs multiple arguments sequentially and returns the last
+argument's value. If `print()` is the last expression, the value won't be printed twice:
 
 ```bash
 # Print intermediate values

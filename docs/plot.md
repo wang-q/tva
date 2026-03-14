@@ -1,17 +1,21 @@
 # Plotting Documentation
 
-This document explains how to use the plotting commands in `tva`: **`plot point`**. These commands bring data visualization capabilities to the terminal, inspired by the grammar of graphics philosophy of `ggplot2`.
+This document explains how to use the plotting commands in `tva`: **`plot point`**. These commands
+bring data visualization capabilities to the terminal, inspired by the grammar of graphics
+philosophy of `ggplot2`.
 
 ## Introduction
 
-Terminal-based plotting allows you to quickly visualize data without leaving the command line. `tva` provides plotting tools that render directly in your terminal using ASCII/Unicode characters:
+Terminal-based plotting allows you to quickly visualize data without leaving the command line. `tva`
+provides plotting tools that render directly in your terminal using ASCII/Unicode characters:
 
-*   **`plot point`**: Draws scatter plots or line charts from TSV data.
-*   **`plot box`**: Draws box plots (box-and-whisker plots) from TSV data.
+* **`plot point`**: Draws scatter plots or line charts from TSV data.
+* **`plot box`**: Draws box plots (box-and-whisker plots) from TSV data.
 
 ## `plot point` (Scatter Plots and Line Charts)
 
-The `plot point` command creates scatter plots or line charts directly in your terminal. It maps TSV columns to visual aesthetics (position, color) and renders the chart using ASCII/Unicode characters.
+The `plot point` command creates scatter plots or line charts directly in your terminal. It maps TSV
+columns to visual aesthetics (position, color) and renders the chart using ASCII/Unicode characters.
 
 ### Basic Usage
 
@@ -19,16 +23,17 @@ The `plot point` command creates scatter plots or line charts directly in your t
 tva plot point [input_file] --x <column> --y <column> [options]
 ```
 
-*   **`-x` / `--x`**: The column for X-axis position (required).
-*   **`-y` / `--y`**: The column for Y-axis position (required).
-*   **`--color`**: Column for grouping/coloring points by category (optional).
-*   **`-l` / `--line`**: Draw line chart instead of scatter plot.
+* **`-x` / `--x`**: The column for X-axis position (required).
+* **`-y` / `--y`**: The column for Y-axis position (required).
+* **`--color`**: Column for grouping/coloring points by category (optional).
+* **`-l` / `--line`**: Draw line chart instead of scatter plot.
 
 ### Column Specification
 
 Columns can be specified by:
-*   **Header name**: e.g., `-x age`, `-y income`
-*   **1-based index**: e.g., `-x 1`, `-y 3`
+
+* **Header name**: e.g., `-x age`, `-y income`
+* **1-based index**: e.g., `-x 1`, `-y 3`
 
 ## Examples
 
@@ -45,6 +50,7 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width
 This creates a scatter plot showing the relationship between sepal length and sepal width.
 
 Output (terminal chart):
+
 ```
 6│sepal_width
  │
@@ -74,19 +80,23 @@ Output (terminal chart):
 
 ### 2. Grouped by Category (Color)
 
-Use the `--color` option to group points by a categorical column. Each unique value gets a different color.
+Use the `--color` option to group points by a categorical column. Each unique value gets a different
+color.
 
 ```bash
 tva plot point tests/data/plot/iris.tsv -x petal_length -y petal_width --color label --cols 1.0 --rows 1.0
 ```
+
 ![iris scatter plot with color](images/plot_point_iris_color.png)
 
-This creates a scatter plot with three colors, one for each iris species (setosa, versicolor, virginica).
+This creates a scatter plot with three colors, one for each iris species (setosa, versicolor,
+virginica).
 
 The output will show three distinct clusters with different markers/colors:
-*   **Setosa**: Small petals, clustered at bottom-left
-*   **Versicolor**: Medium petals, in the middle
-*   **Virginica**: Large petals, at top-right
+
+* **Setosa**: Small petals, clustered at bottom-left
+* **Versicolor**: Medium petals, in the middle
+* **Virginica**: Large petals, at top-right
 
 ### 3. Line Chart
 
@@ -113,9 +123,10 @@ tva plot point tests/data/plot/iris.tsv -x 1 -y 3 --color 5
 ```
 
 This maps:
-*   Column 1 (`sepal_length`) to X-axis
-*   Column 3 (`petal_length`) to Y-axis
-*   Column 5 (`label`) to color
+
+* Column 1 (`sepal_length`) to X-axis
+* Column 3 (`petal_length`) to Y-axis
+* Column 5 (`label`) to color
 
 ### 5. Different Marker Styles
 
@@ -134,7 +145,8 @@ tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
 
 ### 7. Regression Line
 
-Use `--regression` to overlay a linear regression line (least squares fit) on the scatter plot. This helps visualize trends in the data.
+Use `--regression` to overlay a linear regression line (least squares fit) on the scatter plot. This
+helps visualize trends in the data.
 
 ```bash
 tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot --regression
@@ -186,11 +198,14 @@ tva plot point data.tsv -x value1 -y value2 --ignore
 | Themes | `theme_*()` | Terminal-based only |
 | Output | Graphics file / Viewer | Terminal ASCII/Unicode |
 
-`tva plot point` brings the core concepts of the grammar of graphics to the command line, allowing for quick data exploration without leaving your terminal.
+`tva plot point` brings the core concepts of the grammar of graphics to the command line, allowing
+for quick data exploration without leaving your terminal.
 
 ## `plot box` (Box Plots)
 
-The `plot box` command creates box plots (box-and-whisker plots) directly in your terminal. It visualizes the distribution of a numeric variable, showing the median, quartiles, and potential outliers.
+The `plot box` command creates box plots (box-and-whisker plots) directly in your terminal. It
+visualizes the distribution of a numeric variable, showing the median, quartiles, and potential
+outliers.
 
 ### Basic Usage
 
@@ -198,9 +213,10 @@ The `plot box` command creates box plots (box-and-whisker plots) directly in you
 tva plot box [input_file] --y <column> [options]
 ```
 
-*   **`-y` / `--y`**: The column(s) to plot (required). Can specify multiple columns separated by commas.
-*   **`--color`**: Column for grouping/coloring boxes by category (optional).
-*   **`--outliers`**: Show outlier points beyond the whiskers.
+* **`-y` / `--y`**: The column(s) to plot (required). Can specify multiple columns separated by
+  commas.
+* **`--color`**: Column for grouping/coloring boxes by category (optional).
+* **`--outliers`**: Show outlier points beyond the whiskers.
 
 ### Examples
 
@@ -217,6 +233,7 @@ tva plot box tests/data/plot/iris.tsv -y sepal_length --cols 60 --rows 20
 This creates a box plot showing the distribution of sepal length values.
 
 Output (terminal chart):
+
 ```
 10│
   │
@@ -247,9 +264,11 @@ Use the `--color` option to create separate box plots for each category:
 ```bash
 tva plot box tests/data/plot/iris.tsv -y sepal_length --color label --cols 1.0 --rows 1.0
 ```
+
 ![Grouped box plot by species](images/plot_box_grouped.png)
 
-This creates three box plots side by side, one for each iris species (setosa, versicolor, virginica).
+This creates three box plots side by side, one for each iris species (setosa, versicolor,
+virginica).
 
 #### 3. Multiple Columns
 
@@ -258,6 +277,7 @@ Plot multiple numeric columns for comparison:
 ```bash
 tva plot box tests/data/plot/iris.tsv -y "sepal_length,sepal_width" --color label --cols 1.0 --rows 1.0
 ```
+
 ![Multiple columns box plot](images/plot_box_multiple.png)
 
 This creates four box plots side by side, one for each measurement column.
@@ -317,9 +337,12 @@ tva plot box tests/data/plot/iris.tsv -y petal_width --color label --outliers --
 
 ## `plot bin2d` (2D Binning Heatmap)
 
-The `plot bin2d` command creates 2D binning heatmaps directly in your terminal. It divides the plane into rectangles, counts the number of cases in each rectangle, and visualizes the density using character intensity. This is a useful alternative to `plot point` in the presence of overplotting.
+The `plot bin2d` command creates 2D binning heatmaps directly in your terminal. It divides the plane
+into rectangles, counts the number of cases in each rectangle, and visualizes the density using
+character intensity. This is a useful alternative to `plot point` in the presence of overplotting.
 
-**Workflow**: Use `plot bin2d` for quick exploration with automatic binning, then use `bin` with manually determined parameters for precise processing.
+**Workflow**: Use `plot bin2d` for quick exploration with automatic binning, then use `bin` with
+manually determined parameters for precise processing.
 
 ### Basic Usage
 
@@ -327,11 +350,12 @@ The `plot bin2d` command creates 2D binning heatmaps directly in your terminal. 
 tva plot bin2d [input_file] --x <column> --y <column> [options]
 ```
 
-*   **`-x` / `--x`**: The column for X-axis position (required).
-*   **`-y` / `--y`**: The column for Y-axis position (required).
-*   **`-b` / `--bins`**: Number of bins in each direction (default: 30, or `x,y` for different counts).
-*   **`-S` / `--strategy`**: Automatic bin count strategy: `freedman-diaconis`, `sqrt`, `sturges`.
-*   **`--binwidth`**: Width of bins (or `x,y` for different widths).
+* **`-x` / `--x`**: The column for X-axis position (required).
+* **`-y` / `--y`**: The column for Y-axis position (required).
+* **`-b` / `--bins`**: Number of bins in each direction (default: 30, or `x,y` for different
+  counts).
+* **`-S` / `--strategy`**: Automatic bin count strategy: `freedman-diaconis`, `sqrt`, `sturges`.
+* **`--binwidth`**: Width of bins (or `x,y` for different widths).
 
 ### Examples
 
@@ -339,7 +363,8 @@ tva plot bin2d [input_file] --x <column> --y <column> [options]
 
 Using the `docs/data/diamonds.tsv` dataset (diamond physical dimensions):
 
-This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The output shows the concentration of diamonds in different size ranges.
+This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The
+output shows the concentration of diamonds in different size ranges.
 
 For better visualization of the main data cluster, you can filter the data first:
 
@@ -348,6 +373,7 @@ tva plot bin2d docs/data/diamonds.48.tsv -x x -y y
 ```
 
 Output (terminal chart):
+
 ```
 8│y                                                               ·░▒▓█ Max:3908
  │
@@ -406,9 +432,10 @@ tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --cols 1.0 --rows 1.0 -S free
 ![bin2d diamonds heatmap](images/plot_bin2d_diamonds.png)
 
 Available strategies:
-*   `freedman-diaconis`: Based on data distribution (robust to outliers)
-*   `sqrt`: Square root of number of observations
-*   `sturges`: Sturges' formula (1 + log2(n))
+
+* `freedman-diaconis`: Based on data distribution (robust to outliers)
+* `sqrt`: Square root of number of observations
+* `sturges`: Sturges' formula (1 + log2(n))
 
 ### Detailed Options
 
@@ -436,19 +463,19 @@ Available strategies:
 
 `plot bin2d` is designed for quick data exploration. After visualizing the data distribution:
 
-1.  **Explore**: Use `plot bin2d` to see patterns:
-    ```bash
-    tva plot bin2d data.tsv -x age -y income
-    ```
+1. **Explore**: Use `plot bin2d` to see patterns:
+   ```bash
+   tva plot bin2d data.tsv -x age -y income
+   ```
 
-2.  **Determine parameters**: Note the optimal bin parameters from the visualization.
+2. **Determine parameters**: Note the optimal bin parameters from the visualization.
 
-3.  **Process**: Use `tva bin` for precise, production-ready binning:
-    ```bash
-    tva bin data.tsv -f age -w 5 | \
-      tva bin -f income -w 5000 | \
-      tva stats -g age,income count
-    ```
+3. **Process**: Use `tva bin` for precise, production-ready binning:
+   ```bash
+   tva bin data.tsv -f age -w 5 | \
+     tva bin -f income -w 5000 | \
+     tva stats -g age,income count
+   ```
 
 ## Tips
 
@@ -462,4 +489,5 @@ Available strategies:
    tva filter data.tsv -H -c value -gt 0 | tva plot point -x x -y y
    ```
 
-3. **Viewing output**: The chart is rendered directly to stdout. Use a terminal with good Unicode support for best results with Braille markers.
+3. **Viewing output**: The chart is rendered directly to stdout. Use a terminal with good Unicode
+   support for best results with Braille markers.

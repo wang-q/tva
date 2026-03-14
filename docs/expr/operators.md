@@ -32,6 +32,7 @@
 ## Comparison Operators
 
 **Numeric:**
+
 - `a == b`: Equal
 - `a != b`: Not equal
 - `a < b`: Less than
@@ -40,6 +41,7 @@
 - `a >= b`: Greater than or equal
 
 **String:**
+
 - `a eq b`: String equal
 - `a ne b`: String not equal
 - `a lt b`: String less than (lexicographic)

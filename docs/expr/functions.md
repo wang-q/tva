@@ -3,21 +3,21 @@
 ## Numeric Operations
 
 - abs(x) -> number: Absolute value
-- round(x) -> int: Round to nearest integer
 - ceil(x) -> int: Ceiling (round up)
-- floor(x) -> int: Floor (round down)
-- sqrt(x) -> float: Square root
-- pow(base, exp) -> float: Power operation
-- min(a, b, *n) -> number: Minimum value
-- max(a, b, *n) -> number: Maximum value
-- int(val) -> int: Convert to integer, returns null on failure
-- float(val) -> float: Convert to float, returns null on failure
-- sin(x) -> float: Sine (radians)
 - cos(x) -> float: Cosine (radians)
-- tan(x) -> float: Tangent (radians)
+- exp(x) -> float: Exponential function e^x
+- float(val) -> float: Convert to float, returns null on failure
+- floor(x) -> int: Floor (round down)
+- int(val) -> int: Convert to integer, returns null on failure
 - ln(x) -> float: Natural logarithm
 - log10(x) -> float: Common logarithm (base 10)
-- exp(x) -> float: Exponential function e^x
+- max(a, b, *n) -> number: Maximum value
+- min(a, b, *n) -> number: Minimum value
+- pow(base, exp) -> float: Power operation
+- round(x) -> int: Round to nearest integer
+- sin(x) -> float: Sine (radians)
+- sqrt(x) -> float: Square root
+- tan(x) -> float: Tangent (radians)
 
 ## String Manipulation
 
@@ -44,16 +44,17 @@ tva expr -E 'split("1-2-3", "-").reverse()' # Returns: ["3", "2", "1"]
 
 ## List Operations
 
-*Note: These functions operate on expression `List` type (e.g., returned by `split()`), different from column-level aggregation in `stats` command.*
-
 - first(list) -> T: First element
+- join(list, sep) -> string: Join list elements
 - last(list) -> T: Last element
 - nth(list, n) -> T: nth element (0-based)
-- join(list, sep) -> string: Join list elements
 - reverse(list) -> list: Reverse list
+- slice(list, start, end?) -> list: Slice list
 - sort(list) -> list: Sort list
 - unique(list) -> list: Remove duplicates
-- slice(list, start, end?) -> list: Slice list
+
+*Note: These functions operate on expression `List` type (e.g., returned by `split()`), different
+from column-level aggregation in `stats` command.*
 
 ```bash
 # Basic list operations
@@ -76,16 +77,19 @@ tva expr -E '
 - range(from, upto, by) -> list: Generate numbers from from (inclusive) to upto (exclusive), step by
 
 The range function produces a list of numbers. Similar to jq's range:
+
 - `range(4)` produces `[0, 1, 2, 3]`
 - `range(2, 4)` produces `[2, 3]`
 - `range(0, 10, 3)` produces `[0, 3, 6, 9]`
 - `range(0, -5, -1)` produces `[0, -1, -2, -3, -4]`
 
-Note: If step direction doesn't match the range direction (e.g., positive step with from > upto), returns empty list.
+Note: If step direction doesn't match the range direction (e.g., positive step with from > upto),
+returns empty list.
 
 ## Logic & Control
 
-- if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (or null)
+- if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (
+  or null)
 - default(val, fallback) -> T: Returns fallback if val is null or empty
 
 ## Higher-Order Functions

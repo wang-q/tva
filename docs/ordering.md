@@ -1,18 +1,22 @@
 # Ordering Documentation
 
-This document explains how to use the ordering commands in `tva`: **`sort`**, **`reverse`**, and **`transpose`**. These commands allow you to rearrange the rows and columns of your data.
+This document explains how to use the ordering commands in `tva`: **`sort`**, **`reverse`**, and *
+*`transpose`**. These commands allow you to rearrange the rows and columns of your data.
 
 ## Introduction
 
-Ordering is a crucial step in data preparation and analysis. You might need to sort data to find the top items, reverse the order to see the most recent entries first, or transpose a matrix to swap rows and columns.
+Ordering is a crucial step in data preparation and analysis. You might need to sort data to find the
+top items, reverse the order to see the most recent entries first, or transpose a matrix to swap
+rows and columns.
 
-*   **`sort`**: Sorts rows based on one or more key fields.
-*   **`reverse`**: Reverses the order of lines (like `tac`), optionally keeping the header at the top.
-*   **`transpose`**: Swaps rows and columns (matrix transposition).
+* **`sort`**: Sorts rows based on one or more key fields.
+* **`reverse`**: Reverses the order of lines (like `tac`), optionally keeping the header at the top.
+* **`transpose`**: Swaps rows and columns (matrix transposition).
 
 ## `sort` (External Sort)
 
-The `sort` command sorts the lines of a TSV file based on the values in specified columns. It supports both lexicographic (string) and numeric sorting.
+The `sort` command sorts the lines of a TSV file based on the values in specified columns. It
+supports both lexicographic (string) and numeric sorting.
 
 ### Basic Usage
 
@@ -20,9 +24,10 @@ The `sort` command sorts the lines of a TSV file based on the values in specifie
 tva sort [input_files...] [options]
 ```
 
-*   **`--key` / `-k`**: Specify the field(s) to use as the sort key. You can use 1-based indices (e.g., `1`, `2`) or ranges (e.g., `2,4-5`).
-*   **`--numeric` / `-n`**: Compare the key fields numerically instead of lexicographically.
-*   **`--reverse` / `-r`**: Reverse the sort result (descending order).
+* **`--key` / `-k`**: Specify the field(s) to use as the sort key. You can use 1-based indices (
+  e.g., `1`, `2`) or ranges (e.g., `2,4-5`).
+* **`--numeric` / `-n`**: Compare the key fields numerically instead of lexicographically.
+* **`--reverse` / `-r`**: Reverse the sort result (descending order).
 
 ### Examples
 
@@ -35,6 +40,7 @@ tva sort docs/data/us_rent_income.tsv -k 2
 ```
 
 Output (first 5 lines):
+
 ```tsv
 01	Alabama	income	24476	136
 01	Alabama	rent	747	3
@@ -52,6 +58,7 @@ tva sort docs/data/us_rent_income.tsv -k 4 -n
 ```
 
 Output (first 5 lines):
+
 ```tsv
 GEOID	NAME	variable	estimate	moe
 05	Arkansas	rent	709	5
@@ -70,7 +77,8 @@ tva sort docs/data/us_rent_income.tsv -k 1,2
 
 ## `reverse` (Reverse Lines)
 
-The `reverse` command reverses the order of lines in the input. This is similar to the Unix `tac` command but includes features specifically for tabular data, such as header preservation.
+The `reverse` command reverses the order of lines in the input. This is similar to the Unix `tac`
+command but includes features specifically for tabular data, such as header preservation.
 
 ### Basic Usage
 
@@ -78,7 +86,7 @@ The `reverse` command reverses the order of lines in the input. This is similar 
 tva reverse [input_files...] [options]
 ```
 
-*   **`--header` / `-H`**: Treat the first line as a header and keep it at the top of the output.
+* **`--header` / `-H`**: Treat the first line as a header and keep it at the top of the output.
 
 ### Examples
 
@@ -91,6 +99,7 @@ tva reverse docs/data/us_rent_income.tsv --header
 ```
 
 Output (first 5 lines):
+
 ```tsv
 GEOID	NAME	variable	estimate	moe
 06	California	rent	1358	3
@@ -101,7 +110,8 @@ GEOID	NAME	variable	estimate	moe
 
 ## `transpose` (Matrix Transpose)
 
-The `transpose` command swaps the rows and columns of a TSV file. It reads the entire file into memory and performs a matrix transposition.
+The `transpose` command swaps the rows and columns of a TSV file. It reads the entire file into
+memory and performs a matrix transposition.
 
 ### Basic Usage
 
@@ -111,8 +121,10 @@ tva transpose [input_file] [options]
 
 ### Notes
 
-*   **Strict Mode**: `transpose` expects a rectangular matrix. All rows must have the same number of columns as the first row. If the file is jagged (rows have different lengths), the command will fail with an error.
-*   **Memory Usage**: Since it reads the whole file, be cautious with very large files.
+* **Strict Mode**: `transpose` expects a rectangular matrix. All rows must have the same number of
+  columns as the first row. If the file is jagged (rows have different lengths), the command will
+  fail with an error.
+* **Memory Usage**: Since it reads the whole file, be cautious with very large files.
 
 ### Examples
 
@@ -125,6 +137,7 @@ tva transpose docs/data/relig_income.tsv
 ```
 
 Output (first 5 lines):
+
 ```tsv
 religion	Agnostic	Atheist	Buddhist
 <$10k	27	12	27

@@ -1,10 +1,12 @@
 # Row Filtering Documentation
 
-This document explains how to use the **`filter`** command in `tva`. This command allows you to subset your data based on row values.
+This document explains how to use the **`filter`** command in `tva`. This command allows you to
+subset your data based on row values.
 
 ## `filter` (Row Filtering)
 
-The `filter` command selects rows where a condition is true. It supports numeric, string, regular expression, and date comparisons.
+The `filter` command selects rows where a condition is true. It supports numeric, string, regular
+expression, and date comparisons.
 
 ### Basic Usage
 
@@ -12,24 +14,26 @@ The `filter` command selects rows where a condition is true. It supports numeric
 tva filter [input_files...] [options] <criteria>
 ```
 
-*   **`<criteria>`**: The condition to check. Format: `<column><operator><value>`.
-    *   **Operators**:
-        *   **Numeric**: `==`, `!=`, `>`, `>=`, `<`, `<=`
-        *   **String**: `str-eq`, `str-ne`, `str-contains`, `str-starts-with`, `str-ends-with`
-        *   **Regex**: `regex-match`, `regex-not-match`
-        *   **Date**: `date-eq`, `date-ne`, `date-gt`, `date-ge`, `date-lt`, `date-le`
+* **`<criteria>`**: The condition to check. Format: `<column><operator><value>`.
+    * **Operators**:
+        * **Numeric**: `==`, `!=`, `>`, `>=`, `<`, `<=`
+        * **String**: `str-eq`, `str-ne`, `str-contains`, `str-starts-with`, `str-ends-with`
+        * **Regex**: `regex-match`, `regex-not-match`
+        * **Date**: `date-eq`, `date-ne`, `date-gt`, `date-ge`, `date-lt`, `date-le`
 
 ### Examples
 
 #### 1. Numeric Filtering
 
-Filter rows where the value in column `estimate` is greater than 30,000 in `docs/data/us_rent_income.tsv`:
+Filter rows where the value in column `estimate` is greater than 30,000 in
+`docs/data/us_rent_income.tsv`:
 
 ```bash
 tva filter docs/data/us_rent_income.tsv --gt estimate:30000
 ```
 
 Output:
+
 ```tsv
 GEOID	NAME	variable	estimate	moe
 02	Alaska	income	32940	508
@@ -47,6 +51,7 @@ tva filter docs/data/us_rent_income.tsv --str-eq variable:rent
 ```
 
 Output:
+
 ```tsv
 GEOID	NAME	variable	estimate	moe
 01	Alabama	rent	747	3
@@ -64,6 +69,7 @@ tva filter docs/data/billboard.tsv --regex-match "track:Baby"
 ```
 
 Output:
+
 ```tsv
 artist	track	wk1	wk2	wk3
 2 Pac	Baby Don't Cry	87	82	72

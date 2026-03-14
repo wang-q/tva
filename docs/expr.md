@@ -22,18 +22,19 @@ The expression language supports:
 
 ### Four Expression Commands
 
-| Command | Description |
-|---------|-------------|
-| `tva expr` | Evaluate expression to create a new row |
-| `tva filter` | Filter rows based on condition |
-| `tva map` | Add new column(s) to existing row |
-| `tva apply` | Update existing column value |
+| Command      | Description                             |
+|--------------|-----------------------------------------|
+| `tva expr`   | Evaluate expression to create a new row |
+| `tva filter` | Filter rows based on condition          |
+| `tva map`    | Add new column(s) to existing row       |
+| `tva apply`  | Update existing column value            |
 
 ## Basic Usage
 
 ### `tva expr` - Evaluate Expression to New Row
 
-Evaluates expression for each row and outputs the expression result as a new row (original row structure is discarded).
+Evaluates expression for each row and outputs the expression result as a new row (original row
+structure is discarded).
 
 ```bash
 # Simple arithmetic expression
@@ -104,18 +105,18 @@ tva apply -E 'if(@price >= 350, "expensive", "cheap")' -c price docs/data/diamon
 ### Numeric Operations
 
 ```rust
-@price * 1.1                    # Increase price by 10%
-(@price - @cost) / @cost        # Calculate margin
-round(@value)                   # Round to integer
+@price * 1.1 # Increase price by 10 %
+( @ price - @ cost) / @ cost # Calculate margin
+round( @ value) # Round to integer
 ```
 
 ### String Operations
 
 ```rust
-@first ++ " " ++ @last          # Concatenate names
-@email | lower() | trim()       # Chain operations
-@name | substr(_, 0, 5)         # First 5 characters
-split(@tags, ",")               # Split to list
+@first + + " " + + @ last # Concatenate names
+@email | lower() | trim() # Chain operations
+@name | substr(_, 0, 5) # First 5 characters
+split( @ tags, ",") # Split to list
 ```
 
 ### List Operations
@@ -123,38 +124,38 @@ split(@tags, ",")               # Split to list
 *Note: `map()` and `filter()` here are **functions**, not the `tva map` and `tva filter` commands.*
 
 ```rust
-map([1, 2, 3], x => x * 2)                    # [2, 4, 6]
-filter([1, 2, 3, 4], x => x > 2)              # [3, 4]
-reduce([1, 2, 3], 0, (acc, x) => acc + x)     # 6
-join(split(@tags, ","), "; ")                  # Rejoin with different separator
+map([1, 2, 3], x => x * 2)                    #[2, 4, 6]
+filter([1, 2, 3, 4], x => x > 2)              #[3, 4]
+reduce([1, 2, 3], 0, (acc, x) => acc + x) # 6
+join(split( @ tags, ","), "; ") # Rejoin with different separator
 ```
 
 ### Conditional Logic
 
 ```rust
-if(@age >= 18, "adult", "minor")
-default(@nickname, @username)    # Use nickname if not empty
+if( @ age > = 18, "adult", "minor")
+default ( @ nickname, @ username) # Use nickname if not empty
 ```
 
 ## Type System
 
-| Type | Example | Notes |
-|------|---------|-------|
-| Int | `42`, `-10` | 64-bit signed |
-| Float | `3.14`, `-0.5` | Double precision |
-| String | `"hello"` | UTF-8 encoded |
-| Bool | `true`, `false` | |
-| Null | `null` | Missing/empty value |
-| List | `[1, 2, 3]` | Heterogeneous elements |
+| Type   | Example         | Notes                  |
+|--------|-----------------|------------------------|
+| Int    | `42`, `-10`     | 64-bit signed          |
+| Float  | `3.14`, `-0.5`  | Double precision       |
+| String | `"hello"`       | UTF-8 encoded          |
+| Bool   | `true`, `false` |                        |
+| Null   | `null`          | Missing/empty value    |
+| List   | `[1, 2, 3]`     | Heterogeneous elements |
 
 ## Command Comparison
 
-| Command | What it does | Input row | Output row | Columns changed |
-|---------|--------------|-----------|------------|-----------------|
-| `expr` | Evaluate to new row | `@a, @b, @c` | `@result` | All (replaced) |
-| `filter` | Keep or discard row | `@a, @b, @c` | `@a, @b, @c` or nothing | None |
-| `map` | Add new column(s) | `@a, @b` | `@a, @b, @c` | Added |
-| `apply` | Update column value | `@a, @b, @c` | `@a, @b', @c` | One updated |
+| Command  | What it does        | Input row    | Output row              | Columns changed |
+|----------|---------------------|--------------|-------------------------|-----------------|
+| `expr`   | Evaluate to new row | `@a, @b, @c` | `@result`               | All (replaced)  |
+| `filter` | Keep or discard row | `@a, @b, @c` | `@a, @b, @c` or nothing | None            |
+| `map`    | Add new column(s)   | `@a, @b`     | `@a, @b, @c`            | Added           |
+| `apply`  | Update column value | `@a, @b, @c` | `@a, @b', @c`           | One updated     |
 
 ## Notes
 

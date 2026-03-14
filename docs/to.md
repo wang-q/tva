@@ -10,9 +10,9 @@ tva to <SUBCOMMAND> [options]
 
 ## Subcommands
 
-*   **`csv`**: Convert TSV to CSV.
-*   **`xlsx`**: Convert TSV to XLSX.
-*   **`md`**: Convert TSV to Markdown.
+* **`csv`**: Convert TSV to CSV.
+* **`xlsx`**: Convert TSV to XLSX.
+* **`md`**: Convert TSV to Markdown.
 
 ---
 
@@ -28,8 +28,8 @@ tva to csv [input] [options]
 
 ### Options
 
-*   `-o <file>` / `--outfile <file>`: Output filename (default: stdout).
-*   `-d <char>` / `--delimiter <char>`: Specify the output delimiter (default: `,`).
+* `-o <file>` / `--outfile <file>`: Output filename (default: stdout).
+* `-d <char>` / `--delimiter <char>`: Specify the output delimiter (default: `,`).
 
 ### Examples
 
@@ -40,6 +40,7 @@ tva to csv docs/data/household.tsv
 ```
 
 Output:
+
 ```csv
 family,dob_child1,dob_child2,name_child1,name_child2
 1,1998-11-26,2000-01-29,J,K
@@ -66,12 +67,12 @@ tva to xlsx [input] [options]
 
 ### Options
 
-*   `-o <file>` / `--outfile <file>`: Output filename (default: `output.xlsx`).
-*   `-H` / `--header`: Treat the first line as a header.
-*   `--le <col:val>`: Format cells <= value.
-*   `--ge <col:val>`: Format cells >= value.
-*   `--bt <col:min:max>`: Format cells between min and max.
-*   `--str-in-fld <col:val>`: Format cells containing substring.
+* `-o <file>` / `--outfile <file>`: Output filename (default: `output.xlsx`).
+* `-H` / `--header`: Treat the first line as a header.
+* `--le <col:val>`: Format cells <= value.
+* `--ge <col:val>`: Format cells >= value.
+* `--bt <col:min:max>`: Format cells between min and max.
+* `--str-in-fld <col:val>`: Format cells containing substring.
 
 ### Examples
 
@@ -104,10 +105,10 @@ tva to md [file] [options]
 
 ### Options
 
-*   `--num`: Right-align numeric columns automatically.
-*   `--fmt`: Format numeric columns (thousands separators, fixed decimals) and implies `--num`.
-*   `--digits <N>`: Set decimal precision for `--fmt` (default: 0).
-*   `--center <cols>` / `--right <cols>`: Manually set alignment for specific columns (e.g., `1,2-4`).
+* `--num`: Right-align numeric columns automatically.
+* `--fmt`: Format numeric columns (thousands separators, fixed decimals) and implies `--num`.
+* `--digits <N>`: Set decimal precision for `--fmt` (default: 0).
+* `--center <cols>` / `--right <cols>`: Manually set alignment for specific columns (e.g., `1,2-4`).
 
 ### Examples
 
@@ -118,6 +119,7 @@ tva to md docs/data/household.tsv
 ```
 
 Output:
+
 ```markdown
 | family | dob_child1 | dob_child2 | name_child1 | name_child2 |
 | ------ | ---------- | ---------- | ----------- | ----------- |
@@ -131,6 +133,7 @@ tva to md docs/data/us_rent_income.tsv --fmt --digits 2
 ```
 
 Output:
+
 ```markdown
 | GEOID | NAME       | variable |  estimate |    moe |
 | ----: | ---------- | -------- | --------: | -----: |
@@ -138,5 +141,6 @@ Output:
 |  1.00 | Alabama    | rent     |    747.00 |   3.00 |
 |  2.00 | Alaska     | income   | 32,940.00 | 508.00 |
 |  2.00 | Alaska     | rent     |  1,200.00 |  13.00 |
+
 ...
 ```

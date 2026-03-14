@@ -1,6 +1,7 @@
 # Rosetta Code with TVA Expression Engine
 
-This document demonstrates the capabilities of TVA's expression engine by implementing tasks from [Rosetta Code](https://rosettacode.org/).
+This document demonstrates the capabilities of TVA's expression engine by implementing tasks
+from [Rosetta Code](https://rosettacode.org/).
 
 ## Basic Usage
 
@@ -28,11 +29,13 @@ tva expr -E '"Hello world!"'
 ```
 
 Output:
+
 ```
 Hello world!
 ```
 
 This demonstrates:
+
 - `tva expr` - Command for standalone expression evaluation
 - The result of the last expression is printed to stdout
 
@@ -56,6 +59,7 @@ map(
 ```
 
 This demonstrates:
+
 - `range(99, 0, -1)` - Generate countdown from 99 to 1
 - `.map()` method with lambda - Transform each number to a verse
 - `++` for string concatenation
@@ -63,7 +67,9 @@ This demonstrates:
 
 ### FizzBuzz
 
-Write a program that prints the integers from 1 to 100 (inclusive). But for multiples of three, print "Fizz" instead of the number; for multiples of five, print "Buzz"; for multiples of both three and five, print "FizzBuzz".
+Write a program that prints the integers from 1 to 100 (inclusive). But for multiples of three,
+print "Fizz" instead of the number; for multiples of five, print "Buzz"; for multiples of both three
+and five, print "FizzBuzz".
 
 ```bash
 tva expr -E '
@@ -80,6 +86,7 @@ map(
 ```
 
 This demonstrates:
+
 - `range(1, 101)` - Generate numbers from 1 to 100
 - Nested `if()` for multiple conditions
 - Modulo operator `%` for divisibility checks
@@ -87,7 +94,8 @@ This demonstrates:
 
 ### Factorial
 
-The factorial of 0 is defined as 1. The factorial of a positive integer n is defined as the product n × (n-1) × (n-2) × ... × 1.
+The factorial of 0 is defined as 1. The factorial of a positive integer n is defined as the product
+n × (n-1) × (n-2) × ... × 1.
 
 Using `reduce()` for iterative approach:
 
@@ -97,6 +105,7 @@ tva expr -E 'reduce(range(1, 6), 1, (acc, n) => acc * n)'
 ```
 
 Output:
+
 ```
 120
 ```
@@ -112,6 +121,7 @@ tva expr -E 'map(
 ```
 
 This demonstrates:
+
 - `reduce(list, init, op)` - Aggregate list values with an accumulator
 - Lambda with two parameters `(acc, n)` for accumulator and current item
 - Special case handling for `0! = 1`
@@ -119,6 +129,7 @@ This demonstrates:
 ### Fibonacci sequence
 
 The Fibonacci sequence is a sequence Fn of natural numbers defined recursively:
+
 - F0 = 0
 - F1 = 1
 - Fn = Fn-1 + Fn-2, if n > 1
@@ -143,11 +154,13 @@ map(
 ```
 
 Output:
+
 ```
 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181
 ```
 
 This demonstrates:
+
 - Iterative Fibonacci computation using `reduce()`
 - Tuple-like list `[prev, curr]` to track state
 - List access with `.nth()` method to get previous values
@@ -170,11 +183,13 @@ tva expr -E '
 ```
 
 Output:
+
 ```
 true
 ```
 
 This demonstrates:
+
 - `lower()` - Convert to lowercase for case-insensitive comparison
 - `regex_replace()` - Remove non-alphanumeric characters
 - `as @var` - Bind intermediate results to variables
@@ -182,7 +197,8 @@ This demonstrates:
 
 ### Word frequency
 
-Given a text file and an integer `n`, print/display the `n` most common words in the file (and the number of their occurrences) in decreasing frequency.
+Given a text file and an integer `n`, print/display the `n` most common words in the file (and the
+number of their occurrences) in decreasing frequency.
 
 Count unique words (simplified version without sorting):
 
@@ -204,11 +220,13 @@ map(@unique_words, word =>
 ```
 
 Output:
+
 ```
 [["the", 3], ["quick", 2], ["brown", 2], ["fox", 2], ["jumps", 1], ["over", 1], ["lazy", 1], ["dog", 1]]
 ```
 
 This demonstrates:
+
 - `unique()` - Remove duplicate words
 - Nested `map` and `filter` - For each unique word, count occurrences
 - `len()` - Get list length as count

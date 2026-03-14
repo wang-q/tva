@@ -1,6 +1,7 @@
 # Combining & Splitting Documentation
 
-This document explains how to use the combining and splitting commands in `tva`: **`join`**, **`append`**, and **`split`**.
+This document explains how to use the combining and splitting commands in `tva`: **`join`**, *
+*`append`**, and **`split`**.
 
 ## `join`
 
@@ -10,13 +11,15 @@ Joins lines from a TSV data stream against a filter file using one or more key f
 
 #### 1. Join two files by a common key
 
-Using `docs/data/who.tsv` (contains `iso3`) and `docs/data/world_bank_pop.tsv` (contains `country` with ISO3 codes):
+Using `docs/data/who.tsv` (contains `iso3`) and `docs/data/world_bank_pop.tsv` (contains `country`
+with ISO3 codes):
 
 ```bash
 tva join -H --filter-file docs/data/who.tsv --key-fields iso3 --data-fields country docs/data/world_bank_pop.tsv
 ```
 
 Output:
+
 ```tsv
 country	indicator	2000	2001
 AFG	SP.URB.TOTL	4436311	4648139
@@ -32,6 +35,7 @@ tva join -H --filter-file docs/data/who.tsv -k iso3 -d country --append-fields y
 ```
 
 Output:
+
 ```tsv
 country	indicator	2000	2001	year
 AFG	SP.URB.TOTL	4436311	4648139	1980
@@ -53,6 +57,7 @@ tva append -H docs/data/world_bank_pop.tsv docs/data/world_bank_pop.tsv
 ```
 
 Output:
+
 ```tsv
 country	indicator	2000	2001
 ABW	SP.URB.TOTL	42444	43048
@@ -74,6 +79,7 @@ tva append -H --track-source docs/data/world_bank_pop.tsv
 ```
 
 Output:
+
 ```tsv
 file	country	indicator	2000	2001
 world_bank_pop	ABW	SP.URB.TOTL	42444	43048

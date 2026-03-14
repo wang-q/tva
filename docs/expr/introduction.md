@@ -1,6 +1,7 @@
 # Expression Introduction
 
-TVA Expression is a concise data processing language for `tva expr`, `tva filter`, and `tva mutate` commands.
+TVA Expression is a concise data processing language for `tva expr`, `tva filter`, and `tva mutate`
+commands.
 
 ## Quick Examples
 
@@ -30,7 +31,7 @@ Integer, float, string, boolean, null, and list literals.
 Use `@` prefix to reference columns.
 
 ```rust
-@1, @col_name, @"col name"
+@1, @ col_name, @ "col name"
 ```
 
 ### [Variable Binding](variables.md#variable-binding)
@@ -38,7 +39,7 @@ Use `@` prefix to reference columns.
 Use `as` to bind values to variables.
 
 ```rust
-@price * @qty as @total; @total * 1.1
+@price * @ qty as @ total; @ total * 1.1
 ```
 
 ### [Operators](operators.md)
@@ -54,9 +55,9 @@ Arithmetic, comparison, logical, and pipe operators.
 Prefix calls, pipe calls, and method calls.
 
 ```rust
-trim(@name)
-@name | trim() | upper()
-@name.trim().upper()
+trim( @ name)
+@ name | trim() | upper()
+@ name.trim().upper()
 ```
 
 ## Documentation Index
