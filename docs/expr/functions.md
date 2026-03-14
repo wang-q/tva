@@ -36,10 +36,24 @@
 - wordcount(string) -> int: Word count
 
 ```bash
-# Basic list operations
+# String manipulation examples
+tva expr -E 'upper("hello")'                # Returns: "HELLO"
+tva expr -E 'lower("WORLD")'                # Returns: "world"
+tva expr -E 'len("hello")'                  # Returns: 5
+tva expr -E 'char_len("你好")'               # Returns: 2 (UTF-8 characters)
+tva expr -E 'substr("hello", 1, 3)'         # Returns: "ell"
+
 tva expr -E 'split("1,2,3", ",")'           # Returns: ["1", "2", "3"]
 tva expr -E 'split("1-2-3", "-").reverse()' # Returns: ["3", "2", "1"]
 
+tva expr -E 'contains("hello", "ll")'       # Returns: true
+tva expr -E 'starts_with("hello", "he")'    # Returns: true
+tva expr -E 'ends_with("hello", "lo")'      # Returns: true
+
+tva expr -E 'replace("hello", "l", "x")'    # Returns: "hexxo"
+tva expr -E 'truncate("hello world", 5)'    # Returns: "he..."
+tva expr -E 'wordcount("hello world")'      # Returns: 2
+tva expr -E 'wordcount("one two three four")'  # Returns: 4
 ```
 
 ## List Operations
