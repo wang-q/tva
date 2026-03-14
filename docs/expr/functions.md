@@ -62,8 +62,9 @@ tva expr -E 'wordcount("one two three four")'  # Returns: 4
 - join(list, sep) -> string: Join list elements
 - last(list) -> T: Last element
 - len(list) -> int: List length (number of elements)
-- nth(list, n) -> T: nth element (0-based)
+- nth(list, n) -> T: nth element (0-based, negative indices return null)
 - reverse(list) -> list: Reverse list
+- replace_nth(list, n, value) -> list: Return new list with nth element replaced by value (original list unchanged)
 - slice(list, start, end?) -> list: Slice list
 - sort(list) -> list: Sort list
 - unique(list) -> list: Remove duplicates
@@ -92,6 +93,15 @@ tva expr -E '
     @list.len()
 '
 # Returns: 3
+
+# Replace element at index (returns new list, original unchanged)
+tva expr -E 'replace_nth([1, 2, 3], 1, 99)'    # Returns: [1, 99, 3]
+tva expr -E '
+    [1, 2, 3] as @list;
+    replace_nth(@list, 0, 100) as @new_list;
+    [@list, @new_list]
+'
+# Returns: [[1, 2, 3], [100, 2, 3]]
 ```
 
 ## Range Generation
