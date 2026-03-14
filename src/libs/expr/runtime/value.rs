@@ -1,11 +1,14 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
-/// Lambda function value
+/// Lambda function value with captured variables
 #[derive(Debug, Clone, PartialEq)]
 pub struct LambdaValue {
     pub params: Vec<String>,
     pub body: crate::libs::expr::parser::ast::Expr,
+    /// Captured variables from the enclosing scope
+    pub captured_vars: HashMap<String, Value>,
 }
 
 /// Runtime value type for expression evaluation
@@ -168,6 +171,56 @@ impl Value {
                 let b = rhs.as_f64()?;
                 Some(Value::Bool(a >= b))
             }
+        }
+    }
+
+    /// Compare two values for ordering (used by sort_by)
+    /// Returns Ordering::Less if self < other, etc.
+    /// Ordering: null < bool < int/float < string < list < others
+    pub fn compare(&self, other: &Value) -> Option<std::cmp::Ordering> {
+        use std::cmp::Ordering;
+
+        // Get type priority (lower = comes first)
+        let type_priority = |v: &Value| match v {
+            Value::Null => 0,
+            Value::Bool(_) => 1,
+            Value::Int(_) | Value::Float(_) => 2,
+            Value::String(_) => 3,
+            Value::List(_) => 4,
+            Value::DateTime(_) => 5,
+            Value::Lambda(_) => 6,
+        };
+
+        let self_prio = type_priority(self);
+        let other_prio = type_priority(other);
+
+        if self_prio != other_prio {
+            return Some(self_prio.cmp(&other_prio));
+        }
+
+        // Same type, compare values
+        match (self, other) {
+            (Value::Null, Value::Null) => Some(Ordering::Equal),
+            (Value::Bool(a), Value::Bool(b)) => Some(a.cmp(b)),
+            (Value::Int(a), Value::Int(b)) => Some(a.cmp(b)),
+            (Value::Float(a), Value::Float(b)) => a.partial_cmp(b),
+            (Value::Int(a), Value::Float(b)) => (*a as f64).partial_cmp(b),
+            (Value::Float(a), Value::Int(b)) => a.partial_cmp(&(*b as f64)),
+            (Value::String(a), Value::String(b)) => Some(a.cmp(b)),
+            (Value::List(a), Value::List(b)) => {
+                // Lexicographical comparison
+                let min_len = a.len().min(b.len());
+                for i in 0..min_len {
+                    match a[i].compare(&b[i])? {
+                        Ordering::Equal => continue,
+                        other => return Some(other),
+                    }
+                }
+                Some(a.len().cmp(&b.len()))
+            }
+            (Value::DateTime(a), Value::DateTime(b)) => Some(a.cmp(b)),
+            // Lambda and other types are not comparable
+            _ => None,
         }
     }
 }
@@ -334,5 +387,97 @@ mod tests {
         assert_eq!(Value::Float(1.5).as_bool(), true);
         assert_eq!(Value::String("".to_string()).as_bool(), false);
         assert_eq!(Value::String("hello".to_string()).as_bool(), true);
+    }
+
+    #[test]
+    fn test_value_compare_null() {
+        assert_eq!(Value::Null.compare(&Value::Null), Some(std::cmp::Ordering::Equal));
+        assert_eq!(Value::Null.compare(&Value::Int(1)), Some(std::cmp::Ordering::Less));
+        assert_eq!(Value::Int(1).compare(&Value::Null), Some(std::cmp::Ordering::Greater));
+    }
+
+    #[test]
+    fn test_value_compare_bool() {
+        assert_eq!(Value::Bool(false).compare(&Value::Bool(true)), Some(std::cmp::Ordering::Less));
+        assert_eq!(Value::Bool(true).compare(&Value::Bool(true)), Some(std::cmp::Ordering::Equal));
+        assert_eq!(Value::Bool(true).compare(&Value::Bool(false)), Some(std::cmp::Ordering::Greater));
+    }
+
+    #[test]
+    fn test_value_compare_int() {
+        assert_eq!(Value::Int(1).compare(&Value::Int(2)), Some(std::cmp::Ordering::Less));
+        assert_eq!(Value::Int(5).compare(&Value::Int(5)), Some(std::cmp::Ordering::Equal));
+        assert_eq!(Value::Int(10).compare(&Value::Int(3)), Some(std::cmp::Ordering::Greater));
+    }
+
+    #[test]
+    fn test_value_compare_float() {
+        assert_eq!(Value::Float(1.5).compare(&Value::Float(2.5)), Some(std::cmp::Ordering::Less));
+        assert_eq!(Value::Float(3.0).compare(&Value::Float(3.0)), Some(std::cmp::Ordering::Equal));
+    }
+
+    #[test]
+    fn test_value_compare_int_float() {
+        assert_eq!(Value::Int(1).compare(&Value::Float(2.0)), Some(std::cmp::Ordering::Less));
+        assert_eq!(Value::Int(5).compare(&Value::Float(5.0)), Some(std::cmp::Ordering::Equal));
+        assert_eq!(Value::Float(1.5).compare(&Value::Int(2)), Some(std::cmp::Ordering::Less));
+    }
+
+    #[test]
+    fn test_value_compare_string() {
+        assert_eq!(Value::String("apple".to_string()).compare(&Value::String("banana".to_string())), Some(std::cmp::Ordering::Less));
+        assert_eq!(Value::String("zebra".to_string()).compare(&Value::String("apple".to_string())), Some(std::cmp::Ordering::Greater));
+        assert_eq!(Value::String("same".to_string()).compare(&Value::String("same".to_string())), Some(std::cmp::Ordering::Equal));
+    }
+
+    #[test]
+    fn test_value_compare_list() {
+        // Empty list comparison
+        let empty: Vec<Value> = vec![];
+        let list1 = Value::List(vec![Value::Int(1)]);
+        let list_empty = Value::List(empty.clone());
+        assert_eq!(list_empty.compare(&list_empty), Some(std::cmp::Ordering::Equal));
+        assert_eq!(list_empty.compare(&list1), Some(std::cmp::Ordering::Less));
+        assert_eq!(list1.compare(&list_empty), Some(std::cmp::Ordering::Greater));
+
+        // List with same elements
+        let a = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let b = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        assert_eq!(a.compare(&b), Some(std::cmp::Ordering::Equal));
+
+        // List with different elements
+        let c = Value::List(vec![Value::Int(1), Value::Int(3)]);
+        assert_eq!(a.compare(&c), Some(std::cmp::Ordering::Less));
+
+        // List with different lengths
+        let d = Value::List(vec![Value::Int(1)]);
+        assert_eq!(d.compare(&a), Some(std::cmp::Ordering::Less));
+        assert_eq!(a.compare(&d), Some(std::cmp::Ordering::Greater));
+
+        // Nested list comparison
+        let nested1 = Value::List(vec![Value::List(vec![Value::Int(1), Value::Int(2)]), Value::Int(3)]);
+        let nested2 = Value::List(vec![Value::List(vec![Value::Int(1), Value::Int(2)]), Value::Int(4)]);
+        assert_eq!(nested1.compare(&nested2), Some(std::cmp::Ordering::Less));
+    }
+
+    #[test]
+    fn test_value_compare_mixed_types() {
+        // Type priority: null < bool < int/float < string < list
+        assert_eq!(Value::Null.compare(&Value::Bool(true)), Some(std::cmp::Ordering::Less));
+        assert_eq!(Value::Bool(false).compare(&Value::Int(0)), Some(std::cmp::Ordering::Less));
+        assert_eq!(Value::Int(100).compare(&Value::String("a".to_string())), Some(std::cmp::Ordering::Less));
+        assert_eq!(Value::String("z".to_string()).compare(&Value::List(vec![])), Some(std::cmp::Ordering::Less));
+    }
+
+    #[test]
+    fn test_value_compare_list_lexicographical() {
+        // Test lexicographical ordering with composite keys like [r.nth(0), r.nth(1)]
+        let a = Value::List(vec![Value::Int(1), Value::String("a".to_string())]);
+        let b = Value::List(vec![Value::Int(1), Value::String("c".to_string())]);
+        let c = Value::List(vec![Value::Int(2), Value::String("b".to_string())]);
+
+        assert_eq!(a.compare(&b), Some(std::cmp::Ordering::Less)); // [1, "a"] < [1, "c"]
+        assert_eq!(a.compare(&c), Some(std::cmp::Ordering::Less)); // [1, "a"] < [2, "b"]
+        assert_eq!(b.compare(&c), Some(std::cmp::Ordering::Less)); // [1, "c"] < [2, "b"]
     }
 }

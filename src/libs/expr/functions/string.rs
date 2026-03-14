@@ -28,6 +28,7 @@ pub fn lower(args: &[Value]) -> Result<Value, EvalError> {
 pub fn len(args: &[Value]) -> Result<Value, EvalError> {
     match &args[0] {
         Value::String(s) => Ok(Value::Int(s.len() as i64)),
+        Value::List(list) => Ok(Value::Int(list.len() as i64)),
         Value::Null => Ok(Value::Int(0)),
         v => Ok(Value::Int(v.to_string().len() as i64)),
     }

@@ -144,6 +144,7 @@ impl FunctionRegistry {
         self.register("reverse", FunctionInfo::fixed(list::reverse, 1));
         self.register("nth", FunctionInfo::fixed(list::nth, 2));
         self.register("sort", FunctionInfo::fixed(list::sort, 1));
+        self.register("sort_by", FunctionInfo::fixed(list::sort_by, 2));
         self.register("unique", FunctionInfo::fixed(list::unique, 1));
         self.register("slice", FunctionInfo::variadic(list::slice, 2));
         self.register("reduce", FunctionInfo::fixed(list::reduce, 3));
@@ -753,6 +754,143 @@ mod tests {
     }
 
     #[test]
+    fn test_sort_by() {
+        use crate::libs::expr::parser::ast::{Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let registry = FunctionRegistry::new();
+
+        // Test sort_by with string length: sort_by(["cherry", "apple", "pear"], s => len(s))
+        let len_lambda = Value::Lambda(LambdaValue {
+            params: vec!["s".to_string()],
+            body: Expr::Call {
+                name: "len".to_string(),
+                args: vec![Expr::LambdaParam("s".to_string())],
+            },
+            captured_vars: HashMap::new(),
+        });
+        let result = registry.call(
+            "sort_by",
+            &[
+                Value::List(vec![
+                    Value::String("cherry".to_string()),
+                    Value::String("apple".to_string()),
+                    Value::String("pear".to_string()),
+                ]),
+                len_lambda,
+            ],
+        );
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![
+                Value::String("pear".to_string()),
+                Value::String("apple".to_string()),
+                Value::String("cherry".to_string()),
+            ])
+        );
+
+        // Test sort_by with absolute value: sort_by([-5, 3, -1, 4], x => abs(x))
+        let abs_lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Call {
+                name: "abs".to_string(),
+                args: vec![Expr::LambdaParam("x".to_string())],
+            },
+            captured_vars: HashMap::new(),
+        });
+        let result = registry.call(
+            "sort_by",
+            &[
+                Value::List(vec![
+                    Value::Int(-5),
+                    Value::Int(3),
+                    Value::Int(-1),
+                    Value::Int(4),
+                ]),
+                abs_lambda,
+            ],
+        );
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![
+                Value::Int(-1),
+                Value::Int(3),
+                Value::Int(4),
+                Value::Int(-5),
+            ])
+        );
+
+        // Test sort_by with composite key: sort_by([[2, "b"], [1, "c"], [1, "a"]], r => [r.nth(0), r.nth(1)])
+        let composite_lambda = Value::Lambda(LambdaValue {
+            params: vec!["r".to_string()],
+            body: Expr::List(vec![
+                Expr::Call {
+                    name: "nth".to_string(),
+                    args: vec![
+                        Expr::LambdaParam("r".to_string()),
+                        Expr::Int(0),
+                    ],
+                },
+                Expr::Call {
+                    name: "nth".to_string(),
+                    args: vec![
+                        Expr::LambdaParam("r".to_string()),
+                        Expr::Int(1),
+                    ],
+                },
+            ]),
+            captured_vars: HashMap::new(),
+        });
+        let result = registry.call(
+            "sort_by",
+            &[
+                Value::List(vec![
+                    Value::List(vec![
+                        Value::Int(2),
+                        Value::String("b".to_string()),
+                    ]),
+                    Value::List(vec![
+                        Value::Int(1),
+                        Value::String("c".to_string()),
+                    ]),
+                    Value::List(vec![
+                        Value::Int(1),
+                        Value::String("a".to_string()),
+                    ]),
+                ]),
+                composite_lambda,
+            ],
+        );
+        assert_eq!(
+            result.unwrap(),
+            Value::List(vec![
+                Value::List(vec![
+                    Value::Int(1),
+                    Value::String("a".to_string()),
+                ]),
+                Value::List(vec![
+                    Value::Int(1),
+                    Value::String("c".to_string()),
+                ]),
+                Value::List(vec![
+                    Value::Int(2),
+                    Value::String("b".to_string()),
+                ]),
+            ])
+        );
+
+        // Test sort_by with null list
+        let identity_lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = registry.call("sort_by", &[Value::Null, identity_lambda]);
+        assert_eq!(result.unwrap(), Value::Null);
+    }
+
+    #[test]
     fn test_regex_match() {
         let registry = FunctionRegistry::new();
         let result = registry.call(
@@ -963,6 +1101,7 @@ mod tests {
 
         // Sum: |acc, x| acc + x
         let sum_lambda = Value::Lambda(LambdaValue {
+            captured_vars: std::collections::HashMap::new(),
             params: vec!["acc".to_string(), "x".to_string()],
             body: Expr::Binary {
                 op: BinaryOp::Add,
@@ -982,6 +1121,7 @@ mod tests {
 
         // Product: |acc, x| acc * x
         let mul_lambda = Value::Lambda(LambdaValue {
+            captured_vars: std::collections::HashMap::new(),
             params: vec!["acc".to_string(), "x".to_string()],
             body: Expr::Binary {
                 op: BinaryOp::Mul,
@@ -1001,6 +1141,7 @@ mod tests {
 
         // Subtraction: |acc, x| acc - x
         let sub_lambda = Value::Lambda(LambdaValue {
+            captured_vars: std::collections::HashMap::new(),
             params: vec!["acc".to_string(), "x".to_string()],
             body: Expr::Binary {
                 op: BinaryOp::Sub,
@@ -1021,6 +1162,7 @@ mod tests {
 
         // Empty list returns initial value
         let sum_lambda2 = Value::Lambda(LambdaValue {
+            captured_vars: std::collections::HashMap::new(),
             params: vec!["acc".to_string(), "x".to_string()],
             body: Expr::Binary {
                 op: BinaryOp::Add,
@@ -1036,6 +1178,7 @@ mod tests {
 
         // Min: |acc, x| if(acc < x, acc, x)
         let min_lambda = Value::Lambda(LambdaValue {
+            captured_vars: std::collections::HashMap::new(),
             params: vec!["acc".to_string(), "x".to_string()],
             body: Expr::Call {
                 name: "if".to_string(),
@@ -1062,6 +1205,7 @@ mod tests {
 
         // Max: |acc, x| if(acc > x, acc, x)
         let max_lambda = Value::Lambda(LambdaValue {
+            captured_vars: std::collections::HashMap::new(),
             params: vec!["acc".to_string(), "x".to_string()],
             body: Expr::Call {
                 name: "if".to_string(),
@@ -1168,6 +1312,7 @@ mod tests {
         // Test map with lambda: map([1, 2, 3], |x| x * 2) -> [2, 4, 6]
         let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
         let lambda = Value::Lambda(LambdaValue {
+            captured_vars: std::collections::HashMap::new(),
             params: vec!["x".to_string()],
             body: Expr::Binary {
                 op: BinaryOp::Mul,
@@ -1201,6 +1346,7 @@ mod tests {
             Value::Int(4),
         ]);
         let lambda = Value::Lambda(LambdaValue {
+            captured_vars: std::collections::HashMap::new(),
             params: vec!["x".to_string()],
             body: Expr::Binary {
                 op: BinaryOp::Gt,

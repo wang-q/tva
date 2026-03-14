@@ -61,6 +61,7 @@ tva expr -E 'wordcount("one two three four")'  # Returns: 4
 - first(list) -> T: First element
 - join(list, sep) -> string: Join list elements
 - last(list) -> T: Last element
+- len(list) -> int: List length (number of elements)
 - nth(list, n) -> T: nth element (0-based)
 - reverse(list) -> list: Reverse list
 - slice(list, start, end?) -> list: Slice list
@@ -82,6 +83,15 @@ tva expr -E '
     first(@list) + last(@list)
 '
 # Returns: 4
+
+# List length
+tva expr -E 'len([1, 2, 3, 4, 5])'        # Returns: 5
+tva expr -E 'len(split("a,b,c", ","))'    # Returns: 3
+tva expr -E '
+    [1, 2, 3] as @list;
+    @list.len()
+'
+# Returns: 3
 ```
 
 ## Range Generation
@@ -111,6 +121,7 @@ returns empty list.
 - map(list, lambda) -> list: Apply lambda to each element
 - filter(list, lambda) -> list: Filter list elements
 - reduce(list, init, lambda) -> value: Reduce list to single value
+- sort_by(list, lambda) -> list: Sort list by lambda expression
 
 ```bash
 # Double each number
@@ -132,6 +143,26 @@ tva expr -E 'reduce(["a", "b", "c"], 0, (acc, _) => acc + 1)'
 # Find maximum value
 tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) => if(x > acc, x, acc))'
 # Returns: 5
+
+# Sort by string length
+tva expr -E 'sort_by(["cherry", "apple", "pear"], s => len(s))'
+# Returns: ["pear", "apple", "cherry"]
+
+# Sort by absolute value
+tva expr -E 'sort_by([-5, 3, -1, 4], x => abs(x))'
+# Returns: [-1, 3, 4, -5]
+
+# Sort records by first element
+tva expr -E 'sort_by([[3, "c"], [1, "a"], [2, "b"]], r => r.first())'
+# Returns: [[1, "a"], [2, "b"], [3, "c"]]
+
+# Sort strings case-insensitively
+tva expr -E 'sort_by(["Banana", "apple", "Cherry"], s => lower(s))'
+# Returns: ["apple", "Banana", "Cherry"]
+
+# Sort by multiple criteria (composite key)
+tva expr -E 'sort_by([[2, "b"], [1, "c"], [1, "a"]], r => [r.nth(0), r.nth(1)])'
+# Returns: [[1, "a"], [1, "c"], [2, "b"]]
 ```
 
 ## Regular Expressions

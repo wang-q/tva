@@ -202,9 +202,10 @@ pub fn reduce(args: &[Value]) -> Result<Value, EvalError> {
 
             let mut result = args[1].clone();
 
-            // Create a dummy context for lambda evaluation
+            // Create a context with captured variables for lambda evaluation
             let dummy_row: Vec<String> = vec![];
             let mut ctx = EvalContext::new(&dummy_row);
+            ctx.variables = lambda.captured_vars.clone();
 
             for item in list.iter() {
                 // Bind accumulator to first parameter, item to second parameter
@@ -231,23 +232,22 @@ pub fn reduce(args: &[Value]) -> Result<Value, EvalError> {
 fn apply_lambda(
     lambda: &LambdaValue,
     item: &Value,
-    ctx: &mut EvalContext,
 ) -> Result<Value, EvalError> {
     // Set lambda parameters
     if lambda.params.is_empty() {
         return Err(EvalError::TypeError("lambda has no parameters".to_string()));
     }
 
+    // Create a context with captured variables for lambda evaluation
+    let dummy_row: Vec<String> = vec![];
+    let mut ctx = EvalContext::new(&dummy_row);
+    ctx.variables = lambda.captured_vars.clone();
+
     // Bind the first parameter to the item
     ctx.set_lambda_param(lambda.params[0].clone(), item.clone());
 
     // Evaluate the lambda body
-    let result = eval(&lambda.body, ctx);
-
-    // Clear lambda parameters after evaluation
-    ctx.clear_lambda_params();
-
-    result
+    eval(&lambda.body, &mut ctx)
 }
 
 pub fn map(args: &[Value]) -> Result<Value, EvalError> {
@@ -262,13 +262,9 @@ pub fn map(args: &[Value]) -> Result<Value, EvalError> {
                 }
             };
 
-            // Create a dummy context for lambda evaluation
-            let dummy_row: Vec<String> = vec![];
-            let mut ctx = EvalContext::new(&dummy_row);
-
             let mut result = Vec::with_capacity(list.len());
             for item in list {
-                let mapped = apply_lambda(lambda, item, &mut ctx)?;
+                let mapped = apply_lambda(lambda, item)?;
                 result.push(mapped);
             }
 
@@ -293,13 +289,9 @@ pub fn filter(args: &[Value]) -> Result<Value, EvalError> {
                 }
             };
 
-            // Create a dummy context for lambda evaluation
-            let dummy_row: Vec<String> = vec![];
-            let mut ctx = EvalContext::new(&dummy_row);
-
             let mut result = Vec::new();
             for item in list {
-                let keep = apply_lambda(lambda, item, &mut ctx)?;
+                let keep = apply_lambda(lambda, item)?;
                 if keep.as_bool() {
                     result.push(item.clone());
                 }
@@ -310,6 +302,45 @@ pub fn filter(args: &[Value]) -> Result<Value, EvalError> {
         Value::Null => Ok(Value::Null),
         _ => Err(EvalError::TypeError(
             "filter: first argument must be a list".to_string(),
+        )),
+    }
+}
+
+/// Sort a list by a key extracted by a lambda function
+/// Each element is transformed by the lambda to produce a sort key
+/// Keys are cached to avoid calling lambda multiple times per element
+pub fn sort_by(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => {
+            let lambda = match &args[1] {
+                Value::Lambda(l) => l,
+                _ => {
+                    return Err(EvalError::TypeError(
+                        "sort_by: second argument must be a lambda".to_string(),
+                    ))
+                }
+            };
+
+            // Pre-compute keys for all elements (cache to avoid multiple lambda calls)
+            let mut keyed: Vec<(Value, Value)> = Vec::with_capacity(list.len());
+            for item in list.iter() {
+                let key = apply_lambda(lambda, item)?;
+                keyed.push((key, item.clone()));
+            }
+
+            // Sort by key using Value::compare
+            keyed.sort_by(|(a, _), (b, _)| {
+                a.compare(b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+
+            // Extract sorted values
+            let result: Vec<Value> = keyed.into_iter().map(|(_, v)| v).collect();
+            Ok(Value::List(result))
+        }
+        Value::Null => Ok(Value::Null),
+        _ => Err(EvalError::TypeError(
+            "sort_by: first argument must be a list".to_string(),
         )),
     }
 }

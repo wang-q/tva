@@ -267,10 +267,16 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
             }
             Ok(result)
         }
-        Expr::Lambda { params, body } => Ok(Value::Lambda(value::LambdaValue {
-            params: params.clone(),
-            body: *body.clone(),
-        })),
+        Expr::Lambda { params, body } => {
+            // Capture both variables and lambda parameters from the current scope
+            let mut captured_vars = ctx.variables.clone();
+            captured_vars.extend(ctx.lambda_params.clone());
+            Ok(Value::Lambda(value::LambdaValue {
+                params: params.clone(),
+                body: *body.clone(),
+                captured_vars,
+            }))
+        }
     }
 }
 
