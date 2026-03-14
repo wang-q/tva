@@ -1,0 +1,635 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Plotting - tva Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-2459343d.css">
+        <link rel="stylesheet" href="css/chrome-ae938929.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-9c951220.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-d1513fcf.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">tva Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/wang-q/tva" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/wang-q/tva/edit/master/docs/plot.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="plotting-documentation"><a class="header" href="#plotting-documentation">Plotting Documentation</a></h1>
+<p>This document explains how to use the plotting commands in <code>tva</code>: <strong><code>plot point</code></strong>. These commands bring data visualization capabilities to the terminal, inspired by the grammar of graphics philosophy of <code>ggplot2</code>.</p>
+<h2 id="introduction"><a class="header" href="#introduction">Introduction</a></h2>
+<p>Terminal-based plotting allows you to quickly visualize data without leaving the command line. <code>tva</code> provides plotting tools that render directly in your terminal using ASCII/Unicode characters:</p>
+<ul>
+<li><strong><code>plot point</code></strong>: Draws scatter plots or line charts from TSV data.</li>
+<li><strong><code>plot box</code></strong>: Draws box plots (box-and-whisker plots) from TSV data.</li>
+</ul>
+<h2 id="plot-point-scatter-plots-and-line-charts"><a class="header" href="#plot-point-scatter-plots-and-line-charts"><code>plot point</code> (Scatter Plots and Line Charts)</a></h2>
+<p>The <code>plot point</code> command creates scatter plots or line charts directly in your terminal. It maps TSV columns to visual aesthetics (position, color) and renders the chart using ASCII/Unicode characters.</p>
+<h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
+<pre><code class="language-bash">tva plot point [input_file] --x &lt;column&gt; --y &lt;column&gt; [options]
+</code></pre>
+<ul>
+<li><strong><code>-x</code> / <code>--x</code></strong>: The column for X-axis position (required).</li>
+<li><strong><code>-y</code> / <code>--y</code></strong>: The column for Y-axis position (required).</li>
+<li><strong><code>--color</code></strong>: Column for grouping/coloring points by category (optional).</li>
+<li><strong><code>-l</code> / <code>--line</code></strong>: Draw line chart instead of scatter plot.</li>
+</ul>
+<h3 id="column-specification"><a class="header" href="#column-specification">Column Specification</a></h3>
+<p>Columns can be specified by:</p>
+<ul>
+<li><strong>Header name</strong>: e.g., <code>-x age</code>, <code>-y income</code></li>
+<li><strong>1-based index</strong>: e.g., <code>-x 1</code>, <code>-y 3</code></li>
+</ul>
+<h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
+<h3 id="1-basic-scatter-plot"><a class="header" href="#1-basic-scatter-plot">1. Basic Scatter Plot</a></h3>
+<p>The simplest use case is plotting two numeric columns against each other.</p>
+<p>Using the <code>tests/data/plot/iris.tsv</code> dataset (Fisher’s Iris dataset):</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width
+</code></pre>
+<p>This creates a scatter plot showing the relationship between sepal length and sepal width.</p>
+<p>Output (terminal chart):</p>
+<pre><code>6│sepal_width
+ │
+ │
+ │
+ │
+ │
+ │
+ │
+ │                                ⠠
+ │                             ⡀
+ │                       ⠂          ⢀
+4│                     ⡀     ⠂    ⢀                                      ⢀   ⢀
+ │                     ⠄   ⠄ ⠄
+ │           ⠈     ⠁ ⠅ ⠄ ⠄     ⠄                                ⠁
+ │           ⠈   ⠁   ⠅ ⠅ ⠁   ⠁          ⠈   ⠈ ⠨       ⠄
+ │       ⠈   ⢈ ⠈ ⡀ ⡀ ⠁                ⠈         ⢈ ⠁   ⡀ ⠁ ⡁ ⠁   ⠁
+ │     ⠐ ⢐       ⠂ ⠂ ⠂       ⠂  ⢐ ⢐   ⠐ ⢐ ⢐ ⢀ ⢀ ⢀ ⠂ ⡂ ⠂ ⠂     ⠂ ⠂⢀     ⠐ ⠐
+ │                       ⡀      ⢐ ⠐ ⢐   ⢀ ⠐ ⠐ ⢐ ⢐ ⠂     ⠂          ⠐     ⠐
+ │                             ⠂  ⠐ ⠐     ⠐                              ⠐
+ │                 ⠅   ⠁       ⠅⠈ ⠈           ⠈       ⠁
+ │         ⠈         ⠁         ⠁        ⠠   ⠠ ⠈
+2│                   ⡀                                              sepal_length
+ └──────────────────────────────────────────────────────────────────────────────
+ 4                                       6                                     8
+</code></pre>
+<h3 id="2-grouped-by-category-color"><a class="header" href="#2-grouped-by-category-color">2. Grouped by Category (Color)</a></h3>
+<p>Use the <code>--color</code> option to group points by a categorical column. Each unique value gets a different color.</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x petal_length -y petal_width --color label --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_point_iris_color.png" alt="iris scatter plot with color"></p>
+<p>This creates a scatter plot with three colors, one for each iris species (setosa, versicolor, virginica).</p>
+<p>The output will show three distinct clusters with different markers/colors:</p>
+<ul>
+<li><strong>Setosa</strong>: Small petals, clustered at bottom-left</li>
+<li><strong>Versicolor</strong>: Medium petals, in the middle</li>
+<li><strong>Virginica</strong>: Large petals, at top-right</li>
+</ul>
+<h3 id="3-line-chart"><a class="header" href="#3-line-chart">3. Line Chart</a></h3>
+<p>Use the <code>-l</code> or <code>--line</code> flag to connect points with lines instead of drawing individual points.</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --line --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_point_iris_line.png" alt="iris line plot"></p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --path --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_point_iris_path.png" alt="iris path plot"></p>
+<h3 id="4-using-column-indices"><a class="header" href="#4-using-column-indices">4. Using Column Indices</a></h3>
+<p>You can use 1-based column indices instead of header names:</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x 1 -y 3 --color 5
+</code></pre>
+<p>This maps:</p>
+<ul>
+<li>Column 1 (<code>sepal_length</code>) to X-axis</li>
+<li>Column 3 (<code>petal_length</code>) to Y-axis</li>
+<li>Column 5 (<code>label</code>) to color</li>
+</ul>
+<h3 id="5-different-marker-styles"><a class="header" href="#5-different-marker-styles">5. Different Marker Styles</a></h3>
+<p>Choose from three marker types with <code>-m</code> or <code>--marker</code>:</p>
+<pre><code class="language-bash"># Braille markers (default, highest resolution)
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m braille
+
+# Dot markers
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m dot
+
+# Block markers
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
+</code></pre>
+<h3 id="7-regression-line"><a class="header" href="#7-regression-line">7. Regression Line</a></h3>
+<p>Use <code>--regression</code> to overlay a linear regression line (least squares fit) on the scatter plot. This helps visualize trends in the data.</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot --regression
+</code></pre>
+<p>When combined with <code>--color</code>, a separate regression line is drawn for each group:</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot  --color label --regression --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_point_regression.png" alt="Regression lines with color grouping"></p>
+<p>Note: <code>--regression</code> cannot be used with <code>--line</code> or <code>--path</code>.</p>
+<h3 id="8-handling-invalid-data"><a class="header" href="#8-handling-invalid-data">8. Handling Invalid Data</a></h3>
+<p>Use <code>--ignore</code> to skip rows with non-numeric values:</p>
+<pre><code class="language-bash">tva plot point data.tsv -x value1 -y value2 --ignore
+</code></pre>
+<h2 id="detailed-options"><a class="header" href="#detailed-options">Detailed Options</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Option</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>-x &lt;COL&gt;</code> / <code>--x &lt;COL&gt;</code></td><td style="text-align: left"><strong>Required.</strong> Column for X-axis position.</td></tr>
+<tr><td style="text-align: left"><code>-y &lt;COL&gt;</code> / <code>--y &lt;COL&gt;</code></td><td style="text-align: left"><strong>Required.</strong> Column for Y-axis position.</td></tr>
+<tr><td style="text-align: left"><code>--color &lt;COL&gt;</code></td><td style="text-align: left">Column for grouping/coloring by category.</td></tr>
+<tr><td style="text-align: left"><code>-l</code> / <code>--line</code></td><td style="text-align: left">Draw line chart instead of scatter plot.</td></tr>
+<tr><td style="text-align: left"><code>--path</code></td><td style="text-align: left">Draw path chart (connect points in original order).</td></tr>
+<tr><td style="text-align: left"><code>-r</code> / <code>--regression</code></td><td style="text-align: left">Overlay linear regression line.</td></tr>
+<tr><td style="text-align: left"><code>-m &lt;TYPE&gt;</code> / <code>--marker &lt;TYPE&gt;</code></td><td style="text-align: left">Marker style: <code>braille</code> (default), <code>dot</code>, or <code>block</code>.</td></tr>
+<tr><td style="text-align: left"><code>--cols &lt;N&gt;</code></td><td style="text-align: left">Chart width in characters or ratio (default: <code>1.0</code>, i.e., full terminal width).</td></tr>
+<tr><td style="text-align: left"><code>--rows &lt;N&gt;</code></td><td style="text-align: left">Chart height in characters or ratio (default: <code>1.0</code>, i.e., full terminal height minus 1 for prompt).</td></tr>
+<tr><td style="text-align: left"><code>--ignore</code></td><td style="text-align: left">Skip rows with non-numeric values.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="comparison-with-r-ggplot2"><a class="header" href="#comparison-with-r-ggplot2">Comparison with R <code>ggplot2</code></a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>ggplot2::geom_point</code></th><th style="text-align: left"><code>tva plot point</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Basic scatter plot</td><td style="text-align: left"><code>aes(x, y)</code></td><td style="text-align: left"><code>-x &lt;col&gt; -y &lt;col&gt;</code></td></tr>
+<tr><td style="text-align: left">Color by group</td><td style="text-align: left"><code>aes(color = group)</code></td><td style="text-align: left"><code>--color &lt;col&gt;</code></td></tr>
+<tr><td style="text-align: left">Line chart</td><td style="text-align: left"><code>geom_line()</code></td><td style="text-align: left"><code>--line</code></td></tr>
+<tr><td style="text-align: left">Path chart</td><td style="text-align: left"><code>geom_path()</code></td><td style="text-align: left"><code>--path</code></td></tr>
+<tr><td style="text-align: left">Regression line</td><td style="text-align: left"><code>geom_smooth(method = "lm")</code></td><td style="text-align: left"><code>--regression</code></td></tr>
+<tr><td style="text-align: left">Faceting</td><td style="text-align: left"><code>facet_wrap()</code> / <code>facet_grid()</code></td><td style="text-align: left">Not supported</td></tr>
+<tr><td style="text-align: left">Themes</td><td style="text-align: left"><code>theme_*()</code></td><td style="text-align: left">Terminal-based only</td></tr>
+<tr><td style="text-align: left">Output</td><td style="text-align: left">Graphics file / Viewer</td><td style="text-align: left">Terminal ASCII/Unicode</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>tva plot point</code> brings the core concepts of the grammar of graphics to the command line, allowing for quick data exploration without leaving your terminal.</p>
+<h2 id="plot-box-box-plots"><a class="header" href="#plot-box-box-plots"><code>plot box</code> (Box Plots)</a></h2>
+<p>The <code>plot box</code> command creates box plots (box-and-whisker plots) directly in your terminal. It visualizes the distribution of a numeric variable, showing the median, quartiles, and potential outliers.</p>
+<h3 id="basic-usage-1"><a class="header" href="#basic-usage-1">Basic Usage</a></h3>
+<pre><code class="language-bash">tva plot box [input_file] --y &lt;column&gt; [options]
+</code></pre>
+<ul>
+<li><strong><code>-y</code> / <code>--y</code></strong>: The column(s) to plot (required). Can specify multiple columns separated by commas.</li>
+<li><strong><code>--color</code></strong>: Column for grouping/coloring boxes by category (optional).</li>
+<li><strong><code>--outliers</code></strong>: Show outlier points beyond the whiskers.</li>
+</ul>
+<h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
+<h4 id="1-basic-box-plot"><a class="header" href="#1-basic-box-plot">1. Basic Box Plot</a></h4>
+<p>The simplest use case is plotting a single numeric column.</p>
+<p>Using the <code>tests/data/plot/iris.tsv</code> dataset:</p>
+<pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y sepal_length --cols 60 --rows 20
+</code></pre>
+<p>This creates a box plot showing the distribution of sepal length values.</p>
+<p>Output (terminal chart):</p>
+<pre><code>10│
+  │
+  │
+  │
+  │
+ 8│        ─┬─
+  │         │
+  │         │
+  │         │
+  │         │
+  │        ███
+ 6│        ─┼─
+  │        ███
+  │        ███
+  │         │
+  │         │
+  │        ─┴─
+ 4│
+  ├─────────────────────────────────────────────────────────
+      sepal_length
+</code></pre>
+<h4 id="2-grouped-box-plot"><a class="header" href="#2-grouped-box-plot">2. Grouped Box Plot</a></h4>
+<p>Use the <code>--color</code> option to create separate box plots for each category:</p>
+<pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y sepal_length --color label --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_box_grouped.png" alt="Grouped box plot by species"></p>
+<p>This creates three box plots side by side, one for each iris species (setosa, versicolor, virginica).</p>
+<h4 id="3-multiple-columns"><a class="header" href="#3-multiple-columns">3. Multiple Columns</a></h4>
+<p>Plot multiple numeric columns for comparison:</p>
+<pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y "sepal_length,sepal_width" --color label --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_box_multiple.png" alt="Multiple columns box plot"></p>
+<p>This creates four box plots side by side, one for each measurement column.</p>
+<h4 id="4-show-outliers"><a class="header" href="#4-show-outliers">4. Show Outliers</a></h4>
+<p>Display outlier points that fall beyond the whiskers:</p>
+<pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y petal_width --color label --outliers --cols 80 --rows 20
+</code></pre>
+<pre><code> 4│
+  │
+  │
+  │
+  │                                                ─┬─
+ 2│                                                ─┼─
+  │                            ─┬─                 ███
+  │                            ─┼─                 ─┴─
+  │                            ─┴─
+  │         •
+  │        ─┬─
+ 0│        ─┴─
+  │
+  │
+  │
+  │
+  │
+-2│
+  ├─────────────────────────────────────────────────────────────────────────────
+         setosa            versicolor           virginica
+</code></pre>
+<h3 id="detailed-options-1"><a class="header" href="#detailed-options-1">Detailed Options</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Option</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>-y &lt;COL&gt;</code> / <code>--y &lt;COL&gt;</code></td><td style="text-align: left"><strong>Required.</strong> Column(s) to plot. Multiple columns can be comma-separated.</td></tr>
+<tr><td style="text-align: left"><code>--color &lt;COL&gt;</code></td><td style="text-align: left">Column for grouping by category.</td></tr>
+<tr><td style="text-align: left"><code>--outliers</code></td><td style="text-align: left">Show outlier points beyond whiskers.</td></tr>
+<tr><td style="text-align: left"><code>--cols &lt;N&gt;</code></td><td style="text-align: left">Chart width in characters or ratio (default: <code>1.0</code>).</td></tr>
+<tr><td style="text-align: left"><code>--rows &lt;N&gt;</code></td><td style="text-align: left">Chart height in characters or ratio (default: <code>1.0</code>).</td></tr>
+<tr><td style="text-align: left"><code>--ignore</code></td><td style="text-align: left">Skip rows with non-numeric values.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="comparison-with-r-ggplot2-1"><a class="header" href="#comparison-with-r-ggplot2-1">Comparison with R <code>ggplot2</code></a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>ggplot2::geom_boxplot</code></th><th style="text-align: left"><code>tva plot box</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Basic box plot</td><td style="text-align: left"><code>aes(y = value)</code></td><td style="text-align: left"><code>-y &lt;col&gt;</code></td></tr>
+<tr><td style="text-align: left">Grouped box plot</td><td style="text-align: left"><code>aes(x = group, y = value)</code></td><td style="text-align: left"><code>-y &lt;col&gt; --color &lt;group&gt;</code></td></tr>
+<tr><td style="text-align: left">Show outliers</td><td style="text-align: left"><code>outlier.shape</code></td><td style="text-align: left"><code>--outliers</code></td></tr>
+<tr><td style="text-align: left">Multiple variables</td><td style="text-align: left"><code>facet_wrap()</code> or multiple geoms</td><td style="text-align: left"><code>-y "col1,col2"</code></td></tr>
+<tr><td style="text-align: left">Horizontal boxes</td><td style="text-align: left"><code>coord_flip()</code></td><td style="text-align: left">Not supported</td></tr>
+<tr><td style="text-align: left">Fill color</td><td style="text-align: left"><code>fill</code> aesthetic</td><td style="text-align: left">Terminal-based only</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="plot-bin2d-2d-binning-heatmap"><a class="header" href="#plot-bin2d-2d-binning-heatmap"><code>plot bin2d</code> (2D Binning Heatmap)</a></h2>
+<p>The <code>plot bin2d</code> command creates 2D binning heatmaps directly in your terminal. It divides the plane into rectangles, counts the number of cases in each rectangle, and visualizes the density using character intensity. This is a useful alternative to <code>plot point</code> in the presence of overplotting.</p>
+<p><strong>Workflow</strong>: Use <code>plot bin2d</code> for quick exploration with automatic binning, then use <code>bin</code> with manually determined parameters for precise processing.</p>
+<h3 id="basic-usage-2"><a class="header" href="#basic-usage-2">Basic Usage</a></h3>
+<pre><code class="language-bash">tva plot bin2d [input_file] --x &lt;column&gt; --y &lt;column&gt; [options]
+</code></pre>
+<ul>
+<li><strong><code>-x</code> / <code>--x</code></strong>: The column for X-axis position (required).</li>
+<li><strong><code>-y</code> / <code>--y</code></strong>: The column for Y-axis position (required).</li>
+<li><strong><code>-b</code> / <code>--bins</code></strong>: Number of bins in each direction (default: 30, or <code>x,y</code> for different counts).</li>
+<li><strong><code>-S</code> / <code>--strategy</code></strong>: Automatic bin count strategy: <code>freedman-diaconis</code>, <code>sqrt</code>, <code>sturges</code>.</li>
+<li><strong><code>--binwidth</code></strong>: Width of bins (or <code>x,y</code> for different widths).</li>
+</ul>
+<h3 id="examples-2"><a class="header" href="#examples-2">Examples</a></h3>
+<h4 id="1-basic-2d-binning"><a class="header" href="#1-basic-2d-binning">1. Basic 2D Binning</a></h4>
+<p>Using the <code>docs/data/diamonds.tsv</code> dataset (diamond physical dimensions):</p>
+<p>This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The output shows the concentration of diamonds in different size ranges.</p>
+<p>For better visualization of the main data cluster, you can filter the data first:</p>
+<pre><code class="language-bash">tva plot bin2d docs/data/diamonds.48.tsv -x x -y y
+</code></pre>
+<p>Output (terminal chart):</p>
+<pre><code>8│y                                                               ·░▒▓█ Max:3908
+ │
+ │                                                                    ··
+ │                                                            ········
+ │                                                            ·····
+ │                                                     ·····
+ │                                                  ···░░···
+ │                                             ·····░░░···
+ │                                        ·····▒▒▒··
+ │                                        ···░░···
+ │                                      ░░···
+6│                                ···░░░··
+ │                           ···░░···
+ │                      ···  ·····
+ │                      ···░░
+ │                 ···▒▒···
+ │          ··     ·····
+ │       ·····▓▓▓··
+ │  ···░░···░░···
+ │  ···██····
+ │  ······
+4│··                                                                           x
+ └──────────────────────────────────────────────────────────────────────────────
+ 4                                       6                                     8
+</code></pre>
+<h4 id="2-custom-bin-count"><a class="header" href="#2-custom-bin-count">2. Custom Bin Count</a></h4>
+<p>You can control the size of the bins by specifying the number of bins in each direction:</p>
+<pre><code class="language-bash"># Same bins for both axes
+tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --bins 20
+
+# Different bins for X and Y
+tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --bins 30,15
+</code></pre>
+<h4 id="3-specify-bin-width"><a class="header" href="#3-specify-bin-width">3. Specify Bin Width</a></h4>
+<p>Or by specifying the width of the bins:</p>
+<pre><code class="language-bash">tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --binwidth 0.5,0.5
+</code></pre>
+<h4 id="4-automatic-bin-selection"><a class="header" href="#4-automatic-bin-selection">4. Automatic Bin Selection</a></h4>
+<p>Use a strategy to automatically determine the number of bins:</p>
+<pre><code class="language-bash">tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --cols 1.0 --rows 1.0 -S freedman-diaconis
+</code></pre>
+<p><img src="images/plot_bin2d_diamonds.png" alt="bin2d diamonds heatmap"></p>
+<p>Available strategies:</p>
+<ul>
+<li><code>freedman-diaconis</code>: Based on data distribution (robust to outliers)</li>
+<li><code>sqrt</code>: Square root of number of observations</li>
+<li><code>sturges</code>: Sturges’ formula (1 + log2(n))</li>
+</ul>
+<h3 id="detailed-options-2"><a class="header" href="#detailed-options-2">Detailed Options</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Option</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>-x &lt;COL&gt;</code> / <code>--x &lt;COL&gt;</code></td><td style="text-align: left"><strong>Required.</strong> X-axis column (1-based index or name).</td></tr>
+<tr><td style="text-align: left"><code>-y &lt;COL&gt;</code> / <code>--y &lt;COL&gt;</code></td><td style="text-align: left"><strong>Required.</strong> Y-axis column (1-based index or name).</td></tr>
+<tr><td style="text-align: left"><code>-b &lt;N&gt;</code> / <code>--bins &lt;N&gt;</code></td><td style="text-align: left">Number of bins (default: 30, or <code>x,y</code> for different counts).</td></tr>
+<tr><td style="text-align: left"><code>-S &lt;NAME&gt;</code> / <code>--strategy &lt;NAME&gt;</code></td><td style="text-align: left">Auto bin count strategy: <code>freedman-diaconis</code>, <code>sqrt</code>, <code>sturges</code>.</td></tr>
+<tr><td style="text-align: left"><code>--binwidth &lt;W&gt;</code></td><td style="text-align: left">Bin width (or <code>x,y</code> for different widths).</td></tr>
+<tr><td style="text-align: left"><code>--cols &lt;N&gt;</code></td><td style="text-align: left">Chart width in characters (default: 80).</td></tr>
+<tr><td style="text-align: left"><code>--rows &lt;N&gt;</code></td><td style="text-align: left">Chart height in characters (default: 24).</td></tr>
+<tr><td style="text-align: left"><code>--ignore</code></td><td style="text-align: left">Skip rows with non-numeric values.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="comparison-with-r-ggplot2-2"><a class="header" href="#comparison-with-r-ggplot2-2">Comparison with R <code>ggplot2</code></a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>ggplot2::geom_bin2d</code></th><th style="text-align: left"><code>tva plot bin2d</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Basic heatmap</td><td style="text-align: left"><code>aes(x, y)</code></td><td style="text-align: left"><code>-x &lt;col&gt; -y &lt;col&gt;</code></td></tr>
+<tr><td style="text-align: left">Bin count</td><td style="text-align: left"><code>bins</code></td><td style="text-align: left"><code>--bins</code> or <code>-S</code></td></tr>
+<tr><td style="text-align: left">Bin width</td><td style="text-align: left"><code>binwidth</code></td><td style="text-align: left"><code>--binwidth</code></td></tr>
+<tr><td style="text-align: left">Fill scale</td><td style="text-align: left"><code>scale_fill_*</code></td><td style="text-align: left">Character density (·░▒▓█)</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="workflow-exploration-to-production"><a class="header" href="#workflow-exploration-to-production">Workflow: Exploration to Production</a></h3>
+<p><code>plot bin2d</code> is designed for quick data exploration. After visualizing the data distribution:</p>
+<ol>
+<li>
+<p><strong>Explore</strong>: Use <code>plot bin2d</code> to see patterns:</p>
+<pre><code class="language-bash">tva plot bin2d data.tsv -x age -y income
+</code></pre>
+</li>
+<li>
+<p><strong>Determine parameters</strong>: Note the optimal bin parameters from the visualization.</p>
+</li>
+<li>
+<p><strong>Process</strong>: Use <code>tva bin</code> for precise, production-ready binning:</p>
+<pre><code class="language-bash">tva bin data.tsv -f age -w 5 | \
+  tva bin -f income -w 5000 | \
+  tva stats -g age,income count
+</code></pre>
+</li>
+</ol>
+<h2 id="tips"><a class="header" href="#tips">Tips</a></h2>
+<ol>
+<li>
+<p><strong>Large datasets</strong>: For very large datasets, consider sampling first:</p>
+<pre><code class="language-bash">tva sample data.tsv -n 1000 | tva plot point -x x -y y
+</code></pre>
+</li>
+<li>
+<p><strong>Piping data</strong>: You can pipe data from other <code>tva</code> commands:</p>
+<pre><code class="language-bash">tva filter data.tsv -H -c value -gt 0 | tva plot point -x x -y y
+</code></pre>
+</li>
+<li>
+<p><strong>Viewing output</strong>: The chart is rendered directly to stdout. Use a terminal with good Unicode support for best results with Braille markers.</p>
+</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="reshape.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="combining.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="reshape.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="combining.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-c2a407aa.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

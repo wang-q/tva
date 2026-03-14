@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b52719f.js";
+            window.path_to_searchindex_js = "../searchindex-9c951220.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-745324d1.js"></script>
+        <script src="../toc-d1513fcf.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -255,6 +255,7 @@ tva expr -E '"a,b,c" | split(_, ",")'           # Returns: ["a", "b", "c"]
 </tbody>
 </table>
 </div>
+<p><strong>Note</strong>: Lambda parameters are <strong>lexically scoped</strong> and do not use the <code>@</code> prefix. This distinguishes them from column references (<code>@col</code>) and variables (<code>@var</code>).</p>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <pre><code class="language-bash"># Single-parameter lambda
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'

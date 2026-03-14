@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b52719f.js";
+            window.path_to_searchindex_js = "searchindex-9c951220.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-745324d1.js"></script>
+        <script src="toc-d1513fcf.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -1700,11 +1700,407 @@ B	1
 </div>
 <p><code>tva</code> brings the power of tidy data reshaping to the command line, allowing for efficient processing of large TSV files without loading them entirely into memory.</p>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="plotting-documentation"><a class="header" href="#plotting-documentation">Plotting Documentation</a></h1>
+<p>This document explains how to use the plotting commands in <code>tva</code>: <strong><code>plot point</code></strong>. These commands bring data visualization capabilities to the terminal, inspired by the grammar of graphics philosophy of <code>ggplot2</code>.</p>
+<h2 id="introduction-4"><a class="header" href="#introduction-4">Introduction</a></h2>
+<p>Terminal-based plotting allows you to quickly visualize data without leaving the command line. <code>tva</code> provides plotting tools that render directly in your terminal using ASCII/Unicode characters:</p>
+<ul>
+<li><strong><code>plot point</code></strong>: Draws scatter plots or line charts from TSV data.</li>
+<li><strong><code>plot box</code></strong>: Draws box plots (box-and-whisker plots) from TSV data.</li>
+</ul>
+<h2 id="plot-point-scatter-plots-and-line-charts"><a class="header" href="#plot-point-scatter-plots-and-line-charts"><code>plot point</code> (Scatter Plots and Line Charts)</a></h2>
+<p>The <code>plot point</code> command creates scatter plots or line charts directly in your terminal. It maps TSV columns to visual aesthetics (position, color) and renders the chart using ASCII/Unicode characters.</p>
+<h3 id="basic-usage-7"><a class="header" href="#basic-usage-7">Basic Usage</a></h3>
+<pre><code class="language-bash">tva plot point [input_file] --x &lt;column&gt; --y &lt;column&gt; [options]
+</code></pre>
+<ul>
+<li><strong><code>-x</code> / <code>--x</code></strong>: The column for X-axis position (required).</li>
+<li><strong><code>-y</code> / <code>--y</code></strong>: The column for Y-axis position (required).</li>
+<li><strong><code>--color</code></strong>: Column for grouping/coloring points by category (optional).</li>
+<li><strong><code>-l</code> / <code>--line</code></strong>: Draw line chart instead of scatter plot.</li>
+</ul>
+<h3 id="column-specification"><a class="header" href="#column-specification">Column Specification</a></h3>
+<p>Columns can be specified by:</p>
+<ul>
+<li><strong>Header name</strong>: e.g., <code>-x age</code>, <code>-y income</code></li>
+<li><strong>1-based index</strong>: e.g., <code>-x 1</code>, <code>-y 3</code></li>
+</ul>
+<h2 id="examples-7"><a class="header" href="#examples-7">Examples</a></h2>
+<h3 id="1-basic-scatter-plot"><a class="header" href="#1-basic-scatter-plot">1. Basic Scatter Plot</a></h3>
+<p>The simplest use case is plotting two numeric columns against each other.</p>
+<p>Using the <code>tests/data/plot/iris.tsv</code> dataset (Fisher’s Iris dataset):</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width
+</code></pre>
+<p>This creates a scatter plot showing the relationship between sepal length and sepal width.</p>
+<p>Output (terminal chart):</p>
+<pre><code>6│sepal_width
+ │
+ │
+ │
+ │
+ │
+ │
+ │
+ │                                ⠠
+ │                             ⡀
+ │                       ⠂          ⢀
+4│                     ⡀     ⠂    ⢀                                      ⢀   ⢀
+ │                     ⠄   ⠄ ⠄
+ │           ⠈     ⠁ ⠅ ⠄ ⠄     ⠄                                ⠁
+ │           ⠈   ⠁   ⠅ ⠅ ⠁   ⠁          ⠈   ⠈ ⠨       ⠄
+ │       ⠈   ⢈ ⠈ ⡀ ⡀ ⠁                ⠈         ⢈ ⠁   ⡀ ⠁ ⡁ ⠁   ⠁
+ │     ⠐ ⢐       ⠂ ⠂ ⠂       ⠂  ⢐ ⢐   ⠐ ⢐ ⢐ ⢀ ⢀ ⢀ ⠂ ⡂ ⠂ ⠂     ⠂ ⠂⢀     ⠐ ⠐
+ │                       ⡀      ⢐ ⠐ ⢐   ⢀ ⠐ ⠐ ⢐ ⢐ ⠂     ⠂          ⠐     ⠐
+ │                             ⠂  ⠐ ⠐     ⠐                              ⠐
+ │                 ⠅   ⠁       ⠅⠈ ⠈           ⠈       ⠁
+ │         ⠈         ⠁         ⠁        ⠠   ⠠ ⠈
+2│                   ⡀                                              sepal_length
+ └──────────────────────────────────────────────────────────────────────────────
+ 4                                       6                                     8
+</code></pre>
+<h3 id="2-grouped-by-category-color"><a class="header" href="#2-grouped-by-category-color">2. Grouped by Category (Color)</a></h3>
+<p>Use the <code>--color</code> option to group points by a categorical column. Each unique value gets a different color.</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x petal_length -y petal_width --color label --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_point_iris_color.png" alt="iris scatter plot with color"></p>
+<p>This creates a scatter plot with three colors, one for each iris species (setosa, versicolor, virginica).</p>
+<p>The output will show three distinct clusters with different markers/colors:</p>
+<ul>
+<li><strong>Setosa</strong>: Small petals, clustered at bottom-left</li>
+<li><strong>Versicolor</strong>: Medium petals, in the middle</li>
+<li><strong>Virginica</strong>: Large petals, at top-right</li>
+</ul>
+<h3 id="3-line-chart"><a class="header" href="#3-line-chart">3. Line Chart</a></h3>
+<p>Use the <code>-l</code> or <code>--line</code> flag to connect points with lines instead of drawing individual points.</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --line --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_point_iris_line.png" alt="iris line plot"></p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width --path --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_point_iris_path.png" alt="iris path plot"></p>
+<h3 id="4-using-column-indices"><a class="header" href="#4-using-column-indices">4. Using Column Indices</a></h3>
+<p>You can use 1-based column indices instead of header names:</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x 1 -y 3 --color 5
+</code></pre>
+<p>This maps:</p>
+<ul>
+<li>Column 1 (<code>sepal_length</code>) to X-axis</li>
+<li>Column 3 (<code>petal_length</code>) to Y-axis</li>
+<li>Column 5 (<code>label</code>) to color</li>
+</ul>
+<h3 id="5-different-marker-styles"><a class="header" href="#5-different-marker-styles">5. Different Marker Styles</a></h3>
+<p>Choose from three marker types with <code>-m</code> or <code>--marker</code>:</p>
+<pre><code class="language-bash"># Braille markers (default, highest resolution)
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m braille
+
+# Dot markers
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m dot
+
+# Block markers
+tva plot point tests/data/plot/iris.tsv -x sepal_length -y sepal_width -m block
+</code></pre>
+<h3 id="7-regression-line"><a class="header" href="#7-regression-line">7. Regression Line</a></h3>
+<p>Use <code>--regression</code> to overlay a linear regression line (least squares fit) on the scatter plot. This helps visualize trends in the data.</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot --regression
+</code></pre>
+<p>When combined with <code>--color</code>, a separate regression line is drawn for each group:</p>
+<pre><code class="language-bash">tva plot point tests/data/plot/iris.tsv -x sepal_length -y petal_length -m dot  --color label --regression --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_point_regression.png" alt="Regression lines with color grouping"></p>
+<p>Note: <code>--regression</code> cannot be used with <code>--line</code> or <code>--path</code>.</p>
+<h3 id="8-handling-invalid-data"><a class="header" href="#8-handling-invalid-data">8. Handling Invalid Data</a></h3>
+<p>Use <code>--ignore</code> to skip rows with non-numeric values:</p>
+<pre><code class="language-bash">tva plot point data.tsv -x value1 -y value2 --ignore
+</code></pre>
+<h2 id="detailed-options-1"><a class="header" href="#detailed-options-1">Detailed Options</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Option</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>-x &lt;COL&gt;</code> / <code>--x &lt;COL&gt;</code></td><td style="text-align: left"><strong>Required.</strong> Column for X-axis position.</td></tr>
+<tr><td style="text-align: left"><code>-y &lt;COL&gt;</code> / <code>--y &lt;COL&gt;</code></td><td style="text-align: left"><strong>Required.</strong> Column for Y-axis position.</td></tr>
+<tr><td style="text-align: left"><code>--color &lt;COL&gt;</code></td><td style="text-align: left">Column for grouping/coloring by category.</td></tr>
+<tr><td style="text-align: left"><code>-l</code> / <code>--line</code></td><td style="text-align: left">Draw line chart instead of scatter plot.</td></tr>
+<tr><td style="text-align: left"><code>--path</code></td><td style="text-align: left">Draw path chart (connect points in original order).</td></tr>
+<tr><td style="text-align: left"><code>-r</code> / <code>--regression</code></td><td style="text-align: left">Overlay linear regression line.</td></tr>
+<tr><td style="text-align: left"><code>-m &lt;TYPE&gt;</code> / <code>--marker &lt;TYPE&gt;</code></td><td style="text-align: left">Marker style: <code>braille</code> (default), <code>dot</code>, or <code>block</code>.</td></tr>
+<tr><td style="text-align: left"><code>--cols &lt;N&gt;</code></td><td style="text-align: left">Chart width in characters or ratio (default: <code>1.0</code>, i.e., full terminal width).</td></tr>
+<tr><td style="text-align: left"><code>--rows &lt;N&gt;</code></td><td style="text-align: left">Chart height in characters or ratio (default: <code>1.0</code>, i.e., full terminal height minus 1 for prompt).</td></tr>
+<tr><td style="text-align: left"><code>--ignore</code></td><td style="text-align: left">Skip rows with non-numeric values.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="comparison-with-r-ggplot2"><a class="header" href="#comparison-with-r-ggplot2">Comparison with R <code>ggplot2</code></a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>ggplot2::geom_point</code></th><th style="text-align: left"><code>tva plot point</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Basic scatter plot</td><td style="text-align: left"><code>aes(x, y)</code></td><td style="text-align: left"><code>-x &lt;col&gt; -y &lt;col&gt;</code></td></tr>
+<tr><td style="text-align: left">Color by group</td><td style="text-align: left"><code>aes(color = group)</code></td><td style="text-align: left"><code>--color &lt;col&gt;</code></td></tr>
+<tr><td style="text-align: left">Line chart</td><td style="text-align: left"><code>geom_line()</code></td><td style="text-align: left"><code>--line</code></td></tr>
+<tr><td style="text-align: left">Path chart</td><td style="text-align: left"><code>geom_path()</code></td><td style="text-align: left"><code>--path</code></td></tr>
+<tr><td style="text-align: left">Regression line</td><td style="text-align: left"><code>geom_smooth(method = "lm")</code></td><td style="text-align: left"><code>--regression</code></td></tr>
+<tr><td style="text-align: left">Faceting</td><td style="text-align: left"><code>facet_wrap()</code> / <code>facet_grid()</code></td><td style="text-align: left">Not supported</td></tr>
+<tr><td style="text-align: left">Themes</td><td style="text-align: left"><code>theme_*()</code></td><td style="text-align: left">Terminal-based only</td></tr>
+<tr><td style="text-align: left">Output</td><td style="text-align: left">Graphics file / Viewer</td><td style="text-align: left">Terminal ASCII/Unicode</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>tva plot point</code> brings the core concepts of the grammar of graphics to the command line, allowing for quick data exploration without leaving your terminal.</p>
+<h2 id="plot-box-box-plots"><a class="header" href="#plot-box-box-plots"><code>plot box</code> (Box Plots)</a></h2>
+<p>The <code>plot box</code> command creates box plots (box-and-whisker plots) directly in your terminal. It visualizes the distribution of a numeric variable, showing the median, quartiles, and potential outliers.</p>
+<h3 id="basic-usage-1-4"><a class="header" href="#basic-usage-1-4">Basic Usage</a></h3>
+<pre><code class="language-bash">tva plot box [input_file] --y &lt;column&gt; [options]
+</code></pre>
+<ul>
+<li><strong><code>-y</code> / <code>--y</code></strong>: The column(s) to plot (required). Can specify multiple columns separated by commas.</li>
+<li><strong><code>--color</code></strong>: Column for grouping/coloring boxes by category (optional).</li>
+<li><strong><code>--outliers</code></strong>: Show outlier points beyond the whiskers.</li>
+</ul>
+<h3 id="examples-1-3"><a class="header" href="#examples-1-3">Examples</a></h3>
+<h4 id="1-basic-box-plot"><a class="header" href="#1-basic-box-plot">1. Basic Box Plot</a></h4>
+<p>The simplest use case is plotting a single numeric column.</p>
+<p>Using the <code>tests/data/plot/iris.tsv</code> dataset:</p>
+<pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y sepal_length --cols 60 --rows 20
+</code></pre>
+<p>This creates a box plot showing the distribution of sepal length values.</p>
+<p>Output (terminal chart):</p>
+<pre><code>10│
+  │
+  │
+  │
+  │
+ 8│        ─┬─
+  │         │
+  │         │
+  │         │
+  │         │
+  │        ███
+ 6│        ─┼─
+  │        ███
+  │        ███
+  │         │
+  │         │
+  │        ─┴─
+ 4│
+  ├─────────────────────────────────────────────────────────
+      sepal_length
+</code></pre>
+<h4 id="2-grouped-box-plot"><a class="header" href="#2-grouped-box-plot">2. Grouped Box Plot</a></h4>
+<p>Use the <code>--color</code> option to create separate box plots for each category:</p>
+<pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y sepal_length --color label --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_box_grouped.png" alt="Grouped box plot by species"></p>
+<p>This creates three box plots side by side, one for each iris species (setosa, versicolor, virginica).</p>
+<h4 id="3-multiple-columns"><a class="header" href="#3-multiple-columns">3. Multiple Columns</a></h4>
+<p>Plot multiple numeric columns for comparison:</p>
+<pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y "sepal_length,sepal_width" --color label --cols 1.0 --rows 1.0
+</code></pre>
+<p><img src="images/plot_box_multiple.png" alt="Multiple columns box plot"></p>
+<p>This creates four box plots side by side, one for each measurement column.</p>
+<h4 id="4-show-outliers"><a class="header" href="#4-show-outliers">4. Show Outliers</a></h4>
+<p>Display outlier points that fall beyond the whiskers:</p>
+<pre><code class="language-bash">tva plot box tests/data/plot/iris.tsv -y petal_width --color label --outliers --cols 80 --rows 20
+</code></pre>
+<pre><code> 4│
+  │
+  │
+  │
+  │                                                ─┬─
+ 2│                                                ─┼─
+  │                            ─┬─                 ███
+  │                            ─┼─                 ─┴─
+  │                            ─┴─
+  │         •
+  │        ─┬─
+ 0│        ─┴─
+  │
+  │
+  │
+  │
+  │
+-2│
+  ├─────────────────────────────────────────────────────────────────────────────
+         setosa            versicolor           virginica
+</code></pre>
+<h3 id="detailed-options-1-1"><a class="header" href="#detailed-options-1-1">Detailed Options</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Option</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>-y &lt;COL&gt;</code> / <code>--y &lt;COL&gt;</code></td><td style="text-align: left"><strong>Required.</strong> Column(s) to plot. Multiple columns can be comma-separated.</td></tr>
+<tr><td style="text-align: left"><code>--color &lt;COL&gt;</code></td><td style="text-align: left">Column for grouping by category.</td></tr>
+<tr><td style="text-align: left"><code>--outliers</code></td><td style="text-align: left">Show outlier points beyond whiskers.</td></tr>
+<tr><td style="text-align: left"><code>--cols &lt;N&gt;</code></td><td style="text-align: left">Chart width in characters or ratio (default: <code>1.0</code>).</td></tr>
+<tr><td style="text-align: left"><code>--rows &lt;N&gt;</code></td><td style="text-align: left">Chart height in characters or ratio (default: <code>1.0</code>).</td></tr>
+<tr><td style="text-align: left"><code>--ignore</code></td><td style="text-align: left">Skip rows with non-numeric values.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="comparison-with-r-ggplot2-1"><a class="header" href="#comparison-with-r-ggplot2-1">Comparison with R <code>ggplot2</code></a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>ggplot2::geom_boxplot</code></th><th style="text-align: left"><code>tva plot box</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Basic box plot</td><td style="text-align: left"><code>aes(y = value)</code></td><td style="text-align: left"><code>-y &lt;col&gt;</code></td></tr>
+<tr><td style="text-align: left">Grouped box plot</td><td style="text-align: left"><code>aes(x = group, y = value)</code></td><td style="text-align: left"><code>-y &lt;col&gt; --color &lt;group&gt;</code></td></tr>
+<tr><td style="text-align: left">Show outliers</td><td style="text-align: left"><code>outlier.shape</code></td><td style="text-align: left"><code>--outliers</code></td></tr>
+<tr><td style="text-align: left">Multiple variables</td><td style="text-align: left"><code>facet_wrap()</code> or multiple geoms</td><td style="text-align: left"><code>-y "col1,col2"</code></td></tr>
+<tr><td style="text-align: left">Horizontal boxes</td><td style="text-align: left"><code>coord_flip()</code></td><td style="text-align: left">Not supported</td></tr>
+<tr><td style="text-align: left">Fill color</td><td style="text-align: left"><code>fill</code> aesthetic</td><td style="text-align: left">Terminal-based only</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="plot-bin2d-2d-binning-heatmap"><a class="header" href="#plot-bin2d-2d-binning-heatmap"><code>plot bin2d</code> (2D Binning Heatmap)</a></h2>
+<p>The <code>plot bin2d</code> command creates 2D binning heatmaps directly in your terminal. It divides the plane into rectangles, counts the number of cases in each rectangle, and visualizes the density using character intensity. This is a useful alternative to <code>plot point</code> in the presence of overplotting.</p>
+<p><strong>Workflow</strong>: Use <code>plot bin2d</code> for quick exploration with automatic binning, then use <code>bin</code> with manually determined parameters for precise processing.</p>
+<h3 id="basic-usage-2-4"><a class="header" href="#basic-usage-2-4">Basic Usage</a></h3>
+<pre><code class="language-bash">tva plot bin2d [input_file] --x &lt;column&gt; --y &lt;column&gt; [options]
+</code></pre>
+<ul>
+<li><strong><code>-x</code> / <code>--x</code></strong>: The column for X-axis position (required).</li>
+<li><strong><code>-y</code> / <code>--y</code></strong>: The column for Y-axis position (required).</li>
+<li><strong><code>-b</code> / <code>--bins</code></strong>: Number of bins in each direction (default: 30, or <code>x,y</code> for different counts).</li>
+<li><strong><code>-S</code> / <code>--strategy</code></strong>: Automatic bin count strategy: <code>freedman-diaconis</code>, <code>sqrt</code>, <code>sturges</code>.</li>
+<li><strong><code>--binwidth</code></strong>: Width of bins (or <code>x,y</code> for different widths).</li>
+</ul>
+<h3 id="examples-2-3"><a class="header" href="#examples-2-3">Examples</a></h3>
+<h4 id="1-basic-2d-binning"><a class="header" href="#1-basic-2d-binning">1. Basic 2D Binning</a></h4>
+<p>Using the <code>docs/data/diamonds.tsv</code> dataset (diamond physical dimensions):</p>
+<p>This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The output shows the concentration of diamonds in different size ranges.</p>
+<p>For better visualization of the main data cluster, you can filter the data first:</p>
+<pre><code class="language-bash">tva plot bin2d docs/data/diamonds.48.tsv -x x -y y
+</code></pre>
+<p>Output (terminal chart):</p>
+<pre><code>8│y                                                               ·░▒▓█ Max:3908
+ │
+ │                                                                    ··
+ │                                                            ········
+ │                                                            ·····
+ │                                                     ·····
+ │                                                  ···░░···
+ │                                             ·····░░░···
+ │                                        ·····▒▒▒··
+ │                                        ···░░···
+ │                                      ░░···
+6│                                ···░░░··
+ │                           ···░░···
+ │                      ···  ·····
+ │                      ···░░
+ │                 ···▒▒···
+ │          ··     ·····
+ │       ·····▓▓▓··
+ │  ···░░···░░···
+ │  ···██····
+ │  ······
+4│··                                                                           x
+ └──────────────────────────────────────────────────────────────────────────────
+ 4                                       6                                     8
+</code></pre>
+<h4 id="2-custom-bin-count"><a class="header" href="#2-custom-bin-count">2. Custom Bin Count</a></h4>
+<p>You can control the size of the bins by specifying the number of bins in each direction:</p>
+<pre><code class="language-bash"># Same bins for both axes
+tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --bins 20
+
+# Different bins for X and Y
+tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --bins 30,15
+</code></pre>
+<h4 id="3-specify-bin-width"><a class="header" href="#3-specify-bin-width">3. Specify Bin Width</a></h4>
+<p>Or by specifying the width of the bins:</p>
+<pre><code class="language-bash">tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --binwidth 0.5,0.5
+</code></pre>
+<h4 id="4-automatic-bin-selection"><a class="header" href="#4-automatic-bin-selection">4. Automatic Bin Selection</a></h4>
+<p>Use a strategy to automatically determine the number of bins:</p>
+<pre><code class="language-bash">tva plot bin2d docs/data/diamonds.48.tsv -x x -y y --cols 1.0 --rows 1.0 -S freedman-diaconis
+</code></pre>
+<p><img src="images/plot_bin2d_diamonds.png" alt="bin2d diamonds heatmap"></p>
+<p>Available strategies:</p>
+<ul>
+<li><code>freedman-diaconis</code>: Based on data distribution (robust to outliers)</li>
+<li><code>sqrt</code>: Square root of number of observations</li>
+<li><code>sturges</code>: Sturges’ formula (1 + log2(n))</li>
+</ul>
+<h3 id="detailed-options-2"><a class="header" href="#detailed-options-2">Detailed Options</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Option</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>-x &lt;COL&gt;</code> / <code>--x &lt;COL&gt;</code></td><td style="text-align: left"><strong>Required.</strong> X-axis column (1-based index or name).</td></tr>
+<tr><td style="text-align: left"><code>-y &lt;COL&gt;</code> / <code>--y &lt;COL&gt;</code></td><td style="text-align: left"><strong>Required.</strong> Y-axis column (1-based index or name).</td></tr>
+<tr><td style="text-align: left"><code>-b &lt;N&gt;</code> / <code>--bins &lt;N&gt;</code></td><td style="text-align: left">Number of bins (default: 30, or <code>x,y</code> for different counts).</td></tr>
+<tr><td style="text-align: left"><code>-S &lt;NAME&gt;</code> / <code>--strategy &lt;NAME&gt;</code></td><td style="text-align: left">Auto bin count strategy: <code>freedman-diaconis</code>, <code>sqrt</code>, <code>sturges</code>.</td></tr>
+<tr><td style="text-align: left"><code>--binwidth &lt;W&gt;</code></td><td style="text-align: left">Bin width (or <code>x,y</code> for different widths).</td></tr>
+<tr><td style="text-align: left"><code>--cols &lt;N&gt;</code></td><td style="text-align: left">Chart width in characters (default: 80).</td></tr>
+<tr><td style="text-align: left"><code>--rows &lt;N&gt;</code></td><td style="text-align: left">Chart height in characters (default: 24).</td></tr>
+<tr><td style="text-align: left"><code>--ignore</code></td><td style="text-align: left">Skip rows with non-numeric values.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="comparison-with-r-ggplot2-2"><a class="header" href="#comparison-with-r-ggplot2-2">Comparison with R <code>ggplot2</code></a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left"><code>ggplot2::geom_bin2d</code></th><th style="text-align: left"><code>tva plot bin2d</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Basic heatmap</td><td style="text-align: left"><code>aes(x, y)</code></td><td style="text-align: left"><code>-x &lt;col&gt; -y &lt;col&gt;</code></td></tr>
+<tr><td style="text-align: left">Bin count</td><td style="text-align: left"><code>bins</code></td><td style="text-align: left"><code>--bins</code> or <code>-S</code></td></tr>
+<tr><td style="text-align: left">Bin width</td><td style="text-align: left"><code>binwidth</code></td><td style="text-align: left"><code>--binwidth</code></td></tr>
+<tr><td style="text-align: left">Fill scale</td><td style="text-align: left"><code>scale_fill_*</code></td><td style="text-align: left">Character density (·░▒▓█)</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="workflow-exploration-to-production"><a class="header" href="#workflow-exploration-to-production">Workflow: Exploration to Production</a></h3>
+<p><code>plot bin2d</code> is designed for quick data exploration. After visualizing the data distribution:</p>
+<ol>
+<li>
+<p><strong>Explore</strong>: Use <code>plot bin2d</code> to see patterns:</p>
+<pre><code class="language-bash">tva plot bin2d data.tsv -x age -y income
+</code></pre>
+</li>
+<li>
+<p><strong>Determine parameters</strong>: Note the optimal bin parameters from the visualization.</p>
+</li>
+<li>
+<p><strong>Process</strong>: Use <code>tva bin</code> for precise, production-ready binning:</p>
+<pre><code class="language-bash">tva bin data.tsv -f age -w 5 | \
+  tva bin -f income -w 5000 | \
+  tva stats -g age,income count
+</code></pre>
+</li>
+</ol>
+<h2 id="tips"><a class="header" href="#tips">Tips</a></h2>
+<ol>
+<li>
+<p><strong>Large datasets</strong>: For very large datasets, consider sampling first:</p>
+<pre><code class="language-bash">tva sample data.tsv -n 1000 | tva plot point -x x -y y
+</code></pre>
+</li>
+<li>
+<p><strong>Piping data</strong>: You can pipe data from other <code>tva</code> commands:</p>
+<pre><code class="language-bash">tva filter data.tsv -H -c value -gt 0 | tva plot point -x x -y y
+</code></pre>
+</li>
+<li>
+<p><strong>Viewing output</strong>: The chart is rendered directly to stdout. Use a terminal with good Unicode support for best results with Braille markers.</p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="combining--splitting-documentation"><a class="header" href="#combining--splitting-documentation">Combining &amp; Splitting Documentation</a></h1>
 <p>This document explains how to use the combining and splitting commands in <code>tva</code>: <strong><code>join</code></strong>, <strong><code>append</code></strong>, and <strong><code>split</code></strong>.</p>
 <h2 id="join"><a class="header" href="#join"><code>join</code></a></h2>
 <p>Joins lines from a TSV data stream against a filter file using one or more key fields.</p>
-<h3 id="examples-7"><a class="header" href="#examples-7">Examples</a></h3>
+<h3 id="examples-8"><a class="header" href="#examples-8">Examples</a></h3>
 <h4 id="1-join-two-files-by-a-common-key"><a class="header" href="#1-join-two-files-by-a-common-key">1. Join two files by a common key</a></h4>
 <p>Using <code>docs/data/who.tsv</code> (contains <code>iso3</code>) and <code>docs/data/world_bank_pop.tsv</code> (contains <code>country</code> with ISO3 codes):</p>
 <pre><code class="language-bash">tva join -H --filter-file docs/data/who.tsv --key-fields iso3 --data-fields country docs/data/world_bank_pop.tsv
@@ -1725,7 +2121,7 @@ AFG	SP.URB.GROW	3.91	4.66	1980
 </code></pre>
 <h2 id="append"><a class="header" href="#append"><code>append</code></a></h2>
 <p>Concatenates TSV files with optional header awareness and source tracking.</p>
-<h3 id="examples-1-3"><a class="header" href="#examples-1-3">Examples</a></h3>
+<h3 id="examples-1-4"><a class="header" href="#examples-1-4">Examples</a></h3>
 <h4 id="1-concatenate-files-with-headers"><a class="header" href="#1-concatenate-files-with-headers">1. Concatenate files with headers</a></h4>
 <p>When appending multiple files with headers, use <code>-H</code> to keep only the header from the first file:</p>
 <pre><code class="language-bash">tva append -H docs/data/world_bank_pop.tsv docs/data/world_bank_pop.tsv
@@ -1776,7 +2172,7 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 <pre><code class="language-bash">tva check [files...]
 </code></pre>
 <p>It validates that every line in the file has the same number of fields as the first line. If a mismatch is found, it reports the error line and exits with a non-zero status.</p>
-<h3 id="examples-8"><a class="header" href="#examples-8">Examples</a></h3>
+<h3 id="examples-9"><a class="header" href="#examples-9">Examples</a></h3>
 <p>Check a single file:</p>
 <pre><code class="language-bash">tva check docs/data/household.tsv
 </code></pre>
@@ -1794,7 +2190,7 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 <li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies <code>-H</code>).</li>
 <li><code>-n &lt;N&gt;</code> / <code>--start-number &lt;N&gt;</code>: Start numbering from N (default: 1).</li>
 </ul>
-<h3 id="examples-1-4"><a class="header" href="#examples-1-4">Examples</a></h3>
+<h3 id="examples-1-5"><a class="header" href="#examples-1-5">Examples</a></h3>
 <p>Add line numbers (no header logic):</p>
 <pre><code class="language-bash">tva nl docs/data/household.tsv
 </code></pre>
@@ -1815,7 +2211,7 @@ world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
 <pre><code class="language-bash">tva keep-header [files...] -- &lt;command&gt; [args...]
 </code></pre>
 <p>The first line of the first input file is printed immediately. The remaining lines (and all lines from subsequent files) are piped to the specified command. The output of the command is then printed.</p>
-<h3 id="examples-2-3"><a class="header" href="#examples-2-3">Examples</a></h3>
+<h3 id="examples-2-4"><a class="header" href="#examples-2-4">Examples</a></h3>
 <p>Sort a file while keeping the header at the top:</p>
 <pre><code class="language-bash">tva keep-header data.tsv -- sort
 </code></pre>
@@ -1850,7 +2246,7 @@ AFG	SP.URB.GROW	3.91	4.66
 <li><code>-o &lt;file&gt;</code> / <code>--outfile &lt;file&gt;</code>: Output filename (default: stdout).</li>
 <li><code>-d &lt;char&gt;</code> / <code>--delimiter &lt;char&gt;</code>: Specify the input delimiter (default: <code>,</code>).</li>
 </ul>
-<h3 id="examples-9"><a class="header" href="#examples-9">Examples</a></h3>
+<h3 id="examples-10"><a class="header" href="#examples-10">Examples</a></h3>
 <p><strong>Convert a standard CSV file:</strong></p>
 <pre><code class="language-bash">tva from csv docs/data/input.csv
 </code></pre>
@@ -1876,7 +2272,7 @@ tva from csv input.csv -d ";"
 <li><code>--sheet &lt;name&gt;</code>: Select a specific sheet by name (default: first sheet).</li>
 <li><code>--list-sheets</code>: List all sheet names in the file and exit.</li>
 </ul>
-<h3 id="examples-1-5"><a class="header" href="#examples-1-5">Examples</a></h3>
+<h3 id="examples-1-6"><a class="header" href="#examples-1-6">Examples</a></h3>
 <p><strong>List sheets in an Excel file:</strong></p>
 <pre><code class="language-bash">tva from xlsx docs/data/formats.xlsx --list-sheets
 </code></pre>
@@ -1915,7 +2311,7 @@ the formatting options provided by
 <li><code>--row &lt;selector&gt;</code>: Selector for rows (List Mode).</li>
 <li><code>--col &lt;name:selector func&gt;</code>: Column definition (List Mode). Can be used multiple times.</li>
 </ul>
-<h3 id="examples-2-4"><a class="header" href="#examples-2-4">Examples</a></h3>
+<h3 id="examples-2-5"><a class="header" href="#examples-2-5">Examples</a></h3>
 <p><strong>Query Mode: Extract all links</strong></p>
 <pre><code class="language-bash">tva from html -q "a attr{href}" docs/data/sample.html
 </code></pre>
@@ -1966,7 +2362,7 @@ Mega Gadget     $29.99  /buy/gadget
 <li><code>-o &lt;file&gt;</code> / <code>--outfile &lt;file&gt;</code>: Output filename (default: stdout).</li>
 <li><code>-d &lt;char&gt;</code> / <code>--delimiter &lt;char&gt;</code>: Specify the output delimiter (default: <code>,</code>).</li>
 </ul>
-<h3 id="examples-10"><a class="header" href="#examples-10">Examples</a></h3>
+<h3 id="examples-11"><a class="header" href="#examples-11">Examples</a></h3>
 <p><strong>Convert TSV to CSV:</strong></p>
 <pre><code class="language-bash">tva to csv docs/data/household.tsv
 </code></pre>
@@ -1993,7 +2389,7 @@ Mega Gadget     $29.99  /buy/gadget
 <li><code>--bt &lt;col:min:max&gt;</code>: Format cells between min and max.</li>
 <li><code>--str-in-fld &lt;col:val&gt;</code>: Format cells containing substring.</li>
 </ul>
-<h3 id="examples-1-6"><a class="header" href="#examples-1-6">Examples</a></h3>
+<h3 id="examples-1-7"><a class="header" href="#examples-1-7">Examples</a></h3>
 <p><strong>Convert TSV to XLSX:</strong></p>
 <pre><code class="language-bash">tva to xlsx docs/data/household.tsv -o output.xlsx
 </code></pre>
@@ -2015,7 +2411,7 @@ Mega Gadget     $29.99  /buy/gadget
 <li><code>--digits &lt;N&gt;</code>: Set decimal precision for <code>--fmt</code> (default: 0).</li>
 <li><code>--center &lt;cols&gt;</code> / <code>--right &lt;cols&gt;</code>: Manually set alignment for specific columns (e.g., <code>1,2-4</code>).</li>
 </ul>
-<h3 id="examples-2-5"><a class="header" href="#examples-2-5">Examples</a></h3>
+<h3 id="examples-2-6"><a class="header" href="#examples-2-6">Examples</a></h3>
 <p><strong>Basic markdown table:</strong></p>
 <pre><code class="language-bash">tva to md docs/data/household.tsv
 </code></pre>
@@ -2157,7 +2553,7 @@ Mega Gadget     $29.99  /buy/gadget
 <li><code>pup</code>-specific pseudo-classes (e.g., <code>:parent-of</code>).</li>
 <li><code>:contains()</code> selector (not supported by the underlying <code>scraper</code> engine).</li>
 </ul>
-<h2 id="examples-11"><a class="header" href="#examples-11">Examples</a></h2>
+<h2 id="examples-12"><a class="header" href="#examples-12">Examples</a></h2>
 <h3 id="basic-filtering"><a class="header" href="#basic-filtering">Basic Filtering</a></h3>
 <p>Extract page title:</p>
 <pre><code class="language-bash">tva from html -q "title text{}" index.html
@@ -2630,7 +3026,8 @@ tva expr -E '"a,b,c" | split(_, ",")'           # Returns: ["a", "b", "c"]
 </tbody>
 </table>
 </div>
-<h3 id="examples-12"><a class="header" href="#examples-12">Examples</a></h3>
+<p><strong>Note</strong>: Lambda parameters are <strong>lexically scoped</strong> and do not use the <code>@</code> prefix. This distinguishes them from column references (<code>@col</code>) and variables (<code>@var</code>).</p>
+<h3 id="examples-13"><a class="header" href="#examples-13">Examples</a></h3>
 <pre><code class="language-bash"># Single-parameter lambda
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
 # Returns: [2, 4, 6]
@@ -2916,7 +3313,7 @@ tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) =&gt; if(x &gt; acc, x, acc))'
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="rosetta-code-with-tva-expression-engine"><a class="header" href="#rosetta-code-with-tva-expression-engine">Rosetta Code with TVA Expression Engine</a></h1>
 <p>This document demonstrates the capabilities of TVA’s expression engine by implementing tasks from <a href="https://rosettacode.org/">Rosetta Code</a>.</p>
-<h2 id="basic-usage-7"><a class="header" href="#basic-usage-7">Basic Usage</a></h2>
+<h2 id="basic-usage-8"><a class="header" href="#basic-usage-8">Basic Usage</a></h2>
 <p>Most examples use the <code>tva expr</code> command for standalone expression evaluation:</p>
 <pre><code class="language-bash"># Simple arithmetic
 tva expr -E "2 + 2"
