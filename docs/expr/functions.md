@@ -1,10 +1,5 @@
 # Expression Functions
 
-## Logic & Control
-
-- if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (or null)
-- default(val, fallback) -> T: Returns fallback if val is null or empty
-
 ## Numeric Operations
 
 - abs(x) -> number: Absolute value
@@ -87,6 +82,11 @@ The range function produces a list of numbers. Similar to jq's range:
 - `range(0, -5, -1)` produces `[0, -1, -2, -3, -4]`
 
 Note: If step direction doesn't match the range direction (e.g., positive step with from > upto), returns empty list.
+
+## Logic & Control
+
+- if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (or null)
+- default(val, fallback) -> T: Returns fallback if val is null or empty
 
 ## Higher-Order Functions
 
