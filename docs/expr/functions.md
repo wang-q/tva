@@ -1,77 +1,11 @@
-# Expression Functions & Operators
+# Expression Functions
 
-## Operators
-
-### Operator Precedence (high to low)
-
-1. `()` - Grouping
-2. `-` (unary) - Negation
-3. `**` - Power
-4. `*`, `/`, `%` - Multiply, Divide, Modulo
-5. `+`, `-` (binary) - Add, Subtract
-6. `++` - String concatenation
-7. `==`, `!=`, `<`, `<=`, `>`, `>=` - Numeric comparison
-8. `eq`, `ne`, `lt`, `le`, `gt`, `ge` - String comparison
-9. `not` - Logical NOT
-10. `and` - Logical AND
-11. `or` - Logical OR
-12. `|` - Pipe
-
-### Arithmetic Operators
-
-- `-x`: Negation
-- `a + b`: Addition
-- `a - b`: Subtraction
-- `a * b`: Multiplication
-- `a / b`: Division
-- `a % b`: Modulo
-- `a ** b`: Power
-
-### String Operators
-
-- `a ++ b`: String concatenation
-
-### Comparison Operators
-
-**Numeric:**
-- `a == b`: Equal
-- `a != b`: Not equal
-- `a < b`: Less than
-- `a <= b`: Less than or equal
-- `a > b`: Greater than
-- `a >= b`: Greater than or equal
-
-**String:**
-- `a eq b`: String equal
-- `a ne b`: String not equal
-- `a lt b`: String less than (lexicographic)
-- `a le b`: String less than or equal
-- `a gt b`: String greater than
-- `a ge b`: String greater than or equal
-
-**Note**: No implicit type conversion. Use string comparison operators for string comparison.
-
-### Logical Operators
-
-- `not a`: Logical NOT
-- `a and b`: Logical AND
-- `a or b`: Logical OR
-
-### Pipe Operator
-
-- `a | f()`: Pipe left value to function (left value becomes first argument)
-- `a | f(_, arg)`: Pipe with placeholder
-
----
-
-## Functions
-
-### Logic & Control
+## Logic & Control
 
 - if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (or null)
 - default(val, fallback) -> T: Returns fallback if val is null or empty
 
-### Numeric Operations
+## Numeric Operations
 
 - abs(x) -> number: Absolute value
 - round(x) -> int: Round to nearest integer
@@ -90,7 +24,7 @@
 - log10(x) -> float: Common logarithm (base 10)
 - exp(x) -> float: Exponential function e^x
 
-### String Manipulation
+## String Manipulation
 
 - trim(string) -> string: Remove leading and trailing whitespace
 - upper(string) -> string: Convert to uppercase
@@ -106,7 +40,14 @@
 - truncate(string, len, end?) -> string: Truncate string
 - wordcount(string) -> int: Word count
 
-### List Operations
+```bash
+# Basic list operations
+tva expr -E 'split("1,2,3", ",")'           # Returns: ["1", "2", "3"]
+tva expr -E 'split("1-2-3", "-").reverse()' # Returns: ["3", "2", "1"]
+
+```
+
+## List Operations
 
 *Note: These functions operate on expression `List` type (e.g., returned by `split()`), different from column-level aggregation in `stats` command.*
 
@@ -133,7 +74,7 @@ tva expr -E '
 # Returns: 4
 ```
 
-### Range Generation
+## Range Generation
 
 - range(upto) -> list: Generate numbers from 0 to upto (exclusive), step 1
 - range(from, upto) -> list: Generate numbers from from (inclusive) to upto (exclusive), step 1
@@ -147,7 +88,7 @@ The range function produces a list of numbers. Similar to jq's range:
 
 Note: If step direction doesn't match the range direction (e.g., positive step with from > upto), returns empty list.
 
-### Higher-Order Functions
+## Higher-Order Functions
 
 - map(list, lambda) -> list: Apply lambda to each element
 - filter(list, lambda) -> list: Filter list elements
@@ -175,7 +116,7 @@ tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) => if(x > acc, x, acc))'
 # Returns: 5
 ```
 
-### Regular Expressions
+## Regular Expressions
 
 *Note: Regex operations can be expensive, use with caution.*
 
@@ -183,20 +124,20 @@ tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) => if(x > acc, x, acc))'
 - regex_extract(string, pattern, group?) -> string: Extract capture group
 - regex_replace(string, pattern, to) -> string: Regex replace
 
-### Encoding & Hashing
+## Encoding & Hashing
 
 - md5(string) -> string: MD5 hash (hex)
 - sha256(string) -> string: SHA256 hash (hex)
 - base64(string) -> string: Base64 encode
 - unbase64(string) -> string: Base64 decode
 
-### Date & Time
+## Date & Time
 
 - now() -> datetime: Current time
 - strptime(string, format) -> datetime: Parse datetime
 - strftime(datetime, format) -> string: Format datetime
 
-### IO
+## IO
 
 - print(val, ...): Print to stdout, returns last argument
 - eprint(val, ...): Print to stderr, returns last argument
