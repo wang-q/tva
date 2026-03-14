@@ -60,6 +60,16 @@ The Tab-Separated Values (TSV) format is chosen over Comma-Separated Values (CSV
 *   Aim for single-pass processing.
 *   Avoid unnecessary allocations and sorting.
 
+### 6. Single-Threaded by Default
+
+**Core Philosophy: Single-threaded extreme performance + external parallel tools**
+
+`tva` adopts a **single-threaded** model for most data processing scenarios. This is not a technical limitation, but an active choice based on Unix philosophy:
+
+1.  **Do One Thing Well**: `tva` focuses on streaming data parsing, transformation, and statistics, leaving parallel scheduling complexity to specialized tools (like GNU Parallel).
+2.  **Don't Reinvent the Wheel**: GNU Parallel is already a mature, powerful parallel task scheduler. Rather than implementing complex thread pools and task distribution inside `tva`, it's better to make `tva` the best partner for Parallel.
+3.  **Determinism and Simplicity**: Single-threaded models make data processing order naturally deterministic, debugging easier, and greatly reduce memory management complexity and overhead (lock-free, zero-copy easier to achieve).
+
 ## Implementation Details
 
 `tva` adopts several optimization strategies similar to `tsv-utils` to ensure high performance:
@@ -211,6 +221,18 @@ All tools use a unified syntax to identify fields (columns). See [Field Syntax D
 *   **[GNU shuf](https://www.gnu.org/software/coreutils/)** (C):
     *   Standard tool for random permutations.
     *   `tva sample` adds specific data science sampling methods: weighted sampling (by column value) and Bernoulli sampling.
+
+## TVA Expression Design Principles
+
+The expression language in `tva` follows these core design principles:
+
+*   **Conciseness**: Syntax should be as short as possible for common operations (like column references).
+*   **Type-aware**: Able to recognize numbers, dates, etc. when needed, but treats data as byte strings by default for speed.
+*   **Shell-friendly**: Syntax avoids conflicts with Shell special characters (like `$`, `!`, `` ` ``), reducing user escaping burden. Since expressions typically run in command lines and are wrapped in quotes, they should avoid triggering Shell variable substitution (like `$var`).
+*   **Streaming**: Expressions are evaluated row-by-row with no global state, suitable for big data processing.
+*   **Error Handling**: Defaults to permissive mode where invalid operations return `null` instead of errors, but can be changed via strict mode switches.
+*   **Consistency**: Maintains similarity with existing tools (like jq, xan) to reduce learning costs.
+*   **Parallel Compatible**: When users need parallel processing, it's typically `parallel` calling `tva` (e.g., `parallel "tva ... {}"`), so `tva`'s internal syntax should not interfere with `parallel`'s parameter replacement mechanism.
 
 ## Aggregation Architecture
 
