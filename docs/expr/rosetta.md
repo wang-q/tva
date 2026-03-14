@@ -225,7 +225,14 @@ sort_by(@word_counts, pair => [-pair.nth(1), pair.nth(0)])
 Output:
 
 ```
-[["the", 3], ["quick", 2], ["brown", 2], ["fox", 2], ["jumps", 1], ["over", 1], ["lazy", 1], ["dog", 1]]
+the: 3
+brown: 2
+fox: 2
+quick: 2
+dog: 1
+jumps: 1
+lazy: 1
+over: 1
 ```
 
 This demonstrates:
@@ -236,11 +243,60 @@ This demonstrates:
 - List construction - Build `[word, count]` pairs
 - `sort_by()` - Sort by frequency (using negation for descending order)
 
+### Sieve of Eratosthenes
+
+Implement the Sieve of Eratosthenes algorithm, with the only allowed optimization that the outer loop can stop at the square root of the limit, and the inner loop may start at the square of the prime just found.
+
+Find all prime numbers up to 100:
+
+```bash
+tva expr -E '
+100 as @limit;
+int(sqrt(@limit)) as @sqrt_limit;
+
+// Initialize: all numbers >= 2 are potentially prime
+map(range(0, @limit + 1), n => n >= 2) as @is_prime;
+
+// Sieve: for each prime p, mark its multiples as not prime
+// Outer loop stops at sqrt(limit), inner loop starts at p*p
+reduce(
+    range(2, @sqrt_limit + 1),
+    @is_prime,
+    (primes, p) =>
+        if(primes.nth(p),
+            reduce(
+                range(p * p, @limit + 1, p),
+                primes,
+                (acc, m) => acc.replace_nth(m, false)
+            ),
+            primes
+        )
+) as @sieved;
+
+// Collect all prime numbers
+filter(range(2, @limit + 1), n => @sieved.nth(n)) |
+    join(_, ", ")
+'
+```
+
+Output:
+
+```
+2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97
+```
+
+This demonstrates:
+
+- `sqrt()` and `int()` - Calculate square root for outer loop limit
+- Boolean list as sieve - Index represents number, value represents primality
+- Nested `reduce()` - Outer loop iterates candidates, inner loop marks multiples
+- `replace_nth()` - Immutable list update for marking composites
+- `filter()` with predicate - Collect numbers where sieve value is true
+- Optimization: inner loop starts at `p * p` (smaller multiples already marked)
+
 ## list
 
 进阶级（字符串、数据结构、算法）
-Word count
-Prime numbers
 Greatest common divisor
 Sorting algorithms / Bubble sort / Quick sort
 Binary search
