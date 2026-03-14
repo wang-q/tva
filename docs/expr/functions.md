@@ -153,11 +153,27 @@ Note: If step direction doesn't match the range direction (e.g., positive step w
 - filter(list, lambda) -> list: Filter list elements
 - reduce(list, init, lambda) -> value: Reduce list to single value
 
-Examples:
+```bash
+# Double each number
+tva expr -E 'map([1, 2, 3], x => x * 2)'
+# Returns: [2, 4, 6]
 
-    map([1, 2, 3], |x| x * 2)        produces [2, 4, 6]
-    filter([1, 2, 3, 4], |x| x > 2)  produces [3, 4]
-    reduce([1, 2, 3], 0, |acc, x| acc + x)  produces 6
+# Keep numbers greater than 2
+tva expr -E 'filter([1, 2, 3, 4], x => x > 2)'
+# Returns: [3, 4]
+
+# Sum all numbers (0 + 1 + 2 + 3)
+tva expr -E 'reduce([1, 2, 3], 0, (acc, x) => acc + x)'
+# Returns: 6
+
+# Count elements in a list
+tva expr -E 'reduce(["a", "b", "c"], 0, (acc, _) => acc + 1)'
+# Returns: 3
+
+# Find maximum value
+tva expr -E 'reduce([3, 1, 4, 1, 5], 0, (acc, x) => if(x > acc, x, acc))'
+# Returns: 5
+```
 
 ### Regular Expressions
 
