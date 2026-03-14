@@ -12,6 +12,7 @@
 - [Ordering](ordering.md)
 - [Statistics & Summary](statistics.md)
 - [Reshaping](reshape.md)
+- [Plotting](plot.md)
 - [Combining & Splitting](combining.md)
 - [Formatting & Utilities](utilities.md)
 - [Import (from)](from.md)
