@@ -200,22 +200,25 @@ This demonstrates:
 Given a text file and an integer `n`, print/display the `n` most common words in the file (and the
 number of their occurrences) in decreasing frequency.
 
-Count unique words (simplified version without sorting):
-
 ```bash
 tva expr -E '
-"the quick brown fox jumps over the lazy dog the quick brown fox"
-| lower()
-| split(_, " ") as @words;
+"the quick brown fox jumps over the lazy dog the quick brown fox" |
+    lower() |
+    split(_, " ") as @words;
 
 // Get unique words
 @words | unique() as @unique_words;
 
 // Count occurrences of each unique word
+// Note: Lambda body must be a single expression, so we use nested function calls
 map(@unique_words, word =>
-    filter(@words, w => w == word) | len() as @count |
-    [word, @count]
-)
+    [word, filter(@words, w => w == word) | len()]
+) as @word_counts;
+
+// Sort by count in descending order
+sort_by(@word_counts, pair => [-pair.nth(1), pair.nth(0)])
+    .map(pair => pair.join(": "))
+    .join("\n")
 '
 ```
 
@@ -231,6 +234,7 @@ This demonstrates:
 - Nested `map` and `filter` - For each unique word, count occurrences
 - `len()` - Get list length as count
 - List construction - Build `[word, count]` pairs
+- `sort_by()` - Sort by frequency (using negation for descending order)
 
 ## list
 
