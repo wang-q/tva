@@ -1,20 +1,23 @@
-# Expression Engine
+# Expression Language
 
-TVA provides a powerful expression engine for data transformation and filtering.
+TVA provides a powerful expression language for data transformation and filtering.
 
 ## Quick Reference
 
-- [Expression Syntax](expr-syntax.md) - Complete syntax guide
-- [Functions & Operators](expr/functions.md) - Function and operator reference
+- [Introduction](expr/introduction.md) - Expression language overview
+- [Syntax Guide](expr/expressions.md) - Complete syntax documentation
+- [Functions](expr/functions.md) - Function reference
+- [Rosetta Code](expr/rosetta.md) - Example programs
 
 ## Overview
 
-The expression engine supports:
+The expression language supports:
 
 - **Column references**: `@column_name` or `@1` (1-based index)
 - **Literals**: integers, floats, strings, booleans, null, lists
 - **Operators**: arithmetic, comparison, logical, string, pipe
-- **Functions**: 40+ built-in functions for string, numeric, list operations
+- **Variable binding**: `expr as @var` for reusing results
+- **Functions**: 40+ built-in functions
 - **Lambda expressions**: `x => x * 2` for higher-order functions
 
 ### Four Expression Commands
@@ -47,8 +50,8 @@ tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 # Conditional expression
 tva expr -n "score" -r "85" -E 'if(@score >= 60, "pass", "fail")'
 
-# Process TSV file
-tva expr -E "@1 * @2" data.tsv
+# Process TSV file - calculate price per carat
+tva expr -E "@price / @carat" docs/data/diamonds.tsv
 ```
 
 ### `tva filter` - Filter Rows

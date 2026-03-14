@@ -194,3 +194,172 @@ fn expr_unknown_function_error() {
         stderr
     );
 }
+
+#[test]
+fn expr_with_real_file() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "@estimate",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // First line is the expression itself as header, data starts from line 1
+    assert!(
+        lines[1].contains("24476"),
+        "Expected '24476' in second line, got: {}",
+        lines[1]
+    );
+    assert!(
+        lines[2].contains("747"),
+        "Expected '747' in third line, got: {}",
+        lines[2]
+    );
+}
+
+#[test]
+fn expr_with_real_file_column_index() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "@2",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    assert!(
+        stdout.contains("Alabama"),
+        "Expected 'Alabama' in output, got: {}",
+        stdout
+    );
+    assert!(
+        stdout.contains("Alaska"),
+        "Expected 'Alaska' in output, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_with_real_file_arithmetic() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "@estimate * 2",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // First line is the expression itself as header, data starts from line 1
+    assert!(
+        lines[1].contains("48952"),
+        "Expected '48952' (24476*2) in second line, got: {}",
+        lines[1]
+    );
+}
+
+#[test]
+fn expr_with_real_file_string_concat() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "@NAME ++ \": \" ++ @variable",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    assert!(
+        stdout.contains("Alabama: income"),
+        "Expected 'Alabama: income' in output, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_with_real_file_conditional() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "if(@estimate > 1000, \"high\", \"low\")",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert!(
+        lines[0].contains("high"),
+        "Expected 'high' for income 24476, got: {}",
+        lines[0]
+    );
+}
+
+#[test]
+fn expr_with_real_file_function_call() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "upper(@NAME)",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    assert!(
+        stdout.contains("ALABAMA"),
+        "Expected 'ALABAMA' in output, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_with_real_file_pipe_operator() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "@NAME | lower()",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    assert!(
+        stdout.contains("alabama"),
+        "Expected 'alabama' in output, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_with_real_file_variable_binding() {
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "@estimate as @e; @e + 100",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // First line is the expression itself as header, data starts from line 1
+    assert!(
+        lines[1].contains("24576"),
+        "Expected '24576' (24476+100) in second line, got: {}",
+        lines[1]
+    );
+}
