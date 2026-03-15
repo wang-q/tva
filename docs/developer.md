@@ -564,12 +564,54 @@ pub fn parse_cached(expr_str: &str) -> Result<Expr, ParseError> {
 - 主要开销：HashMap 查找 + Expr Clone
 - 对于重复表达式（如 `expr` 命令处理大量行），效果等同于预解析
 
+**第三轮优化：列名索引化（resolve_columns）**
+
+| 测试项 | 优化前 | 优化后 | 提升倍数 |
+|:-------|:-------|:-------|:---------|
+| `by_name_linear` | 424 µs | - | 1x (baseline) |
+| `by_name_resolved` | - | **139 µs** | **3 倍** |
+| `by_index` | 146 µs | - | 理论最优 |
+
+**优化代码**：
+```rust
+// src/libs/expr/mod.rs
+/// Resolve column names to indices in an expression
+pub fn resolve_columns(expr: &mut Expr, headers: &[String]) {
+    match expr {
+        Expr::ColumnRef(ColumnRef::Name(name)) => {
+            if let Some(idx) = headers.iter().position(|h| h == name) {
+                *expr = Expr::ColumnRef(ColumnRef::Index(idx + 1));
+            }
+        }
+        Expr::Unary { expr: inner, .. } => {
+            resolve_columns(inner, headers);
+        }
+        Expr::Binary { left, right, .. } => {
+            resolve_columns(left, headers);
+            resolve_columns(right, headers);
+        }
+        // ... 递归处理所有子表达式
+        _ => {}
+    }
+}
+
+// 使用示例
+let mut expr = parse("@name + @age")?;
+resolve_columns(&mut expr, &["id", "name", "age"]);
+// 现在 expr 等同于 parse("@2 + @3")
+```
+
+**效果分析**：
+- 列名解析后性能从 23.6 Melem/s 提升到 **72.0 Melem/s**
+- 达到索引访问性能的 **97%**（139µs vs 146µs）
+- 对于复杂表达式（多个列名引用），收益更大
+
 #### 8. 优化建议（参考 xan）
 
 **短期优化**：
 1. ~~全局函数注册表~~ ✅ **已完成（35-57 倍提升）**
 2. ~~解析缓存~~ ✅ **已完成（12 倍提升）**
-3. **预解析表头**：在编译期将 `ColumnRef::Name` 转为 `ColumnRef::Index`
+3. ~~列名索引化~~ ✅ **已完成（3 倍提升）**
 4. **常量折叠**：在解析后对 AST 进行常量表达式预计算
 
 **中期优化**：

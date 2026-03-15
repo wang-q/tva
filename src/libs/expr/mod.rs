@@ -62,6 +62,80 @@ pub fn cache_size() -> usize {
     cache_guard.as_ref().map(|c| c.len()).unwrap_or(0)
 }
 
+/// Resolve column names to indices in an expression
+/// This transforms @name -> @index for faster runtime access
+pub fn resolve_columns(expr: &mut Expr, headers: &[String]) {
+    use parser::ast::ColumnRef;
+
+    match expr {
+        Expr::ColumnRef(ColumnRef::Name(name)) => {
+            // Find index (1-based) for the column name
+            if let Some(idx) = headers.iter().position(|h| h == name) {
+                *expr = Expr::ColumnRef(ColumnRef::Index(idx + 1));
+            }
+            // If not found, keep as Name (will error at runtime)
+        }
+        Expr::Unary { expr: inner, .. } => {
+            resolve_columns(inner, headers);
+        }
+        Expr::Binary { left, right, .. } => {
+            resolve_columns(left, headers);
+            resolve_columns(right, headers);
+        }
+        Expr::Call { args, .. } => {
+            for arg in args {
+                resolve_columns(arg, headers);
+            }
+        }
+        Expr::MethodCall { object, args, .. } => {
+            resolve_columns(object, headers);
+            for arg in args {
+                resolve_columns(arg, headers);
+            }
+        }
+        Expr::Pipe { left, right } => {
+            resolve_columns(left, headers);
+            resolve_pipe_right(right, headers);
+        }
+        Expr::Bind { expr: inner, .. } => {
+            resolve_columns(inner, headers);
+        }
+        Expr::Block(exprs) => {
+            for e in exprs {
+                resolve_columns(e, headers);
+            }
+        }
+        Expr::List(items) => {
+            for item in items {
+                resolve_columns(item, headers);
+            }
+        }
+        Expr::Lambda { body, .. } => {
+            resolve_columns(body, headers);
+        }
+        // ColumnRef::Index, Variable, LambdaParam, literals - no resolution needed
+        _ => {}
+    }
+}
+
+/// Resolve columns in pipe right-hand side
+fn resolve_pipe_right(expr: &mut parser::ast::PipeRight, headers: &[String]) {
+    use parser::ast::PipeRight;
+
+    match expr {
+        PipeRight::Call { args, .. } => {
+            for arg in args {
+                resolve_columns(arg, headers);
+            }
+        }
+        PipeRight::CallWithPlaceholder { args, .. } => {
+            for arg in args {
+                resolve_columns(arg, headers);
+            }
+        }
+    }
+}
+
 /// Parse and evaluate an expression in one step (without caching)
 pub fn eval_expr(
     expr_str: impl AsRef<str>,
@@ -88,5 +162,23 @@ pub fn eval_expr_cached(
         Some(h) => runtime::EvalContext::with_headers(row, h),
         None => runtime::EvalContext::new(row),
     };
+    Ok(runtime::eval(&expr, &mut ctx)?)
+}
+
+/// Parse, resolve columns, and evaluate with caching
+/// This is the most optimized path for repeated evaluations with the same headers
+pub fn eval_expr_cached_resolved(
+    expr_str: impl AsRef<str>,
+    row: &[String],
+    headers: &[String],
+) -> Result<runtime::value::Value, ExprError> {
+    // Get cached AST
+    let mut expr = parse_cached(expr_str.as_ref())?;
+
+    // Resolve column names to indices (modifies the cloned AST)
+    resolve_columns(&mut expr, headers);
+
+    // Evaluate with resolved indices
+    let mut ctx = runtime::EvalContext::with_headers(row, headers);
     Ok(runtime::eval(&expr, &mut ctx)?)
 }

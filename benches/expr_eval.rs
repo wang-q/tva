@@ -319,6 +319,23 @@ fn benchmark_column_resolution(c: &mut Criterion) {
         })
     });
 
+    // 20. Column name with pre-resolution (optimization)
+    // Parse once, resolve names to indices, then evaluate
+    group.bench_function("by_name_resolved", |b| {
+        // Parse and resolve once outside the loop
+        let mut expr = tva::libs::expr::parser::parse("@id").unwrap();
+        tva::libs::expr::resolve_columns(&mut expr, &headers);
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                // Evaluate with pre-resolved indices
+                let mut ctx = tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
     group.finish();
 }
 
