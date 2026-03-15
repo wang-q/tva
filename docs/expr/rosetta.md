@@ -3,21 +3,6 @@
 This document demonstrates the capabilities of TVA's expression engine by implementing tasks
 from [Rosetta Code](https://rosettacode.org/).
 
-## Basic Usage
-
-Most examples use the `tva expr` command for standalone expression evaluation:
-
-```bash
-# Simple arithmetic
-tva expr -E "2 + 3.14"
-
-# With input data
-tva expr -n "x,y" -r "3,4" -E "@x * @y"
-
-# Using higher-order functions
-tva expr -E "map([1,2,3,4,5], x => x * x)"
-```
-
 ## Tasks
 
 ### Hello World
@@ -296,9 +281,19 @@ This demonstrates:
 
 ### Greatest common divisor
 
-Find the greatest common divisor   (GCD)   of two integers.
+Find the greatest common divisor (GCD) of two integers.
 
-
+```bash
+# Unrolled Euclidean algorithm (4 iterations)
+# For 48 and 18: GCD is 6
+tva expr -n "a,b" -r "48,18" -E '
+  @a as @x0; @b as @y0;
+  if(@y0 == 0, @x0, (@x0 % @y0 as @x1; @y0 as @y1;
+  if(@y1 == 0, @x1, (@x1 % @y1 as @x2; @y1 as @y2;
+  if(@y2 == 0, @x2, (@x2 % @y2 as @x3; @y2 as @y3;
+  if(@y3 == 0, @x3, "...")))))))
+'
+```
 
 ## list
 

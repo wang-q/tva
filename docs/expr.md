@@ -15,6 +15,9 @@ tva expr -E '42 + 3.14'
 tva expr -E '"hello" | upper()'
 # Output: HELLO
 
+# Using higher-order functions
+tva expr -E "map([1,2,3,4,5], x => x * x)"
+# Output: [1, 4, 9, 16, 25]
 ```
 
 ## Topics
@@ -90,7 +93,7 @@ only when you need features `tva filter` doesn't support (functions, complex exp
 
 ## Basic Usage
 
-### `tva expr` - Evaluate Expression to New Row
+### `tva expr` - Evaluate Expressions to New Row
 
 Evaluates expression for each row and outputs the expression result as a new row (original row
 structure is discarded).

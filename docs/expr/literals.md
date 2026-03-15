@@ -112,10 +112,26 @@ Strings can be enclosed in single or double quotes:
 ```bash
 tva expr -E '"hello"'              # Double quotes
 tva expr -E "'hello'"              # Single quotes (in shell)
-tva expr -E '`hello`'              # Backtick quotes
+```
+
+### The `q()` Operator
+
+For strings containing both single and double quotes, use the `q()` operator
+(like Perl's q//). Content inside `q()` is taken literally, only `\(`, `\)`,
+and `\\` need escaping:
+
+```bash
+# No need to escape quotes inside q()
+tva expr -E 'q(He said "It is ok!")'     # Returns: He said "It is ok!"
+tva expr -E "q(it's a 'test')"            # Returns: it's a 'test'
+
+# Escaping parentheses
+tva expr -E 'q(test \(nested\) parens)'   # Returns: test (nested) parens
 ```
 
 ### String Escape Sequences
+
+In regular quoted strings, these escape sequences are recognized:
 
 | Escape | Meaning | Example |
 |:-------|:--------|:--------|
@@ -123,14 +139,17 @@ tva expr -E '`hello`'              # Backtick quotes
 | `\t` | Tab | `"col1\tcol2"` |
 | `\r` | Carriage return | `"\r\n"` (Windows line ending) |
 | `\\` | Backslash | `"C:\\Users\\name"` |
-| `\"` | Double quote | `"say \"hello\""` |
-| `\'` | Single quote | `'it\'s ok'` |
+| `\"` | Double quote | `q(say "hello")` (or `"say \"hello\""` in code) |
+| `\'` | Single quote | `q(it's ok)` (or `'it\'s ok'` in code) |
 
 ```bash
 # Using escape sequences
 tva expr -E '"line1\nline2"'        # Contains newline
 tva expr -E '"col1\tcol2"'          # Contains tab
-tva expr -E '"say \"hello\""'      # Contains quotes
+
+# For strings containing quotes, q() is often easier:
+tva expr -E 'q(say "hello")'        # No need to escape quotes
+tva expr -E "q(it's ok)"            # No need to escape quotes
 ```
 
 ## List Literals

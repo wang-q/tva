@@ -11,7 +11,7 @@ Use `@` prefix to reference columns, avoiding conflicts with Shell variables:
 | `@0` | Entire row content (all columns joined with tabs) | `@0` |
 | `@1`, `@2` | 1-based column index | `@1` is the first column |
 | `@col_name` | Column name reference | `@price` references the price column |
-| `@"col name"` | Column name with spaces | `@"user name"` references column "user name" |
+| `@"col name"` or `@'col name'` | Column name with spaces | `@"user name"` references column "user name" |
 
 **Design rationale**:
 
@@ -42,23 +42,10 @@ tva expr -n "a,b,c" -r "1,2,3" -E 'len(@0)'       # Returns: 5 (length of "1\t2\
 tva expr -n "user name" -r "John Doe" -E '@"user name"'  # Returns: John Doe
 ```
 
-### Variable Shadowing
-
-Variables can shadow column references. When both a variable and a column have the same name,
-the variable takes precedence:
-
-```bash
-# Variable shadows column
-tva expr -n "price" -r "100" -E '
-    @price *2 as @price;     // Column @price (100) bound to variable @price
-    @price             // Variable @price (now 200)
-'
-# Returns: 200
-```
-
 ## Variable Binding
 
-Use `as` keyword to bind expression results to variables for reuse:
+Use `as` keyword to bind expression results to variables. The `as` form returns the value of the expression,
+allowing it to be used in subsequent operations or piped to functions.
 
 ```bash
 # Basic syntax: bind calculation result
@@ -72,6 +59,13 @@ tva expr -n "name" -r "John Smith" -E '@name | split(" ") as @parts; first(@part
 # Multiple variable bindings
 tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
 # Returns: 50
+
+# Binding with pipe operations
+tva expr -E '[1, 2, 3] as @list | len()'          # Returns: 3
+tva expr -E '[1, 2, 3] as @list | len()'          # Returns: 3
+
+# Chain method calls after binding
+tva expr -E '("hello" as @s).upper()'     # Returns: HELLO
 ```
 
 ### Variable Scope
@@ -82,6 +76,13 @@ tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
 - Variables can be rebound (reassigned)
 
 ```bash
+# Variable shadows column
+tva expr -n "price" -r "100" -E '
+    @price *2 as @price;     // Column @price (100) bound to variable @price
+    @price             // Variable @price (now 200)
+'
+# Returns: 200
+
 # Variable rebinding
 tva expr -n "price" -r "10" -E '
     @price as @p;         # @p = 10
@@ -138,6 +139,20 @@ Lambda parameters:
 - Do not use `@` prefix (distinguishes from columns/variables)
 - Are lexically scoped
 - Can capture variables from outer scope
+
+## Expression Separator
+
+`;` - Separates multiple expressions. Expressions are evaluated in order, and the value of
+the last expression is returned.
+
+```bash
+# Multiple expressions: bind then use the variable
+tva expr -E '[1, 2, 3] as @list; @list | len()'  # Returns: 3
+
+# Calculate and reuse
+tva expr -E '@price * @qty as @total; @total * 1.1' -n "price,qty" -r "100,2"
+# Returns: 220 (100*2=200, then 200*1.1=220)
+```
 
 ## Best Practices
 
