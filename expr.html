@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-cf024eac.js";
+            window.path_to_searchindex_js = "searchindex-02f814f1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-5de396d1.js"></script>
@@ -219,10 +219,10 @@ tva expr -E '"hello" | upper()'
 </code></pre>
 <h3 id="documentation-index"><a class="header" href="#documentation-index">Documentation Index</a></h3>
 <ul>
-<li><a href="literals.html">Literals</a> - Literal syntax and type system</li>
-<li><a href="variables.html">Variables</a> - Column references and variable binding</li>
-<li><a href="operators.html">Operators</a> - Operator precedence and details</li>
-<li><a href="functions.html">Functions</a> - Complete function reference</li>
+<li><a href="expr/literals.html">Literals</a> - Literal syntax and type system</li>
+<li><a href="expr/variables.html">Variables</a> - Column references and variable binding</li>
+<li><a href="expr/operators.html">Operators</a> - Operator precedence and details</li>
+<li><a href="expr/functions.html">Functions</a> - Complete function reference</li>
 <li><a href="expr/syntax.html">Syntax Guide</a> - Complete syntax documentation</li>
 <li><a href="expr/rosetta.html">Rosetta Code</a> - Fun programs</li>
 </ul>
@@ -273,7 +273,7 @@ tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 tva expr -n "score" -r "85" -E 'if(@score &gt;= 60, "pass", "fail")'
 
 # Process TSV file - calculate price per carat
-tva expr -H -E "@price / @carat" docs/data/diamonds.tsv
+tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r -5
 
 # Filter rows using --skip-null
 tva expr -H --skip-null -E 'if(@carat &gt; 1 and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv
