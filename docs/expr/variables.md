@@ -21,6 +21,7 @@ Use `@` prefix to reference columns, avoiding conflicts with Shell variables:
 - Column references return `String` by default (raw bytes)
 - Numeric operations automatically attempt parsing; failure yields `null`
 - Use `int(@col)` or `float(@col)` for explicit type specification
+- **Empty fields are treated as `null`**, not empty strings. See [Null Type and Empty Fields](literals.md#null-type-and-empty-fields) for details.
 
 ## Variable Binding
 

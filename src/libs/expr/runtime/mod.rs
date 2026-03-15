@@ -169,66 +169,91 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
             }
         }
         Expr::Binary { op, left, right } => {
-            let left_val = eval(left, ctx)?;
-            let right_val = eval(right, ctx)?;
-
             match op {
-                // Arithmetic
-                BinaryOp::Add => (left_val + right_val)
-                    .ok_or(EvalError::TypeError("expected numeric".to_string())),
-                BinaryOp::Sub => (left_val - right_val)
-                    .ok_or(EvalError::TypeError("expected numeric".to_string())),
-                BinaryOp::Mul => (left_val * right_val)
-                    .ok_or(EvalError::TypeError("expected numeric".to_string())),
-                BinaryOp::Div => (left_val / right_val).ok_or(EvalError::DivisionByZero),
-                BinaryOp::Mod => (left_val % right_val).ok_or(EvalError::DivisionByZero),
-                BinaryOp::Pow => left_val
-                    .pow(&right_val)
-                    .ok_or(EvalError::TypeError("expected numeric".to_string())),
-                // String concatenation
-                BinaryOp::Concat => {
-                    Ok(Value::String(left_val.as_string() + &right_val.as_string()))
-                }
-                // Comparison (numeric)
-                BinaryOp::Eq => Ok(left_val.eq(&right_val)),
-                BinaryOp::Ne => Ok(left_val.ne(&right_val)),
-                BinaryOp::Lt => left_val
-                    .lt(&right_val)
-                    .ok_or(EvalError::TypeError("expected comparable".to_string())),
-                BinaryOp::Le => left_val
-                    .le(&right_val)
-                    .ok_or(EvalError::TypeError("expected comparable".to_string())),
-                BinaryOp::Gt => left_val
-                    .gt(&right_val)
-                    .ok_or(EvalError::TypeError("expected comparable".to_string())),
-                BinaryOp::Ge => left_val
-                    .ge(&right_val)
-                    .ok_or(EvalError::TypeError("expected comparable".to_string())),
-                // Comparison (string)
-                BinaryOp::StrEq => {
-                    Ok(Value::Bool(left_val.as_string() == right_val.as_string()))
-                }
-                BinaryOp::StrNe => {
-                    Ok(Value::Bool(left_val.as_string() != right_val.as_string()))
-                }
-                BinaryOp::StrLt => {
-                    Ok(Value::Bool(left_val.as_string() < right_val.as_string()))
-                }
-                BinaryOp::StrLe => {
-                    Ok(Value::Bool(left_val.as_string() <= right_val.as_string()))
-                }
-                BinaryOp::StrGt => {
-                    Ok(Value::Bool(left_val.as_string() > right_val.as_string()))
-                }
-                BinaryOp::StrGe => {
-                    Ok(Value::Bool(left_val.as_string() >= right_val.as_string()))
-                }
-                // Logical
+                // Logical operators with short-circuit evaluation
                 BinaryOp::And => {
-                    Ok(Value::Bool(left_val.as_bool() && right_val.as_bool()))
+                    let left_val = eval(left, ctx)?;
+                    if !left_val.as_bool() {
+                        // Short-circuit: left is false, return false without evaluating right
+                        Ok(Value::Bool(false))
+                    } else {
+                        let right_val = eval(right, ctx)?;
+                        Ok(Value::Bool(right_val.as_bool()))
+                    }
                 }
                 BinaryOp::Or => {
-                    Ok(Value::Bool(left_val.as_bool() || right_val.as_bool()))
+                    let left_val = eval(left, ctx)?;
+                    if left_val.as_bool() {
+                        // Short-circuit: left is true, return true without evaluating right
+                        Ok(Value::Bool(true))
+                    } else {
+                        let right_val = eval(right, ctx)?;
+                        Ok(Value::Bool(right_val.as_bool()))
+                    }
+                }
+                // All other operators evaluate both sides first
+                _ => {
+                    let left_val = eval(left, ctx)?;
+                    let right_val = eval(right, ctx)?;
+
+                    match op {
+                        // Arithmetic
+                        BinaryOp::Add => (left_val + right_val)
+                            .ok_or(EvalError::TypeError("expected numeric".to_string())),
+                        BinaryOp::Sub => (left_val - right_val)
+                            .ok_or(EvalError::TypeError("expected numeric".to_string())),
+                        BinaryOp::Mul => (left_val * right_val)
+                            .ok_or(EvalError::TypeError("expected numeric".to_string())),
+                        BinaryOp::Div => {
+                            (left_val / right_val).ok_or(EvalError::DivisionByZero)
+                        }
+                        BinaryOp::Mod => {
+                            (left_val % right_val).ok_or(EvalError::DivisionByZero)
+                        }
+                        BinaryOp::Pow => left_val
+                            .pow(&right_val)
+                            .ok_or(EvalError::TypeError("expected numeric".to_string())),
+                        // String concatenation
+                        BinaryOp::Concat => Ok(Value::String(
+                            left_val.as_string() + &right_val.as_string(),
+                        )),
+                        // Comparison (numeric)
+                        BinaryOp::Eq => Ok(left_val.eq(&right_val)),
+                        BinaryOp::Ne => Ok(left_val.ne(&right_val)),
+                        BinaryOp::Lt => left_val.lt(&right_val).ok_or(
+                            EvalError::TypeError("expected comparable".to_string()),
+                        ),
+                        BinaryOp::Le => left_val.le(&right_val).ok_or(
+                            EvalError::TypeError("expected comparable".to_string()),
+                        ),
+                        BinaryOp::Gt => left_val.gt(&right_val).ok_or(
+                            EvalError::TypeError("expected comparable".to_string()),
+                        ),
+                        BinaryOp::Ge => left_val.ge(&right_val).ok_or(
+                            EvalError::TypeError("expected comparable".to_string()),
+                        ),
+                        // Comparison (string)
+                        BinaryOp::StrEq => Ok(Value::Bool(
+                            left_val.as_string() == right_val.as_string(),
+                        )),
+                        BinaryOp::StrNe => Ok(Value::Bool(
+                            left_val.as_string() != right_val.as_string(),
+                        )),
+                        BinaryOp::StrLt => {
+                            Ok(Value::Bool(left_val.as_string() < right_val.as_string()))
+                        }
+                        BinaryOp::StrLe => Ok(Value::Bool(
+                            left_val.as_string() <= right_val.as_string(),
+                        )),
+                        BinaryOp::StrGt => {
+                            Ok(Value::Bool(left_val.as_string() > right_val.as_string()))
+                        }
+                        BinaryOp::StrGe => Ok(Value::Bool(
+                            left_val.as_string() >= right_val.as_string(),
+                        )),
+                        // Logical operators are handled above
+                        BinaryOp::And | BinaryOp::Or => unreachable!(),
+                    }
                 }
             }
         }
@@ -1292,5 +1317,94 @@ mod tests {
         assert!(result.is_err());
         let err_msg = format!("{}", result.unwrap_err());
         assert!(err_msg.contains("expected"));
+    }
+
+    // Short-circuit evaluation tests
+    #[test]
+    fn test_and_short_circuit() {
+        use crate::libs::expr::eval_expr;
+        let r: Vec<String> = vec![];
+
+        // false && anything should be false without evaluating right side
+        // Using 1/0 which would cause division by zero if evaluated
+        let result = eval_expr("false and (1 / 0)", &r, None);
+        assert!(
+            result.is_ok(),
+            "Short-circuit should prevent division by zero"
+        );
+        assert_eq!(result.unwrap().to_string(), "false");
+
+        // true && true should evaluate both sides
+        let result = eval_expr("true and true", &r, None);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().to_string(), "true");
+
+        // true && false should evaluate both sides and return false
+        let result = eval_expr("true and false", &r, None);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().to_string(), "false");
+    }
+
+    #[test]
+    fn test_or_short_circuit() {
+        use crate::libs::expr::eval_expr;
+        let r: Vec<String> = vec![];
+
+        // true || anything should be true without evaluating right side
+        // Using 1/0 which would cause division by zero if evaluated
+        let result = eval_expr("true or (1 / 0)", &r, None);
+        assert!(
+            result.is_ok(),
+            "Short-circuit should prevent division by zero"
+        );
+        assert_eq!(result.unwrap().to_string(), "true");
+
+        // false || false should evaluate both sides
+        let result = eval_expr("false or false", &r, None);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().to_string(), "false");
+
+        // false || true should evaluate both sides and return true
+        let result = eval_expr("false or true", &r, None);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().to_string(), "true");
+    }
+
+    #[test]
+    fn test_short_circuit_with_null() {
+        use crate::libs::expr::eval_expr;
+        let r: Vec<String> = vec![];
+
+        // false && null should be false (null not evaluated)
+        let result = eval_expr("false and null", &r, None);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().to_string(), "false");
+
+        // true || null should be true (null not evaluated)
+        let result = eval_expr("true or null", &r, None);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().to_string(), "true");
+    }
+
+    #[test]
+    fn test_short_circuit_chained() {
+        use crate::libs::expr::eval_expr;
+        let r: Vec<String> = vec![];
+
+        // Chained and: false && (1/0) && (2/0) should short-circuit at first
+        let result = eval_expr("false and (1 / 0) and (2 / 0)", &r, None);
+        assert!(
+            result.is_ok(),
+            "Short-circuit should prevent division by zero"
+        );
+        assert_eq!(result.unwrap().to_string(), "false");
+
+        // Chained or: true || (1/0) || (2/0) should short-circuit at first
+        let result = eval_expr("true or (1 / 0) or (2 / 0)", &r, None);
+        assert!(
+            result.is_ok(),
+            "Short-circuit should prevent division by zero"
+        );
+        assert_eq!(result.unwrap().to_string(), "true");
     }
 }

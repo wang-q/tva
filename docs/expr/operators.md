@@ -51,11 +51,40 @@
 
 **Note**: No implicit type conversion. Use string comparison operators for string comparison.
 
+**Note**: Empty fields are treated as `null`. See [Null Type and Empty Fields](literals.md#null-type-and-empty-fields) for details.
+
 ## Logical Operators
 
 - `not a`: Logical NOT
-- `a and b`: Logical AND
-- `a or b`: Logical OR
+- `a and b`: Logical AND (short-circuit evaluation)
+- `a or b`: Logical OR (short-circuit evaluation)
+
+**Short-circuit evaluation**: `and` and `or` use short-circuit evaluation, meaning the right operand is only evaluated if necessary.
+
+```bash
+# AND short-circuit: right side not evaluated when left is false
+tva expr -E 'false and print("hello")'   # Output: false (print not called)
+tva expr -E 'true and print("hello")'    # Output: hello\ntrue
+
+# OR short-circuit: right side not evaluated when left is true
+tva expr -E 'true or print("hello")'     # Output: true (print not called)
+tva expr -E 'false or print("hello")'    # Output: hello\ntrue
+
+# Avoid division by zero
+# If @2 is 0, the division is skipped
+tva expr -E '@2 != 0 and @1 / @2 > 2' -r '100,0' -r '100,5'   # Output: false, true
+
+# Check before accessing
+# Only calculate length if @name is not empty
+tva expr -E '@name != "" and len(@name) > 5' -n 'name' -r '' -r 'Alice' -r 'Alexander'  # Output: false, false, true
+
+# Logical OR with string (returns boolean)
+# Empty field is null (falsy), non-empty is truthy
+tva expr -E '@email or "fallback"' -n 'email' -r '' -r 'user@example.com'  # Output: true, true
+
+# For default value, use if() with null check:
+tva expr -E 'if(@email == null, "no-email@example.com", @email)' -n 'email' -r '' -r 'user@example.com'  # Output: no-email@example.com, user@example.com
+```
 
 ## Pipe Operator
 

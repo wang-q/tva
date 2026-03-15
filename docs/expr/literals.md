@@ -53,6 +53,39 @@ evaluation:
 - **String concatenation**: `++` operator converts operands to strings
 - **Comparison**: Same-type comparison only; different types always return `false`
 
+### Null Type and Empty Fields
+
+In TVA, **empty fields from TSV data are treated as `null`**, not empty strings. This is important
+because `null` behaves differently from `""` in expressions.
+
+**Key behaviors:**
+
+| Expression | Empty Field (`null`) | Non-Empty Field (`"text"`) |
+|:-----------|:---------------------|:---------------------------|
+| `@col == ""` | `false` | `false` |
+| `@col == null` | `true` | `false` |
+| `not @col` | `true` | `false` |
+| `len(@col)` | `0` | length of string |
+
+**How to check for empty values:**
+
+```bash
+# Correct way to check for empty field
+tva expr -E 'not @1' -r ''              # Output: true
+tva expr -E '@1 == null' -r ''          # Output: true
+
+# Incorrect: empty field is not equal to empty string
+tva expr -E '@1 == ""' -r ''            # Output: false
+```
+
+**Use case: Default values**
+
+```bash
+# Provide default value for empty field
+tva expr -E 'if(@email == null, "no-email", @email)' -n 'email' -r '' -r 'user@test.com'
+# Output: no-email, user@test.com
+```
+
 ## String Escape Sequences
 
 | Escape | Meaning         | Example                        |
