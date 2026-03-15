@@ -615,9 +615,10 @@ fn build_column_ref(s: &str) -> Result<Expr, ParseError> {
             .parse()
             .map_err(|_| ParseError::InvalidColumnIndex(inner.to_string()))?;
         if idx == 0 {
-            return Err(ParseError::InvalidColumnIndex("0".to_string()));
+            Ok(Expr::ColumnRef(ColumnRef::WholeRow))
+        } else {
+            Ok(Expr::ColumnRef(ColumnRef::Index(idx)))
         }
-        Ok(Expr::ColumnRef(ColumnRef::Index(idx)))
     } else {
         Ok(Expr::ColumnRef(ColumnRef::Name(inner.to_string())))
     }
@@ -681,6 +682,13 @@ mod tests {
     fn test_parse_column_ref_index() {
         let expr = parse("@1").unwrap();
         assert!(matches!(expr, Expr::ColumnRef(ColumnRef::Index(1))));
+    }
+
+    #[test]
+    fn test_parse_column_ref_whole_row() {
+        // @0 refers to the whole row (all columns joined with tabs)
+        let expr = parse("@0").unwrap();
+        assert!(matches!(expr, Expr::ColumnRef(ColumnRef::WholeRow)));
     }
 
     #[test]
@@ -1069,7 +1077,7 @@ mod tests {
     #[test]
     fn test_parse_errors() {
         assert!(parse("@").is_err());
-        assert!(parse("@0").is_err());
+        // @0 is now valid (refers to whole row)
         assert!(parse("").is_err());
     }
 
@@ -1527,9 +1535,10 @@ mod tests {
     #[test]
     fn test_parse_error_messages() {
         // Test that error messages are descriptive
-        let err = parse("@0").unwrap_err();
+        // @0 is now valid (whole row reference), so test with other invalid input
+        let err = parse("@").unwrap_err();
         let err_str = err.to_string();
-        assert!(err_str.contains("0") || err_str.contains("column"));
+        assert!(!err_str.is_empty());
 
         let _err = parse("@").unwrap_err();
         assert!(!err_str.is_empty());
@@ -1542,8 +1551,10 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_invalid_column_index_zero() {
-        assert!(parse("@0").is_err());
+    fn test_parse_column_index_zero_is_whole_row() {
+        // @0 is now valid and refers to the whole row
+        let expr = parse("@0").unwrap();
+        assert!(matches!(expr, Expr::ColumnRef(ColumnRef::WholeRow)));
     }
 
     #[test]

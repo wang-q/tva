@@ -144,6 +144,11 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
                     ctx.get_by_name(name)
                 }
             }
+            ColumnRef::WholeRow => {
+                // Join all columns with tabs
+                let row_str = ctx.row.join("\t");
+                Ok(Value::String(row_str))
+            }
         },
         Expr::Variable(name) => ctx.get_variable(name),
         Expr::LambdaParam(name) => ctx.get_lambda_param(name),
@@ -352,6 +357,13 @@ mod tests {
         assert_eq!(
             eval(&expr, &mut ctx).unwrap(),
             Value::String("hello".to_string())
+        );
+
+        // Test @0 - whole row reference
+        let expr = Expr::ColumnRef(ColumnRef::WholeRow);
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("10\t20\thello".to_string())
         );
     }
 

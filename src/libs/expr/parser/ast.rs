@@ -70,6 +70,8 @@ pub enum ColumnRef {
     Index(usize),
     /// Name-based: @col_name
     Name(String),
+    /// Whole row: @0
+    WholeRow,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -182,6 +184,7 @@ impl Expr {
         match self {
             Expr::ColumnRef(ColumnRef::Index(idx)) => format!("@{}", idx),
             Expr::ColumnRef(ColumnRef::Name(name)) => format!("@{}", name),
+            Expr::ColumnRef(ColumnRef::WholeRow) => "@0".to_string(),
             Expr::Variable(name) => format!("@{}", name),
             Expr::LambdaParam(name) => name.clone(),
             Expr::Int(n) => n.to_string(),
