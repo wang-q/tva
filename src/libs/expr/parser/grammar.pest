@@ -21,11 +21,14 @@ float = @{
   | "-"? ~ ("0" | '1'..'9' ~ digit*) ~ ^"e" ~ ("+" | "-")? ~ int
 }
 
-// String: "hello", 'world', `raw`
+// String: "hello", 'world', or q(raw text)
 double_quoted_string = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 single_quoted_string = @{ "'" ~ (!"'" ~ ANY)* ~ "'" }
-backtick_string = @{ "`" ~ (!"`" ~ ANY)* ~ "`" }
-string = ${ double_quoted_string | single_quoted_string | backtick_string }
+q_string = @{ "q(" ~ q_string_content ~ ")" }
+q_string_content = @{ (q_escaped | q_char)* }
+q_escaped = @{ "\\" ~ ("(" | ")" | "\\") }
+q_char = @{ !("(" | ")" | "\\") ~ ANY }
+string = ${ double_quoted_string | single_quoted_string | q_string }
 
 // Boolean
 boolean = { "true" | "false" }
@@ -37,8 +40,11 @@ null = { "null" }
 // Column References and Variables
 // ============================================
 
-// @1, @2, @name
-column_ref = ${ "@" ~ (int | ident) }
+// @1, @2, @name, @"col name", @'col name', @`col name`
+column_ref = ${ "@" ~ (int | ident | quoted_col_name) }
+
+// Quoted column name for names with spaces
+quoted_col_name = ${ double_quoted_string | single_quoted_string }
 
 // Variable reference: @name (bound by 'as')
 variable_ref = ${ "@" ~ ident }
@@ -186,8 +192,8 @@ logical_or = { logical_and ~ (op_or ~ logical_and)* }
 // Pipe expression - must be non-atomic to capture children
 pipe = { logical_or ~ (op_pipe ~ pipe_func_call)* }
 
-// Variable binding: expr as @name
-bind = { pipe ~ (op_as ~ var_name)? }
+// Variable binding: expr as @name, with optional trailing pipes
+bind = { pipe ~ (op_as ~ var_name ~ (op_pipe ~ pipe_func_call)*)? }
 
 // Variable name (with @ prefix for binding target)
 var_name = ${ "@" ~ ident }

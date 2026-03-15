@@ -529,3 +529,112 @@ fn expr_without_skip_null_includes_null() {
         lines[2]
     );
 }
+
+#[test]
+fn expr_bind_with_pipe() {
+    // Test that 'as' binding can be followed by pipe operator
+    // [1,2,3] as @list | len() should bind @list and then pipe to len()
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "[1, 2, 3] as @list | len()"])
+        .run();
+
+    assert!(
+        stdout.contains("3"),
+        "Expected '3' (length of list) in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_bind_with_pipe_chained() {
+    // Test chained pipes after bind
+    // "hello" as @s | upper() | len() should return 5
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "'hello' as @s | upper() | len()"])
+        .run();
+
+    assert!(
+        stdout.contains("5"),
+        "Expected '5' (length of 'HELLO') in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_bind_with_pipe_using_bound_var() {
+    // Test that bound variable can be used in subsequent expression
+    // [1, 2, 3, 4] as @list; @list | len() should work
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "[1, 2, 3, 4] as @list; @list | len()"])
+        .run();
+
+    assert!(
+        stdout.contains("4"),
+        "Expected '4' (length of list) in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_from_file() {
+    // Test -F/--expr-file option
+    use std::io::Write;
+
+    // Create a temporary expression file
+    let mut expr_file = tempfile::NamedTempFile::new().unwrap();
+    writeln!(expr_file, "@price * @qty").unwrap();
+    let expr_path = expr_file.path().to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-n", "price,qty", "-r", "100,2", "-F", expr_path])
+        .run();
+
+    assert!(
+        stdout.contains("200"),
+        "Expected '200' in stdout when using -F, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_from_file_long_flag() {
+    // Test --expr-file long flag
+    use std::io::Write;
+
+    // Create a temporary expression file
+    let mut expr_file = tempfile::NamedTempFile::new().unwrap();
+    writeln!(expr_file, "@name | upper()").unwrap();
+    let expr_path = expr_file.path().to_str().unwrap();
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "name",
+            "-r",
+            "alice",
+            "--expr-file",
+            expr_path,
+        ])
+        .run();
+
+    assert!(
+        stdout.contains("ALICE"),
+        "Expected 'ALICE' in stdout when using --expr-file, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_file_not_found() {
+    // Test error handling when expression file doesn't exist
+    let (_, stderr) = TvaCmd::new()
+        .args(&["expr", "-F", "/nonexistent/file.expr"])
+        .run();
+
+    assert!(
+        stderr.contains("Failed to read expression file") || stderr.contains("error"),
+        "Expected error message for missing file, got: {}",
+        stderr
+    );
+}

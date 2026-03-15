@@ -22,8 +22,14 @@ pub fn make_subcommand() -> Command {
                 .long("expr")
                 .short('E')
                 .num_args(1)
-                .required(true)
                 .help("Expression to evaluate (e.g., '@price * @qty as @total')"),
+        )
+        .arg(
+            Arg::new("expr_file")
+                .long("expr-file")
+                .short('F')
+                .num_args(1)
+                .help("Read expression from file"),
         )
         .arg(
             Arg::new("outfile")
@@ -69,11 +75,30 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer =
         crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
-    let expr_str = args.get_one::<String>("expr").unwrap();
+    // Get expression from -E or -F
+    let expr_str = if let Some(expr) = args.get_one::<String>("expr") {
+        expr.clone()
+    } else if let Some(expr_file) = args.get_one::<String>("expr_file") {
+        std::fs::read_to_string(expr_file)
+            .map_err(|e| {
+                anyhow::anyhow!("Failed to read expression file '{}': {}", expr_file, e)
+            })?
+            .trim()
+            .to_string()
+    } else {
+        return Err(anyhow::anyhow!(
+            "Either --expr/-E or --expr-file/-F must be provided"
+        ));
+    };
+
+    if expr_str.is_empty() {
+        return Err(anyhow::anyhow!("Expression cannot be empty"));
+    }
+
     let skip_null = args.get_flag("skip_null");
 
     // Parse the expression with caching
-    let mut parsed_expr = parse_cached(expr_str)
+    let mut parsed_expr = parse_cached(&expr_str)
         .map_err(|e| anyhow::anyhow!("Failed to parse expression: {}", e))?;
 
     // Check if we have inline row data (debug mode)

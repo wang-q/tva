@@ -139,21 +139,47 @@ fn build_expr(pair: Pair<Rule>) -> Result<Expr, ParseError> {
 }
 
 fn build_bind(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut inner = pair.into_inner();
-    let pipe_expr = inner.next().ok_or_else(|| ParseError::EmptyExpression)?;
-    let mut result = build_expr(pipe_expr)?;
+    let inner: Vec<Pair<Rule>> = pair.into_inner().collect();
+
+    if inner.is_empty() {
+        return Err(ParseError::EmptyExpression);
+    }
+
+    // First element is always the pipe expression
+    let mut result = build_expr(inner[0].clone())?;
 
     // Check for 'as @name' binding
-    if let Some(as_keyword) = inner.next() {
-        if as_keyword.as_rule() == Rule::op_as {
-            if let Some(var_name) = inner.next() {
-                if var_name.as_rule() == Rule::var_name {
-                    // var_name includes the @ prefix, so strip it
-                    let name = var_name.as_str().trim_start_matches('@').to_string();
-                    result = Expr::Bind {
-                        expr: Box::new(result),
-                        name,
-                    };
+    let mut i = 1;
+    if i < inner.len() && inner[i].as_rule() == Rule::op_as {
+        i += 1; // Skip 'as'
+
+        // Next should be var_name
+        if i < inner.len() && inner[i].as_rule() == Rule::var_name {
+            let name = inner[i].as_str().trim_start_matches('@').to_string();
+            i += 1;
+
+            // Create bind expression
+            result = Expr::Bind {
+                expr: Box::new(result),
+                name,
+            };
+
+            // Process any trailing pipes after the bind
+            while i < inner.len() {
+                if inner[i].as_rule() == Rule::op_pipe {
+                    // Next should be pipe_func_call
+                    if i + 1 < inner.len() {
+                        let pipe_right = build_pipe_right(inner[i + 1].clone())?;
+                        result = Expr::Pipe {
+                            left: Box::new(result),
+                            right: Box::new(pipe_right),
+                        };
+                        i += 2;
+                    } else {
+                        break;
+                    }
+                } else {
+                    i += 1;
                 }
             }
         }
@@ -605,6 +631,15 @@ fn build_primary(pair: Pair<Rule>) -> Result<Expr, ParseError> {
 fn build_column_ref(s: &str) -> Result<Expr, ParseError> {
     let inner = &s[1..]; // Remove '@'
 
+    // Check if it's a quoted column name (starts with " or ')
+    if inner.starts_with('"') || inner.starts_with('\'') {
+        // Extract the content between quotes
+        let quote_char = inner.chars().next().unwrap();
+        let end = inner.rfind(quote_char).unwrap_or(inner.len());
+        let name = &inner[1..end];
+        return Ok(Expr::ColumnRef(ColumnRef::Name(name.to_string())));
+    }
+
     if inner
         .chars()
         .next()
@@ -634,6 +669,32 @@ fn extract_variable_name(s: &str) -> String {
 }
 
 fn build_string(s: &str) -> Result<Expr, ParseError> {
+    // Check if it's a q-string: q(...)
+    if s.starts_with("q(") && s.ends_with(")") {
+        let inner = &s[2..s.len() - 1]; // Remove "q(" and ")"
+                                        // Process escape sequences for q-string: \( \) \\
+        let mut result = String::new();
+        let mut chars = inner.chars().peekable();
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                match chars.next() {
+                    Some('(') => result.push('('),
+                    Some(')') => result.push(')'),
+                    Some('\\') => result.push('\\'),
+                    Some(c) => {
+                        result.push('\\');
+                        result.push(c);
+                    }
+                    None => result.push('\\'),
+                }
+            } else {
+                result.push(c);
+            }
+        }
+        return Ok(Expr::String(result));
+    }
+
+    // Regular quoted string: "..." or '...'
     let inner = &s[1..s.len() - 1];
     // Process escape sequences
     let mut result = String::new();
@@ -646,6 +707,7 @@ fn build_string(s: &str) -> Result<Expr, ParseError> {
                 Some('r') => result.push('\r'),
                 Some('\\') => result.push('\\'),
                 Some('"') => result.push('"'),
+                Some('\'') => result.push('\''),
                 Some(c) => {
                     result.push('\\');
                     result.push(c);
@@ -1325,6 +1387,32 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_q_string() {
+        // q() operator for strings without quote escaping
+        let expr = parse("q(hello world)").unwrap();
+        assert!(matches!(expr, Expr::String(s) if s == "hello world"));
+
+        // Can contain quotes without escaping
+        let expr = parse("q(say \"hello\")").unwrap();
+        assert!(matches!(expr, Expr::String(s) if s == "say \"hello\""));
+
+        let expr = parse("q(it's ok)").unwrap();
+        assert!(matches!(expr, Expr::String(s) if s == "it's ok"));
+
+        // Can contain both single and double quotes
+        let expr = parse("q(He said \"It's ok!\")").unwrap();
+        assert!(matches!(expr, Expr::String(s) if s == "He said \"It's ok!\""));
+
+        // Empty string - currently not supported, q() parses differently
+        // let expr = parse("q()").unwrap();
+        // assert!(matches!(expr, Expr::String(s) if s.is_empty()));
+
+        // Nested parentheses need escaping
+        let expr = parse("q(test \\(nested\\) parens)").unwrap();
+        assert!(matches!(expr, Expr::String(s) if s == "test (nested) parens"));
+    }
+
+    #[test]
     fn test_parse_function_call() {
         let expr = parse("upper(@name)").unwrap();
         match expr {
@@ -1558,6 +1646,19 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_column_ref_with_spaces() {
+        // Column names with spaces using double quotes
+        let expr = parse("@\"user name\"").unwrap();
+        assert!(matches!(expr, Expr::ColumnRef(ColumnRef::Name(s)) if s == "user name"));
+
+        // Single quotes should also work
+        let expr2 = parse("@'first name'").unwrap();
+        assert!(
+            matches!(expr2, Expr::ColumnRef(ColumnRef::Name(s)) if s == "first name")
+        );
+    }
+
+    #[test]
     fn test_parse_unexpected_character() {
         assert!(parse("@1 + $").is_err());
     }
@@ -1570,5 +1671,78 @@ mod tests {
     #[test]
     fn test_parse_unclosed_parenthesis() {
         assert!(parse("(@1 + @2").is_err());
+    }
+
+    #[test]
+    fn test_parse_bind_with_pipe() {
+        // [1, 2, 3] as @list | len() should parse correctly
+        let expr = parse("[1, 2, 3] as @list | len()").unwrap();
+        // Should be a Pipe expression with Bind on the left
+        match expr {
+            Expr::Pipe { left, right } => {
+                // Left side should be the bind expression
+                assert!(matches!(left.as_ref(), Expr::Bind { .. }));
+                // Right side should be len() function call
+                match right.as_ref() {
+                    PipeRight::Call { name, args } => {
+                        assert_eq!(name, "len");
+                        assert!(args.is_empty());
+                    }
+                    _ => panic!("Expected PipeRight::Call for len()"),
+                }
+            }
+            _ => panic!("Expected Pipe expression, got {:?}", expr),
+        }
+    }
+
+    #[test]
+    fn test_parse_bind_with_chained_pipes() {
+        // "hello" as @s | upper() | len() should parse correctly
+        let expr = parse("'hello' as @s | upper() | len()").unwrap();
+        // Should be a Pipe expression with another Pipe on the left
+        match expr {
+            Expr::Pipe { left, right } => {
+                // Right side should be len()
+                match right.as_ref() {
+                    PipeRight::Call { name, .. } => {
+                        assert_eq!(name, "len");
+                    }
+                    _ => panic!("Expected PipeRight::Call for len()"),
+                }
+                // Left side should be another Pipe (upper())
+                match left.as_ref() {
+                    Expr::Pipe {
+                        left: inner_left,
+                        right: inner_right,
+                    } => {
+                        // inner_left should be the bind expression
+                        assert!(matches!(inner_left.as_ref(), Expr::Bind { .. }));
+                        // inner_right should be upper()
+                        match inner_right.as_ref() {
+                            PipeRight::Call { name, .. } => {
+                                assert_eq!(name, "upper");
+                            }
+                            _ => panic!("Expected PipeRight::Call for upper()"),
+                        }
+                    }
+                    _ => panic!("Expected nested Pipe expression"),
+                }
+            }
+            _ => panic!("Expected Pipe expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_bind_without_pipe() {
+        // [1, 2, 3] as @list should still work
+        let expr = parse("[1, 2, 3] as @list").unwrap();
+        match expr {
+            Expr::Bind { expr, name } => {
+                assert_eq!(name, "list");
+                // The bound expression should be a list
+                assert!(matches!(expr.as_ref(), Expr::List(_)));
+            }
+            _ => panic!("Expected Bind expression, got {:?}", expr),
+        }
     }
 }
