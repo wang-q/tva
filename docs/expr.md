@@ -70,15 +70,20 @@ trim(@name)
 - [Syntax Guide](expr/syntax.md) - Complete syntax documentation
 - [Rosetta Code](expr/rosetta.md) - Fun programs
 
-- **Lambda expressions**: `x => x * 2` for higher-order functions
-
-### Expression Commands
+### Expr Commands
 
 | Command      | Description                             |
 |--------------|-----------------------------------------|
 | `tva expr`   | Evaluate expression to create a new row |
 | `tva map`    | Add new column(s) to existing row       |
 | `tva mutate` | Modify existing column value            |
+
+| Command  | What it does        | Input row    | Output row              | Columns changed |
+|----------|---------------------|--------------|-------------------------|-----------------|
+| `expr`   | Evaluate to new row | `@a, @b, @c` | `@result`               | All (replaced)  |
+| `map`    | Add new column(s)   | `@a, @b`     | `@a, @b, @c`            | Added           |
+| `mutate` | Modify column value | `@a, @b, @c` | `@a, @b', @c`           | One updated     |
+| `filter` | Keep or discard row | `@a, @b, @c` | `@a, @b, @c` or nothing | None            |
 
 Note: Use `tva filter` for simple filtering—it's ~2x faster. Use `tva expr --skip-null`
 only when you need features `tva filter` doesn't support (functions, complex expressions, etc.).
@@ -109,7 +114,7 @@ tva expr -n "score" -r "85" -E 'if(@score >= 60, "pass", "fail")'
 tva expr -H -E "@price / @carat" docs/data/diamonds.tsv
 
 # Filter rows using --skip-null
-tva expr -H --skip-null -E 'if(@price > 300, @0, null)' docs/data/diamonds.tsv
+tva expr -H --skip-null -E 'if(@carat > 1 and @price < 3000, @0, null)' docs/data/diamonds.tsv
 ```
 
 ### `tva map` - Add New Column
@@ -141,64 +146,6 @@ tva mutate -E '@cut | upper()' -c cut docs/data/diamonds.tsv
 # Replace with conditional value
 tva mutate -E 'if(@price >= 350, "expensive", "cheap")' -c price docs/data/diamonds.tsv
 ```
-
-## Examples
-
-### Numeric Operations
-
-```rust
-@price * 1.1 # Increase price by 10 %
-( @ price - @ cost) / @ cost # Calculate margin
-round( @ value) # Round to integer
-```
-
-### String Operations
-
-```rust
-@first + + " " + + @ last # Concatenate names
-@email | lower() | trim() # Chain operations
-@name | substr(_, 0, 5) # First 5 characters
-split( @ tags, ",") # Split to list
-```
-
-### List Operations
-
-The `map()` and `filter()` below are **functions** for working with lists, not the `tva map`
-and `tva filter` commands.
-
-```rust
-map([1, 2, 3], x => x * 2)                    #[2, 4, 6]
-filter([1, 2, 3, 4], x => x > 2)              #[3, 4]
-reduce([1, 2, 3], 0, (acc, x) => acc + x) # 6
-join(split( @ tags, ","), "; ") # Rejoin with different separator
-```
-
-### Conditional Logic
-
-```rust
-if( @ age > = 18, "adult", "minor")
-default ( @ nickname, @ username) # Use nickname if not empty
-```
-
-## Type System
-
-| Type   | Example         | Notes                  |
-|--------|-----------------|------------------------|
-| Int    | `42`, `-10`     | 64-bit signed          |
-| Float  | `3.14`, `-0.5`  | Double precision       |
-| String | `"hello"`       | UTF-8 encoded          |
-| Bool   | `true`, `false` |                        |
-| Null   | `null`          | Missing/empty value    |
-| List   | `[1, 2, 3]`     | Heterogeneous elements |
-
-## Command Comparison
-
-| Command  | What it does        | Input row    | Output row              | Columns changed |
-|----------|---------------------|--------------|-------------------------|-----------------|
-| `expr`   | Evaluate to new row | `@a, @b, @c` | `@result`               | All (replaced)  |
-| `filter` | Keep or discard row | `@a, @b, @c` | `@a, @b, @c` or nothing | None            |
-| `map`    | Add new column(s)   | `@a, @b`     | `@a, @b, @c`            | Added           |
-| `mutate` | Modify column value | `@a, @b, @c` | `@a, @b', @c`           | One updated     |
 
 ## Performance Notes
 

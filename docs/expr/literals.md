@@ -237,5 +237,3 @@ tva expr -E 'reduce([1, 2, 3], 0, (acc, x) => acc + x)'
 # No parameters
 tva expr -E 'map([1, 2, 3], () => 42)'
 ```
-
-See [Expressions](expressions.md#lambda-expressions) for more details on lambda usage.
