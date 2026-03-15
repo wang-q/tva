@@ -294,10 +294,15 @@ This demonstrates:
 - `filter()` with predicate - Collect numbers where sieve value is true
 - Optimization: inner loop starts at `p * p` (smaller multiples already marked)
 
+### Greatest common divisor
+
+Find the greatest common divisor   (GCD)   of two integers.
+
+
+
 ## list
 
 进阶级（字符串、数据结构、算法）
-Greatest common divisor
 Sorting algorithms / Bubble sort / Quick sort
 Binary search
 Stack
