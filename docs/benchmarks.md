@@ -243,3 +243,18 @@ print('Plot saved to benchmark_plot.png')
 *   **构建优化**:
     *   **LTO (Link Time Optimization)**: `Cargo.toml` 中已启用 `lto = true`，这对减少二进制大小和提高运行时性能至关重要。
     *   **PGO (Profile Guided Optimization)**: 未来探索方向。使用真实工作负载数据来指导编译器优化，进一步压榨性能。
+
+## 7. expr 对比 专用命令
+
+使用 `docs/data/diamonds.tsv`
+
+* filter
+
+```bash
+hyperfine \
+    --warmup 3 \
+    --min-runs 10 \
+    --export-csv expr_filter.csv \
+    -n "tva expr" "tva expr -H -s -E 'if(@carat > 1 and @price < 3000, @0, null)' docs/data/diamonds.tsv > /dev/null" \
+    -n "tva filter" "tva filter -H --gt carat:1 --lt price:3000 docs/data/diamonds.tsv > /dev/null"
+```
