@@ -1467,4 +1467,410 @@ mod tests {
             Value::Int(5)
         );
     }
+
+    // Additional tests to cover error handling branches
+
+    #[test]
+    fn test_min_with_list() {
+        // List should be skipped in min
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        assert_eq!(min(&[list, Value::Int(5)]).unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_max_with_list() {
+        // List should be skipped in max
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        assert_eq!(max(&[list, Value::Int(5)]).unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_int_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = int(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_float_invalid_string_error() {
+        let result = float(&[Value::String("not-a-number".to_string())]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("cannot convert"));
+    }
+
+    #[test]
+    fn test_pow_with_list_base_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = pow(&[list, Value::Int(2)]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_pow_with_datetime_base_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = pow(&[dt, Value::Int(2)]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_pow_with_lambda_base_error() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+        });
+        let result = pow(&[lambda, Value::Int(2)]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert lambda"));
+    }
+
+    #[test]
+    fn test_pow_with_list_exp_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = pow(&[Value::Int(2), list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_pow_with_datetime_exp_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = pow(&[Value::Int(2), dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_sin_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = sin(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_sin_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = sin(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_sin_with_lambda_error() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+        });
+        let result = sin(&[lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert lambda"));
+    }
+
+    #[test]
+    fn test_cos_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = cos(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_cos_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = cos(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_tan_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = tan(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_tan_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = tan(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_ln_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = ln(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_ln_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = ln(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_log10_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = log10(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_log10_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = log10(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_exp_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = exp(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_exp_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = exp(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_sqrt_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = sqrt(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_sqrt_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = sqrt(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_int_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = int(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_float_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = float(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_float_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = float(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_ceil_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = ceil(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_ceil_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = ceil(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_floor_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = floor(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_floor_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = floor(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_abs_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = abs(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_abs_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = abs(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
+
+    #[test]
+    fn test_round_with_list_error() {
+        let list = Value::List(vec![Value::Int(1)]);
+        let result = round(&[list]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert list"));
+    }
+
+    #[test]
+    fn test_round_with_datetime_error() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = round(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot convert datetime"));
+    }
 }

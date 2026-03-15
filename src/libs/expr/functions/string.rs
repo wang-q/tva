@@ -301,4 +301,200 @@ mod tests {
     fn test_len_null() {
         assert_eq!(len(&[Value::Null]).unwrap(), Value::Int(0));
     }
+
+    // Additional tests to improve coverage
+
+    #[test]
+    fn test_trim_non_string() {
+        // trim with non-string, non-null value
+        assert_eq!(
+            trim(&[Value::Int(123)]).unwrap(),
+            Value::String("123".to_string())
+        );
+        assert_eq!(
+            trim(&[Value::Bool(true)]).unwrap(),
+            Value::String("true".to_string())
+        );
+    }
+
+    #[test]
+    fn test_upper_null() {
+        assert_eq!(upper(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_upper_non_string() {
+        assert_eq!(
+            upper(&[Value::Int(123)]).unwrap(),
+            Value::String("123".to_string())
+        );
+    }
+
+    #[test]
+    fn test_lower_null() {
+        assert_eq!(lower(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_lower_non_string() {
+        assert_eq!(
+            lower(&[Value::Int(123)]).unwrap(),
+            Value::String("123".to_string())
+        );
+    }
+
+    #[test]
+    fn test_len_list() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        assert_eq!(len(&[list]).unwrap(), Value::Int(3));
+    }
+
+    #[test]
+    fn test_len_non_string() {
+        assert_eq!(len(&[Value::Int(12345)]).unwrap(), Value::Int(5));
+        assert_eq!(len(&[Value::Bool(true)]).unwrap(), Value::Int(4));
+    }
+
+    #[test]
+    fn test_substr_start_beyond_length() {
+        // When start >= string length, return empty string
+        assert_eq!(
+            substr(&[
+                Value::String("hello".to_string()),
+                Value::Int(10),
+                Value::Int(5),
+            ])
+            .unwrap(),
+            Value::String("".to_string())
+        );
+    }
+
+    #[test]
+    fn test_truncate_with_float() {
+        // truncate with Float length
+        // "hello world" (11 chars), limit 8, end "..." (3 chars)
+        // truncated = 8 - 3 = 5 chars from original = "hello" + "..." = "hello..."
+        assert_eq!(
+            truncate(&[Value::String("hello world".to_string()), Value::Float(8.0)])
+                .unwrap(),
+            Value::String("hello...".to_string())
+        );
+        // Float rounding: 8.7 rounds to 9
+        // truncated = 9 - 3 = 6 chars from original = "hello " + "..." = "hello ..."
+        assert_eq!(
+            truncate(&[Value::String("hello world".to_string()), Value::Float(8.7)])
+                .unwrap(),
+            Value::String("hello ...".to_string())
+        );
+    }
+
+    #[test]
+    fn test_truncate_type_error() {
+        // truncate with non-number should return error
+        let result = truncate(&[
+            Value::String("hello".to_string()),
+            Value::String("5".to_string()),
+        ]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("truncate: length must be a number"));
+    }
+
+    #[test]
+    fn test_contains_not_found() {
+        assert_eq!(
+            contains(&[
+                Value::String("hello world".to_string()),
+                Value::String("foo".to_string()),
+            ])
+            .unwrap(),
+            Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn test_starts_with_false() {
+        assert_eq!(
+            starts_with(&[
+                Value::String("hello".to_string()),
+                Value::String("lo".to_string()),
+            ])
+            .unwrap(),
+            Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn test_ends_with_false() {
+        assert_eq!(
+            ends_with(&[
+                Value::String("hello".to_string()),
+                Value::String("he".to_string()),
+            ])
+            .unwrap(),
+            Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn test_split_empty() {
+        match split(&[
+            Value::String("".to_string()),
+            Value::String(",".to_string()),
+        ])
+        .unwrap()
+        {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 1);
+                assert_eq!(vals[0], Value::String("".to_string()));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_replace_no_match() {
+        // Replace when pattern not found
+        assert_eq!(
+            replace(&[
+                Value::String("hello world".to_string()),
+                Value::String("foo".to_string()),
+                Value::String("bar".to_string()),
+            ])
+            .unwrap(),
+            Value::String("hello world".to_string())
+        );
+    }
+
+    #[test]
+    fn test_wordcount_single_word() {
+        assert_eq!(
+            wordcount(&[Value::String("hello".to_string())]).unwrap(),
+            Value::Int(1)
+        );
+    }
+
+    #[test]
+    fn test_char_len_empty() {
+        assert_eq!(
+            char_len(&[Value::String("".to_string())]).unwrap(),
+            Value::Int(0)
+        );
+    }
+
+    #[test]
+    fn test_substr_partial() {
+        // Substr that extends beyond string length
+        assert_eq!(
+            substr(&[
+                Value::String("hello".to_string()),
+                Value::Int(3),
+                Value::Int(10),
+            ])
+            .unwrap(),
+            Value::String("lo".to_string())
+        );
+    }
 }

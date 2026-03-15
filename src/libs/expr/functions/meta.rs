@@ -429,4 +429,209 @@ mod tests {
         let type_result = type_fn(&[platform_result]).unwrap();
         assert_eq!(type_result, Value::String("string".to_string()));
     }
+
+    // Additional tests for error handling branches
+
+    #[test]
+    fn test_type_with_datetime() {
+        use chrono::Utc;
+        let result = type_fn(&[Value::DateTime(Utc::now())]);
+        assert_eq!(result.unwrap(), Value::String("datetime".to_string()));
+    }
+
+    #[test]
+    fn test_type_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+        });
+        let result = type_fn(&[lambda]);
+        assert_eq!(result.unwrap(), Value::String("lambda".to_string()));
+    }
+
+    #[test]
+    fn test_env_with_float_arg() {
+        // Test env() with float argument (should fail)
+        let result = env_fn(&[Value::Float(3.14)]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::TypeError(msg) => {
+                assert!(msg.contains("requires a string argument"));
+            }
+            _ => panic!("Expected TypeError"),
+        }
+    }
+
+    #[test]
+    fn test_env_with_bool_arg() {
+        // Test env() with bool argument (should fail)
+        let result = env_fn(&[Value::Bool(true)]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::TypeError(msg) => {
+                assert!(msg.contains("requires a string argument"));
+            }
+            _ => panic!("Expected TypeError"),
+        }
+    }
+
+    #[test]
+    fn test_env_with_null_arg() {
+        // Test env() with null argument (should fail)
+        let result = env_fn(&[Value::Null]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::TypeError(msg) => {
+                assert!(msg.contains("requires a string argument"));
+            }
+            _ => panic!("Expected TypeError"),
+        }
+    }
+
+    #[test]
+    fn test_env_with_list_arg() {
+        // Test env() with list argument (should fail)
+        let result = env_fn(&[Value::List(vec![])]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::TypeError(msg) => {
+                assert!(msg.contains("requires a string argument"));
+            }
+            _ => panic!("Expected TypeError"),
+        }
+    }
+
+    #[test]
+    fn test_env_with_datetime_arg() {
+        // Test env() with datetime argument (should fail)
+        use chrono::Utc;
+        let result = env_fn(&[Value::DateTime(Utc::now())]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::TypeError(msg) => {
+                assert!(msg.contains("requires a string argument"));
+            }
+            _ => panic!("Expected TypeError"),
+        }
+    }
+
+    #[test]
+    fn test_env_with_lambda_arg() {
+        // Test env() with lambda argument (should fail)
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+        });
+        let result = env_fn(&[lambda]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::TypeError(msg) => {
+                assert!(msg.contains("requires a string argument"));
+            }
+            _ => panic!("Expected TypeError"),
+        }
+    }
+
+    #[test]
+    fn test_cwd_with_multiple_args() {
+        // Test cwd() with multiple arguments (should fail)
+        let result = cwd_fn(&[
+            Value::String("arg1".to_string()),
+            Value::String("arg2".to_string()),
+        ]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "cwd");
+                assert_eq!(expected, 0);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity error"),
+        }
+    }
+
+    #[test]
+    fn test_version_with_multiple_args() {
+        // Test version() with multiple arguments (should fail)
+        let result = version_fn(&[
+            Value::String("arg1".to_string()),
+            Value::String("arg2".to_string()),
+        ]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "version");
+                assert_eq!(expected, 0);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity error"),
+        }
+    }
+
+    #[test]
+    fn test_platform_with_multiple_args() {
+        // Test platform() with multiple arguments (should fail)
+        let result = platform_fn(&[
+            Value::String("arg1".to_string()),
+            Value::String("arg2".to_string()),
+        ]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "platform");
+                assert_eq!(expected, 0);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity error"),
+        }
+    }
+
+    #[test]
+    fn test_type_with_int_arg() {
+        // Test type() with int argument (valid)
+        let result = type_fn(&[Value::Int(42)]);
+        assert_eq!(result.unwrap(), Value::String("int".to_string()));
+    }
+
+    #[test]
+    fn test_type_with_float_arg() {
+        // Test type() with float argument (valid)
+        let result = type_fn(&[Value::Float(3.14)]);
+        assert_eq!(result.unwrap(), Value::String("float".to_string()));
+    }
+
+    #[test]
+    fn test_env_with_int_key() {
+        // Test env() with int argument (should fail with type error)
+        let result = env_fn(&[Value::Int(123)]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::TypeError(msg) => {
+                assert!(msg.contains("requires a string argument"));
+            }
+            _ => panic!("Expected TypeError"),
+        }
+    }
 }

@@ -1413,4 +1413,489 @@ mod tests {
         });
         assert!(sort_by(&[Value::Int(42), identity_lambda]).is_err());
     }
+
+    // Additional tests for error handling branches
+
+    #[test]
+    fn test_map_with_empty_params_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        // Lambda with no parameters should trigger error in apply_lambda
+        let empty_params_lambda = Value::Lambda(LambdaValue {
+            params: vec![], // Empty params
+            body: Expr::Int(42),
+            captured_vars: HashMap::new(),
+        });
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let result = map(&[list, empty_params_lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("lambda has no parameters"));
+    }
+
+    #[test]
+    fn test_filter_with_empty_params_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        // Lambda with no parameters should trigger error in apply_lambda
+        let empty_params_lambda = Value::Lambda(LambdaValue {
+            params: vec![], // Empty params
+            body: Expr::Bool(true),
+            captured_vars: HashMap::new(),
+        });
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let result = filter(&[list, empty_params_lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("lambda has no parameters"));
+    }
+
+    #[test]
+    fn test_reduce_with_empty_params_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        // Lambda with no parameters - reduce checks for at least 2 params
+        let empty_params_lambda = Value::Lambda(LambdaValue {
+            params: vec![], // Empty params
+            body: Expr::Int(42),
+            captured_vars: HashMap::new(),
+        });
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let result = reduce(&[list, Value::Int(0), empty_params_lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("lambda must have at least 2 parameters"));
+    }
+
+    #[test]
+    fn test_sort_by_with_empty_params_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        // Lambda with no parameters should trigger error in apply_lambda
+        let empty_params_lambda = Value::Lambda(LambdaValue {
+            params: vec![], // Empty params
+            body: Expr::Int(1),
+            captured_vars: HashMap::new(),
+        });
+        let list = Value::List(vec![Value::Int(3), Value::Int(1), Value::Int(2)]);
+        let result = sort_by(&[list, empty_params_lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("lambda has no parameters"));
+    }
+
+    #[test]
+    fn test_join_with_datetime() {
+        // join with non-list, non-null should fail
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = join(&[dt, Value::String(",".to_string())]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_join_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = join(&[lambda, Value::String(",".to_string())]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_first_with_datetime() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = first(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a list"));
+    }
+
+    #[test]
+    fn test_first_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = first(&[lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a list"));
+    }
+
+    #[test]
+    fn test_last_with_datetime() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = last(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a list"));
+    }
+
+    #[test]
+    fn test_last_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = last(&[lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a list"));
+    }
+
+    #[test]
+    fn test_reverse_with_datetime() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = reverse(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a list"));
+    }
+
+    #[test]
+    fn test_reverse_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = reverse(&[lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a list"));
+    }
+
+    #[test]
+    fn test_sort_with_datetime() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = sort(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a list"));
+    }
+
+    #[test]
+    fn test_sort_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = sort(&[lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a list"));
+    }
+
+    #[test]
+    fn test_unique_with_datetime() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = unique(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a list"));
+    }
+
+    #[test]
+    fn test_unique_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = unique(&[lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a list"));
+    }
+
+    #[test]
+    fn test_nth_with_datetime() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = nth(&[dt, Value::Int(0)]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_nth_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = nth(&[lambda, Value::Int(0)]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_slice_with_datetime() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = slice(&[dt, Value::Int(0), Value::Int(1)]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_slice_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = slice(&[lambda, Value::Int(0), Value::Int(1)]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_replace_nth_with_datetime() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = replace_nth(&[dt, Value::Int(0), Value::Int(99)]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_replace_nth_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = replace_nth(&[lambda, Value::Int(0), Value::Int(99)]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_map_with_datetime() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use chrono::Utc;
+        use std::collections::HashMap;
+
+        let dt = Value::DateTime(Utc::now());
+        let identity_lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = map(&[dt, identity_lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_filter_with_datetime() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use chrono::Utc;
+        use std::collections::HashMap;
+
+        let dt = Value::DateTime(Utc::now());
+        let identity_lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = filter(&[dt, identity_lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_reduce_with_datetime() {
+        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use chrono::Utc;
+        use std::collections::HashMap;
+
+        let dt = Value::DateTime(Utc::now());
+        let sum_lambda = Value::Lambda(LambdaValue {
+            params: vec!["acc".to_string(), "x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::LambdaParam("acc".to_string())),
+                right: Box::new(Expr::LambdaParam("x".to_string())),
+            },
+            captured_vars: HashMap::new(),
+        });
+        let result = reduce(&[dt, Value::Int(0), sum_lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_sort_by_with_datetime() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use chrono::Utc;
+        use std::collections::HashMap;
+
+        let dt = Value::DateTime(Utc::now());
+        let identity_lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = sort_by(&[dt, identity_lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_range_with_datetime() {
+        use chrono::Utc;
+        let dt = Value::DateTime(Utc::now());
+        let result = range(&[dt]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a number"));
+    }
+
+    #[test]
+    fn test_range_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let result = range(&[lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("argument must be a number"));
+    }
 }
