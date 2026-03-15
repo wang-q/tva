@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-841d9faa.js";
+            window.path_to_searchindex_js = "../searchindex-60e963ba.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d1513fcf.js"></script>
@@ -206,6 +206,7 @@
 <li>Column references return <code>String</code> by default (raw bytes)</li>
 <li>Numeric operations automatically attempt parsing; failure yields <code>null</code></li>
 <li>Use <code>int(@col)</code> or <code>float(@col)</code> for explicit type specification</li>
+<li><strong>Empty fields are treated as <code>null</code></strong>, not empty strings. See <a href="literals.html#null-type-and-empty-fields">Null Type and Empty Fields</a> for details.</li>
 </ul>
 <h2 id="variable-binding"><a class="header" href="#variable-binding">Variable Binding</a></h2>
 <p>Use <code>as</code> keyword to bind expression results to variables for reuse in subsequent pipes:</p>

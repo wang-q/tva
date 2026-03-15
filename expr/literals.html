@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-841d9faa.js";
+            window.path_to_searchindex_js = "../searchindex-60e963ba.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d1513fcf.js"></script>
@@ -242,6 +242,36 @@ evaluation:</p>
 <li><strong>String concatenation</strong>: <code>++</code> operator converts operands to strings</li>
 <li><strong>Comparison</strong>: Same-type comparison only; different types always return <code>false</code></li>
 </ul>
+<h3 id="null-type-and-empty-fields"><a class="header" href="#null-type-and-empty-fields">Null Type and Empty Fields</a></h3>
+<p>In TVA, <strong>empty fields from TSV data are treated as <code>null</code></strong>, not empty strings. This is important
+because <code>null</code> behaves differently from <code>""</code> in expressions.</p>
+<p><strong>Key behaviors:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Expression</th><th style="text-align: left">Empty Field (<code>null</code>)</th><th style="text-align: left">Non-Empty Field (<code>"text"</code>)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>@col == ""</code></td><td style="text-align: left"><code>false</code></td><td style="text-align: left"><code>false</code></td></tr>
+<tr><td style="text-align: left"><code>@col == null</code></td><td style="text-align: left"><code>true</code></td><td style="text-align: left"><code>false</code></td></tr>
+<tr><td style="text-align: left"><code>not @col</code></td><td style="text-align: left"><code>true</code></td><td style="text-align: left"><code>false</code></td></tr>
+<tr><td style="text-align: left"><code>len(@col)</code></td><td style="text-align: left"><code>0</code></td><td style="text-align: left">length of string</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>How to check for empty values:</strong></p>
+<pre><code class="language-bash"># Correct way to check for empty field
+tva expr -E 'not @1' -r ''              # Output: true
+tva expr -E '@1 == null' -r ''          # Output: true
+
+# Incorrect: empty field is not equal to empty string
+tva expr -E '@1 == ""' -r ''            # Output: false
+</code></pre>
+<p><strong>Use case: Default values</strong></p>
+<pre><code class="language-bash"># Provide default value for empty field
+tva expr -E 'if(@email == null, "no-email", @email)' -n 'email' -r '' -r 'user@test.com'
+# Output: no-email, user@test.com
+</code></pre>
 <h2 id="string-escape-sequences"><a class="header" href="#string-escape-sequences">String Escape Sequences</a></h2>
 <div class="table-wrapper">
 <table>

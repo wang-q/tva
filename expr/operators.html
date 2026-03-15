@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-841d9faa.js";
+            window.path_to_searchindex_js = "../searchindex-60e963ba.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d1513fcf.js"></script>
@@ -230,12 +230,37 @@
 <li><code>a ge b</code>: String greater than or equal</li>
 </ul>
 <p><strong>Note</strong>: No implicit type conversion. Use string comparison operators for string comparison.</p>
+<p><strong>Note</strong>: Empty fields are treated as <code>null</code>. See <a href="literals.html#null-type-and-empty-fields">Null Type and Empty Fields</a> for details.</p>
 <h2 id="logical-operators"><a class="header" href="#logical-operators">Logical Operators</a></h2>
 <ul>
 <li><code>not a</code>: Logical NOT</li>
-<li><code>a and b</code>: Logical AND</li>
-<li><code>a or b</code>: Logical OR</li>
+<li><code>a and b</code>: Logical AND (short-circuit evaluation)</li>
+<li><code>a or b</code>: Logical OR (short-circuit evaluation)</li>
 </ul>
+<p><strong>Short-circuit evaluation</strong>: <code>and</code> and <code>or</code> use short-circuit evaluation, meaning the right operand is only evaluated if necessary.</p>
+<pre><code class="language-bash"># AND short-circuit: right side not evaluated when left is false
+tva expr -E 'false and print("hello")'   # Output: false (print not called)
+tva expr -E 'true and print("hello")'    # Output: hello\ntrue
+
+# OR short-circuit: right side not evaluated when left is true
+tva expr -E 'true or print("hello")'     # Output: true (print not called)
+tva expr -E 'false or print("hello")'    # Output: hello\ntrue
+
+# Avoid division by zero
+# If @2 is 0, the division is skipped
+tva expr -E '@2 != 0 and @1 / @2 &gt; 2' -r '100,0' -r '100,5'   # Output: false, true
+
+# Check before accessing
+# Only calculate length if @name is not empty
+tva expr -E '@name != "" and len(@name) &gt; 5' -n 'name' -r '' -r 'Alice' -r 'Alexander'  # Output: false, false, true
+
+# Logical OR with string (returns boolean)
+# Empty field is null (falsy), non-empty is truthy
+tva expr -E '@email or "fallback"' -n 'email' -r '' -r 'user@example.com'  # Output: true, true
+
+# For default value, use if() with null check:
+tva expr -E 'if(@email == null, "no-email@example.com", @email)' -n 'email' -r '' -r 'user@example.com'  # Output: no-email@example.com, user@example.com
+</code></pre>
 <h2 id="pipe-operator"><a class="header" href="#pipe-operator">Pipe Operator</a></h2>
 <ul>
 <li><code>a | f()</code>: Pipe left value to function (left value becomes first argument)</li>
