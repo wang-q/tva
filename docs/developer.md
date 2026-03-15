@@ -24,6 +24,14 @@ cargo llvm-cov
 
 XXX 的测试覆盖度不高，使用 `cargo llvm-cov` 生成覆盖率报告，找出需要提升的地方.
 
+## WSL
+
+```bash
+mkdir -p /tmp/cargo
+export CARGO_TARGET_DIR=/tmp/cargo
+cargo build
+```
+
 ## 深度技术分析
 
 ### 参考项目: GNU Datamash
