@@ -454,7 +454,54 @@ pub struct FunctionInfo {
 | 字符串函数查找 | HashMap 查找开销 | 直接持有函数指针 |
 | 无具体化阶段 | 每行重复解析 AST | 两阶段编译 |
 
-#### 7. 优化建议（参考 xan）
+#### 7. 基准测试 (benches/expr_eval.rs)
+
+为量化优化效果，创建了专门的 benchmark：
+
+```bash
+# 运行表达式引擎基准测试
+cargo bench --bench expr_eval
+```
+
+**测试分组**：
+
+| 分组 | 测试项 | 说明 |
+|:-----|:-------|:-----|
+| **expression_eval** | col_access_by_index | 列索引访问基准 |
+| | col_access_by_name | 列名访问开销（线性查找） |
+| | arithmetic_simple/complex | 算术运算性能 |
+| | func_call_trim/len | 函数调用开销（含 Registry 创建） |
+| | pipe_simple | 管道操作性能 |
+| | parse_and_eval vs eval_only | 解析 vs 执行占比 |
+| **function_registry** | registry_create | FunctionRegistry 创建开销 |
+| | registry_lookup | HashMap 查找性能 |
+| **column_resolution** | by_index | 索引访问（O(1)） |
+| | by_name_linear | 名称查找（O(n)） |
+
+**关键对比**：
+- `parse_and_eval` vs `eval_only`：显示解析阶段占比
+- `col_access_by_index` vs `col_access_by_name`：显示列名解析开销
+- `registry_create`：显示当前最大瓶颈
+
+**实测结果（10,000 次迭代）**：
+
+| 测试项 | 耗时 | 吞吐量 | 分析 |
+|:-------|:-----|:-------|:-----|
+| `col_access_by_index` | 148 µs | 67 Melem/s | 列索引访问很快 |
+| `col_access_by_name` | 442 µs | 22 Melem/s | **比索引慢 3 倍**（线性查找） |
+| `eval_only` | 1.2 ms | 8.5 Melem/s | 纯执行阶段 |
+| `parse_and_eval` | 32 ms | 312 Kelem/s | **解析占 96% 时间** |
+| `func_call_trim` | 55 ms | 182 Kelem/s | **函数调用是最大瓶颈** |
+| `pipe_simple` | 110 ms | 90 Kelem/s | 2 次函数调用 = 2 倍开销 |
+| `registry_create` | 5 ms/1000次 | - | 确认 Registry 创建开销大 |
+
+**关键结论**：
+1. **FunctionRegistry 每行创建** 是最大性能杀手（55ms vs 1.2ms，**45 倍差距**）
+2. **解析开销** 也非常严重（32ms vs 1.2ms，解析占 96%）
+3. **列名访问** 比索引慢 3 倍，但在可接受范围
+4. **函数调用** 比算术运算慢 50 倍以上
+
+#### 8. 优化建议（参考 xan）
 
 **短期优化**：
 1. **全局函数注册表**：使用 `lazy_static!` 或 `once_cell` 创建全局 `FunctionRegistry`

@@ -71,7 +71,11 @@ criterion = "0.8.2"
 simd-csv = "0.11"
 
 [[bench]]
-name = "parse_benchmark"
+name = "tsv_parse"
+harness = false
+
+[[bench]]
+name = "expr_eval"
 harness = false
 
 [profile.release]

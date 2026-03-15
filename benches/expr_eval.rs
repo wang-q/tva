@@ -1,0 +1,312 @@
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use std::hint::black_box;
+use std::time::Duration;
+
+/// Benchmark expression evaluation performance
+/// Tests various aspects of the expression engine to identify bottlenecks
+
+fn create_test_row() -> Vec<String> {
+    vec![
+        "100".to_string(),
+        "3.14".to_string(),
+        "hello world".to_string(),
+        "true".to_string(),
+        "42".to_string(),
+    ]
+}
+
+fn create_test_headers() -> Vec<String> {
+    vec![
+        "id".to_string(),
+        "value".to_string(),
+        "name".to_string(),
+        "active".to_string(),
+        "count".to_string(),
+    ]
+}
+
+fn benchmark_expression_eval(c: &mut Criterion) {
+    let row = create_test_row();
+    let headers = create_test_headers();
+    let iterations = 10000;
+
+    let mut group = c.benchmark_group("expression_eval");
+    group.throughput(Throughput::Elements(iterations as u64));
+    group.warm_up_time(Duration::from_secs(2));
+    group.measurement_time(Duration::from_secs(5));
+
+    // 1. Simple column access by index
+    // Baseline: just accessing a column
+    group.bench_function("col_access_by_index", |b| {
+        let expr = tva::libs::expr::parser::parse("@1").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 2. Column access by name
+    // Tests the overhead of name-to-index resolution
+    group.bench_function("col_access_by_name", |b| {
+        let expr = tva::libs::expr::parser::parse("@id").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 3. Arithmetic expression
+    // Tests basic arithmetic operations
+    group.bench_function("arithmetic_simple", |b| {
+        let expr = tva::libs::expr::parser::parse("@1 + @5 * 2").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 4. Complex arithmetic
+    // Tests multiple operations
+    group.bench_function("arithmetic_complex", |b| {
+        let expr = tva::libs::expr::parser::parse("(@1 + @5) * 3 - @5 / 2").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 5. String concatenation
+    // Tests string operations
+    group.bench_function("string_concat", |b| {
+        let expr = tva::libs::expr::parser::parse("@3 ++ ' suffix'").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 6. Function call - trim
+    // Tests function call overhead (creates FunctionRegistry each time)
+    group.bench_function("func_call_trim", |b| {
+        let expr = tva::libs::expr::parser::parse("trim(@3)").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 7. Function call - len
+    // Tests another common function
+    group.bench_function("func_call_len", |b| {
+        let expr = tva::libs::expr::parser::parse("len(@3)").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 8. Comparison operation
+    // Tests comparison operators
+    group.bench_function("comparison", |b| {
+        let expr = tva::libs::expr::parser::parse("@1 > @5").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 9. Logical operation with short-circuit
+    // Tests logical operators (should short-circuit)
+    group.bench_function("logical_short_circuit", |b| {
+        let expr = tva::libs::expr::parser::parse("@1 > 0 and @5 < 100").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 10. Pipe expression
+    // Tests pipe operator overhead
+    group.bench_function("pipe_simple", |b| {
+        let expr = tva::libs::expr::parser::parse("@3 | trim() | len()").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 11. List literal
+    // Tests list creation
+    group.bench_function("list_literal", |b| {
+        let expr = tva::libs::expr::parser::parse("[@1, @2, @3]").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 12. Method call
+    // Tests method call syntax (object.method(args))
+    group.bench_function("method_call", |b| {
+        let expr = tva::libs::expr::parser::parse("@3.trim()").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 13. Variable binding
+    // Tests 'as' binding
+    group.bench_function("variable_bind", |b| {
+        let expr = tva::libs::expr::parser::parse("@1 + @5 as @total; @total * 2").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 14. Parse + Eval (combined)
+    // Tests the full pipeline (worst case - parsing every time)
+    group.bench_function("parse_and_eval", |b| {
+        let expr_str = "@1 + @5 * 2";
+        b.iter(|| {
+            for _ in 0..iterations {
+                let expr = tva::libs::expr::parser::parse(expr_str).unwrap();
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 15. Pre-parsed only (best case)
+    // Tests evaluation only (parsing done outside loop)
+    group.bench_function("eval_only", |b| {
+        let expr = tva::libs::expr::parser::parse("@1 + @5 * 2").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    group.finish();
+}
+
+fn benchmark_function_registry(c: &mut Criterion) {
+    let mut group = c.benchmark_group("function_registry");
+    group.warm_up_time(Duration::from_secs(2));
+    group.measurement_time(Duration::from_secs(5));
+
+    // 16. FunctionRegistry creation overhead
+    // This is the current bottleneck - creating registry for each call
+    group.bench_function("registry_create", |b| {
+        b.iter(|| {
+            for _ in 0..1000 {
+                let registry = tva::libs::expr::functions::FunctionRegistry::new();
+                black_box(registry);
+            }
+        })
+    });
+
+    // 17. Function lookup by name
+    // Tests HashMap lookup performance
+    group.bench_function("registry_lookup", |b| {
+        let registry = tva::libs::expr::functions::FunctionRegistry::new();
+        b.iter(|| {
+            for _ in 0..10000 {
+                let func = registry.get("trim");
+                black_box(func);
+            }
+        })
+    });
+
+    group.finish();
+}
+
+fn benchmark_column_resolution(c: &mut Criterion) {
+    let row = create_test_row();
+    let headers = create_test_headers();
+    let iterations = 10000;
+
+    let mut group = c.benchmark_group("column_resolution");
+    group.throughput(Throughput::Elements(iterations as u64));
+    group.warm_up_time(Duration::from_secs(2));
+    group.measurement_time(Duration::from_secs(5));
+
+    // 18. Column index access (fast path)
+    // Using expression evaluation to test column access
+    group.bench_function("by_index", |b| {
+        let expr = tva::libs::expr::parser::parse("@1").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 19. Column name access (slow path - linear search)
+    group.bench_function("by_name_linear", |b| {
+        let expr = tva::libs::expr::parser::parse("@id").unwrap();
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    group.finish();
+}
+
+criterion_group!(
+    benches,
+    benchmark_expression_eval,
+    benchmark_function_registry,
+    benchmark_column_resolution
+);
+criterion_main!(benches);
