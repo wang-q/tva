@@ -1,6 +1,6 @@
-# Expression Syntax Guide
+# Expr Syntax Guide
 
-This document provides a comprehensive guide to TVA expression syntax, covering function calls,
+This document provides a comprehensive guide to TVA expr syntax, covering function calls,
 pipelines, lambda expressions, and multi-expression evaluation.
 
 ## Expression Elements
