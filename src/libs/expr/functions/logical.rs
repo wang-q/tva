@@ -268,4 +268,48 @@ mod tests {
             Value::Int(20)
         );
     }
+
+    // Tests moved from src/libs/expr/tests/functions.rs
+    #[test]
+    fn test_if_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec![];
+        assert_eq!(
+            eval_expr("if(true, 1, 0)", &row, None).unwrap().to_string(),
+            "1"
+        );
+        assert_eq!(
+            eval_expr("if(false, 1, 0)", &row, None)
+                .unwrap()
+                .to_string(),
+            "0"
+        );
+
+        // Using expression as condition
+        let row: Vec<String> = vec!["10".to_string(), "5".to_string()];
+        assert_eq!(
+            eval_expr("if(@1 > @2, \"greater\", \"less or equal\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "greater"
+        );
+    }
+
+    #[test]
+    fn test_default_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec![];
+        assert_eq!(
+            eval_expr("default(null, \"fallback\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "fallback"
+        );
+        assert_eq!(
+            eval_expr("default(\"value\", \"fallback\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "value"
+        );
+    }
 }

@@ -1873,4 +1873,56 @@ mod tests {
             .to_string()
             .contains("cannot convert datetime"));
     }
+
+    // Tests moved from src/libs/expr/tests/functions.rs
+    #[test]
+    fn test_abs_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["-5".to_string()];
+        assert_eq!(eval_expr("abs(@1)", &row, None).unwrap().to_string(), "5");
+
+        let row: Vec<String> = vec!["-3.14".to_string()];
+        assert_eq!(
+            eval_expr("abs(@1)", &row, None).unwrap().to_string(),
+            "3.14"
+        );
+    }
+
+    #[test]
+    fn test_round_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["3.7".to_string()];
+        assert_eq!(eval_expr("round(@1)", &row, None).unwrap().to_string(), "4");
+
+        let row: Vec<String> = vec!["3.2".to_string()];
+        assert_eq!(eval_expr("round(@1)", &row, None).unwrap().to_string(), "3");
+    }
+
+    #[test]
+    fn test_min_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec![];
+        assert_eq!(
+            eval_expr("min(3, 1, 2)", &row, None).unwrap().to_string(),
+            "1"
+        );
+        assert_eq!(
+            eval_expr("min(10, 5)", &row, None).unwrap().to_string(),
+            "5"
+        );
+    }
+
+    #[test]
+    fn test_max_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec![];
+        assert_eq!(
+            eval_expr("max(3, 1, 2)", &row, None).unwrap().to_string(),
+            "3"
+        );
+        assert_eq!(
+            eval_expr("max(10, 5)", &row, None).unwrap().to_string(),
+            "10"
+        );
+    }
 }

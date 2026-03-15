@@ -558,4 +558,329 @@ mod tests {
         assert_eq!(a.compare(&c), Some(std::cmp::Ordering::Less)); // [1, "a"] < [2, "b"]
         assert_eq!(b.compare(&c), Some(std::cmp::Ordering::Less)); // [1, "c"] < [2, "b"]
     }
+
+    #[test]
+    fn test_is_numeric() {
+        assert_eq!(Value::Int(42).is_numeric(), true);
+        assert_eq!(Value::Float(3.14).is_numeric(), true);
+        assert_eq!(Value::Null.is_numeric(), false);
+        assert_eq!(Value::Bool(true).is_numeric(), false);
+        assert_eq!(Value::String("123".to_string()).is_numeric(), false);
+        assert_eq!(Value::List(vec![]).is_numeric(), false);
+        assert_eq!(Value::DateTime(chrono::Utc::now()).is_numeric(), false);
+        assert_eq!(
+            Value::Lambda(LambdaValue {
+                params: vec![],
+                body: crate::libs::expr::parser::ast::Expr::Int(1),
+                captured_vars: HashMap::new(),
+            })
+            .is_numeric(),
+            false
+        );
+    }
+
+    #[test]
+    fn test_is_null() {
+        assert_eq!(Value::Null.is_null(), true);
+        assert_eq!(Value::Int(42).is_null(), false);
+        assert_eq!(Value::Bool(false).is_null(), false);
+        assert_eq!(Value::String("".to_string()).is_null(), false);
+    }
+
+    #[test]
+    fn test_type_name() {
+        assert_eq!(Value::Null.type_name(), "null");
+        assert_eq!(Value::Bool(true).type_name(), "bool");
+        assert_eq!(Value::Int(42).type_name(), "int");
+        assert_eq!(Value::Float(3.14).type_name(), "float");
+        assert_eq!(Value::String("hello".to_string()).type_name(), "string");
+        assert_eq!(Value::List(vec![]).type_name(), "list");
+        assert_eq!(Value::DateTime(chrono::Utc::now()).type_name(), "datetime");
+        assert_eq!(
+            Value::Lambda(LambdaValue {
+                params: vec![],
+                body: crate::libs::expr::parser::ast::Expr::Int(1),
+                captured_vars: HashMap::new(),
+            })
+            .type_name(),
+            "lambda"
+        );
+    }
+
+    #[test]
+    fn test_to_string() {
+        assert_eq!(Value::Null.to_string(), "null");
+        assert_eq!(Value::Bool(true).to_string(), "true");
+        assert_eq!(Value::Bool(false).to_string(), "false");
+        assert_eq!(Value::Int(42).to_string(), "42");
+        assert_eq!(Value::Float(3.14).to_string(), "3.14");
+        assert_eq!(Value::String("hello".to_string()).to_string(), "hello");
+        assert_eq!(
+            Value::List(vec![Value::Int(1), Value::Int(2)]).to_string(),
+            "[Int(1), Int(2)]"
+        );
+        let dt = chrono::Utc::now();
+        assert_eq!(Value::DateTime(dt).to_string(), dt.to_rfc3339());
+        assert_eq!(
+            Value::Lambda(LambdaValue {
+                params: vec![],
+                body: crate::libs::expr::parser::ast::Expr::Int(1),
+                captured_vars: HashMap::new(),
+            })
+            .to_string(),
+            "<lambda>"
+        );
+    }
+
+    #[test]
+    fn test_as_string() {
+        assert_eq!(Value::String("hello".to_string()).as_string(), "hello");
+        assert_eq!(Value::Int(42).as_string(), "42");
+        assert_eq!(Value::Null.as_string(), "null");
+        assert_eq!(Value::Bool(true).as_string(), "true");
+    }
+
+    #[test]
+    fn test_as_int() {
+        // Int
+        assert_eq!(Value::Int(42).as_int(), Some(42));
+        // Float (truncates)
+        assert_eq!(Value::Float(3.7).as_int(), Some(3));
+        // String that parses
+        assert_eq!(Value::String("123".to_string()).as_int(), Some(123));
+        // String that doesn't parse
+        assert_eq!(Value::String("abc".to_string()).as_int(), None);
+        // Bool
+        assert_eq!(Value::Bool(true).as_int(), Some(1));
+        assert_eq!(Value::Bool(false).as_int(), Some(0));
+        // Other types return None
+        assert_eq!(Value::Null.as_int(), None);
+        assert_eq!(Value::List(vec![]).as_int(), None);
+    }
+
+    #[test]
+    fn test_as_f64_non_numeric() {
+        assert_eq!(Value::Null.as_f64(), None);
+        assert_eq!(Value::Bool(true).as_f64(), None);
+        assert_eq!(Value::String("hello".to_string()).as_f64(), None);
+        assert_eq!(Value::List(vec![]).as_f64(), None);
+        assert_eq!(Value::DateTime(chrono::Utc::now()).as_f64(), None);
+    }
+
+    #[test]
+    fn test_as_float() {
+        assert_eq!(Value::Float(3.14).as_float(), Some(3.14));
+        assert_eq!(Value::Int(42).as_float(), None);
+        assert_eq!(Value::Null.as_float(), None);
+    }
+
+    #[test]
+    fn test_display_trait() {
+        use std::fmt::Write;
+        let mut buf = String::new();
+        write!(&mut buf, "{}", Value::Int(42)).unwrap();
+        assert_eq!(buf, "42");
+
+        buf.clear();
+        write!(&mut buf, "{}", Value::String("hello".to_string())).unwrap();
+        assert_eq!(buf, "hello");
+    }
+
+    #[test]
+    fn test_as_bool_with_list() {
+        // Empty list is falsy
+        assert_eq!(Value::List(vec![]).as_bool(), false);
+        // Non-empty list is truthy
+        assert_eq!(Value::List(vec![Value::Int(1)]).as_bool(), true);
+    }
+
+    #[test]
+    fn test_as_bool_with_datetime() {
+        use chrono::Utc;
+        // DateTime is always truthy
+        assert_eq!(Value::DateTime(Utc::now()).as_bool(), true);
+    }
+
+    #[test]
+    fn test_as_bool_with_lambda() {
+        // Lambda is always truthy
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: crate::libs::expr::parser::ast::Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        assert_eq!(lambda.as_bool(), true);
+    }
+
+    #[test]
+    fn test_comparison_with_non_numeric() {
+        // lt with non-numeric should return None
+        assert_eq!(Value::String("a".to_string()).lt(&Value::Int(1)), None);
+        assert_eq!(Value::Null.lt(&Value::Int(1)), None);
+
+        // le with non-numeric should return None
+        assert_eq!(Value::String("a".to_string()).le(&Value::Int(1)), None);
+
+        // gt with non-numeric should return None
+        assert_eq!(Value::List(vec![]).gt(&Value::Int(1)), None);
+
+        // ge with non-numeric should return None
+        assert_eq!(Value::Bool(true).ge(&Value::Int(1)), None);
+    }
+
+    #[test]
+    fn test_arithmetic_with_non_numeric() {
+        // Add with non-numeric should return None
+        assert_eq!(Value::String("a".to_string()) + Value::Int(1), None);
+
+        // Sub with non-numeric should return None
+        assert_eq!(Value::Null - Value::Int(1), None);
+
+        // Mul with non-numeric should return None
+        assert_eq!(Value::Bool(true) * Value::Int(1), None);
+
+        // Div with non-numeric should return None
+        assert_eq!(Value::List(vec![]) / Value::Int(1), None);
+    }
+
+    #[test]
+    fn test_division_by_zero() {
+        assert_eq!(Value::Int(10) / Value::Int(0), None);
+        assert_eq!(Value::Float(10.0) / Value::Float(0.0), None);
+    }
+
+    #[test]
+    fn test_modulo_by_zero() {
+        assert_eq!(Value::Int(10) % Value::Int(0), None);
+        assert_eq!(Value::Float(10.0) % Value::Float(0.0), None);
+    }
+
+    #[test]
+    fn test_modulo_float() {
+        assert_eq!(
+            Value::Float(10.5) % Value::Float(3.0),
+            Some(Value::Float(1.5))
+        );
+    }
+
+    #[test]
+    fn test_pow_with_non_numeric() {
+        assert_eq!(Value::String("a".to_string()).pow(&Value::Int(2)), None);
+        assert_eq!(Value::Int(2).pow(&Value::String("b".to_string())), None);
+    }
+
+    #[test]
+    fn test_compare_datetime() {
+        use chrono::Utc;
+        let dt1 = chrono::DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let dt2 = chrono::DateTime::parse_from_rfc3339("2023-06-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        assert_eq!(
+            Value::DateTime(dt1).compare(&Value::DateTime(dt2)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::DateTime(dt2).compare(&Value::DateTime(dt1)),
+            Some(std::cmp::Ordering::Greater)
+        );
+        assert_eq!(
+            Value::DateTime(dt1).compare(&Value::DateTime(dt1)),
+            Some(std::cmp::Ordering::Equal)
+        );
+    }
+
+    #[test]
+    fn test_compare_lambda_returns_none() {
+        let lambda1 = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: crate::libs::expr::parser::ast::Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        let lambda2 = Value::Lambda(LambdaValue {
+            params: vec!["y".to_string()],
+            body: crate::libs::expr::parser::ast::Expr::LambdaParam("y".to_string()),
+            captured_vars: HashMap::new(),
+        });
+
+        // Lambda comparison returns None (not comparable)
+        assert_eq!(lambda1.compare(&lambda2), None);
+        assert_eq!(lambda1.compare(&lambda1), None);
+    }
+
+    #[test]
+    fn test_compare_mixed_types_with_datetime() {
+        use chrono::Utc;
+        // DateTime has higher priority than list
+        assert_eq!(
+            Value::List(vec![]).compare(&Value::DateTime(Utc::now())),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::DateTime(Utc::now()).compare(&Value::List(vec![])),
+            Some(std::cmp::Ordering::Greater)
+        );
+
+        // Lambda has highest priority
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec![],
+            body: crate::libs::expr::parser::ast::Expr::Int(1),
+            captured_vars: HashMap::new(),
+        });
+        assert_eq!(
+            Value::DateTime(Utc::now()).compare(&lambda),
+            Some(std::cmp::Ordering::Less)
+        );
+    }
+
+    #[test]
+    fn test_compare_list_with_incomparable_elements() {
+        // List with lambda elements (not comparable)
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec![],
+            body: crate::libs::expr::parser::ast::Expr::Int(1),
+            captured_vars: HashMap::new(),
+        });
+        // Two lists with lambda elements at same position - should return None
+        let list1 = Value::List(vec![lambda.clone()]);
+        let list2 = Value::List(vec![lambda.clone()]);
+
+        // Comparison should return None when elements are not comparable
+        assert_eq!(list1.compare(&list2), None);
+    }
+
+    #[test]
+    fn test_float_comparison_with_nan() {
+        // Test float comparison with NaN
+        let nan = Value::Float(f64::NAN);
+        let num = Value::Float(1.0);
+
+        // NaN comparisons return None
+        assert_eq!(nan.compare(&num), None);
+        assert_eq!(num.compare(&nan), None);
+        assert_eq!(nan.compare(&nan), None);
+    }
+
+    #[test]
+    fn test_ne_comparison() {
+        let a = Value::Int(10);
+        let b = Value::Int(5);
+        let c = Value::Int(10);
+
+        assert_eq!(a.ne(&b), Value::Bool(true));
+        assert_eq!(a.ne(&c), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_eq_comparison() {
+        let a = Value::Int(10);
+        let b = Value::Int(5);
+        let c = Value::Int(10);
+
+        assert_eq!(a.eq(&b), Value::Bool(false));
+        assert_eq!(a.eq(&c), Value::Bool(true));
+    }
 }

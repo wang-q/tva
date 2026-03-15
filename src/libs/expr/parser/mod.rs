@@ -1531,7 +1531,33 @@ mod tests {
         let err_str = err.to_string();
         assert!(err_str.contains("0") || err_str.contains("column"));
 
-        let err = parse("@").unwrap_err();
+        let _err = parse("@").unwrap_err();
         assert!(!err_str.is_empty());
+    }
+
+    // Tests moved from src/libs/expr/tests/errors.rs
+    #[test]
+    fn test_parse_empty_column_ref() {
+        assert!(parse("@").is_err());
+    }
+
+    #[test]
+    fn test_parse_invalid_column_index_zero() {
+        assert!(parse("@0").is_err());
+    }
+
+    #[test]
+    fn test_parse_unexpected_character() {
+        assert!(parse("@1 + $").is_err());
+    }
+
+    #[test]
+    fn test_parse_invalid_number() {
+        assert!(parse("1.2.3").is_err());
+    }
+
+    #[test]
+    fn test_parse_unclosed_parenthesis() {
+        assert!(parse("(@1 + @2").is_err());
     }
 }

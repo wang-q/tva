@@ -6,9 +6,6 @@ pub mod functions;
 pub mod parser;
 pub mod runtime;
 
-#[cfg(test)]
-mod tests;
-
 use parser::ParseError;
 use runtime::EvalError;
 use thiserror::Error;

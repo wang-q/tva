@@ -497,4 +497,42 @@ mod tests {
             Value::String("lo".to_string())
         );
     }
+
+    // Tests moved from src/libs/expr/tests/functions.rs
+    #[test]
+    fn test_trim_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["  hello  ".to_string()];
+        assert_eq!(
+            eval_expr("trim(@1)", &row, None).unwrap().to_string(),
+            "hello"
+        );
+    }
+
+    #[test]
+    fn test_upper_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["hello".to_string()];
+        assert_eq!(
+            eval_expr("upper(@1)", &row, None).unwrap().to_string(),
+            "HELLO"
+        );
+    }
+
+    #[test]
+    fn test_lower_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["HELLO".to_string()];
+        assert_eq!(
+            eval_expr("lower(@1)", &row, None).unwrap().to_string(),
+            "hello"
+        );
+    }
+
+    #[test]
+    fn test_len_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["hello".to_string()];
+        assert_eq!(eval_expr("len(@1)", &row, None).unwrap().to_string(), "5");
+    }
 }
