@@ -757,12 +757,231 @@ mod tests {
     }
 
     #[test]
+    fn test_abs_bool() {
+        assert_eq!(abs(&[Value::Bool(true)]).unwrap(), Value::Int(1));
+        assert_eq!(abs(&[Value::Bool(false)]).unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_abs_string() {
+        assert_eq!(
+            abs(&[Value::String("-42".to_string())]).unwrap(),
+            Value::Int(42)
+        );
+        assert_eq!(
+            abs(&[Value::String("-3.14".to_string())]).unwrap(),
+            Value::Float(3.14)
+        );
+        // Invalid string should error
+        assert!(abs(&[Value::String("abc".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_round_string() {
+        assert_eq!(
+            round(&[Value::String("3.7".to_string())]).unwrap(),
+            Value::Int(4)
+        );
+        // Invalid string should error
+        assert!(round(&[Value::String("abc".to_string())]).is_err());
+    }
+
+    #[test]
     fn test_min_empty() {
         assert_eq!(min(&[Value::Null]).unwrap(), Value::Null);
     }
 
     #[test]
+    fn test_min_no_args() {
+        assert!(min(&[]).is_err());
+    }
+
+    #[test]
+    fn test_min_mixed_types() {
+        assert_eq!(
+            min(&[
+                Value::Int(3),
+                Value::Float(1.5),
+                Value::String("2".to_string())
+            ])
+            .unwrap(),
+            Value::Float(1.5)
+        );
+    }
+
+    #[test]
+    fn test_min_with_null_and_list() {
+        // Null should be skipped, List should be skipped
+        assert_eq!(
+            min(&[
+                Value::Null,
+                Value::Int(5),
+                Value::List(vec![]),
+                Value::Int(3)
+            ])
+            .unwrap(),
+            Value::Int(3)
+        );
+    }
+
+    #[test]
     fn test_max_empty() {
         assert_eq!(max(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_max_no_args() {
+        assert!(max(&[]).is_err());
+    }
+
+    #[test]
+    fn test_int_string_float() {
+        // String containing float should be parsed and truncated
+        assert_eq!(
+            int(&[Value::String("3.14".to_string())]).unwrap(),
+            Value::Int(3)
+        );
+    }
+
+    #[test]
+    fn test_int_invalid_string() {
+        assert!(int(&[Value::String("abc".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_int_bool() {
+        assert_eq!(int(&[Value::Bool(true)]).unwrap(), Value::Int(1));
+        assert_eq!(int(&[Value::Bool(false)]).unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_float_invalid_string() {
+        assert!(float(&[Value::String("abc".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_float_bool() {
+        assert_eq!(float(&[Value::Bool(true)]).unwrap(), Value::Float(1.0));
+        assert_eq!(float(&[Value::Bool(false)]).unwrap(), Value::Float(0.0));
+    }
+
+    #[test]
+    fn test_ceil_int() {
+        // Int should pass through unchanged
+        assert_eq!(ceil(&[Value::Int(5)]).unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_ceil_string() {
+        assert_eq!(
+            ceil(&[Value::String("3.2".to_string())]).unwrap(),
+            Value::Int(4)
+        );
+        assert!(ceil(&[Value::String("abc".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_floor_int() {
+        // Int should pass through unchanged
+        assert_eq!(floor(&[Value::Int(5)]).unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_floor_string() {
+        assert_eq!(
+            floor(&[Value::String("3.7".to_string())]).unwrap(),
+            Value::Int(3)
+        );
+        assert!(floor(&[Value::String("abc".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_sqrt_zero() {
+        assert_eq!(sqrt(&[Value::Float(0.0)]).unwrap(), Value::Float(0.0));
+    }
+
+    #[test]
+    fn test_sqrt_string() {
+        assert_eq!(
+            sqrt(&[Value::String("16".to_string())]).unwrap(),
+            Value::Float(4.0)
+        );
+        assert!(sqrt(&[Value::String("abc".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_sqrt_null() {
+        assert_eq!(sqrt(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_pow_null() {
+        // If either arg is Null, return Null
+        assert_eq!(pow(&[Value::Null, Value::Int(2)]).unwrap(), Value::Null);
+        assert_eq!(pow(&[Value::Int(2), Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_pow_string() {
+        assert_eq!(
+            pow(&[
+                Value::String("2".to_string()),
+                Value::String("3".to_string())
+            ])
+            .unwrap(),
+            Value::Float(8.0)
+        );
+    }
+
+    #[test]
+    fn test_trigonometric_edge_cases() {
+        // sin(π) ≈ 0
+        assert!(
+            (sin(&[Value::Float(std::f64::consts::PI)])
+                .unwrap()
+                .as_float()
+                .unwrap()
+                - 0.0)
+                .abs()
+                < 1e-10
+        );
+        // cos(π/2) ≈ 0
+        assert!(
+            (cos(&[Value::Float(std::f64::consts::PI / 2.0)])
+                .unwrap()
+                .as_float()
+                .unwrap()
+                - 0.0)
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_ln_zero() {
+        // ln(0) should error
+        assert!(ln(&[Value::Float(0.0)]).is_err());
+    }
+
+    #[test]
+    fn test_log10_negative() {
+        assert!(log10(&[Value::Float(-1.0)]).is_err());
+    }
+
+    #[test]
+    fn test_exp_zero() {
+        assert_eq!(exp(&[Value::Float(0.0)]).unwrap(), Value::Float(1.0));
+    }
+
+    #[test]
+    fn test_type_errors() {
+        // Test that List, DateTime, Lambda produce type errors
+        assert!(abs(&[Value::List(vec![])]).is_err());
+        assert!(round(&[Value::List(vec![])]).is_err());
+        assert!(int(&[Value::List(vec![])]).is_err());
+        assert!(float(&[Value::List(vec![])]).is_err());
+        assert!(ceil(&[Value::List(vec![])]).is_err());
+        assert!(floor(&[Value::List(vec![])]).is_err());
+        assert!(sqrt(&[Value::List(vec![])]).is_err());
     }
 }
