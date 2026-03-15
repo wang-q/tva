@@ -1,23 +1,25 @@
 # Expression Syntax Guide
 
 This document provides a comprehensive guide to TVA expression syntax, covering function calls,
-pipelines, and multi-expression evaluation.
+pipelines, lambda expressions, and multi-expression evaluation.
 
 ## Expression Elements
 
 TVA expressions are composed of the following atomic elements:
 
-| Element              | Syntax                                       | Description                  |
-|:---------------------|:---------------------------------------------|:-----------------------------|
-| **Column Reference** | `@1`, `@col_name`                            | Reference input data columns |
-| **Variable**         | `@var_name`                                  | Variables bound via `as`     |
-| **Literal**          | `42`, `"hello"`, `true`, `null`, `[1, 2, 3]` | Constant values              |
-| **Function Call**    | `func(args...)`                              | Built-in functions           |
+| Element | Syntax | Description |
+|:--------|:-------|:------------|
+| **Column Reference** | `@1`, `@col_name` | Reference input data columns |
+| **Variable** | `@var_name` | Variables bound via `as` |
+| **Literal** | `42`, `"hello"`, `true`, `null`, `[1, 2, 3]` | Constant values |
+| **Function Call** | `func(args...)` | Built-in functions |
+| **Lambda** | `x => x + 1` | Anonymous functions |
 
 ## Evaluation Rules
 
 * Expressions are evaluated left-to-right according to operator precedence
 * The pipe operator `|` has the lowest precedence, used to connect multiple processing steps
+* The last expression's value is the result
 
 ## Function Call Syntax
 
@@ -28,6 +30,7 @@ TVA expressions are composed of the following atomic elements:
 ```bash
 tva expr -E 'trim("  hello  ")'             # Returns: hello
 tva expr -E 'substr("hello world", 0, 5)'   # Returns: hello
+tva expr -E 'max(1, 5, 3)'                   # Returns: 5
 ```
 
 ### Method Call
@@ -56,6 +59,7 @@ functions.
 ```bash
 tva expr -E '"hello" | upper()'             # Returns: HELLO
 tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
+tva expr -E '@name | trim() | lower()'      # Chain multiple pipes
 ```
 
 ### Pipe Call (Multiple Arguments)
@@ -65,6 +69,7 @@ tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
 ```bash
 tva expr -E '"hello world" | substr(_, 0, 5)'   # Returns: hello
 tva expr -E '"a,b,c" | split(_, ",")'           # Returns: ["a", "b", "c"]
+tva expr -E '"hello" | replace(_, "l", "x")'    # Returns: "hexxo"
 ```
 
 ## Expression Composition
@@ -83,11 +88,11 @@ Lambda expressions create anonymous functions, primarily used with higher-order 
 
 ### Syntax
 
-| Form                | Syntax                  | Example           |
-|:--------------------|:------------------------|:------------------|
-| Single parameter    | `param => expr`         | `x => x + 1`      |
+| Form | Syntax | Example |
+|:-----|:-------|:--------|
+| Single parameter | `param => expr` | `x => x + 1` |
 | Multiple parameters | `(p1, p2, ...) => expr` | `(x, y) => x + y` |
-| No parameters       | `() => expr`            | `() => 42`        |
+| No parameters | `() => expr` | `() => 42` |
 
 **Note**: Lambda parameters are **lexically scoped** and do not use the `@` prefix. This
 distinguishes them from column references (`@col`) and variables (`@var`).
@@ -106,6 +111,10 @@ tva expr -E 'reduce([1, 2, 3], 0, (acc, x) => acc + x)'
 # Filter with lambda
 tva expr -E 'filter([1, 2, 3, 4], x => x > 2)'
 # Returns: [3, 4]
+
+# Sort by computed key
+tva expr -E 'sort_by(["cherry", "apple", "pear"], s => len(s))'
+# Returns: ["pear", "apple", "cherry"]
 ```
 
 Lambda bodies can reference columns (`@col`) and variables (`@var`) from the outer scope.
@@ -126,6 +135,10 @@ tva expr -n "desc" -r "hello world" -E '@desc | substr(_, 0, 5) | upper()'
 # Complex validation pipeline
 tva expr -n "email" -r "  Test@Example.COM  " -E '@email | trim() | lower() | regex_match(_, ".*@.*\\.com")'
 # Returns: true
+
+# Data transformation pipeline
+tva expr -n "data" -r "1,2,3,4,5" -E '@data | split(_, ",") | map(_, x => int(x) * 2) | join(_, "-")'
+# Returns: "2-4-6-8-10"
 ```
 
 ## Multiple Expressions
@@ -152,6 +165,7 @@ tva expr -n "price,qty" -r "10,5" -E '
 
 - Each expression can have side effects (like variable binding)
 - Only the last expression's value is returned
+- Variables are scoped to the current expression evaluation
 
 ## Comments
 
@@ -185,6 +199,9 @@ tva expr -E '42 + 3.14'           # Prints: 45.14
 
 # Column reference output
 tva expr -n "name" -r "John" -E '@name'   # Prints: John
+
+# List output
+tva expr -E '[1, 2, 3]'             # Prints: [1, 2, 3]
 ```
 
 The `print(val, ...)` function outputs multiple arguments sequentially and returns the last
@@ -201,3 +218,24 @@ tva expr -n "price,qty" -r "10,5" -E '
 #         qty: 5
 #         50
 ```
+
+## Error Handling
+
+Expression evaluation can produce several types of errors:
+
+| Error | Example | Description |
+|:------|:--------|:------------|
+| Column not found | `@nonexistent` | Column name doesn't exist in headers |
+| Column index out of bounds | `@100` | Index exceeds number of columns |
+| Type error | `"hello" + 5` | Invalid operation for type |
+| Division by zero | `10 / 0` | Cannot divide by zero |
+| Unknown function | `unknown()` | Function not defined |
+| Wrong arity | `substr("a")` | Wrong number of arguments |
+
+## Best Practices
+
+1. **Use parentheses for clarity**: `(a + b) * c` vs `a + b * c`
+2. **Chain with pipes for readability**: `@data | trim() | upper()` instead of `upper(trim(@data))`
+3. **Bind intermediate results**: Complex expressions benefit from variable binding
+4. **Use comments**: Explain non-obvious logic with `//` comments
+5. **Handle nulls explicitly**: Use `default()` or `if()` for null handling

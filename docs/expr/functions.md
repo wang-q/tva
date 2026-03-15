@@ -1,5 +1,7 @@
 # Expression Functions
 
+TVA expression engine provides a rich set of built-in functions for data processing.
+
 ## Numeric Operations
 
 - abs(x) -> number: Absolute value

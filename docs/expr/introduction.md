@@ -1,13 +1,18 @@
 # Expression Introduction
 
-TVA Expression is a concise data processing language for `tva expr`, `tva filter`, and `tva mutate`
-commands.
+TVA Expression is a concise data processing language designed for `tva expr`, `tva filter`, and `tva mutate`
+commands. It provides a familiar syntax inspired by JavaScript, Python, and jq, optimized for TSV data processing.
 
 ## Quick Examples
 
 ```bash
 # Basic arithmetic
 tva expr -E '42 + 3.14'
+# Output: 45.14
+
+# String manipulation
+tva expr -E '"hello" | upper()'
+# Output: HELLO
 
 # Filter records
 tva filter -E "@price > 100" data.tsv
@@ -22,7 +27,7 @@ tva mutate -E "@price * 1.1 as @price_with_tax" data.tsv
 
 Integer, float, string, boolean, null, and list literals.
 
-```rust
+```text
 42, 3.14, "hello", true, null, [1, 2, 3]
 ```
 
@@ -30,23 +35,23 @@ Integer, float, string, boolean, null, and list literals.
 
 Use `@` prefix to reference columns.
 
-```rust
-@1, @ col_name, @ "col name"
+```text
+@1, @col_name, @"col name"
 ```
 
 ### [Variable Binding](variables.md#variable-binding)
 
 Use `as` to bind values to variables.
 
-```rust
-@price * @ qty as @ total; @ total * 1.1
+```text
+@price * @qty as @total; @total * 1.1
 ```
 
 ### [Operators](operators.md)
 
 Arithmetic, comparison, logical, and pipe operators.
 
-```rust
+```text
 + - * / %, == != < >, and or, |
 ```
 
@@ -54,10 +59,10 @@ Arithmetic, comparison, logical, and pipe operators.
 
 Prefix calls, pipe calls, and method calls.
 
-```rust
-trim( @ name)
-@ name | trim() | upper()
-@ name.trim().upper()
+```text
+trim(@name)
+@name | trim() | upper()
+@name.trim().upper()
 ```
 
 ## Documentation Index
@@ -67,3 +72,13 @@ trim( @ name)
 - [Expressions](expressions.md) - Function calls, pipelines, multiple expressions
 - [Operators](operators.md) - Operator precedence and details
 - [Functions](functions.md) - Complete function reference
+
+## Design Philosophy
+
+TVA Expression is designed with these principles:
+
+1. **Shell-friendly**: `@` prefix avoids conflicts with shell variables
+2. **Familiar syntax**: Inspired by popular languages (JavaScript, Python, jq)
+3. **Type coercion**: Automatic conversion between types where sensible
+4. **Null safety**: Empty TSV fields are treated as `null`, not empty strings
+5. **Composability**: Pipe operator enables clean data transformation chains
