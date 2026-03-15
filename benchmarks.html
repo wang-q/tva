@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-60e963ba.js";
+            window.path_to_searchindex_js = "searchindex-c102a141.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-d1513fcf.js"></script>
+        <script src="toc-5de396d1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -475,6 +475,18 @@ print('Plot saved to benchmark_plot.png')
 </ul>
 </li>
 </ul>
+<h2 id="7-expr-对比-专用命令"><a class="header" href="#7-expr-对比-专用命令">7. expr 对比 专用命令</a></h2>
+<p>使用 <code>docs/data/diamonds.tsv</code></p>
+<ul>
+<li>filter</li>
+</ul>
+<pre><code class="language-bash">hyperfine \
+    --warmup 3 \
+    --min-runs 10 \
+    --export-csv expr_filter.csv \
+    -n "tva expr" "tva expr -H -s -E 'if(@carat &gt; 1 and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tva filter" "tva filter -H --gt carat:1 --lt price:3000 docs/data/diamonds.tsv &gt; /dev/null"
+</code></pre>
 
                     </main>
 

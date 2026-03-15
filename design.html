@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-60e963ba.js";
+            window.path_to_searchindex_js = "searchindex-c102a141.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-d1513fcf.js"></script>
+        <script src="toc-5de396d1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -492,25 +492,6 @@ and Bernoulli sampling.</li>
 </ul>
 </li>
 </ul>
-<h2 id="tva-expression-design-principles"><a class="header" href="#tva-expression-design-principles">TVA Expression Design Principles</a></h2>
-<p>The expression language in <code>tva</code> follows these core design principles:</p>
-<ul>
-<li><strong>Conciseness</strong>: Syntax should be as short as possible for common operations (like column
-references).</li>
-<li><strong>Type-aware</strong>: Able to recognize numbers, dates, etc. when needed, but treats data as byte
-strings by default for speed.</li>
-<li><strong>Shell-friendly</strong>: Syntax avoids conflicts with Shell special characters (like <code>$</code>, <code>!</code>,
-<code>`</code>), reducing user escaping burden. Since expressions typically run in command lines and are
-wrapped in quotes, they should avoid triggering Shell variable substitution (like <code>$var</code>).</li>
-<li><strong>Streaming</strong>: Expressions are evaluated row-by-row with no global state, suitable for big data
-processing.</li>
-<li><strong>Error Handling</strong>: Defaults to permissive mode where invalid operations return <code>null</code> instead of
-errors, but can be changed via strict mode switches.</li>
-<li><strong>Consistency</strong>: Maintains similarity with existing tools (like jq, xan) to reduce learning costs.</li>
-<li><strong>Parallel Compatible</strong>: When users need parallel processing, it’s typically <code>parallel</code> calling
-<code>tva</code> (e.g., <code>parallel "tva ... {}"</code>), so <code>tva</code>’s internal syntax should not interfere with
-<code>parallel</code>’s parameter replacement mechanism.</li>
-</ul>
 <h2 id="aggregation-architecture"><a class="header" href="#aggregation-architecture">Aggregation Architecture</a></h2>
 <p>This section provides a deep dive into the architectural differences between <code>tva</code> and other tools
 like <code>xan</code> (Rust) and <code>tsv-utils</code> (D Language) in their aggregation module designs.</p>
@@ -540,6 +521,25 @@ compile times and high code complexity.</p>
 <p><strong>datamash (C)</strong>: Uses sort-based grouping with O(1) memory, but requires pre-sorted input.</p>
 <p><strong>dplyr (R)</strong>: Uses vectorized mask evaluation, but depends on columnar storage and is unsuitable
 for streaming.</p>
+<h2 id="tva-expression-design-principles"><a class="header" href="#tva-expression-design-principles">TVA Expression Design Principles</a></h2>
+<p>The expression language in <code>tva</code> follows these core design principles:</p>
+<ul>
+<li><strong>Conciseness</strong>: Syntax should be as short as possible for common operations (like column
+references).</li>
+<li><strong>Type-aware</strong>: Able to recognize numbers, dates, etc. when needed, but treats data as byte
+strings by default for speed.</li>
+<li><strong>Shell-friendly</strong>: Syntax avoids conflicts with Shell special characters (like <code>$</code>, <code>!</code>,
+<code>`</code>), reducing user escaping burden. Since expressions typically run in command lines and are
+wrapped in quotes, they should avoid triggering Shell variable substitution (like <code>$var</code>).</li>
+<li><strong>Streaming</strong>: Expressions are evaluated row-by-row with no global state, suitable for big data
+processing.</li>
+<li><strong>Error Handling</strong>: Defaults to permissive mode where invalid operations return <code>null</code> instead of
+errors, but can be changed via strict mode switches.</li>
+<li><strong>Consistency</strong>: Maintains similarity with existing tools (like jq, xan) to reduce learning costs.</li>
+<li><strong>Parallel Compatible</strong>: When users need parallel processing, it’s typically <code>parallel</code> calling
+<code>tva</code> (e.g., <code>parallel "tva ... {}"</code>), so <code>tva</code>’s internal syntax should not interfere with
+<code>parallel</code>’s parameter replacement mechanism.</li>
+</ul>
 
                     </main>
 

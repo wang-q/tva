@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-60e963ba.js";
+            window.path_to_searchindex_js = "searchindex-c102a141.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-d1513fcf.js"></script>
+        <script src="toc-5de396d1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -178,9 +178,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="tva"><a class="header" href="#tva">tva</a></h1>
-<p>Tab-separated Values Assistant.
-Fast, reliable TSV processing toolkit in Rust.</p>
+                        <h1 id="tva-tab-separated-values-assistant"><a class="header" href="#tva-tab-separated-values-assistant">tva: Tab-separated Values Assistant</a></h1>
+<p>Fast, reliable TSV processing toolkit in Rust.</p>
 <p><a href="https://github.com/wang-q/tva/actions"><img src="https://github.com/wang-q/tva/actions/workflows/build.yml/badge.svg" alt="Build"></a>
 <a href="https://app.codecov.io/gh/wang-q/tva/tree/master"><img src="https://img.shields.io/codecov/c/github/wang-q/tva/master" alt="codecov"></a>
 <a href="https://crates.io/crates/tva"><img src="https://img.shields.io/crates/v/tva.svg" alt="Crates.io"></a>
@@ -592,25 +591,6 @@ and Bernoulli sampling.</li>
 </ul>
 </li>
 </ul>
-<h2 id="tva-expression-design-principles"><a class="header" href="#tva-expression-design-principles">TVA Expression Design Principles</a></h2>
-<p>The expression language in <code>tva</code> follows these core design principles:</p>
-<ul>
-<li><strong>Conciseness</strong>: Syntax should be as short as possible for common operations (like column
-references).</li>
-<li><strong>Type-aware</strong>: Able to recognize numbers, dates, etc. when needed, but treats data as byte
-strings by default for speed.</li>
-<li><strong>Shell-friendly</strong>: Syntax avoids conflicts with Shell special characters (like <code>$</code>, <code>!</code>,
-<code>`</code>), reducing user escaping burden. Since expressions typically run in command lines and are
-wrapped in quotes, they should avoid triggering Shell variable substitution (like <code>$var</code>).</li>
-<li><strong>Streaming</strong>: Expressions are evaluated row-by-row with no global state, suitable for big data
-processing.</li>
-<li><strong>Error Handling</strong>: Defaults to permissive mode where invalid operations return <code>null</code> instead of
-errors, but can be changed via strict mode switches.</li>
-<li><strong>Consistency</strong>: Maintains similarity with existing tools (like jq, xan) to reduce learning costs.</li>
-<li><strong>Parallel Compatible</strong>: When users need parallel processing, it’s typically <code>parallel</code> calling
-<code>tva</code> (e.g., <code>parallel "tva ... {}"</code>), so <code>tva</code>’s internal syntax should not interfere with
-<code>parallel</code>’s parameter replacement mechanism.</li>
-</ul>
 <h2 id="aggregation-architecture"><a class="header" href="#aggregation-architecture">Aggregation Architecture</a></h2>
 <p>This section provides a deep dive into the architectural differences between <code>tva</code> and other tools
 like <code>xan</code> (Rust) and <code>tsv-utils</code> (D Language) in their aggregation module designs.</p>
@@ -640,6 +620,25 @@ compile times and high code complexity.</p>
 <p><strong>datamash (C)</strong>: Uses sort-based grouping with O(1) memory, but requires pre-sorted input.</p>
 <p><strong>dplyr (R)</strong>: Uses vectorized mask evaluation, but depends on columnar storage and is unsuitable
 for streaming.</p>
+<h2 id="tva-expression-design-principles"><a class="header" href="#tva-expression-design-principles">TVA Expression Design Principles</a></h2>
+<p>The expression language in <code>tva</code> follows these core design principles:</p>
+<ul>
+<li><strong>Conciseness</strong>: Syntax should be as short as possible for common operations (like column
+references).</li>
+<li><strong>Type-aware</strong>: Able to recognize numbers, dates, etc. when needed, but treats data as byte
+strings by default for speed.</li>
+<li><strong>Shell-friendly</strong>: Syntax avoids conflicts with Shell special characters (like <code>$</code>, <code>!</code>,
+<code>`</code>), reducing user escaping burden. Since expressions typically run in command lines and are
+wrapped in quotes, they should avoid triggering Shell variable substitution (like <code>$var</code>).</li>
+<li><strong>Streaming</strong>: Expressions are evaluated row-by-row with no global state, suitable for big data
+processing.</li>
+<li><strong>Error Handling</strong>: Defaults to permissive mode where invalid operations return <code>null</code> instead of
+errors, but can be changed via strict mode switches.</li>
+<li><strong>Consistency</strong>: Maintains similarity with existing tools (like jq, xan) to reduce learning costs.</li>
+<li><strong>Parallel Compatible</strong>: When users need parallel processing, it’s typically <code>parallel</code> calling
+<code>tva</code> (e.g., <code>parallel "tva ... {}"</code>), so <code>tva</code>’s internal syntax should not interfere with
+<code>parallel</code>’s parameter replacement mechanism.</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="性能基准测试计划"><a class="header" href="#性能基准测试计划">性能基准测试计划</a></h1>
 <p>我们旨在重现 <a href="https://github.com/eBay/tsv-utils/blob/master/docs/comparative-benchmarks-2017.md">tsv-utils</a> 使用的严格基准测试策略。</p>
@@ -936,6 +935,18 @@ print('Plot saved to benchmark_plot.png')
 </ul>
 </li>
 </ul>
+<h2 id="7-expr-对比-专用命令"><a class="header" href="#7-expr-对比-专用命令">7. expr 对比 专用命令</a></h2>
+<p>使用 <code>docs/data/diamonds.tsv</code></p>
+<ul>
+<li>filter</li>
+</ul>
+<pre><code class="language-bash">hyperfine \
+    --warmup 3 \
+    --min-runs 10 \
+    --export-csv expr_filter.csv \
+    -n "tva expr" "tva expr -H -s -E 'if(@carat &gt; 1 and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tva filter" "tva filter -H --gt carat:1 --lt price:3000 docs/data/diamonds.tsv &gt; /dev/null"
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="selection--sampling-documentation"><a class="header" href="#selection--sampling-documentation">Selection &amp; Sampling Documentation</a></h1>
 <p>This document explains how to use the selection and sampling commands in <code>tva</code>: <strong><code>select</code></strong>, *
@@ -2597,6 +2608,208 @@ Mega Gadget     $29.99  /buy/gadget
 ...
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="tvas-expr-language-and-companions"><a class="header" href="#tvas-expr-language-and-companions">TVA’s expr language and companions</a></h1>
+<p>The <code>expr</code> language evaluates expressions (like spreadsheet formulas) to transform TSV data.
+It powers three commands: <code>tva expr</code> (create new rows), <code>tva map</code> (add columns), and
+<code>tva mutate</code> (modify columns).</p>
+<h2 id="quick-examples"><a class="header" href="#quick-examples">Quick Examples</a></h2>
+<pre><code class="language-bash"># Basic arithmetic
+tva expr -E '42 + 3.14'
+# Output: 45.14
+
+# String manipulation
+tva expr -E '"hello" | upper()'
+# Output: HELLO
+
+</code></pre>
+<h2 id="topics"><a class="header" href="#topics">Topics</a></h2>
+<h3 id="literals"><a class="header" href="#literals"><a href="literals.html">Literals</a></a></h3>
+<p>Integer, float, string, boolean, null, and list literals.</p>
+<pre><code class="language-text">42, 3.14, "hello", true, null, [1, 2, 3]
+</code></pre>
+<h3 id="column-references"><a class="header" href="#column-references"><a href="variables.html#column-references">Column References</a></a></h3>
+<p>Use <code>@</code> prefix to reference columns.</p>
+<pre><code class="language-text">@1, @col_name, @"col name"
+</code></pre>
+<h3 id="variable-binding"><a class="header" href="#variable-binding"><a href="variables.html#variable-binding">Variable Binding</a></a></h3>
+<p>Use <code>as</code> to bind values to variables.</p>
+<pre><code class="language-text">@price * @qty as @total; @total * 1.1
+</code></pre>
+<h3 id="operators"><a class="header" href="#operators"><a href="operators.html">Operators</a></a></h3>
+<p>Arithmetic, comparison, logical, and pipe operators.</p>
+<pre><code class="language-text">+ - * / %, == != &lt; &gt;, and or, |
+</code></pre>
+<h3 id="function-calls"><a class="header" href="#function-calls"><a href="syntax.html#function-calls">Function Calls</a></a></h3>
+<p>Prefix calls, pipe calls, and method calls.</p>
+<pre><code class="language-text">trim(@name)
+@name | trim() | upper()
+@name.trim().upper()
+</code></pre>
+<h3 id="documentation-index"><a class="header" href="#documentation-index">Documentation Index</a></h3>
+<ul>
+<li>
+<p><a href="literals.html">Literals</a> - Literal syntax and type system</p>
+</li>
+<li>
+<p><a href="variables.html">Variables</a> - Column references and variable binding</p>
+</li>
+<li>
+<p><a href="operators.html">Operators</a> - Operator precedence and details</p>
+</li>
+<li>
+<p><a href="functions.html">Functions</a> - Complete function reference</p>
+</li>
+<li>
+<p><a href="#expr-syntax-guide">Syntax Guide</a> - Complete syntax documentation</p>
+</li>
+<li>
+<p><a href="#rosetta-code-examples">Rosetta Code</a> - Fun programs</p>
+</li>
+<li>
+<p><strong>Lambda expressions</strong>: <code>x =&gt; x * 2</code> for higher-order functions</p>
+</li>
+</ul>
+<h3 id="expression-commands"><a class="header" href="#expression-commands">Expression Commands</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>tva expr</code></td><td>Evaluate expression to create a new row</td></tr>
+<tr><td><code>tva map</code></td><td>Add new column(s) to existing row</td></tr>
+<tr><td><code>tva mutate</code></td><td>Modify existing column value</td></tr>
+</tbody>
+</table>
+</div>
+<p>Note: Use <code>tva filter</code> for simple filtering—it’s ~2x faster. Use <code>tva expr --skip-null</code>
+only when you need features <code>tva filter</code> doesn’t support (functions, complex expressions, etc.).</p>
+<h2 id="basic-usage-8"><a class="header" href="#basic-usage-8">Basic Usage</a></h2>
+<h3 id="tva-expr---evaluate-expression-to-new-row"><a class="header" href="#tva-expr---evaluate-expression-to-new-row"><code>tva expr</code> - Evaluate Expression to New Row</a></h3>
+<p>Evaluates expression for each row and outputs the expression result as a new row (original row
+structure is discarded).</p>
+<pre><code class="language-bash"># Simple arithmetic expression
+tva expr -E "10 + 20"
+
+# Evaluate expression with row data
+tva expr -n "price,qty" -r "100,2" -E "@price * @qty"
+
+# String manipulation
+tva expr -n "name" -r "  alice  " -E 'upper(trim(@name))'
+tva expr -n "name" -r "  alice  " -E '@name.trim().upper()'
+tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
+
+# Conditional expression
+tva expr -n "score" -r "85" -E 'if(@score &gt;= 60, "pass", "fail")'
+
+# Process TSV file - calculate price per carat
+tva expr -H -E "@price / @carat" docs/data/diamonds.tsv
+
+# Filter rows using --skip-null
+tva expr -H --skip-null -E 'if(@price &gt; 300, @0, null)' docs/data/diamonds.tsv
+</code></pre>
+<h3 id="tva-map---add-new-column"><a class="header" href="#tva-map---add-new-column"><code>tva map</code> - Add New Column</a></h3>
+<p>Evaluates expression for each row to add a new column to the existing row.</p>
+<pre><code class="language-bash"># Add a new column with calculated value
+tva map -E "@price * 1.1 as @price_with_tax" docs/data/diamonds.tsv
+
+# Add multiple columns
+tva map -E '@price * 1.1 as @price_with_tax, @carat * 2 as @double_carat' docs/data/diamonds.tsv
+
+# Add column with transformed value
+tva map -E '@cut | lower() as @cut_lower' docs/data/diamonds.tsv
+</code></pre>
+<h3 id="tva-mutate---modify-column"><a class="header" href="#tva-mutate---modify-column"><code>tva mutate</code> - Modify Column</a></h3>
+<p>Evaluates expression for each row to modify an existing column value.</p>
+<pre><code class="language-bash"># Modify existing column
+tva mutate -E '@price * 1.1' -c price docs/data/diamonds.tsv
+
+# Transform column value
+tva mutate -E '@cut | upper()' -c cut docs/data/diamonds.tsv
+
+# Replace with conditional value
+tva mutate -E 'if(@price &gt;= 350, "expensive", "cheap")' -c price docs/data/diamonds.tsv
+</code></pre>
+<h2 id="examples-12"><a class="header" href="#examples-12">Examples</a></h2>
+<h3 id="numeric-operations"><a class="header" href="#numeric-operations">Numeric Operations</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>@price * 1.1 # Increase price by 10 %
+( @ price - @ cost) / @ cost # Calculate margin
+round( @ value) # Round to integer
+<span class="boring">}</span></code></pre>
+<h3 id="string-operations"><a class="header" href="#string-operations">String Operations</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>@first + + " " + + @ last # Concatenate names
+@email | lower() | trim() # Chain operations
+@name | substr(_, 0, 5) # First 5 characters
+split( @ tags, ",") # Split to list
+<span class="boring">}</span></code></pre>
+<h3 id="list-operations"><a class="header" href="#list-operations">List Operations</a></h3>
+<p>The <code>map()</code> and <code>filter()</code> below are <strong>functions</strong> for working with lists, not the <code>tva map</code>
+and <code>tva filter</code> commands.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>map([1, 2, 3], x =&gt; x * 2)                    #[2, 4, 6]
+filter([1, 2, 3, 4], x =&gt; x &gt; 2)              #[3, 4]
+reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x) # 6
+join(split( @ tags, ","), "; ") # Rejoin with different separator
+<span class="boring">}</span></code></pre>
+<h3 id="conditional-logic"><a class="header" href="#conditional-logic">Conditional Logic</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>if( @ age &gt; = 18, "adult", "minor")
+default ( @ nickname, @ username) # Use nickname if not empty
+<span class="boring">}</span></code></pre>
+<h2 id="type-system"><a class="header" href="#type-system">Type System</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Example</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>Int</td><td><code>42</code>, <code>-10</code></td><td>64-bit signed</td></tr>
+<tr><td>Float</td><td><code>3.14</code>, <code>-0.5</code></td><td>Double precision</td></tr>
+<tr><td>String</td><td><code>"hello"</code></td><td>UTF-8 encoded</td></tr>
+<tr><td>Bool</td><td><code>true</code>, <code>false</code></td><td></td></tr>
+<tr><td>Null</td><td><code>null</code></td><td>Missing/empty value</td></tr>
+<tr><td>List</td><td><code>[1, 2, 3]</code></td><td>Heterogeneous elements</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="command-comparison"><a class="header" href="#command-comparison">Command Comparison</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>What it does</th><th>Input row</th><th>Output row</th><th>Columns changed</th></tr>
+</thead>
+<tbody>
+<tr><td><code>expr</code></td><td>Evaluate to new row</td><td><code>@a, @b, @c</code></td><td><code>@result</code></td><td>All (replaced)</td></tr>
+<tr><td><code>filter</code></td><td>Keep or discard row</td><td><code>@a, @b, @c</code></td><td><code>@a, @b, @c</code> or nothing</td><td>None</td></tr>
+<tr><td><code>map</code></td><td>Add new column(s)</td><td><code>@a, @b</code></td><td><code>@a, @b, @c</code></td><td>Added</td></tr>
+<tr><td><code>mutate</code></td><td>Modify column value</td><td><code>@a, @b, @c</code></td><td><code>@a, @b', @c</code></td><td>One updated</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="performance-notes"><a class="header" href="#performance-notes">Performance Notes</a></h2>
+<p>The expression engine includes several optimizations for better performance:</p>
+<ul>
+<li><strong>Parse caching</strong>: Expressions are parsed once and cached for all rows. Identical expressions reuse the cached AST.</li>
+<li><strong>Column name resolution</strong>: When headers are available, <code>@name</code> references are resolved to <code>@index</code> at parse time for O(1) access.</li>
+<li><strong>Constant folding</strong>: Constant sub-expressions (e.g., <code>2 + 3 * 4</code>) are pre-computed during parsing.</li>
+<li><strong>Function registry</strong>: Built-in functions are looked up once and cached, avoiding repeated hash map lookups.</li>
+<li><strong>Hash algorithm</strong>: Uses <code>ahash</code> for faster hash map operations.</li>
+</ul>
+<p>For best performance, use column indices (<code>@1</code>, <code>@2</code>) instead of names.</p>
+<h2 id="notes-2"><a class="header" href="#notes-2">Notes</a></h2>
+<ul>
+<li>No implicit type conversion - use explicit functions like <code>int()</code>, <code>float()</code>, <code>string()</code></li>
+<li>String comparison uses <code>eq</code>, <code>ne</code>, <code>lt</code>, etc. (not <code>==</code>, <code>!=</code>)</li>
+<li>Pipe operator <code>|</code> passes left value as first argument to right function</li>
+<li>All expressions are evaluated per row during streaming</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="css-selectors-reference"><a class="header" href="#css-selectors-reference">CSS Selectors Reference</a></h1>
 <p><code>tva from html</code> uses the <code>scraper</code> crate which implements a robust subset of CSS selectors. This
 document provides a comprehensive reference and examples, inspired by <code>pup</code>.</p>
@@ -2720,7 +2933,7 @@ the full HTML of selected elements is printed.</p>
 <li><code>pup</code>-specific pseudo-classes (e.g., <code>:parent-of</code>).</li>
 <li><code>:contains()</code> selector (not supported by the underlying <code>scraper</code> engine).</li>
 </ul>
-<h2 id="examples-12"><a class="header" href="#examples-12">Examples</a></h2>
+<h2 id="examples-13"><a class="header" href="#examples-13">Examples</a></h2>
 <h3 id="basic-filtering"><a class="header" href="#basic-filtering">Basic Filtering</a></h3>
 <p>Extract page title:</p>
 <pre><code class="language-bash">tva from html -q "title text{}" index.html
@@ -2945,62 +3158,8 @@ must be escaped with <code>\</code>.</li>
 </code></pre>
 <p>Serious errors return non-zero exit codes.</p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="expression-introduction"><a class="header" href="#expression-introduction">Expression Introduction</a></h1>
-<p>TVA Expression is a concise data processing language for <code>tva expr</code>, <code>tva filter</code>, and <code>tva mutate</code>
-commands.</p>
-<h2 id="quick-examples"><a class="header" href="#quick-examples">Quick Examples</a></h2>
-<pre><code class="language-bash"># Basic arithmetic
-tva expr -E '42 + 3.14'
-
-# Filter records
-tva filter -E "@price &gt; 100" data.tsv
-
-# Compute new column
-tva mutate -E "@price * 1.1 as @price_with_tax" data.tsv
-</code></pre>
-<h2 id="topics"><a class="header" href="#topics">Topics</a></h2>
-<h3 id="literals"><a class="header" href="#literals"><a href="#expression-literals">Literals</a></a></h3>
-<p>Integer, float, string, boolean, null, and list literals.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>42, 3.14, "hello", true, null, [1, 2, 3]
-<span class="boring">}</span></code></pre>
-<h3 id="column-references"><a class="header" href="#column-references"><a href="#column-references-1">Column References</a></a></h3>
-<p>Use <code>@</code> prefix to reference columns.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>@1, @ col_name, @ "col name"
-<span class="boring">}</span></code></pre>
-<h3 id="variable-binding"><a class="header" href="#variable-binding"><a href="#variable-binding-1">Variable Binding</a></a></h3>
-<p>Use <code>as</code> to bind values to variables.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>@price * @ qty as @ total; @ total * 1.1
-<span class="boring">}</span></code></pre>
-<h3 id="operators"><a class="header" href="#operators"><a href="#expression-operators">Operators</a></a></h3>
-<p>Arithmetic, comparison, logical, and pipe operators.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>+ - * / %, == != &lt; &gt;, and or, |
-<span class="boring">}</span></code></pre>
-<h3 id="function-calls"><a class="header" href="#function-calls"><a href="#expression-syntax-guide">Function Calls</a></a></h3>
-<p>Prefix calls, pipe calls, and method calls.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>trim( @ name)
-@ name | trim() | upper()
-@ name.trim().upper()
-<span class="boring">}</span></code></pre>
-<h2 id="documentation-index"><a class="header" href="#documentation-index">Documentation Index</a></h2>
-<ul>
-<li><a href="#expression-literals">Literals</a> - Literal syntax and type system</li>
-<li><a href="#expression-variables">Variables</a> - Column references and variable binding</li>
-<li><a href="#expression-syntax-guide">Expressions</a> - Function calls, pipelines, multiple expressions</li>
-<li><a href="#expression-operators">Operators</a> - Operator precedence and details</li>
-<li><a href="#expression-functions">Functions</a> - Complete function reference</li>
-</ul>
-<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="expression-literals"><a class="header" href="#expression-literals">Expression Literals</a></h1>
+<p>Literals represent constant values in expressions. TVA supports integers, floats, strings, booleans, null, and lists.</p>
 <h2 id="literal-syntax"><a class="header" href="#literal-syntax">Literal Syntax</a></h2>
 <div class="table-wrapper">
 <table>
@@ -3020,6 +3179,7 @@ tva mutate -E "@price * 1.1 as @price_with_tax" data.tsv
 </div>
 <pre><code class="language-bash"># Integer and float literals
 tva expr -E '42 + 3.14'           # Returns: 45.14
+tva expr -E '1e6'                 # Returns: 1000000
 
 # String literals
 tva expr -E '"hello" ++ " " ++ "world"'  # Returns: hello world
@@ -3033,11 +3193,12 @@ tva expr -E 'default(null, "fallback")'  # Returns: fallback
 # List literal
 tva expr -E '[1, 2, 3]'           # Returns: [1, 2, 3]
 tva expr -E '[[1,2], "string", true, null, -5]'
+# Returns: [[1, 2], "string", true, null, -5]
 
 # Lambda literal
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'  # Returns: [2, 4, 6]
 </code></pre>
-<h2 id="type-system"><a class="header" href="#type-system">Type System</a></h2>
+<h2 id="type-system-1"><a class="header" href="#type-system-1">Type System</a></h2>
 <p>TVA uses a dynamic type system with automatic type recognition at runtime. Since TSV files store all
 data as strings, TVA automatically converts values to appropriate types during expression
 evaluation:</p>
@@ -3053,15 +3214,27 @@ evaluation:</p>
 <tr><td style="text-align: left"><code>Bool</code></td><td style="text-align: left">Boolean value</td><td style="text-align: left">Empty string, 0, <code>null</code> are falsy</td></tr>
 <tr><td style="text-align: left"><code>Null</code></td><td style="text-align: left">Null value</td><td style="text-align: left">Represents missing or invalid data</td></tr>
 <tr><td style="text-align: left"><code>List</code></td><td style="text-align: left">Heterogeneous list</td><td style="text-align: left">Elements can be any type</td></tr>
+<tr><td style="text-align: left"><code>DateTime</code></td><td style="text-align: left">UTC datetime</td><td style="text-align: left">Used by datetime functions</td></tr>
+<tr><td style="text-align: left"><code>Lambda</code></td><td style="text-align: left">Anonymous function</td><td style="text-align: left">Used with higher-order functions</td></tr>
 </tbody>
 </table>
 </div>
+<h3 id="type-conversion"><a class="header" href="#type-conversion">Type Conversion</a></h3>
 <ul>
 <li><strong>Explicit conversion</strong>: Use <code>int()</code>, <code>float()</code>, <code>string()</code> functions</li>
 <li><strong>Numeric operations</strong>: Mixed int/float operations promote result to float</li>
 <li><strong>String concatenation</strong>: <code>++</code> operator converts operands to strings</li>
 <li><strong>Comparison</strong>: Same-type comparison only; different types always return <code>false</code></li>
 </ul>
+<pre><code class="language-bash"># Explicit type conversion
+tva expr -E 'int("42")'           # Returns: 42
+tva expr -E 'float("3.14")'       # Returns: 3.14
+tva expr -E 'string(42)'          # Returns: "42"
+
+# Automatic promotion in mixed operations
+tva expr -E '42 + 3.14'           # Returns: 45.14 (float)
+tva expr -E '10 / 4'              # Returns: 2.5 (float)
+</code></pre>
 <h3 id="null-type-and-empty-fields"><a class="header" href="#null-type-and-empty-fields">Null Type and Empty Fields</a></h3>
 <p>In TVA, <strong>empty fields from TSV data are treated as <code>null</code></strong>, not empty strings. This is important
 because <code>null</code> behaves differently from <code>""</code> in expressions.</p>
@@ -3092,7 +3265,13 @@ tva expr -E '@1 == ""' -r ''            # Output: false
 tva expr -E 'if(@email == null, "no-email", @email)' -n 'email' -r '' -r 'user@test.com'
 # Output: no-email, user@test.com
 </code></pre>
-<h2 id="string-escape-sequences"><a class="header" href="#string-escape-sequences">String Escape Sequences</a></h2>
+<h2 id="string-literals"><a class="header" href="#string-literals">String Literals</a></h2>
+<p>Strings can be enclosed in single or double quotes:</p>
+<pre><code class="language-bash">tva expr -E '"hello"'              # Double quotes
+tva expr -E "'hello'"              # Single quotes (in shell)
+tva expr -E '`hello`'              # Backtick quotes
+</code></pre>
+<h3 id="string-escape-sequences"><a class="header" href="#string-escape-sequences">String Escape Sequences</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -3108,8 +3287,90 @@ tva expr -E 'if(@email == null, "no-email", @email)' -n 'email' -r '' -r 'user@t
 </tbody>
 </table>
 </div>
+<pre><code class="language-bash"># Using escape sequences
+tva expr -E '"line1\nline2"'        # Contains newline
+tva expr -E '"col1\tcol2"'          # Contains tab
+tva expr -E '"say \"hello\""'      # Contains quotes
+</code></pre>
+<h2 id="list-literals"><a class="header" href="#list-literals">List Literals</a></h2>
+<p>Lists are ordered collections that can contain elements of any type:</p>
+<pre><code class="language-bash"># Homogeneous lists
+tva expr -E '[1, 2, 3]'             # List of integers
+tva expr -E '["a", "b", "c"]'       # List of strings
+
+# Heterogeneous lists
+tva expr -E '[1, "two", true, null]'  # Mixed types
+
+# Nested lists
+tva expr -E '[[1, 2], [3, 4]]'      # List of lists
+
+# Empty list
+tva expr -E '[]'                    # Empty list
+</code></pre>
+<h3 id="list-operations-1"><a class="header" href="#list-operations-1">List Operations</a></h3>
+<p>Lists support various operations through functions:</p>
+<pre><code class="language-bash"># Access elements
+tva expr -E 'nth([10, 20, 30], 1)'  # Returns: 20 (0-based)
+
+# List length
+tva expr -E 'len([1, 2, 3])'        # Returns: 3
+
+# Transform
+tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'  # Returns: [2, 4, 6]
+
+# Filter
+tva expr -E 'filter([1, 2, 3, 4], x =&gt; x &gt; 2)'  # Returns: [3, 4]
+
+# Join
+tva expr -E 'join(["a", "b", "c"], "-")'  # Returns: "a-b-c"
+</code></pre>
+<h2 id="integer-literals"><a class="header" href="#integer-literals">Integer Literals</a></h2>
+<p>Integers are 64-bit signed numbers:</p>
+<pre><code class="language-bash">tva expr -E '42'                    # Positive integer
+tva expr -E '-10'                   # Negative integer
+tva expr -E '0'                     # Zero
+</code></pre>
+<p>Underscores can be used as digit separators for readability:</p>
+<pre><code class="language-bash">tva expr -E '1_000_000'             # One million
+tva expr -E '1_000_000_000'         # One billion
+</code></pre>
+<h2 id="float-literals"><a class="header" href="#float-literals">Float Literals</a></h2>
+<p>Floats are 64-bit IEEE 754 floating-point numbers:</p>
+<pre><code class="language-bash"># Decimal notation
+tva expr -E '3.14'
+tva expr -E '-0.5'
+tva expr -E '10.0'
+
+# Scientific notation
+tva expr -E '1e10'                  # 10 billion
+tva expr -E '2.5e-3'                # 0.0025
+tva expr -E '-1.5E+6'               # -1,500,000
+</code></pre>
+<h2 id="boolean-literals"><a class="header" href="#boolean-literals">Boolean Literals</a></h2>
+<p>Booleans represent true/false values:</p>
+<pre><code class="language-bash">tva expr -E 'true'                  # True
+tva expr -E 'false'                 # False
+</code></pre>
+<p>Boolean values can be used in logical operations:</p>
+<pre><code class="language-bash">tva expr -E 'true and false'        # Returns: false
+tva expr -E 'true or false'         # Returns: true
+tva expr -E 'not true'              # Returns: false
+</code></pre>
+<h2 id="lambda-literals"><a class="header" href="#lambda-literals">Lambda Literals</a></h2>
+<p>Lambdas are anonymous functions used with higher-order functions:</p>
+<pre><code class="language-bash"># Single parameter
+tva expr -E 'map([1, 2, 3], x =&gt; x + 1)'
+
+# Multiple parameters
+tva expr -E 'reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x)'
+
+# No parameters
+tva expr -E 'map([1, 2, 3], () =&gt; 42)'
+</code></pre>
+<p>See <a href="expr/expressions.html#lambda-expressions">Expressions</a> for more details on lambda usage.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="expression-variables"><a class="header" href="#expression-variables">Expression Variables</a></h1>
+<p>TVA expressions support two kinds of <code>@</code>-prefixed identifiers: column references and variables.</p>
 <h2 id="column-references-1"><a class="header" href="#column-references-1">Column References</a></h2>
 <p>Use <code>@</code> prefix to reference columns, avoiding conflicts with Shell variables:</p>
 <div class="table-wrapper">
@@ -3118,10 +3379,10 @@ tva expr -E 'if(@email == null, "no-email", @email)' -n 'email' -r '' -r 'user@t
 <tr><th style="text-align: left">Syntax</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><code>@0</code></td><td style="text-align: left">Entire row content</td><td style="text-align: left"><code>@0</code> represents all columns</td></tr>
-<tr><td style="text-align: left"><code>@1</code>, <code>@2</code></td><td style="text-align: left">1-based column index</td><td style="text-align: left"><code>@1</code> represents the first column</td></tr>
-<tr><td style="text-align: left"><code>@col_name</code></td><td style="text-align: left">Column name reference</td><td style="text-align: left"><code>@price</code> represents the price column</td></tr>
-<tr><td style="text-align: left"><code> @"col name"</code></td><td style="text-align: left">Column name with spaces</td><td style="text-align: left"><code> @"user name"</code> represents column “user name”</td></tr>
+<tr><td style="text-align: left"><code>@0</code></td><td style="text-align: left">Entire row content (all columns joined with tabs)</td><td style="text-align: left"><code>@0</code></td></tr>
+<tr><td style="text-align: left"><code>@1</code>, <code>@2</code></td><td style="text-align: left">1-based column index</td><td style="text-align: left"><code>@1</code> is the first column</td></tr>
+<tr><td style="text-align: left"><code>@col_name</code></td><td style="text-align: left">Column name reference</td><td style="text-align: left"><code>@price</code> references the price column</td></tr>
+<tr><td style="text-align: left"><code>@"col name"</code></td><td style="text-align: left">Column name with spaces</td><td style="text-align: left"><code>@"user name"</code> references column “user name”</td></tr>
 </tbody>
 </table>
 </div>
@@ -3130,15 +3391,40 @@ tva expr -E 'if(@email == null, "no-email", @email)' -n 'email' -r '' -r 'user@t
 <li><strong>Shell-friendly</strong>: <code>@</code> has no special meaning in bash/zsh, no escaping needed</li>
 <li><strong>Concise</strong>: Only 2 characters (<code>Shift+2</code>)</li>
 </ul>
-<p><strong>Type behavior</strong>:</p>
+<h3 id="type-behavior"><a class="header" href="#type-behavior">Type Behavior</a></h3>
 <ul>
-<li>Column references return <code>String</code> by default (raw bytes)</li>
+<li>Column references return <code>String</code> by default (raw bytes from TSV)</li>
 <li>Numeric operations automatically attempt parsing; failure yields <code>null</code></li>
 <li>Use <code>int(@col)</code> or <code>float(@col)</code> for explicit type specification</li>
 <li><strong>Empty fields are treated as <code>null</code></strong>, not empty strings. See <a href="#null-type-and-empty-fields">Null Type and Empty Fields</a> for details.</li>
 </ul>
+<pre><code class="language-bash"># Column by index
+tva expr -n "name,age" -r "John,30" -E '@1'       # Returns: John
+tva expr -n "name,age" -r "John,30" -E '@2'       # Returns: 30 (parsed as int)
+
+# Column by name
+tva expr -n "name,age" -r "John,30" -E '@name'    # Returns: John
+tva expr -n "name,age" -r "John,30" -E '@age'     # Returns: 30
+
+# Entire row
+tva expr -n "a,b,c" -r "1,2,3" -E '@0'            # Returns: "1\t2\t3"
+tva expr -n "a,b,c" -r "1,2,3" -E 'len(@0)'       # Returns: 5 (length of "1\t2\t3")
+
+# Column name with spaces
+tva expr -n "user name" -r "John Doe" -E '@"user name"'  # Returns: John Doe
+</code></pre>
+<h3 id="variable-shadowing"><a class="header" href="#variable-shadowing">Variable Shadowing</a></h3>
+<p>Variables can shadow column references. When both a variable and a column have the same name,
+the variable takes precedence:</p>
+<pre><code class="language-bash"># Variable shadows column
+tva expr -n "price" -r "100" -E '
+    @price *2 as @price;     // Column @price (100) bound to variable @price
+    @price             // Variable @price (now 200)
+'
+# Returns: 200
+</code></pre>
 <h2 id="variable-binding-1"><a class="header" href="#variable-binding-1">Variable Binding</a></h2>
-<p>Use <code>as</code> keyword to bind expression results to variables for reuse in subsequent pipes:</p>
+<p>Use <code>as</code> keyword to bind expression results to variables for reuse:</p>
 <pre><code class="language-bash"># Basic syntax: bind calculation result
 tva expr -n "price,qty,tax_rate" -r "10,5,0.1" -E '@price * @qty as @total; @total * (1 + @tax_rate)'
 # Returns: 55
@@ -3151,188 +3437,84 @@ tva expr -n "name" -r "John Smith" -E '@name | split(" ") as @parts; first(@part
 tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
 # Returns: 50
 </code></pre>
-<p><strong>Rules</strong>:</p>
+<h3 id="variable-scope"><a class="header" href="#variable-scope">Variable Scope</a></h3>
 <ul>
-<li>Variables are valid within the current row only, cleared when entering next row</li>
-<li>Can shadow column references (<code>@price as @price</code>)</li>
-<li>Column references check variables first, then fall back to column name lookup</li>
+<li>Variables are valid within the current row only</li>
+<li>Variables are cleared when processing the next row</li>
+<li>Variables can shadow column references</li>
+<li>Variables can be rebound (reassigned)</li>
 </ul>
+<pre><code class="language-bash"># Variable rebinding
+tva expr -n "price" -r "10" -E '
+    @price as @p;         # @p = 10
+    @p * 2 as @p;         # @p = 20 (rebound)
+    @p * 2 as @p;         # @p = 40 (rebound again)
+    @p
+'
+# Returns: 40
+</code></pre>
+<h3 id="resolution-order"><a class="header" href="#resolution-order">Resolution Order</a></h3>
+<p>When evaluating <code>@name</code>, the engine checks in this order:</p>
+<ol>
+<li><strong>Lambda parameters</strong> - If inside a lambda, check lambda parameters first</li>
+<li><strong>Variables</strong> - Check variables bound with <code>as</code></li>
+<li><strong>Column names</strong> - Fall back to column name lookup</li>
+</ol>
 <p><strong>Design notes</strong>:</p>
 <ul>
-<li><code>as</code> aligns with pipe semantics (“name the result from the left…”)</li>
 <li>Unified <code>@</code> prefix reduces cognitive burden</li>
 <li>References jq syntax but removes <code>$</code> to avoid Shell conflicts</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="expression-syntax-guide"><a class="header" href="#expression-syntax-guide">Expression Syntax Guide</a></h1>
-<p>This document provides a comprehensive guide to TVA expression syntax, covering function calls,
-pipelines, and multi-expression evaluation.</p>
-<h2 id="expression-elements"><a class="header" href="#expression-elements">Expression Elements</a></h2>
-<p>TVA expressions are composed of the following atomic elements:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th style="text-align: left">Element</th><th style="text-align: left">Syntax</th><th style="text-align: left">Description</th></tr>
-</thead>
-<tbody>
-<tr><td style="text-align: left"><strong>Column Reference</strong></td><td style="text-align: left"><code>@1</code>, <code>@col_name</code></td><td style="text-align: left">Reference input data columns</td></tr>
-<tr><td style="text-align: left"><strong>Variable</strong></td><td style="text-align: left"><code>@var_name</code></td><td style="text-align: left">Variables bound via <code>as</code></td></tr>
-<tr><td style="text-align: left"><strong>Literal</strong></td><td style="text-align: left"><code>42</code>, <code>"hello"</code>, <code>true</code>, <code>null</code>, <code>[1, 2, 3]</code></td><td style="text-align: left">Constant values</td></tr>
-<tr><td style="text-align: left"><strong>Function Call</strong></td><td style="text-align: left"><code>func(args...)</code></td><td style="text-align: left">Built-in functions</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="evaluation-rules"><a class="header" href="#evaluation-rules">Evaluation Rules</a></h2>
+<pre><code class="language-bash"># Resolution order example
+tva expr -n "x" -r "100" -E '
+    @x as @y;             # Variable @y = column @x (100)
+    map([1, 2, 3], x =&gt; x + @y)  # Lambda param x shadows nothing; @y is variable
+'
+# Returns: [101, 102, 103]
+</code></pre>
+<h2 id="lambda-parameters"><a class="header" href="#lambda-parameters">Lambda Parameters</a></h2>
+<p>Lambda expressions introduce their own parameter scope:</p>
+<pre><code class="language-bash"># Lambda parameter shadows outer scope
+tva expr -E '
+    10 as @x;
+    map([1, 2, 3], x =&gt; x + @x)  # Lambda param x; @x is variable (10)
+'
+# Returns: [11, 12, 13]
+
+# Lambda captures outer variables
+tva expr -E '
+    5 as @offset;
+    map([1, 2, 3], n =&gt; n + @offset)  # @offset is captured from outer scope
+'
+# Returns: [6, 7, 8]
+</code></pre>
+<p>Lambda parameters:</p>
 <ul>
-<li>Expressions are evaluated left-to-right according to operator precedence</li>
-<li>The pipe operator <code>|</code> has the lowest precedence, used to connect multiple processing steps</li>
+<li>Do not use <code>@</code> prefix (distinguishes from columns/variables)</li>
+<li>Are lexically scoped</li>
+<li>Can capture variables from outer scope</li>
 </ul>
-<h2 id="function-call-syntax"><a class="header" href="#function-call-syntax">Function Call Syntax</a></h2>
-<h3 id="prefix-call"><a class="header" href="#prefix-call">Prefix Call</a></h3>
-<p><code>func(arg1, arg2, ...)</code> - Traditional function call syntax.</p>
-<pre><code class="language-bash">tva expr -E 'trim("  hello  ")'             # Returns: hello
-tva expr -E 'substr("hello world", 0, 5)'   # Returns: hello
-</code></pre>
-<h3 id="method-call"><a class="header" href="#method-call">Method Call</a></h3>
-<p>Method call is syntactic sugar for function calls:</p>
-<pre><code class="language-bash"># Method call is equivalent to function call
-@name.trim()           # Equivalent to: trim(@name)
-@price.round()         # Equivalent to: round(@price)
-
-# Method chaining
-@name.trim().upper().substr(0, 5)
-# Equivalent to: substr(upper(trim(@name)), 0, 5)
-
-# Method call with arguments
-@name.substr(0, 5)     # Equivalent to: substr(@name, 0, 5)
-@price.pow(2)          # Equivalent to: pow(@price, 2)
-</code></pre>
-<h3 id="pipe-call-single-argument"><a class="header" href="#pipe-call-single-argument">Pipe Call (Single Argument)</a></h3>
-<p><code>arg | func()</code> - Pipe left value to function. The <code>_</code> placeholder can be omitted for single-argument
-functions.</p>
-<pre><code class="language-bash">tva expr -E '"hello" | upper()'             # Returns: HELLO
-tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
-</code></pre>
-<h3 id="pipe-call-multiple-arguments"><a class="header" href="#pipe-call-multiple-arguments">Pipe Call (Multiple Arguments)</a></h3>
-<p><code>arg | func(_, arg2)</code> - Use <code>_</code> to represent the piped value as the first argument.</p>
-<pre><code class="language-bash">tva expr -E '"hello world" | substr(_, 0, 5)'   # Returns: hello
-tva expr -E '"a,b,c" | split(_, ",")'           # Returns: ["a", "b", "c"]
-</code></pre>
-<h2 id="expression-composition"><a class="header" href="#expression-composition">Expression Composition</a></h2>
-<p>Expressions can be combined in several ways:</p>
-<ul>
-<li><strong>Operator Composition</strong>: <code>@a + @b</code>, <code>@x &gt; 10 and @y &lt; 20</code></li>
-<li><strong>Pipe Composition</strong>: <code>@name | trim() | upper()</code></li>
-<li><strong>Variable Binding</strong>: <code>expr as @var; @var + 1</code></li>
-<li><strong>Function Nesting</strong>: <code>if(@age &gt; 18, "adult", "minor")</code></li>
-</ul>
-<h2 id="lambda-expressions"><a class="header" href="#lambda-expressions">Lambda Expressions</a></h2>
-<p>Lambda expressions create anonymous functions, primarily used with higher-order functions like
-<code>map</code>, <code>filter</code>, and <code>reduce</code>:</p>
-<h3 id="syntax"><a class="header" href="#syntax">Syntax</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th style="text-align: left">Form</th><th style="text-align: left">Syntax</th><th style="text-align: left">Example</th></tr>
-</thead>
-<tbody>
-<tr><td style="text-align: left">Single parameter</td><td style="text-align: left"><code>param =&gt; expr</code></td><td style="text-align: left"><code>x =&gt; x + 1</code></td></tr>
-<tr><td style="text-align: left">Multiple parameters</td><td style="text-align: left"><code>(p1, p2, ...) =&gt; expr</code></td><td style="text-align: left"><code>(x, y) =&gt; x + y</code></td></tr>
-<tr><td style="text-align: left">No parameters</td><td style="text-align: left"><code>() =&gt; expr</code></td><td style="text-align: left"><code>() =&gt; 42</code></td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Note</strong>: Lambda parameters are <strong>lexically scoped</strong> and do not use the <code>@</code> prefix. This
-distinguishes them from column references (<code>@col</code>) and variables (<code>@var</code>).</p>
-<h3 id="examples-13"><a class="header" href="#examples-13">Examples</a></h3>
-<pre><code class="language-bash"># Single-parameter lambda
-tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
-# Returns: [2, 4, 6]
-
-# Multi-parameter lambda
-tva expr -E 'reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x)'
-# Returns: 6
-
-# Filter with lambda
-tva expr -E 'filter([1, 2, 3, 4], x =&gt; x &gt; 2)'
-# Returns: [3, 4]
-</code></pre>
-<p>Lambda bodies can reference columns (<code>@col</code>) and variables (<code>@var</code>) from the outer scope.</p>
-<h2 id="complex-pipelines"><a class="header" href="#complex-pipelines">Complex Pipelines</a></h2>
-<p>The pipe operator <code>|</code> enables powerful function chaining:</p>
-<pre><code class="language-bash"># Chain single-argument functions
-tva expr -n "name" -r "  john doe  " -E '@name | trim() | upper()'
-# Returns: JOHN DOE
-
-# Mix single and multi-argument functions
-tva expr -n "desc" -r "hello world" -E '@desc | substr(_, 0, 5) | upper()'
-# Returns: HELLO
-
-# Complex validation pipeline
-tva expr -n "email" -r "  Test@Example.COM  " -E '@email | trim() | lower() | regex_match(_, ".*@.*\\.com")'
-# Returns: true
-</code></pre>
-<h2 id="multiple-expressions"><a class="header" href="#multiple-expressions">Multiple Expressions</a></h2>
-<p>Use <code>;</code> to separate multiple expressions, evaluated sequentially:</p>
-<pre><code class="language-bash"># Multiple expressions with variable binding
-tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
-# Returns: 50
-
-# Pipeline and semicolons
-tva expr -n "price,qty" -r "10,5" -E '
-    @price | int() as @p;
-    @p * 2 as @p;
-    @qty | int() as @q;
-    @q * 3 as @q;
-    @p + @q
+<h2 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h2>
+<ol>
+<li><strong>Use descriptive variable names</strong>: <code>@total_price</code> instead of <code>@tp</code></li>
+<li><strong>Avoid unnecessary shadowing</strong>: Can be confusing</li>
+<li><strong>Bind early, use often</strong>: Reduces repetition and improves readability</li>
+<li><strong>Document complex pipelines</strong>: Use comments with <code>//</code></li>
+</ol>
+<pre><code class="language-bash"># Good: clear variable names
+tva expr -n "price,qty,discount" -r "100,5,0.1" -E '
+    @price * @qty as @subtotal;            // Calculate subtotal
+    @subtotal * (1 - @discount) as @total; // Apply discount
+    @total
 '
-# Returns: 35
-</code></pre>
-<p><strong>Rules</strong>:</p>
-<ul>
-<li>Each expression can have side effects (like variable binding)</li>
-<li>Only the last expression’s value is returned</li>
-</ul>
-<h2 id="comments"><a class="header" href="#comments">Comments</a></h2>
-<p>TVA supports line comments starting with <code>//</code>. Comments are only valid inside expressions; comments
-in command line are handled by the Shell.</p>
-<pre><code class="language-bash"># With comments explaining the logic
-tva expr -n "total,tax" -r "100,0.1" -E '
-    @total | int() as @t;  // Convert to integer
-    @tax | float() as @r;  // Convert tax rate to float
-    @t * (1 + @r)          // Calculate total with tax
-'
-# Returns: 110
+# Returns: 450
 
-tva expr -n "price,qty,tax_rate" -r "10,5,0.1" -E '
-    // Calculate total price
-    @price * @qty as @total;
-    @total * (1 + @tax_rate)  // With tax
-'
-# Returns: 55
-</code></pre>
-<h2 id="output-behavior"><a class="header" href="#output-behavior">Output Behavior</a></h2>
-<p>In <code>tva expr</code>, the last expression’s value is printed to stdout:</p>
-<pre><code class="language-bash"># Simple expression output
-tva expr -E '42 + 3.14'           # Prints: 45.14
-
-# Column reference output
-tva expr -n "name" -r "John" -E '@name'   # Prints: John
-</code></pre>
-<p>The <code>print(val, ...)</code> function outputs multiple arguments sequentially and returns the last
-argument’s value. If <code>print()</code> is the last expression, the value won’t be printed twice:</p>
-<pre><code class="language-bash"># Print intermediate values
-tva expr -n "price,qty" -r "10,5" -E '
-    @price | print("price:", _);
-    print("qty:", @qty);
-    @price * @qty
-'
-# Prints: price: 10
-#         qty: 5
-#         50
+# Avoid: unclear one-letter names
+tva expr -n "price,qty,discount" -r "100,5,0.1" -E '@price * @qty as @a; @a * (1 - @discount)'
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="expression-operators"><a class="header" href="#expression-operators">Expression Operators</a></h1>
+<p>TVA provides a comprehensive set of operators for arithmetic, string, comparison, and logical operations.</p>
 <h2 id="operator-precedence-high-to-low"><a class="header" href="#operator-precedence-high-to-low">Operator Precedence (high to low)</a></h2>
 <ol>
 <li><code>()</code> - Grouping</li>
@@ -3359,68 +3541,179 @@ tva expr -n "price,qty" -r "10,5" -E '
 <li><code>a ** b</code>: Power</li>
 </ul>
 <h2 id="string-operators"><a class="header" href="#string-operators">String Operators</a></h2>
-<ul>
-<li><code>a ++ b</code>: String concatenation</li>
-</ul>
+<h3 id="concatenation"><a class="header" href="#concatenation">Concatenation</a></h3>
+<p><code>a ++ b</code> - Concatenates two values as strings.</p>
+<pre><code class="language-bash">tva expr -E '"hello" ++ " " ++ "world"'  # Returns: "hello world"
+tva expr -E '"count: " ++ 42'            # Returns: "count: 42"
+tva expr -E '1 ++ 2 ++ 3'                 # Returns: "123"
+</code></pre>
+<p>Both operands are converted to strings before concatenation.</p>
 <h2 id="comparison-operators"><a class="header" href="#comparison-operators">Comparison Operators</a></h2>
-<p><strong>Numeric:</strong></p>
-<ul>
-<li><code>a == b</code>: Equal</li>
-<li><code>a != b</code>: Not equal</li>
-<li><code>a &lt; b</code>: Less than</li>
-<li><code>a &lt;= b</code>: Less than or equal</li>
-<li><code>a &gt; b</code>: Greater than</li>
-<li><code>a &gt;= b</code>: Greater than or equal</li>
-</ul>
-<p><strong>String:</strong></p>
-<ul>
-<li><code>a eq b</code>: String equal</li>
-<li><code>a ne b</code>: String not equal</li>
-<li><code>a lt b</code>: String less than (lexicographic)</li>
-<li><code>a le b</code>: String less than or equal</li>
-<li><code>a gt b</code>: String greater than</li>
-<li><code>a ge b</code>: String greater than or equal</li>
-</ul>
-<p><strong>Note</strong>: No implicit type conversion. Use string comparison operators for string comparison.</p>
-<p><strong>Note</strong>: Empty fields are treated as <code>null</code>. See <a href="#null-type-and-empty-fields">Null Type and Empty Fields</a> for details.</p>
+<h3 id="numeric-comparison"><a class="header" href="#numeric-comparison">Numeric Comparison</a></h3>
+<p>Compare numbers. Returns boolean.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Operator</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>==</code></td><td style="text-align: left">Equal</td><td style="text-align: left"><code>5 == 5</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>!=</code></td><td style="text-align: left">Not equal</td><td style="text-align: left"><code>5 != 3</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>&lt;</code></td><td style="text-align: left">Less than</td><td style="text-align: left"><code>3 &lt; 5</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>&lt;=</code></td><td style="text-align: left">Less than or equal</td><td style="text-align: left"><code>5 &lt;= 5</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>&gt;</code></td><td style="text-align: left">Greater than</td><td style="text-align: left"><code>5 &gt; 3</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>&gt;=</code></td><td style="text-align: left">Greater than or equal</td><td style="text-align: left"><code>5 &gt;= 3</code> → <code>true</code></td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-bash">tva expr -E '5 == 5'                # Returns: true
+tva expr -E '10 &gt; 5'                # Returns: true
+tva expr -E '@1 &gt; 100' -r '150'     # Returns: true
+</code></pre>
+<p><strong>Note</strong>: Different types always compare as not equal.</p>
+<pre><code class="language-bash">tva expr -E '5 == "5"'              # Returns: false (int vs string)
+tva expr -E '5 == 5.0'              # Returns: true (numeric comparison)
+</code></pre>
+<h3 id="string-comparison"><a class="header" href="#string-comparison">String Comparison</a></h3>
+<p>Lexicographic string comparison. Returns boolean.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Operator</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>eq</code></td><td style="text-align: left">String equal</td><td style="text-align: left"><code>"a" eq "a"</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>ne</code></td><td style="text-align: left">String not equal</td><td style="text-align: left"><code>"a" ne "b"</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>lt</code></td><td style="text-align: left">String less than</td><td style="text-align: left"><code>"a" lt "b"</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>le</code></td><td style="text-align: left">String less than or equal</td><td style="text-align: left"><code>"a" le "a"</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>gt</code></td><td style="text-align: left">String greater than</td><td style="text-align: left"><code>"b" gt "a"</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>ge</code></td><td style="text-align: left">String greater than or equal</td><td style="text-align: left"><code>"b" ge "a"</code> → <code>true</code></td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-bash">tva expr -E '"apple" lt "banana"'   # Returns: true
+tva expr -E '"hello" eq "hello"'    # Returns: true
+</code></pre>
+<p><strong>Note</strong>: Use string comparison operators for string comparison, not <code>==</code>.</p>
+<pre><code class="language-bash"># Correct: string comparison
+tva expr -E '"10" lt "2"'           # Returns: true (lexicographic)
+
+# Incorrect: numeric comparison with strings
+tva expr -E '"10" == "10"'          # Returns: true
+tva expr -E '"10" &lt; "2"'            # Returns: false (parsed as numbers)
+</code></pre>
+<h3 id="null-handling"><a class="header" href="#null-handling">Null Handling</a></h3>
+<p>Empty fields are treated as <code>null</code>. See <a href="#null-type-and-empty-fields">Null Type and Empty Fields</a> for details.</p>
+<pre><code class="language-bash">tva expr -E '@1 == null' -r ''      # Returns: true (empty field)
+tva expr -E '@1 == ""' -r ''        # Returns: false (null != "")
+</code></pre>
 <h2 id="logical-operators"><a class="header" href="#logical-operators">Logical Operators</a></h2>
-<ul>
-<li><code>not a</code>: Logical NOT</li>
-<li><code>a and b</code>: Logical AND (short-circuit evaluation)</li>
-<li><code>a or b</code>: Logical OR (short-circuit evaluation)</li>
-</ul>
-<p><strong>Short-circuit evaluation</strong>: <code>and</code> and <code>or</code> use short-circuit evaluation, meaning the right operand is only evaluated if necessary.</p>
-<pre><code class="language-bash"># AND short-circuit: right side not evaluated when left is false
-tva expr -E 'false and print("hello")'   # Output: false (print not called)
-tva expr -E 'true and print("hello")'    # Output: hello\ntrue
-
-# OR short-circuit: right side not evaluated when left is true
-tva expr -E 'true or print("hello")'     # Output: true (print not called)
-tva expr -E 'false or print("hello")'    # Output: hello\ntrue
-
-# Avoid division by zero
-# If @2 is 0, the division is skipped
-tva expr -E '@2 != 0 and @1 / @2 &gt; 2' -r '100,0' -r '100,5'   # Output: false, true
+<h3 id="logical-not"><a class="header" href="#logical-not">Logical NOT</a></h3>
+<p><code>not a</code> - Negates a boolean value.</p>
+<pre><code class="language-bash">tva expr -E 'not true'              # Returns: false
+tva expr -E 'not false'             # Returns: true
+tva expr -E 'not @1' -r ''          # Returns: true (null is falsy)
+</code></pre>
+<h3 id="logical-and"><a class="header" href="#logical-and">Logical AND</a></h3>
+<p><code>a and b</code> - Returns true if both operands are true.</p>
+<pre><code class="language-bash">tva expr -E 'true and true'         # Returns: true
+tva expr -E 'true and false'        # Returns: false
+tva expr -E '5 &gt; 3 and 10 &lt; 20'     # Returns: true
+</code></pre>
+<p><strong>Short-circuit evaluation</strong>: The right operand is only evaluated if the left is true.</p>
+<pre><code class="language-bash"># Right side not evaluated when left is false
+tva expr -E 'false and print("hello")'   # Returns: false (print not called)
+tva expr -E 'true and print("hello")'    # Prints: hello, returns: true
+</code></pre>
+<h3 id="logical-or"><a class="header" href="#logical-or">Logical OR</a></h3>
+<p><code>a or b</code> - Returns true if either operand is true.</p>
+<pre><code class="language-bash">tva expr -E 'true or false'         # Returns: true
+tva expr -E 'false or false'        # Returns: false
+tva expr -E '5 &gt; 10 or 3 &lt; 5'       # Returns: true
+</code></pre>
+<p><strong>Short-circuit evaluation</strong>: The right operand is only evaluated if the left is false.</p>
+<pre><code class="language-bash"># Right side not evaluated when left is true
+tva expr -E 'true or print("hello")'     # Returns: true (print not called)
+tva expr -E 'false or print("hello")'    # Prints: hello, returns: true
+</code></pre>
+<h3 id="practical-examples"><a class="header" href="#practical-examples">Practical Examples</a></h3>
+<pre><code class="language-bash"># Avoid division by zero
+# If @2 is 0, the division is skipped due to short-circuit
+tva expr -E '@2 != 0 and @1 / @2 &gt; 2' -r '100,0' -r '100,5'
+# Returns: false, true
 
 # Check before accessing
 # Only calculate length if @name is not empty
-tva expr -E '@name != "" and len(@name) &gt; 5' -n 'name' -r '' -r 'Alice' -r 'Alexander'  # Output: false, false, true
+tva expr -E '@name != null and len(@name) &gt; 5' -n 'name' -r '' -r 'Alice' -r 'Alexander'
+# Returns: false, false, true
 
-# Logical OR with string (returns boolean)
-# Empty field is null (falsy), non-empty is truthy
-tva expr -E '@email or "fallback"' -n 'email' -r '' -r 'user@example.com'  # Output: true, true
+# Default value with or
+# Note: returns boolean, not the value
+tva expr -E '@email or true' -n 'email' -r '' -r 'user@example.com'
+# Returns: true, true
 
-# For default value, use if() with null check:
-tva expr -E 'if(@email == null, "no-email@example.com", @email)' -n 'email' -r '' -r 'user@example.com'  # Output: no-email@example.com, user@example.com
+# For actual default value, use if() or default():
+tva expr -E 'if(@email == null, "no-email@example.com", @email)' -n 'email' -r '' -r 'user@example.com'
+# Returns: no-email@example.com, user@example.com
 </code></pre>
 <h2 id="pipe-operator"><a class="header" href="#pipe-operator">Pipe Operator</a></h2>
-<ul>
-<li><code>a | f()</code>: Pipe left value to function (left value becomes first argument)</li>
-<li><code>a | f(_, arg)</code>: Pipe with placeholder</li>
-</ul>
+<p><code>a | f()</code> - Passes the left value as the first argument to the function on the right.</p>
+<h3 id="single-argument-functions"><a class="header" href="#single-argument-functions">Single Argument Functions</a></h3>
+<p>For functions that take one argument, the pipe value is used directly:</p>
+<pre><code class="language-bash">tva expr -E '"hello" | upper()'           # Returns: HELLO
+tva expr -E '[1, 2, 3] | reverse()'       # Returns: [3, 2, 1]
+tva expr -E '@name | trim() | lower()'    # Chain multiple pipes
+</code></pre>
+<h3 id="multiple-argument-functions"><a class="header" href="#multiple-argument-functions">Multiple Argument Functions</a></h3>
+<p>Use <code>_</code> as a placeholder for the piped value:</p>
+<pre><code class="language-bash">tva expr -E '"hello world" | substr(_, 0, 5)'    # Returns: hello
+tva expr -E '"a,b,c" | split(_, ",")'            # Returns: ["a", "b", "c"]
+tva expr -E '"hello" | replace(_, "l", "x")'     # Returns: hexxo
+</code></pre>
+<h3 id="complex-pipelines"><a class="header" href="#complex-pipelines">Complex Pipelines</a></h3>
+<p>Combine multiple operations:</p>
+<pre><code class="language-bash"># Data transformation
+tva expr -n "data" -r "1,2,3,4,5" -E '
+    @data
+    | split(_, ",")
+    | map(_, x =&gt; int(x) * 2)
+    | join(_, "-")
+'
+# Returns: "2-4-6-8-10"
+
+# Validation pipeline
+tva expr -n "email" -r "  Test@Example.COM  " -E '
+    @email
+    | trim()
+    | lower()
+    | regex_match(_, ".*@.*\\.com")
+'
+# Returns: true
+</code></pre>
+<h2 id="operator-precedence-examples"><a class="header" href="#operator-precedence-examples">Operator Precedence Examples</a></h2>
+<pre><code class="language-bash"># Without parentheses: multiplication before addition
+tva expr -E '2 + 3 * 4'             # Returns: 14 (not 20)
+
+# With parentheses: force addition first
+tva expr -E '(2 + 3) * 4'           # Returns: 20
+
+# Comparison before logical
+tva expr -E '5 &gt; 3 and 10 &lt; 20'     # Returns: true
+
+# Pipe has lowest precedence
+tva expr -E '1 + 2 | int()'         # Returns: 3 (not error)
+</code></pre>
+<h2 id="best-practices-1"><a class="header" href="#best-practices-1">Best Practices</a></h2>
+<ol>
+<li><strong>Use parentheses for clarity</strong>: Even when not strictly necessary, parentheses make intent clear</li>
+<li><strong>Prefer string operators for strings</strong>: Use <code>eq</code> instead of <code>==</code> for string comparison</li>
+<li><strong>Use short-circuit for safety</strong>: <code>not @col or expensive_operation()</code></li>
+<li><strong>Chain with pipes</strong>: <code>@data | trim() | lower()</code> is more readable than <code>lower(trim(@data))</code></li>
+</ol>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="expression-functions"><a class="header" href="#expression-functions">Expression Functions</a></h1>
-<h2 id="numeric-operations"><a class="header" href="#numeric-operations">Numeric Operations</a></h2>
+<p>TVA expression engine provides a rich set of built-in functions for data processing.</p>
+<h2 id="numeric-operations-1"><a class="header" href="#numeric-operations-1">Numeric Operations</a></h2>
 <ul>
 <li>abs(x) -&gt; number: Absolute value</li>
 <li>ceil(x) -&gt; int: Ceiling (round up)</li>
@@ -3474,7 +3767,7 @@ tva expr -E 'truncate("hello world", 5)'    # Returns: "he..."
 tva expr -E 'wordcount("hello world")'      # Returns: 2
 tva expr -E 'wordcount("one two three four")'  # Returns: 4
 </code></pre>
-<h2 id="list-operations"><a class="header" href="#list-operations">List Operations</a></h2>
+<h2 id="list-operations-2"><a class="header" href="#list-operations-2">List Operations</a></h2>
 <ul>
 <li>first(list) -&gt; T: First element</li>
 <li>join(list, sep) -&gt; string: Join list elements</li>
@@ -3614,19 +3907,47 @@ tva expr -E 'sort_by([[2, "b"], [1, "c"], [1, "a"]], r =&gt; [r.nth(0), r.nth(1)
 </ul>
 <h2 id="meta-functions"><a class="header" href="#meta-functions">Meta Functions</a></h2>
 <ul>
-<li>type(value) -&gt; string: Returns the type name of the value
+<li>
+<p>type(value) -&gt; string: Returns the type name of the value</p>
 <ul>
 <li>Returns: “int”, “float”, “string”, “bool”, “null”, or “list”</li>
 </ul>
 </li>
-<li>env(name) -&gt; string: Get environment variable value
+<li>
+<p>is_null(value) -&gt; bool: Returns true if value is null</p>
+</li>
+<li>
+<p>is_int(value) -&gt; bool: Returns true if value is an integer</p>
+</li>
+<li>
+<p>is_float(value) -&gt; bool: Returns true if value is a float</p>
+</li>
+<li>
+<p>is_numeric(value) -&gt; bool: Returns true if value is int or float</p>
+</li>
+<li>
+<p>is_string(value) -&gt; bool: Returns true if value is a string</p>
+</li>
+<li>
+<p>is_bool(value) -&gt; bool: Returns true if value is a boolean</p>
+</li>
+<li>
+<p>is_list(value) -&gt; bool: Returns true if value is a list</p>
+</li>
+<li>
+<p>env(name) -&gt; string: Get environment variable value</p>
 <ul>
 <li>Returns <code>null</code> if variable not set</li>
 </ul>
 </li>
-<li>cwd() -&gt; string: Returns the current working directory</li>
-<li>version() -&gt; string: Returns the TVA version</li>
-<li>platform() -&gt; string: Returns the operating system name
+<li>
+<p>cwd() -&gt; string: Returns the current working directory</p>
+</li>
+<li>
+<p>version() -&gt; string: Returns the TVA version</p>
+</li>
+<li>
+<p>platform() -&gt; string: Returns the operating system name</p>
 <ul>
 <li>Returns: “windows”, “macos”, “linux”, or “unknown”</li>
 </ul>
@@ -3638,6 +3959,18 @@ tva expr -E '[[1,2], "string", true, null, -5]'
 
 tva expr -E '[[1,2], "string", true, null, -5, x =&gt; x + 1].map(x =&gt; type(x)).join(",")'
 # list,string,bool,null,int,lambda
+
+# Type checking functions
+tva expr -E 'is_null(null)'                # Returns: true
+tva expr -E 'is_null("hello")'             # Returns: false
+tva expr -E 'is_int(42)'                   # Returns: true
+tva expr -E 'is_int(3.14)'                 # Returns: false
+tva expr -E 'is_float(3.14)'               # Returns: true
+tva expr -E 'is_numeric(42)'               # Returns: true
+tva expr -E 'is_numeric(3.14)'             # Returns: true
+tva expr -E 'is_string("hello")'           # Returns: true
+tva expr -E 'is_bool(true)'                # Returns: true
+tva expr -E 'is_list([1, 2, 3])'           # Returns: true
 
 # env() examples
 tva expr -E 'env("HOME")'        # Returns: "/home/user"
@@ -3653,13 +3986,223 @@ tva expr -E 'cwd()'              # Returns: "/path/to/current/dir"
 
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="rosetta-code-with-tva-expression-engine"><a class="header" href="#rosetta-code-with-tva-expression-engine">Rosetta Code with TVA Expression Engine</a></h1>
+<h1 id="expr-syntax-guide"><a class="header" href="#expr-syntax-guide">Expr Syntax Guide</a></h1>
+<p>This document provides a comprehensive guide to TVA expr syntax, covering function calls,
+pipelines, lambda expressions, and multi-expression evaluation.</p>
+<h2 id="expression-elements"><a class="header" href="#expression-elements">Expression Elements</a></h2>
+<p>TVA expressions are composed of the following atomic elements:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Element</th><th style="text-align: left">Syntax</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Column Reference</strong></td><td style="text-align: left"><code>@1</code>, <code>@col_name</code></td><td style="text-align: left">Reference input data columns</td></tr>
+<tr><td style="text-align: left"><strong>Variable</strong></td><td style="text-align: left"><code>@var_name</code></td><td style="text-align: left">Variables bound via <code>as</code></td></tr>
+<tr><td style="text-align: left"><strong>Literal</strong></td><td style="text-align: left"><code>42</code>, <code>"hello"</code>, <code>true</code>, <code>null</code>, <code>[1, 2, 3]</code></td><td style="text-align: left">Constant values</td></tr>
+<tr><td style="text-align: left"><strong>Function Call</strong></td><td style="text-align: left"><code>func(args...)</code></td><td style="text-align: left">Built-in functions</td></tr>
+<tr><td style="text-align: left"><strong>Lambda</strong></td><td style="text-align: left"><code>x =&gt; x + 1</code></td><td style="text-align: left">Anonymous functions</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="evaluation-rules"><a class="header" href="#evaluation-rules">Evaluation Rules</a></h2>
+<ul>
+<li>Expressions are evaluated left-to-right according to operator precedence</li>
+<li>The pipe operator <code>|</code> has the lowest precedence, used to connect multiple processing steps</li>
+<li>The last expression’s value is the result</li>
+</ul>
+<h2 id="function-call-syntax"><a class="header" href="#function-call-syntax">Function Call Syntax</a></h2>
+<h3 id="prefix-call"><a class="header" href="#prefix-call">Prefix Call</a></h3>
+<p><code>func(arg1, arg2, ...)</code> - Traditional function call syntax.</p>
+<pre><code class="language-bash">tva expr -E 'trim("  hello  ")'             # Returns: hello
+tva expr -E 'substr("hello world", 0, 5)'   # Returns: hello
+tva expr -E 'max(1, 5, 3)'                   # Returns: 5
+</code></pre>
+<h3 id="method-call"><a class="header" href="#method-call">Method Call</a></h3>
+<p>Method call is syntactic sugar for function calls:</p>
+<pre><code class="language-bash"># Method call is equivalent to function call
+@name.trim()           # Equivalent to: trim(@name)
+@price.round()         # Equivalent to: round(@price)
+
+# Method chaining
+@name.trim().upper().substr(0, 5)
+# Equivalent to: substr(upper(trim(@name)), 0, 5)
+
+# Method call with arguments
+@name.substr(0, 5)     # Equivalent to: substr(@name, 0, 5)
+@price.pow(2)          # Equivalent to: pow(@price, 2)
+</code></pre>
+<h3 id="pipe-call-single-argument"><a class="header" href="#pipe-call-single-argument">Pipe Call (Single Argument)</a></h3>
+<p><code>arg | func()</code> - Pipe left value to function. The <code>_</code> placeholder can be omitted for single-argument
+functions.</p>
+<pre><code class="language-bash">tva expr -E '"hello" | upper()'             # Returns: HELLO
+tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
+tva expr -E '@name | trim() | lower()'      # Chain multiple pipes
+</code></pre>
+<h3 id="pipe-call-multiple-arguments"><a class="header" href="#pipe-call-multiple-arguments">Pipe Call (Multiple Arguments)</a></h3>
+<p><code>arg | func(_, arg2)</code> - Use <code>_</code> to represent the piped value as the first argument.</p>
+<pre><code class="language-bash">tva expr -E '"hello world" | substr(_, 0, 5)'   # Returns: hello
+tva expr -E '"a,b,c" | split(_, ",")'           # Returns: ["a", "b", "c"]
+tva expr -E '"hello" | replace(_, "l", "x")'    # Returns: "hexxo"
+</code></pre>
+<h2 id="expression-composition"><a class="header" href="#expression-composition">Expression Composition</a></h2>
+<p>Expressions can be combined in several ways:</p>
+<ul>
+<li><strong>Operator Composition</strong>: <code>@a + @b</code>, <code>@x &gt; 10 and @y &lt; 20</code></li>
+<li><strong>Pipe Composition</strong>: <code>@name | trim() | upper()</code></li>
+<li><strong>Variable Binding</strong>: <code>expr as @var; @var + 1</code></li>
+<li><strong>Function Nesting</strong>: <code>if(@age &gt; 18, "adult", "minor")</code></li>
+</ul>
+<h2 id="lambda-expressions"><a class="header" href="#lambda-expressions">Lambda Expressions</a></h2>
+<p>Lambda expressions create anonymous functions, primarily used with higher-order functions like
+<code>map</code>, <code>filter</code>, and <code>reduce</code>:</p>
+<h3 id="syntax"><a class="header" href="#syntax">Syntax</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Form</th><th style="text-align: left">Syntax</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Single parameter</td><td style="text-align: left"><code>param =&gt; expr</code></td><td style="text-align: left"><code>x =&gt; x + 1</code></td></tr>
+<tr><td style="text-align: left">Multiple parameters</td><td style="text-align: left"><code>(p1, p2, ...) =&gt; expr</code></td><td style="text-align: left"><code>(x, y) =&gt; x + y</code></td></tr>
+<tr><td style="text-align: left">No parameters</td><td style="text-align: left"><code>() =&gt; expr</code></td><td style="text-align: left"><code>() =&gt; 42</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Note</strong>: Lambda parameters are <strong>lexically scoped</strong> and do not use the <code>@</code> prefix. This
+distinguishes them from column references (<code>@col</code>) and variables (<code>@var</code>).</p>
+<h3 id="examples-14"><a class="header" href="#examples-14">Examples</a></h3>
+<pre><code class="language-bash"># Single-parameter lambda
+tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
+# Returns: [2, 4, 6]
+
+# Multi-parameter lambda
+tva expr -E 'reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x)'
+# Returns: 6
+
+# Filter with lambda
+tva expr -E 'filter([1, 2, 3, 4], x =&gt; x &gt; 2)'
+# Returns: [3, 4]
+
+# Sort by computed key
+tva expr -E 'sort_by(["cherry", "apple", "pear"], s =&gt; len(s))'
+# Returns: ["pear", "apple", "cherry"]
+</code></pre>
+<p>Lambda bodies can reference columns (<code>@col</code>) and variables (<code>@var</code>) from the outer scope.</p>
+<h2 id="complex-pipelines-1"><a class="header" href="#complex-pipelines-1">Complex Pipelines</a></h2>
+<p>The pipe operator <code>|</code> enables powerful function chaining:</p>
+<pre><code class="language-bash"># Chain single-argument functions
+tva expr -n "name" -r "  john doe  " -E '@name | trim() | upper()'
+# Returns: JOHN DOE
+
+# Mix single and multi-argument functions
+tva expr -n "desc" -r "hello world" -E '@desc | substr(_, 0, 5) | upper()'
+# Returns: HELLO
+
+# Complex validation pipeline
+tva expr -n "email" -r "  Test@Example.COM  " -E '@email | trim() | lower() | regex_match(_, ".*@.*\\.com")'
+# Returns: true
+
+# Data transformation pipeline
+tva expr -n "data" -r "1,2,3,4,5" -E '@data | split(_, ",") | map(_, x =&gt; int(x) * 2) | join(_, "-")'
+# Returns: "2-4-6-8-10"
+</code></pre>
+<h2 id="multiple-expressions"><a class="header" href="#multiple-expressions">Multiple Expressions</a></h2>
+<p>Use <code>;</code> to separate multiple expressions, evaluated sequentially:</p>
+<pre><code class="language-bash"># Multiple expressions with variable binding
+tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
+# Returns: 50
+
+# Pipeline and semicolons
+tva expr -n "price,qty" -r "10,5" -E '
+    @price | int() as @p;
+    @p * 2 as @p;
+    @qty | int() as @q;
+    @q * 3 as @q;
+    @p + @q
+'
+# Returns: 35
+</code></pre>
+<p><strong>Rules</strong>:</p>
+<ul>
+<li>Each expression can have side effects (like variable binding)</li>
+<li>Only the last expression’s value is returned</li>
+<li>Variables are scoped to the current expression evaluation</li>
+</ul>
+<h2 id="comments"><a class="header" href="#comments">Comments</a></h2>
+<p>TVA supports line comments starting with <code>//</code>. Comments are only valid inside expressions; comments
+in command line are handled by the Shell.</p>
+<pre><code class="language-bash"># With comments explaining the logic
+tva expr -n "total,tax" -r "100,0.1" -E '
+    @total | int() as @t;  // Convert to integer
+    @tax | float() as @r;  // Convert tax rate to float
+    @t * (1 + @r)          // Calculate total with tax
+'
+# Returns: 110
+
+tva expr -n "price,qty,tax_rate" -r "10,5,0.1" -E '
+    // Calculate total price
+    @price * @qty as @total;
+    @total * (1 + @tax_rate)  // With tax
+'
+# Returns: 55
+</code></pre>
+<h2 id="output-behavior"><a class="header" href="#output-behavior">Output Behavior</a></h2>
+<p>In <code>tva expr</code>, the last expression’s value is printed to stdout:</p>
+<pre><code class="language-bash"># Simple expression output
+tva expr -E '42 + 3.14'           # Prints: 45.14
+
+# Column reference output
+tva expr -n "name" -r "John" -E '@name'   # Prints: John
+
+# List output
+tva expr -E '[1, 2, 3]'             # Prints: [1, 2, 3]
+</code></pre>
+<p>The <code>print(val, ...)</code> function outputs multiple arguments sequentially and returns the last
+argument’s value. If <code>print()</code> is the last expression, the value won’t be printed twice:</p>
+<pre><code class="language-bash"># Print intermediate values
+tva expr -n "price,qty" -r "10,5" -E '
+    @price | print("price:", _);
+    print("qty:", @qty);
+    @price * @qty
+'
+# Prints: price: 10
+#         qty: 5
+#         50
+</code></pre>
+<h2 id="error-handling-1"><a class="header" href="#error-handling-1">Error Handling</a></h2>
+<p>Expression evaluation can produce several types of errors:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Error</th><th style="text-align: left">Example</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Column not found</td><td style="text-align: left"><code>@nonexistent</code></td><td style="text-align: left">Column name doesn’t exist in headers</td></tr>
+<tr><td style="text-align: left">Column index out of bounds</td><td style="text-align: left"><code>@100</code></td><td style="text-align: left">Index exceeds number of columns</td></tr>
+<tr><td style="text-align: left">Type error</td><td style="text-align: left"><code>"hello" + 5</code></td><td style="text-align: left">Invalid operation for type</td></tr>
+<tr><td style="text-align: left">Division by zero</td><td style="text-align: left"><code>10 / 0</code></td><td style="text-align: left">Cannot divide by zero</td></tr>
+<tr><td style="text-align: left">Unknown function</td><td style="text-align: left"><code>unknown()</code></td><td style="text-align: left">Function not defined</td></tr>
+<tr><td style="text-align: left">Wrong arity</td><td style="text-align: left"><code>substr("a")</code></td><td style="text-align: left">Wrong number of arguments</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="best-practices-2"><a class="header" href="#best-practices-2">Best Practices</a></h2>
+<ol>
+<li><strong>Use parentheses for clarity</strong>: <code>(a + b) * c</code> vs <code>a + b * c</code></li>
+<li><strong>Chain with pipes for readability</strong>: <code>@data | trim() | upper()</code> instead of <code>upper(trim(@data))</code></li>
+<li><strong>Bind intermediate results</strong>: Complex expressions benefit from variable binding</li>
+<li><strong>Use comments</strong>: Explain non-obvious logic with <code>//</code> comments</li>
+<li><strong>Handle nulls explicitly</strong>: Use <code>default()</code> or <code>if()</code> for null handling</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="rosetta-code-examples"><a class="header" href="#rosetta-code-examples">Rosetta Code Examples</a></h1>
 <p>This document demonstrates the capabilities of TVA’s expression engine by implementing tasks
 from <a href="https://rosettacode.org/">Rosetta Code</a>.</p>
-<h2 id="basic-usage-8"><a class="header" href="#basic-usage-8">Basic Usage</a></h2>
+<h2 id="basic-usage-9"><a class="header" href="#basic-usage-9">Basic Usage</a></h2>
 <p>Most examples use the <code>tva expr</code> command for standalone expression evaluation:</p>
 <pre><code class="language-bash"># Simple arithmetic
-tva expr -E "2 + 2"
+tva expr -E "2 + 3.14"
 
 # With input data
 tva expr -n "x,y" -r "3,4" -E "@x * @y"

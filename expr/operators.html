@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-60e963ba.js";
+            window.path_to_searchindex_js = "../searchindex-c102a141.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-d1513fcf.js"></script>
+        <script src="../toc-5de396d1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -181,6 +181,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="expression-operators"><a class="header" href="#expression-operators">Expression Operators</a></h1>
+<p>TVA provides a comprehensive set of operators for arithmetic, string, comparison, and logical operations.</p>
 <h2 id="operator-precedence-high-to-low"><a class="header" href="#operator-precedence-high-to-low">Operator Precedence (high to low)</a></h2>
 <ol>
 <li><code>()</code> - Grouping</li>
@@ -207,71 +208,181 @@
 <li><code>a ** b</code>: Power</li>
 </ul>
 <h2 id="string-operators"><a class="header" href="#string-operators">String Operators</a></h2>
-<ul>
-<li><code>a ++ b</code>: String concatenation</li>
-</ul>
+<h3 id="concatenation"><a class="header" href="#concatenation">Concatenation</a></h3>
+<p><code>a ++ b</code> - Concatenates two values as strings.</p>
+<pre><code class="language-bash">tva expr -E '"hello" ++ " " ++ "world"'  # Returns: "hello world"
+tva expr -E '"count: " ++ 42'            # Returns: "count: 42"
+tva expr -E '1 ++ 2 ++ 3'                 # Returns: "123"
+</code></pre>
+<p>Both operands are converted to strings before concatenation.</p>
 <h2 id="comparison-operators"><a class="header" href="#comparison-operators">Comparison Operators</a></h2>
-<p><strong>Numeric:</strong></p>
-<ul>
-<li><code>a == b</code>: Equal</li>
-<li><code>a != b</code>: Not equal</li>
-<li><code>a &lt; b</code>: Less than</li>
-<li><code>a &lt;= b</code>: Less than or equal</li>
-<li><code>a &gt; b</code>: Greater than</li>
-<li><code>a &gt;= b</code>: Greater than or equal</li>
-</ul>
-<p><strong>String:</strong></p>
-<ul>
-<li><code>a eq b</code>: String equal</li>
-<li><code>a ne b</code>: String not equal</li>
-<li><code>a lt b</code>: String less than (lexicographic)</li>
-<li><code>a le b</code>: String less than or equal</li>
-<li><code>a gt b</code>: String greater than</li>
-<li><code>a ge b</code>: String greater than or equal</li>
-</ul>
-<p><strong>Note</strong>: No implicit type conversion. Use string comparison operators for string comparison.</p>
-<p><strong>Note</strong>: Empty fields are treated as <code>null</code>. See <a href="literals.html#null-type-and-empty-fields">Null Type and Empty Fields</a> for details.</p>
+<h3 id="numeric-comparison"><a class="header" href="#numeric-comparison">Numeric Comparison</a></h3>
+<p>Compare numbers. Returns boolean.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Operator</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>==</code></td><td style="text-align: left">Equal</td><td style="text-align: left"><code>5 == 5</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>!=</code></td><td style="text-align: left">Not equal</td><td style="text-align: left"><code>5 != 3</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>&lt;</code></td><td style="text-align: left">Less than</td><td style="text-align: left"><code>3 &lt; 5</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>&lt;=</code></td><td style="text-align: left">Less than or equal</td><td style="text-align: left"><code>5 &lt;= 5</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>&gt;</code></td><td style="text-align: left">Greater than</td><td style="text-align: left"><code>5 &gt; 3</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>&gt;=</code></td><td style="text-align: left">Greater than or equal</td><td style="text-align: left"><code>5 &gt;= 3</code> → <code>true</code></td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-bash">tva expr -E '5 == 5'                # Returns: true
+tva expr -E '10 &gt; 5'                # Returns: true
+tva expr -E '@1 &gt; 100' -r '150'     # Returns: true
+</code></pre>
+<p><strong>Note</strong>: Different types always compare as not equal.</p>
+<pre><code class="language-bash">tva expr -E '5 == "5"'              # Returns: false (int vs string)
+tva expr -E '5 == 5.0'              # Returns: true (numeric comparison)
+</code></pre>
+<h3 id="string-comparison"><a class="header" href="#string-comparison">String Comparison</a></h3>
+<p>Lexicographic string comparison. Returns boolean.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Operator</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>eq</code></td><td style="text-align: left">String equal</td><td style="text-align: left"><code>"a" eq "a"</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>ne</code></td><td style="text-align: left">String not equal</td><td style="text-align: left"><code>"a" ne "b"</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>lt</code></td><td style="text-align: left">String less than</td><td style="text-align: left"><code>"a" lt "b"</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>le</code></td><td style="text-align: left">String less than or equal</td><td style="text-align: left"><code>"a" le "a"</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>gt</code></td><td style="text-align: left">String greater than</td><td style="text-align: left"><code>"b" gt "a"</code> → <code>true</code></td></tr>
+<tr><td style="text-align: left"><code>ge</code></td><td style="text-align: left">String greater than or equal</td><td style="text-align: left"><code>"b" ge "a"</code> → <code>true</code></td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-bash">tva expr -E '"apple" lt "banana"'   # Returns: true
+tva expr -E '"hello" eq "hello"'    # Returns: true
+</code></pre>
+<p><strong>Note</strong>: Use string comparison operators for string comparison, not <code>==</code>.</p>
+<pre><code class="language-bash"># Correct: string comparison
+tva expr -E '"10" lt "2"'           # Returns: true (lexicographic)
+
+# Incorrect: numeric comparison with strings
+tva expr -E '"10" == "10"'          # Returns: true
+tva expr -E '"10" &lt; "2"'            # Returns: false (parsed as numbers)
+</code></pre>
+<h3 id="null-handling"><a class="header" href="#null-handling">Null Handling</a></h3>
+<p>Empty fields are treated as <code>null</code>. See <a href="literals.html#null-type-and-empty-fields">Null Type and Empty Fields</a> for details.</p>
+<pre><code class="language-bash">tva expr -E '@1 == null' -r ''      # Returns: true (empty field)
+tva expr -E '@1 == ""' -r ''        # Returns: false (null != "")
+</code></pre>
 <h2 id="logical-operators"><a class="header" href="#logical-operators">Logical Operators</a></h2>
-<ul>
-<li><code>not a</code>: Logical NOT</li>
-<li><code>a and b</code>: Logical AND (short-circuit evaluation)</li>
-<li><code>a or b</code>: Logical OR (short-circuit evaluation)</li>
-</ul>
-<p><strong>Short-circuit evaluation</strong>: <code>and</code> and <code>or</code> use short-circuit evaluation, meaning the right operand is only evaluated if necessary.</p>
-<pre><code class="language-bash"># AND short-circuit: right side not evaluated when left is false
-tva expr -E 'false and print("hello")'   # Output: false (print not called)
-tva expr -E 'true and print("hello")'    # Output: hello\ntrue
-
-# OR short-circuit: right side not evaluated when left is true
-tva expr -E 'true or print("hello")'     # Output: true (print not called)
-tva expr -E 'false or print("hello")'    # Output: hello\ntrue
-
-# Avoid division by zero
-# If @2 is 0, the division is skipped
-tva expr -E '@2 != 0 and @1 / @2 &gt; 2' -r '100,0' -r '100,5'   # Output: false, true
+<h3 id="logical-not"><a class="header" href="#logical-not">Logical NOT</a></h3>
+<p><code>not a</code> - Negates a boolean value.</p>
+<pre><code class="language-bash">tva expr -E 'not true'              # Returns: false
+tva expr -E 'not false'             # Returns: true
+tva expr -E 'not @1' -r ''          # Returns: true (null is falsy)
+</code></pre>
+<h3 id="logical-and"><a class="header" href="#logical-and">Logical AND</a></h3>
+<p><code>a and b</code> - Returns true if both operands are true.</p>
+<pre><code class="language-bash">tva expr -E 'true and true'         # Returns: true
+tva expr -E 'true and false'        # Returns: false
+tva expr -E '5 &gt; 3 and 10 &lt; 20'     # Returns: true
+</code></pre>
+<p><strong>Short-circuit evaluation</strong>: The right operand is only evaluated if the left is true.</p>
+<pre><code class="language-bash"># Right side not evaluated when left is false
+tva expr -E 'false and print("hello")'   # Returns: false (print not called)
+tva expr -E 'true and print("hello")'    # Prints: hello, returns: true
+</code></pre>
+<h3 id="logical-or"><a class="header" href="#logical-or">Logical OR</a></h3>
+<p><code>a or b</code> - Returns true if either operand is true.</p>
+<pre><code class="language-bash">tva expr -E 'true or false'         # Returns: true
+tva expr -E 'false or false'        # Returns: false
+tva expr -E '5 &gt; 10 or 3 &lt; 5'       # Returns: true
+</code></pre>
+<p><strong>Short-circuit evaluation</strong>: The right operand is only evaluated if the left is false.</p>
+<pre><code class="language-bash"># Right side not evaluated when left is true
+tva expr -E 'true or print("hello")'     # Returns: true (print not called)
+tva expr -E 'false or print("hello")'    # Prints: hello, returns: true
+</code></pre>
+<h3 id="practical-examples"><a class="header" href="#practical-examples">Practical Examples</a></h3>
+<pre><code class="language-bash"># Avoid division by zero
+# If @2 is 0, the division is skipped due to short-circuit
+tva expr -E '@2 != 0 and @1 / @2 &gt; 2' -r '100,0' -r '100,5'
+# Returns: false, true
 
 # Check before accessing
 # Only calculate length if @name is not empty
-tva expr -E '@name != "" and len(@name) &gt; 5' -n 'name' -r '' -r 'Alice' -r 'Alexander'  # Output: false, false, true
+tva expr -E '@name != null and len(@name) &gt; 5' -n 'name' -r '' -r 'Alice' -r 'Alexander'
+# Returns: false, false, true
 
-# Logical OR with string (returns boolean)
-# Empty field is null (falsy), non-empty is truthy
-tva expr -E '@email or "fallback"' -n 'email' -r '' -r 'user@example.com'  # Output: true, true
+# Default value with or
+# Note: returns boolean, not the value
+tva expr -E '@email or true' -n 'email' -r '' -r 'user@example.com'
+# Returns: true, true
 
-# For default value, use if() with null check:
-tva expr -E 'if(@email == null, "no-email@example.com", @email)' -n 'email' -r '' -r 'user@example.com'  # Output: no-email@example.com, user@example.com
+# For actual default value, use if() or default():
+tva expr -E 'if(@email == null, "no-email@example.com", @email)' -n 'email' -r '' -r 'user@example.com'
+# Returns: no-email@example.com, user@example.com
 </code></pre>
 <h2 id="pipe-operator"><a class="header" href="#pipe-operator">Pipe Operator</a></h2>
-<ul>
-<li><code>a | f()</code>: Pipe left value to function (left value becomes first argument)</li>
-<li><code>a | f(_, arg)</code>: Pipe with placeholder</li>
-</ul>
+<p><code>a | f()</code> - Passes the left value as the first argument to the function on the right.</p>
+<h3 id="single-argument-functions"><a class="header" href="#single-argument-functions">Single Argument Functions</a></h3>
+<p>For functions that take one argument, the pipe value is used directly:</p>
+<pre><code class="language-bash">tva expr -E '"hello" | upper()'           # Returns: HELLO
+tva expr -E '[1, 2, 3] | reverse()'       # Returns: [3, 2, 1]
+tva expr -E '@name | trim() | lower()'    # Chain multiple pipes
+</code></pre>
+<h3 id="multiple-argument-functions"><a class="header" href="#multiple-argument-functions">Multiple Argument Functions</a></h3>
+<p>Use <code>_</code> as a placeholder for the piped value:</p>
+<pre><code class="language-bash">tva expr -E '"hello world" | substr(_, 0, 5)'    # Returns: hello
+tva expr -E '"a,b,c" | split(_, ",")'            # Returns: ["a", "b", "c"]
+tva expr -E '"hello" | replace(_, "l", "x")'     # Returns: hexxo
+</code></pre>
+<h3 id="complex-pipelines"><a class="header" href="#complex-pipelines">Complex Pipelines</a></h3>
+<p>Combine multiple operations:</p>
+<pre><code class="language-bash"># Data transformation
+tva expr -n "data" -r "1,2,3,4,5" -E '
+    @data
+    | split(_, ",")
+    | map(_, x =&gt; int(x) * 2)
+    | join(_, "-")
+'
+# Returns: "2-4-6-8-10"
+
+# Validation pipeline
+tva expr -n "email" -r "  Test@Example.COM  " -E '
+    @email
+    | trim()
+    | lower()
+    | regex_match(_, ".*@.*\\.com")
+'
+# Returns: true
+</code></pre>
+<h2 id="operator-precedence-examples"><a class="header" href="#operator-precedence-examples">Operator Precedence Examples</a></h2>
+<pre><code class="language-bash"># Without parentheses: multiplication before addition
+tva expr -E '2 + 3 * 4'             # Returns: 14 (not 20)
+
+# With parentheses: force addition first
+tva expr -E '(2 + 3) * 4'           # Returns: 20
+
+# Comparison before logical
+tva expr -E '5 &gt; 3 and 10 &lt; 20'     # Returns: true
+
+# Pipe has lowest precedence
+tva expr -E '1 + 2 | int()'         # Returns: 3 (not error)
+</code></pre>
+<h2 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h2>
+<ol>
+<li><strong>Use parentheses for clarity</strong>: Even when not strictly necessary, parentheses make intent clear</li>
+<li><strong>Prefer string operators for strings</strong>: Use <code>eq</code> instead of <code>==</code> for string comparison</li>
+<li><strong>Use short-circuit for safety</strong>: <code>not @col or expensive_operation()</code></li>
+<li><strong>Chain with pipes</strong>: <code>@data | trim() | lower()</code> is more readable than <code>lower(trim(@data))</code></li>
+</ol>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../expr/expressions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../expr/variables.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -285,7 +396,7 @@ tva expr -E 'if(@email == null, "no-email@example.com", @email)' -n 'email' -r '
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../expr/expressions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../expr/variables.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 

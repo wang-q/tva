@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-60e963ba.js";
+            window.path_to_searchindex_js = "../searchindex-c102a141.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-d1513fcf.js"></script>
+        <script src="../toc-5de396d1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -181,6 +181,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="expression-variables"><a class="header" href="#expression-variables">Expression Variables</a></h1>
+<p>TVA expressions support two kinds of <code>@</code>-prefixed identifiers: column references and variables.</p>
 <h2 id="column-references"><a class="header" href="#column-references">Column References</a></h2>
 <p>Use <code>@</code> prefix to reference columns, avoiding conflicts with Shell variables:</p>
 <div class="table-wrapper">
@@ -189,10 +190,10 @@
 <tr><th style="text-align: left">Syntax</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><code>@0</code></td><td style="text-align: left">Entire row content</td><td style="text-align: left"><code>@0</code> represents all columns</td></tr>
-<tr><td style="text-align: left"><code>@1</code>, <code>@2</code></td><td style="text-align: left">1-based column index</td><td style="text-align: left"><code>@1</code> represents the first column</td></tr>
-<tr><td style="text-align: left"><code>@col_name</code></td><td style="text-align: left">Column name reference</td><td style="text-align: left"><code>@price</code> represents the price column</td></tr>
-<tr><td style="text-align: left"><code> @"col name"</code></td><td style="text-align: left">Column name with spaces</td><td style="text-align: left"><code> @"user name"</code> represents column “user name”</td></tr>
+<tr><td style="text-align: left"><code>@0</code></td><td style="text-align: left">Entire row content (all columns joined with tabs)</td><td style="text-align: left"><code>@0</code></td></tr>
+<tr><td style="text-align: left"><code>@1</code>, <code>@2</code></td><td style="text-align: left">1-based column index</td><td style="text-align: left"><code>@1</code> is the first column</td></tr>
+<tr><td style="text-align: left"><code>@col_name</code></td><td style="text-align: left">Column name reference</td><td style="text-align: left"><code>@price</code> references the price column</td></tr>
+<tr><td style="text-align: left"><code>@"col name"</code></td><td style="text-align: left">Column name with spaces</td><td style="text-align: left"><code>@"user name"</code> references column “user name”</td></tr>
 </tbody>
 </table>
 </div>
@@ -201,15 +202,40 @@
 <li><strong>Shell-friendly</strong>: <code>@</code> has no special meaning in bash/zsh, no escaping needed</li>
 <li><strong>Concise</strong>: Only 2 characters (<code>Shift+2</code>)</li>
 </ul>
-<p><strong>Type behavior</strong>:</p>
+<h3 id="type-behavior"><a class="header" href="#type-behavior">Type Behavior</a></h3>
 <ul>
-<li>Column references return <code>String</code> by default (raw bytes)</li>
+<li>Column references return <code>String</code> by default (raw bytes from TSV)</li>
 <li>Numeric operations automatically attempt parsing; failure yields <code>null</code></li>
 <li>Use <code>int(@col)</code> or <code>float(@col)</code> for explicit type specification</li>
 <li><strong>Empty fields are treated as <code>null</code></strong>, not empty strings. See <a href="literals.html#null-type-and-empty-fields">Null Type and Empty Fields</a> for details.</li>
 </ul>
+<pre><code class="language-bash"># Column by index
+tva expr -n "name,age" -r "John,30" -E '@1'       # Returns: John
+tva expr -n "name,age" -r "John,30" -E '@2'       # Returns: 30 (parsed as int)
+
+# Column by name
+tva expr -n "name,age" -r "John,30" -E '@name'    # Returns: John
+tva expr -n "name,age" -r "John,30" -E '@age'     # Returns: 30
+
+# Entire row
+tva expr -n "a,b,c" -r "1,2,3" -E '@0'            # Returns: "1\t2\t3"
+tva expr -n "a,b,c" -r "1,2,3" -E 'len(@0)'       # Returns: 5 (length of "1\t2\t3")
+
+# Column name with spaces
+tva expr -n "user name" -r "John Doe" -E '@"user name"'  # Returns: John Doe
+</code></pre>
+<h3 id="variable-shadowing"><a class="header" href="#variable-shadowing">Variable Shadowing</a></h3>
+<p>Variables can shadow column references. When both a variable and a column have the same name,
+the variable takes precedence:</p>
+<pre><code class="language-bash"># Variable shadows column
+tva expr -n "price" -r "100" -E '
+    @price *2 as @price;     // Column @price (100) bound to variable @price
+    @price             // Variable @price (now 200)
+'
+# Returns: 200
+</code></pre>
 <h2 id="variable-binding"><a class="header" href="#variable-binding">Variable Binding</a></h2>
-<p>Use <code>as</code> keyword to bind expression results to variables for reuse in subsequent pipes:</p>
+<p>Use <code>as</code> keyword to bind expression results to variables for reuse:</p>
 <pre><code class="language-bash"># Basic syntax: bind calculation result
 tva expr -n "price,qty,tax_rate" -r "10,5,0.1" -E '@price * @qty as @total; @total * (1 + @tax_rate)'
 # Returns: 55
@@ -222,18 +248,81 @@ tva expr -n "name" -r "John Smith" -E '@name | split(" ") as @parts; first(@part
 tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
 # Returns: 50
 </code></pre>
-<p><strong>Rules</strong>:</p>
+<h3 id="variable-scope"><a class="header" href="#variable-scope">Variable Scope</a></h3>
 <ul>
-<li>Variables are valid within the current row only, cleared when entering next row</li>
-<li>Can shadow column references (<code>@price as @price</code>)</li>
-<li>Column references check variables first, then fall back to column name lookup</li>
+<li>Variables are valid within the current row only</li>
+<li>Variables are cleared when processing the next row</li>
+<li>Variables can shadow column references</li>
+<li>Variables can be rebound (reassigned)</li>
 </ul>
+<pre><code class="language-bash"># Variable rebinding
+tva expr -n "price" -r "10" -E '
+    @price as @p;         # @p = 10
+    @p * 2 as @p;         # @p = 20 (rebound)
+    @p * 2 as @p;         # @p = 40 (rebound again)
+    @p
+'
+# Returns: 40
+</code></pre>
+<h3 id="resolution-order"><a class="header" href="#resolution-order">Resolution Order</a></h3>
+<p>When evaluating <code>@name</code>, the engine checks in this order:</p>
+<ol>
+<li><strong>Lambda parameters</strong> - If inside a lambda, check lambda parameters first</li>
+<li><strong>Variables</strong> - Check variables bound with <code>as</code></li>
+<li><strong>Column names</strong> - Fall back to column name lookup</li>
+</ol>
 <p><strong>Design notes</strong>:</p>
 <ul>
-<li><code>as</code> aligns with pipe semantics (“name the result from the left…”)</li>
 <li>Unified <code>@</code> prefix reduces cognitive burden</li>
 <li>References jq syntax but removes <code>$</code> to avoid Shell conflicts</li>
 </ul>
+<pre><code class="language-bash"># Resolution order example
+tva expr -n "x" -r "100" -E '
+    @x as @y;             # Variable @y = column @x (100)
+    map([1, 2, 3], x =&gt; x + @y)  # Lambda param x shadows nothing; @y is variable
+'
+# Returns: [101, 102, 103]
+</code></pre>
+<h2 id="lambda-parameters"><a class="header" href="#lambda-parameters">Lambda Parameters</a></h2>
+<p>Lambda expressions introduce their own parameter scope:</p>
+<pre><code class="language-bash"># Lambda parameter shadows outer scope
+tva expr -E '
+    10 as @x;
+    map([1, 2, 3], x =&gt; x + @x)  # Lambda param x; @x is variable (10)
+'
+# Returns: [11, 12, 13]
+
+# Lambda captures outer variables
+tva expr -E '
+    5 as @offset;
+    map([1, 2, 3], n =&gt; n + @offset)  # @offset is captured from outer scope
+'
+# Returns: [6, 7, 8]
+</code></pre>
+<p>Lambda parameters:</p>
+<ul>
+<li>Do not use <code>@</code> prefix (distinguishes from columns/variables)</li>
+<li>Are lexically scoped</li>
+<li>Can capture variables from outer scope</li>
+</ul>
+<h2 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h2>
+<ol>
+<li><strong>Use descriptive variable names</strong>: <code>@total_price</code> instead of <code>@tp</code></li>
+<li><strong>Avoid unnecessary shadowing</strong>: Can be confusing</li>
+<li><strong>Bind early, use often</strong>: Reduces repetition and improves readability</li>
+<li><strong>Document complex pipelines</strong>: Use comments with <code>//</code></li>
+</ol>
+<pre><code class="language-bash"># Good: clear variable names
+tva expr -n "price,qty,discount" -r "100,5,0.1" -E '
+    @price * @qty as @subtotal;            // Calculate subtotal
+    @subtotal * (1 - @discount) as @total; // Apply discount
+    @total
+'
+# Returns: 450
+
+# Avoid: unclear one-letter names
+tva expr -n "price,qty,discount" -r "100,5,0.1" -E '@price * @qty as @a; @a * (1 - @discount)'
+</code></pre>
 
                     </main>
 
@@ -243,7 +332,7 @@ tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../expr/expressions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../expr/operators.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -257,7 +346,7 @@ tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../expr/expressions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../expr/operators.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
