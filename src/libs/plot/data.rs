@@ -451,3 +451,154 @@ pub fn read_headers<R: std::io::Read>(
         None => Vec::new(),
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_column_spec_single() {
+        let spec = ColumnSpec {
+            indices: vec![0],
+            names: vec!["col1".to_string()],
+        };
+        assert_eq!(spec.single().unwrap(), 0);
+        assert_eq!(spec.single_name().unwrap(), "col1");
+    }
+
+    #[test]
+    fn test_column_spec_single_empty() {
+        let spec = ColumnSpec {
+            indices: vec![],
+            names: vec![],
+        };
+        assert!(spec.single().is_err());
+        assert!(spec.single_name().is_err());
+    }
+
+    #[test]
+    fn test_column_spec_single_multiple() {
+        let spec = ColumnSpec {
+            indices: vec![0, 1],
+            names: vec!["col1".to_string(), "col2".to_string()],
+        };
+        assert!(spec.single().is_err());
+        assert!(spec.single_name().is_err());
+    }
+
+    #[test]
+    fn test_build_header_empty() {
+        let headers: Vec<Vec<u8>> = vec![];
+        assert!(build_header(&headers).is_none());
+    }
+
+    #[test]
+    fn test_build_header_with_data() {
+        let headers = vec![b"name".to_vec(), b"age".to_vec(), b"score".to_vec()];
+        let header = build_header(&headers);
+        assert!(header.is_some());
+    }
+
+    #[test]
+    fn test_load_numeric_column_basic() {
+        // Use no-header mode since we just want numeric data
+        let data = b"1.0\n2.0\n3.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let values = load_numeric_column(reader, 0, "col1", false).unwrap();
+        assert_eq!(values, vec![1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn test_load_numeric_column_ignore_errors() {
+        let data = b"1.0\ninvalid\n3.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let values = load_numeric_column(reader, 0, "col1", true).unwrap();
+        assert_eq!(values, vec![1.0, 3.0]);
+    }
+
+    #[test]
+    fn test_load_numeric_column_no_header() {
+        let data = b"1.0\n2.0\n3.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let values = load_numeric_column(reader, 0, "col1", false).unwrap();
+        assert_eq!(values, vec![1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn test_load_bin2d_data_basic() {
+        let data = b"1.0\t2.0\n3.0\t4.0\n5.0\t6.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let (x_values, y_values) =
+            load_bin2d_data(reader, 0, "x", 1, "y", false).unwrap();
+        assert_eq!(x_values, vec![1.0, 3.0, 5.0]);
+        assert_eq!(y_values, vec![2.0, 4.0, 6.0]);
+    }
+
+    #[test]
+    fn test_load_bin2d_data_ignore_errors() {
+        let data = b"1.0\t2.0\ninvalid\t4.0\n5.0\tbad\n";
+        let reader = TsvReader::new(&data[..]);
+        let (x_values, y_values) =
+            load_bin2d_data(reader, 0, "x", 1, "y", true).unwrap();
+        assert_eq!(x_values, vec![1.0]);
+        assert_eq!(y_values, vec![2.0]);
+    }
+
+    #[test]
+    fn test_load_scatter_data_basic() {
+        let data = b"1.0\t2.0\n3.0\t4.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![1];
+        let y_names = vec!["y".to_string()];
+        let data =
+            load_scatter_data(reader, 0, &y_indices, &y_names, None, false).unwrap();
+
+        assert_eq!(data.len(), 1);
+        assert!(data.contains_key("y"));
+        assert_eq!(data["y"], vec![(1.0, 2.0), (3.0, 4.0)]);
+    }
+
+    #[test]
+    fn test_load_scatter_data_with_color() {
+        let data = b"1.0\t2.0\tA\n3.0\t4.0\tB\n5.0\t6.0\tA\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![1];
+        let y_names = vec!["y".to_string()];
+        let data =
+            load_scatter_data(reader, 0, &y_indices, &y_names, Some(2), false).unwrap();
+
+        assert_eq!(data.len(), 2);
+        assert!(data.contains_key("A"));
+        assert!(data.contains_key("B"));
+        assert_eq!(data["A"], vec![(1.0, 2.0), (5.0, 6.0)]);
+        assert_eq!(data["B"], vec![(3.0, 4.0)]);
+    }
+
+    #[test]
+    fn test_load_box_data_basic() {
+        let data = b"1.0\n2.0\n3.0\n4.0\n5.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![0];
+        let y_names = vec!["value".to_string()];
+        let data = load_box_data(reader, &y_indices, &y_names, None, false).unwrap();
+
+        assert_eq!(data.len(), 1);
+        assert!(data.contains_key("value"));
+        assert_eq!(data["value"], vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+    }
+
+    #[test]
+    fn test_load_box_data_with_color() {
+        let data = b"1.0\tA\n2.0\tA\n3.0\tB\n4.0\tB\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![0];
+        let y_names = vec!["value".to_string()];
+        let data = load_box_data(reader, &y_indices, &y_names, Some(1), false).unwrap();
+
+        assert_eq!(data.len(), 2);
+        assert!(data.contains_key("A"));
+        assert!(data.contains_key("B"));
+        assert_eq!(data["A"], vec![1.0, 2.0]);
+        assert_eq!(data["B"], vec![3.0, 4.0]);
+    }
+}

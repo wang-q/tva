@@ -107,3 +107,53 @@ fn colorize(string: &str, color: Color, modifier: Modifier) -> ColoredString {
         _ => string,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_color() {
+        assert_eq!(get_color(0), Color::Cyan);
+        assert_eq!(get_color(1), Color::Green);
+        assert_eq!(get_color(5), Color::Red);
+        assert_eq!(get_color(6), Color::Cyan); // Cycles back
+        assert_eq!(get_color(12), Color::Cyan); // Cycles back again
+    }
+
+    #[test]
+    fn test_parse_marker() {
+        assert_eq!(parse_marker("dot"), ratatui::symbols::Marker::Dot);
+        assert_eq!(parse_marker("block"), ratatui::symbols::Marker::Block);
+        assert_eq!(parse_marker("braille"), ratatui::symbols::Marker::Braille);
+        assert_eq!(parse_marker("unknown"), ratatui::symbols::Marker::Braille); // Default
+        assert_eq!(parse_marker(""), ratatui::symbols::Marker::Braille); // Default for empty
+    }
+
+    #[test]
+    fn test_group_cells_by_color() {
+        let cells = vec![Cell::new("a"), Cell::new("b"), Cell::new("c")];
+        let groups = group_cells_by_color(&cells);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].len(), 3);
+    }
+
+    #[test]
+    fn test_group_cells_by_color_different_styles() {
+        let mut cell1 = Cell::new("a");
+        cell1.set_fg(Color::Red);
+        let mut cell2 = Cell::new("b");
+        cell2.set_fg(Color::Blue);
+        let cells = vec![cell1, cell2];
+
+        let groups = group_cells_by_color(&cells);
+        assert_eq!(groups.len(), 2);
+    }
+
+    #[test]
+    fn test_group_cells_by_color_empty() {
+        let cells: Vec<Cell> = vec![];
+        let groups = group_cells_by_color(&cells);
+        assert!(groups.is_empty());
+    }
+}

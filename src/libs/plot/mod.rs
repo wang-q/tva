@@ -9,7 +9,6 @@ use anyhow::Result;
 pub mod axis;
 pub mod binning;
 pub mod boxplot;
-pub mod chart;
 pub mod data;
 pub mod heatmap;
 pub mod regression;
@@ -53,5 +52,62 @@ pub fn parse_chart_dimension(
                 Ok(result.max(10)) // Minimum 10 characters
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_chart_dimension_none() {
+        assert_eq!(parse_chart_dimension(None, 100, 80).unwrap(), 80);
+    }
+
+    #[test]
+    fn test_parse_chart_dimension_absolute() {
+        assert_eq!(
+            parse_chart_dimension(Some(&"50".to_string()), 100, 80).unwrap(),
+            50
+        );
+        assert_eq!(
+            parse_chart_dimension(Some(&"100".to_string()), 200, 80).unwrap(),
+            100
+        );
+    }
+
+    #[test]
+    fn test_parse_chart_dimension_ratio() {
+        assert_eq!(
+            parse_chart_dimension(Some(&"0.5".to_string()), 100, 80).unwrap(),
+            50
+        );
+        assert_eq!(
+            parse_chart_dimension(Some(&"1.0".to_string()), 100, 80).unwrap(),
+            100
+        );
+        assert_eq!(
+            parse_chart_dimension(Some(&"0.8".to_string()), 200, 80).unwrap(),
+            160
+        );
+    }
+
+    #[test]
+    fn test_parse_chart_dimension_minimum() {
+        // Values below 10 should be clamped to 10
+        assert_eq!(
+            parse_chart_dimension(Some(&"5".to_string()), 100, 80).unwrap(),
+            10
+        );
+        assert_eq!(
+            parse_chart_dimension(Some(&"0.05".to_string()), 100, 80).unwrap(),
+            10
+        );
+    }
+
+    #[test]
+    fn test_parse_chart_dimension_invalid() {
+        // Invalid values should return error
+        assert!(parse_chart_dimension(Some(&"invalid".to_string()), 100, 80).is_err());
     }
 }

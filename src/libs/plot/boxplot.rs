@@ -304,3 +304,186 @@ pub fn render_boxplot<T: BoxStatsRender>(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_box_plot_config_new() {
+        let config = BoxPlotConfig::new(80, 24);
+        assert_eq!(config.width, 80);
+        assert_eq!(config.height, 24);
+        assert!(!config.show_outliers);
+    }
+
+    #[test]
+    fn test_box_plot_config_with_outliers() {
+        let config = BoxPlotConfig::new(80, 24).with_outliers(true);
+        assert!(config.show_outliers);
+    }
+
+    #[test]
+    fn test_box_plot_data_creation() {
+        let data = BoxPlotData {
+            name: "test".to_string(),
+            min: 1.0,
+            q1: 2.0,
+            median: 3.0,
+            q3: 4.0,
+            max: 5.0,
+            outliers: vec![0.5, 5.5],
+            color_idx: 0,
+        };
+        assert_eq!(data.name, "test");
+        assert_eq!(data.min, 1.0);
+        assert_eq!(data.q1, 2.0);
+        assert_eq!(data.median, 3.0);
+        assert_eq!(data.q3, 4.0);
+        assert_eq!(data.max, 5.0);
+        assert_eq!(data.outliers, vec![0.5, 5.5]);
+        assert_eq!(data.color_idx, 0);
+    }
+
+    // Mock implementation of BoxStatsRender for testing
+    struct MockBoxStats {
+        min: f64,
+        q1: f64,
+        median: f64,
+        q3: f64,
+        max: f64,
+        outliers: Vec<f64>,
+    }
+
+    impl BoxStatsRender for MockBoxStats {
+        fn min(&self) -> f64 {
+            self.min
+        }
+        fn q1(&self) -> f64 {
+            self.q1
+        }
+        fn median(&self) -> f64 {
+            self.median
+        }
+        fn q3(&self) -> f64 {
+            self.q3
+        }
+        fn max(&self) -> f64 {
+            self.max
+        }
+        fn outliers(&self) -> &[f64] {
+            &self.outliers
+        }
+    }
+
+    #[test]
+    fn test_render_boxplot_single_box() {
+        let mut box_data: IndexMap<String, MockBoxStats> = IndexMap::new();
+        box_data.insert(
+            "A".to_string(),
+            MockBoxStats {
+                min: 1.0,
+                q1: 2.0,
+                median: 3.0,
+                q3: 4.0,
+                max: 5.0,
+                outliers: vec![],
+            },
+        );
+
+        let config = BoxPlotConfig::new(60, 20);
+        let result = render_boxplot(box_data, 0.0, 6.0, &config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_render_boxplot_multiple_boxes() {
+        let mut box_data: IndexMap<String, MockBoxStats> = IndexMap::new();
+        box_data.insert(
+            "A".to_string(),
+            MockBoxStats {
+                min: 1.0,
+                q1: 2.0,
+                median: 3.0,
+                q3: 4.0,
+                max: 5.0,
+                outliers: vec![],
+            },
+        );
+        box_data.insert(
+            "B".to_string(),
+            MockBoxStats {
+                min: 2.0,
+                q1: 3.0,
+                median: 4.0,
+                q3: 5.0,
+                max: 6.0,
+                outliers: vec![],
+            },
+        );
+
+        let config = BoxPlotConfig::new(80, 24);
+        let result = render_boxplot(box_data, 0.0, 7.0, &config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_render_boxplot_with_outliers() {
+        let mut box_data: IndexMap<String, MockBoxStats> = IndexMap::new();
+        box_data.insert(
+            "A".to_string(),
+            MockBoxStats {
+                min: 2.0,
+                q1: 3.0,
+                median: 4.0,
+                q3: 5.0,
+                max: 6.0,
+                outliers: vec![0.5, 7.5],
+            },
+        );
+
+        let config = BoxPlotConfig::new(60, 20).with_outliers(true);
+        let result = render_boxplot(box_data, 0.0, 8.0, &config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_render_boxplot_long_name() {
+        let mut box_data: IndexMap<String, MockBoxStats> = IndexMap::new();
+        box_data.insert(
+            "VeryLongGroupNameThatNeedsTruncation".to_string(),
+            MockBoxStats {
+                min: 1.0,
+                q1: 2.0,
+                median: 3.0,
+                q3: 4.0,
+                max: 5.0,
+                outliers: vec![],
+            },
+        );
+
+        let config = BoxPlotConfig::new(60, 20);
+        let result = render_boxplot(box_data, 0.0, 6.0, &config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_box_stats_render_trait() {
+        let stats = BoxStats {
+            min: 1.0,
+            q1: 2.0,
+            median: 3.0,
+            q3: 4.0,
+            max: 5.0,
+            outliers: vec![0.5, 5.5],
+            count: 10,
+        };
+
+        assert_eq!(stats.min(), 1.0);
+        assert_eq!(stats.q1(), 2.0);
+        assert_eq!(stats.median(), 3.0);
+        assert_eq!(stats.q3(), 4.0);
+        assert_eq!(stats.max(), 5.0);
+        assert_eq!(stats.outliers(), &[0.5, 5.5]);
+    }
+}

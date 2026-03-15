@@ -205,3 +205,131 @@ pub fn render_heatmap(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::binning::Bin2dConfig;
+    use super::*;
+
+    #[test]
+    fn test_density_char() {
+        assert_eq!(density_char(0.9), "█");
+        assert_eq!(density_char(0.8), "█");
+        assert_eq!(density_char(0.7), "▓");
+        assert_eq!(density_char(0.6), "▓");
+        assert_eq!(density_char(0.5), "▒");
+        assert_eq!(density_char(0.4), "▒");
+        assert_eq!(density_char(0.3), "░");
+        assert_eq!(density_char(0.2), "░");
+        assert_eq!(density_char(0.1), "·");
+        assert_eq!(density_char(0.05), "·");
+        assert_eq!(density_char(0.04), " ");
+        assert_eq!(density_char(0.0), " ");
+    }
+
+    #[test]
+    fn test_density_color() {
+        assert_eq!(density_color(0.9), Color::Red);
+        assert_eq!(density_color(0.8), Color::Red);
+        assert_eq!(density_color(0.7), Color::Yellow);
+        assert_eq!(density_color(0.6), Color::Yellow);
+        assert_eq!(density_color(0.5), Color::White);
+        assert_eq!(density_color(0.4), Color::White);
+        assert_eq!(density_color(0.3), Color::Gray);
+        assert_eq!(density_color(0.2), Color::Gray);
+        assert_eq!(density_color(0.1), Color::Black);
+        assert_eq!(density_color(0.05), Color::Black);
+        assert_eq!(density_color(0.0), Color::Black);
+    }
+
+    #[test]
+    fn test_render_heatmap_basic() {
+        let x_values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let y_values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let config = Bin2dConfig {
+            width: 60,
+            height: 20,
+            x_bins: 5,
+            y_bins: 5,
+            x_binwidth: None,
+            y_binwidth: None,
+            x_label: "x".to_string(),
+            y_label: "y".to_string(),
+        };
+
+        let result = render_heatmap(&x_values, &y_values, &config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_render_heatmap_with_binwidth() {
+        let x_values = vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
+        let y_values = vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
+        let config = Bin2dConfig {
+            width: 60,
+            height: 20,
+            x_bins: 10,
+            y_bins: 10,
+            x_binwidth: Some(1.0),
+            y_binwidth: Some(1.0),
+            x_label: "x".to_string(),
+            y_label: "y".to_string(),
+        };
+
+        let result = render_heatmap(&x_values, &y_values, &config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_render_heatmap_clustered_data() {
+        // Data clustered in specific regions
+        let mut x_values = vec![];
+        let mut y_values = vec![];
+
+        // Cluster 1
+        for _ in 0..10 {
+            x_values.push(1.0);
+            y_values.push(1.0);
+        }
+        // Cluster 2
+        for _ in 0..5 {
+            x_values.push(5.0);
+            y_values.push(5.0);
+        }
+
+        let config = Bin2dConfig {
+            width: 60,
+            height: 20,
+            x_bins: 5,
+            y_bins: 5,
+            x_binwidth: None,
+            y_binwidth: None,
+            x_label: "x".to_string(),
+            y_label: "y".to_string(),
+        };
+
+        let result = render_heatmap(&x_values, &y_values, &config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_render_heatmap_empty_bins() {
+        // Data that creates some empty bins
+        let x_values = vec![1.0, 1.0, 1.0, 10.0, 10.0, 10.0];
+        let y_values = vec![1.0, 1.0, 1.0, 10.0, 10.0, 10.0];
+
+        let config = Bin2dConfig {
+            width: 60,
+            height: 20,
+            x_bins: 5,
+            y_bins: 5,
+            x_binwidth: None,
+            y_binwidth: None,
+            x_label: "x".to_string(),
+            y_label: "y".to_string(),
+        };
+
+        let result = render_heatmap(&x_values, &y_values, &config);
+        assert!(result.is_ok());
+    }
+}
