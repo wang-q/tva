@@ -63,10 +63,10 @@ trim(@name)
 
 ### Documentation Index
 
-- [Literals](literals.md) - Literal syntax and type system
-- [Variables](variables.md) - Column references and variable binding
-- [Operators](operators.md) - Operator precedence and details
-- [Functions](functions.md) - Complete function reference
+- [Literals](expr/literals.md) - Literal syntax and type system
+- [Variables](expr/variables.md) - Column references and variable binding
+- [Operators](expr/operators.md) - Operator precedence and details
+- [Functions](expr/functions.md) - Complete function reference
 - [Syntax Guide](expr/syntax.md) - Complete syntax documentation
 - [Rosetta Code](expr/rosetta.md) - Fun programs
 
@@ -111,7 +111,7 @@ tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 tva expr -n "score" -r "85" -E 'if(@score >= 60, "pass", "fail")'
 
 # Process TSV file - calculate price per carat
-tva expr -H -E "@price / @carat" docs/data/diamonds.tsv
+tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r -5
 
 # Filter rows using --skip-null
 tva expr -H --skip-null -E 'if(@carat > 1 and @price < 3000, @0, null)' docs/data/diamonds.tsv
