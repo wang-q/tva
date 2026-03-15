@@ -91,6 +91,7 @@ pub fn platform_fn(args: &[Value]) -> Result<Value, EvalError> {
 mod tests {
     use super::*;
 
+    // type_fn tests
     #[test]
     fn test_type_int() {
         let result = type_fn(&[Value::Int(42)]);
@@ -116,6 +117,12 @@ mod tests {
     }
 
     #[test]
+    fn test_type_bool_false() {
+        let result = type_fn(&[Value::Bool(false)]);
+        assert_eq!(result.unwrap(), Value::String("bool".to_string()));
+    }
+
+    #[test]
     fn test_type_null() {
         let result = type_fn(&[Value::Null]);
         assert_eq!(result.unwrap(), Value::String("null".to_string()));
@@ -127,6 +134,49 @@ mod tests {
         assert_eq!(result.unwrap(), Value::String("list".to_string()));
     }
 
+    #[test]
+    fn test_type_list_with_elements() {
+        let result = type_fn(&[Value::List(vec![Value::Int(1), Value::Int(2)])]);
+        assert_eq!(result.unwrap(), Value::String("list".to_string()));
+    }
+
+    #[test]
+    fn test_type_wrong_arity_zero_args() {
+        let result = type_fn(&[]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "type");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 0);
+            }
+            _ => panic!("Expected WrongArity error"),
+        }
+    }
+
+    #[test]
+    fn test_type_wrong_arity_multiple_args() {
+        let result = type_fn(&[Value::Int(1), Value::Int(2)]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "type");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity error"),
+        }
+    }
+
+    // env_fn tests
     #[test]
     fn test_env_existing() {
         // Test with a commonly available environment variable
@@ -143,17 +193,155 @@ mod tests {
     }
 
     #[test]
+    fn test_env_empty_string() {
+        env::set_var("TVA_EMPTY_VAR", "");
+        let result = env_fn(&[Value::String("TVA_EMPTY_VAR".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("".to_string()));
+        env::remove_var("TVA_EMPTY_VAR");
+    }
+
+    #[test]
+    fn test_env_with_special_chars() {
+        env::set_var("TVA_SPECIAL_VAR", "hello\nworld\t!");
+        let result = env_fn(&[Value::String("TVA_SPECIAL_VAR".to_string())]);
+        assert_eq!(
+            result.unwrap(),
+            Value::String("hello\nworld\t!".to_string())
+        );
+        env::remove_var("TVA_SPECIAL_VAR");
+    }
+
+    #[test]
+    fn test_env_non_string_arg() {
+        let result = env_fn(&[Value::Int(42)]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::TypeError(msg) => {
+                assert!(msg.contains("requires a string argument"));
+            }
+            _ => panic!("Expected TypeError"),
+        }
+    }
+
+    #[test]
+    fn test_env_wrong_arity_zero_args() {
+        let result = env_fn(&[]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "env");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 0);
+            }
+            _ => panic!("Expected WrongArity error"),
+        }
+    }
+
+    #[test]
+    fn test_env_wrong_arity_multiple_args() {
+        let result = env_fn(&[
+            Value::String("VAR1".to_string()),
+            Value::String("VAR2".to_string()),
+        ]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "env");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity error"),
+        }
+    }
+
+    // cwd_fn tests
+    #[test]
     fn test_cwd() {
         let result = cwd_fn(&[]);
         assert!(matches!(result, Ok(Value::String(_))));
     }
 
     #[test]
+    fn test_cwd_returns_valid_path() {
+        let result = cwd_fn(&[]).unwrap();
+        if let Value::String(path) = result {
+            // Path should not be empty
+            assert!(!path.is_empty());
+            // On Windows, path might contain backslashes
+            // On Unix, path should contain forward slashes
+            assert!(path.contains('/') || path.contains('\\'));
+        } else {
+            panic!("Expected String");
+        }
+    }
+
+    #[test]
+    fn test_cwd_wrong_arity_with_args() {
+        let result = cwd_fn(&[Value::String("arg".to_string())]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "cwd");
+                assert_eq!(expected, 0);
+                assert_eq!(got, 1);
+            }
+            _ => panic!("Expected WrongArity error"),
+        }
+    }
+
+    // version_fn tests
+    #[test]
     fn test_version() {
         let result = version_fn(&[]);
         assert!(matches!(result, Ok(Value::String(s)) if !s.is_empty()));
     }
 
+    #[test]
+    fn test_version_format() {
+        let result = version_fn(&[]).unwrap();
+        if let Value::String(version) = result {
+            // Version should follow semver format (e.g., "0.2.5")
+            assert!(!version.is_empty());
+            // Should contain at least one dot
+            assert!(version.contains('.'));
+            // Should only contain digits and dots
+            assert!(version.chars().all(|c| c.is_ascii_digit() || c == '.'));
+        } else {
+            panic!("Expected String");
+        }
+    }
+
+    #[test]
+    fn test_version_wrong_arity_with_args() {
+        let result = version_fn(&[Value::String("arg".to_string())]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "version");
+                assert_eq!(expected, 0);
+                assert_eq!(got, 1);
+            }
+            _ => panic!("Expected WrongArity error"),
+        }
+    }
+
+    // platform_fn tests
     #[test]
     fn test_platform() {
         let result = platform_fn(&[]);
@@ -168,5 +356,77 @@ mod tests {
             }
             _ => panic!("Expected String, got {:?}", platform),
         }
+    }
+
+    #[test]
+    fn test_platform_not_empty() {
+        let result = platform_fn(&[]).unwrap();
+        if let Value::String(s) = result {
+            assert!(!s.is_empty());
+        } else {
+            panic!("Expected String");
+        }
+    }
+
+    #[test]
+    fn test_platform_wrong_arity_with_args() {
+        let result = platform_fn(&[Value::String("arg".to_string())]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "platform");
+                assert_eq!(expected, 0);
+                assert_eq!(got, 1);
+            }
+            _ => panic!("Expected WrongArity error"),
+        }
+    }
+
+    // Integration tests
+    #[test]
+    fn test_type_of_env_result() {
+        // Test that env() returns a string type when successful
+        env::set_var("TVA_TYPE_TEST", "value");
+        let env_result = env_fn(&[Value::String("TVA_TYPE_TEST".to_string())]).unwrap();
+        let type_result = type_fn(&[env_result]).unwrap();
+        assert_eq!(type_result, Value::String("string".to_string()));
+        env::remove_var("TVA_TYPE_TEST");
+    }
+
+    #[test]
+    fn test_type_of_env_nonexistent() {
+        // Test that env() returns null type for nonexistent var
+        let env_result =
+            env_fn(&[Value::String("TVA_NONEXISTENT_99999".to_string())]).unwrap();
+        let type_result = type_fn(&[env_result]).unwrap();
+        assert_eq!(type_result, Value::String("null".to_string()));
+    }
+
+    #[test]
+    fn test_type_of_cwd_result() {
+        // Test that cwd() returns a string type
+        let cwd_result = cwd_fn(&[]).unwrap();
+        let type_result = type_fn(&[cwd_result]).unwrap();
+        assert_eq!(type_result, Value::String("string".to_string()));
+    }
+
+    #[test]
+    fn test_type_of_version_result() {
+        // Test that version() returns a string type
+        let version_result = version_fn(&[]).unwrap();
+        let type_result = type_fn(&[version_result]).unwrap();
+        assert_eq!(type_result, Value::String("string".to_string()));
+    }
+
+    #[test]
+    fn test_type_of_platform_result() {
+        // Test that platform() returns a string type
+        let platform_result = platform_fn(&[]).unwrap();
+        let type_result = type_fn(&[platform_result]).unwrap();
+        assert_eq!(type_result, Value::String("string".to_string()));
     }
 }

@@ -1018,4 +1018,399 @@ mod tests {
         // Invalid argument type
         assert!(range(&[Value::String("hello".to_string())]).is_err());
     }
+
+    // Additional tests for join
+    #[test]
+    fn test_join_empty_list() {
+        assert_eq!(
+            join(&[Value::List(vec![]), Value::String(",".to_string())]).unwrap(),
+            Value::String("".to_string())
+        );
+    }
+
+    #[test]
+    fn test_join_single_element() {
+        assert_eq!(
+            join(&[
+                Value::List(vec![Value::Int(1)]),
+                Value::String(",".to_string())
+            ])
+            .unwrap(),
+            Value::String("1".to_string())
+        );
+    }
+
+    #[test]
+    fn test_join_with_null() {
+        assert_eq!(
+            join(&[Value::Null, Value::String(",".to_string())]).unwrap(),
+            Value::Null
+        );
+    }
+
+    #[test]
+    fn test_join_non_list() {
+        assert!(join(&[Value::Int(42), Value::String(",".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_join_mixed_types() {
+        assert_eq!(
+            join(&[
+                Value::List(vec![
+                    Value::Int(1),
+                    Value::String("a".to_string()),
+                    Value::Bool(true)
+                ]),
+                Value::String("|".to_string()),
+            ])
+            .unwrap(),
+            Value::String("1|a|true".to_string())
+        );
+    }
+
+    // Additional tests for first
+    #[test]
+    fn test_first_empty_list() {
+        assert_eq!(first(&[Value::List(vec![])]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_first_null() {
+        assert_eq!(first(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_first_non_list() {
+        assert!(first(&[Value::Int(42)]).is_err());
+    }
+
+    // Additional tests for last
+    #[test]
+    fn test_last_empty_list() {
+        assert_eq!(last(&[Value::List(vec![])]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_last_null() {
+        assert_eq!(last(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_last_non_list() {
+        assert!(last(&[Value::Int(42)]).is_err());
+    }
+
+    // Additional tests for reverse
+    #[test]
+    fn test_reverse_null() {
+        assert_eq!(reverse(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_reverse_non_list() {
+        assert!(reverse(&[Value::Int(42)]).is_err());
+    }
+
+    #[test]
+    fn test_reverse_single_element() {
+        assert_eq!(
+            reverse(&[Value::List(vec![Value::Int(1)])]).unwrap(),
+            Value::List(vec![Value::Int(1)])
+        );
+    }
+
+    // Additional tests for nth
+    #[test]
+    fn test_nth_with_float() {
+        let list = Value::List(vec![Value::Int(10), Value::Int(20), Value::Int(30)]);
+        // 1.7 rounds to 2, so we get the element at index 2
+        assert_eq!(nth(&[list, Value::Float(1.7)]).unwrap(), Value::Int(30));
+    }
+
+    #[test]
+    fn test_nth_null_list() {
+        assert_eq!(nth(&[Value::Null, Value::Int(0)]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_nth_non_list() {
+        assert!(nth(&[Value::Int(42), Value::Int(0)]).is_err());
+    }
+
+    #[test]
+    fn test_nth_non_numeric_index() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        assert!(nth(&[list, Value::String("hello".to_string())]).is_err());
+    }
+
+    // Additional tests for sort
+    #[test]
+    fn test_sort_empty_list() {
+        assert_eq!(sort(&[Value::List(vec![])]).unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_sort_null() {
+        assert_eq!(sort(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_sort_non_list() {
+        assert!(sort(&[Value::Int(42)]).is_err());
+    }
+
+    #[test]
+    fn test_sort_strings() {
+        assert_eq!(
+            sort(&[Value::List(vec![
+                Value::String("banana".to_string()),
+                Value::String("apple".to_string()),
+                Value::String("cherry".to_string()),
+            ])])
+            .unwrap(),
+            Value::List(vec![
+                Value::String("apple".to_string()),
+                Value::String("banana".to_string()),
+                Value::String("cherry".to_string()),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_sort_mixed_types() {
+        // Mixed types should fall back to string comparison
+        let result = sort(&[Value::List(vec![
+            Value::String("10".to_string()),
+            Value::Int(2),
+            Value::String("1".to_string()),
+        ])]);
+        assert!(result.is_ok());
+    }
+
+    // Additional tests for unique
+    #[test]
+    fn test_unique_empty_list() {
+        assert_eq!(unique(&[Value::List(vec![])]).unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_unique_null() {
+        assert_eq!(unique(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_unique_non_list() {
+        assert!(unique(&[Value::Int(42)]).is_err());
+    }
+
+    #[test]
+    fn test_unique_all_same() {
+        assert_eq!(
+            unique(&[Value::List(vec![
+                Value::Int(1),
+                Value::Int(1),
+                Value::Int(1),
+            ])])
+            .unwrap(),
+            Value::List(vec![Value::Int(1)])
+        );
+    }
+
+    #[test]
+    fn test_unique_all_different() {
+        assert_eq!(
+            unique(&[Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+            ])])
+            .unwrap(),
+            Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
+        );
+    }
+
+    // Additional tests for slice
+    #[test]
+    fn test_slice_empty_list() {
+        assert_eq!(
+            slice(&[Value::List(vec![]), Value::Int(0)]).unwrap(),
+            Value::List(vec![])
+        );
+    }
+
+    #[test]
+    fn test_slice_null() {
+        assert_eq!(slice(&[Value::Null, Value::Int(0)]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_slice_non_list() {
+        assert!(slice(&[Value::Int(42), Value::Int(0)]).is_err());
+    }
+
+    #[test]
+    fn test_slice_end_less_than_start() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        // When end < start, end should be set to start
+        assert_eq!(
+            slice(&[list, Value::Int(2), Value::Int(1)]).unwrap(),
+            Value::List(vec![])
+        );
+    }
+
+    #[test]
+    fn test_slice_with_float() {
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+        ]);
+        // 1.2 rounds to 1, 3.7 rounds to 4
+        assert_eq!(
+            slice(&[list, Value::Float(1.2), Value::Float(3.7)]).unwrap(),
+            Value::List(vec![Value::Int(2), Value::Int(3), Value::Int(4)])
+        );
+    }
+
+    #[test]
+    fn test_slice_non_numeric_start() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        assert!(slice(&[list, Value::String("hello".to_string())]).is_err());
+    }
+
+    // Additional tests for range
+    #[test]
+    fn test_range_empty() {
+        // range(0) -> []
+        assert_eq!(range(&[Value::Int(0)]).unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_range_negative_only() {
+        // range(-3) -> []
+        assert_eq!(range(&[Value::Int(-3)]).unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_range_same_from_and_upto() {
+        // range(5, 5) -> []
+        assert_eq!(
+            range(&[Value::Int(5), Value::Int(5)]).unwrap(),
+            Value::List(vec![])
+        );
+    }
+
+    #[test]
+    fn test_range_large_step() {
+        // range(0, 10, 5) -> [0, 5]
+        assert_eq!(
+            range(&[Value::Int(0), Value::Int(10), Value::Int(5)]).unwrap(),
+            Value::List(vec![Value::Int(0), Value::Int(5)])
+        );
+    }
+
+    #[test]
+    fn test_range_negative_step_wrong_direction() {
+        // range(10, 0, -1) -> [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+        let result = range(&[Value::Int(10), Value::Int(0), Value::Int(-1)]).unwrap();
+        if let Value::List(vals) = result {
+            assert_eq!(vals.len(), 10);
+            assert_eq!(vals[0], Value::Int(10));
+            assert_eq!(vals[9], Value::Int(1));
+        } else {
+            panic!("Expected List");
+        }
+    }
+
+    #[test]
+    fn test_range_invalid_types() {
+        // Two args with invalid types
+        assert!(range(&[Value::Int(0), Value::String("hello".to_string())]).is_err());
+        assert!(range(&[Value::String("hello".to_string()), Value::Int(10)]).is_err());
+    }
+
+    #[test]
+    fn test_range_three_args_invalid() {
+        // Three args with invalid types
+        assert!(range(&[
+            Value::Int(0),
+            Value::Int(10),
+            Value::String("hello".to_string())
+        ])
+        .is_err());
+    }
+
+    // Additional tests for map, filter, reduce error cases
+    #[test]
+    fn test_map_non_lambda() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        assert!(map(&[list, Value::Int(42)]).is_err());
+    }
+
+    #[test]
+    fn test_filter_non_lambda() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        assert!(filter(&[list, Value::Int(42)]).is_err());
+    }
+
+    #[test]
+    fn test_reduce_non_lambda() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        assert!(reduce(&[list, Value::Int(0), Value::Int(42)]).is_err());
+    }
+
+    #[test]
+    fn test_reduce_lambda_insufficient_params() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        // Lambda with only 1 parameter should error
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+        });
+        let result = reduce(&[Value::List(vec![Value::Int(1)]), Value::Int(0), lambda]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sort_by_non_lambda() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        assert!(sort_by(&[list, Value::Int(42)]).is_err());
+    }
+
+    #[test]
+    fn test_sort_by_null() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let identity_lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        assert_eq!(
+            sort_by(&[Value::Null, identity_lambda]).unwrap(),
+            Value::Null
+        );
+    }
+
+    #[test]
+    fn test_sort_by_non_list() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let identity_lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+        assert!(sort_by(&[Value::Int(42), identity_lambda]).is_err());
+    }
 }

@@ -984,4 +984,487 @@ mod tests {
         assert!(floor(&[Value::List(vec![])]).is_err());
         assert!(sqrt(&[Value::List(vec![])]).is_err());
     }
+
+    // Additional tests for abs
+    #[test]
+    fn test_abs_positive() {
+        assert_eq!(abs(&[Value::Int(5)]).unwrap(), Value::Int(5));
+        assert_eq!(abs(&[Value::Float(3.14)]).unwrap(), Value::Float(3.14));
+    }
+
+    #[test]
+    fn test_abs_zero() {
+        assert_eq!(abs(&[Value::Int(0)]).unwrap(), Value::Int(0));
+        assert_eq!(abs(&[Value::Float(0.0)]).unwrap(), Value::Float(0.0));
+    }
+
+    #[test]
+    fn test_abs_negative_int() {
+        assert_eq!(abs(&[Value::Int(-100)]).unwrap(), Value::Int(100));
+        // Note: i64::MIN cannot be negated (would overflow), skipping this edge case
+    }
+
+    // Additional tests for round
+    #[test]
+    fn test_round_exact() {
+        assert_eq!(round(&[Value::Float(5.0)]).unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_round_half() {
+        assert_eq!(round(&[Value::Float(2.5)]).unwrap(), Value::Int(3));
+        assert_eq!(round(&[Value::Float(3.5)]).unwrap(), Value::Int(4));
+    }
+
+    #[test]
+    fn test_round_negative() {
+        assert_eq!(round(&[Value::Float(-2.3)]).unwrap(), Value::Int(-2));
+        assert_eq!(round(&[Value::Float(-2.7)]).unwrap(), Value::Int(-3));
+    }
+
+    #[test]
+    fn test_round_null() {
+        assert_eq!(round(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_round_bool() {
+        assert_eq!(round(&[Value::Bool(true)]).unwrap(), Value::Int(1));
+        assert_eq!(round(&[Value::Bool(false)]).unwrap(), Value::Int(0));
+    }
+
+    // Additional tests for min/max
+    #[test]
+    fn test_min_single_value() {
+        assert_eq!(min(&[Value::Int(42)]).unwrap(), Value::Int(42));
+    }
+
+    #[test]
+    fn test_min_all_null() {
+        assert_eq!(min(&[Value::Null, Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_min_bool_values() {
+        assert_eq!(
+            min(&[Value::Bool(true), Value::Bool(false)]).unwrap(),
+            Value::Int(0)
+        );
+    }
+
+    #[test]
+    fn test_min_string_values() {
+        assert_eq!(
+            min(&[
+                Value::String("10".to_string()),
+                Value::String("5".to_string())
+            ])
+            .unwrap(),
+            Value::Int(5)
+        );
+    }
+
+    #[test]
+    fn test_max_single_value() {
+        assert_eq!(max(&[Value::Int(42)]).unwrap(), Value::Int(42));
+    }
+
+    #[test]
+    fn test_max_all_null() {
+        assert_eq!(max(&[Value::Null, Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_max_bool_values() {
+        assert_eq!(
+            max(&[Value::Bool(true), Value::Bool(false)]).unwrap(),
+            Value::Int(1)
+        );
+    }
+
+    #[test]
+    fn test_max_string_values() {
+        assert_eq!(
+            max(&[
+                Value::String("10".to_string()),
+                Value::String("5".to_string())
+            ])
+            .unwrap(),
+            Value::Int(10)
+        );
+    }
+
+    // Additional tests for int
+    #[test]
+    fn test_int_null() {
+        assert_eq!(int(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_int_negative_float() {
+        assert_eq!(int(&[Value::Float(-3.7)]).unwrap(), Value::Int(-3));
+    }
+
+    #[test]
+    fn test_int_negative_string() {
+        assert_eq!(
+            int(&[Value::String("-42".to_string())]).unwrap(),
+            Value::Int(-42)
+        );
+    }
+
+    #[test]
+    fn test_int_large_number() {
+        assert_eq!(
+            int(&[Value::Int(9007199254740992i64)]).unwrap(),
+            Value::Int(9007199254740992i64)
+        );
+    }
+
+    // Additional tests for float
+    #[test]
+    fn test_float_null() {
+        assert_eq!(float(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_float_negative() {
+        assert_eq!(float(&[Value::Int(-42)]).unwrap(), Value::Float(-42.0));
+    }
+
+    #[test]
+    fn test_float_negative_string() {
+        assert_eq!(
+            float(&[Value::String("-3.14".to_string())]).unwrap(),
+            Value::Float(-3.14)
+        );
+    }
+
+    #[test]
+    fn test_float_scientific_notation() {
+        assert_eq!(
+            float(&[Value::String("1e10".to_string())]).unwrap(),
+            Value::Float(1e10)
+        );
+    }
+
+    // Additional tests for ceil
+    #[test]
+    fn test_ceil_null() {
+        assert_eq!(ceil(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_ceil_bool() {
+        assert_eq!(ceil(&[Value::Bool(true)]).unwrap(), Value::Int(1));
+        assert_eq!(ceil(&[Value::Bool(false)]).unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_ceil_negative() {
+        assert_eq!(ceil(&[Value::Float(-3.2)]).unwrap(), Value::Int(-3));
+        assert_eq!(ceil(&[Value::Float(-3.8)]).unwrap(), Value::Int(-3));
+    }
+
+    // Additional tests for floor
+    #[test]
+    fn test_floor_null() {
+        assert_eq!(floor(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_floor_bool() {
+        assert_eq!(floor(&[Value::Bool(true)]).unwrap(), Value::Int(1));
+        assert_eq!(floor(&[Value::Bool(false)]).unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_floor_negative() {
+        assert_eq!(floor(&[Value::Float(-3.2)]).unwrap(), Value::Int(-4));
+        assert_eq!(floor(&[Value::Float(-3.8)]).unwrap(), Value::Int(-4));
+    }
+
+    // Additional tests for sqrt
+    #[test]
+    fn test_sqrt_int() {
+        assert_eq!(sqrt(&[Value::Int(16)]).unwrap(), Value::Float(4.0));
+    }
+
+    #[test]
+    fn test_sqrt_bool() {
+        assert_eq!(sqrt(&[Value::Bool(true)]).unwrap(), Value::Float(1.0));
+        assert_eq!(sqrt(&[Value::Bool(false)]).unwrap(), Value::Float(0.0));
+    }
+
+    #[test]
+    fn test_sqrt_one() {
+        assert_eq!(sqrt(&[Value::Float(1.0)]).unwrap(), Value::Float(1.0));
+    }
+
+    // Additional tests for pow
+    #[test]
+    fn test_pow_zero_exponent() {
+        assert_eq!(
+            pow(&[Value::Int(5), Value::Int(0)]).unwrap(),
+            Value::Float(1.0)
+        );
+    }
+
+    #[test]
+    fn test_pow_zero_base() {
+        assert_eq!(
+            pow(&[Value::Int(0), Value::Int(5)]).unwrap(),
+            Value::Float(0.0)
+        );
+    }
+
+    #[test]
+    fn test_pow_negative_exponent() {
+        assert_eq!(
+            pow(&[Value::Int(2), Value::Int(-1)]).unwrap(),
+            Value::Float(0.5)
+        );
+    }
+
+    #[test]
+    fn test_pow_fractional() {
+        assert!(
+            (pow(&[Value::Float(4.0), Value::Float(0.5)])
+                .unwrap()
+                .as_float()
+                .unwrap()
+                - 2.0)
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_pow_bool() {
+        assert_eq!(
+            pow(&[Value::Bool(true), Value::Bool(true)]).unwrap(),
+            Value::Float(1.0)
+        );
+    }
+
+    // Additional tests for trigonometric functions
+    #[test]
+    fn test_sin_null() {
+        assert_eq!(sin(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_sin_bool() {
+        assert!(
+            (sin(&[Value::Bool(true)]).unwrap().as_float().unwrap() - 1.0f64.sin())
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_cos_null() {
+        assert_eq!(cos(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_cos_bool() {
+        assert!(
+            (cos(&[Value::Bool(true)]).unwrap().as_float().unwrap() - 1.0f64.cos())
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_tan_null() {
+        assert_eq!(tan(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_tan_bool() {
+        assert!(
+            (tan(&[Value::Bool(true)]).unwrap().as_float().unwrap() - 1.0f64.tan())
+                .abs()
+                < 1e-10
+        );
+    }
+
+    // Additional tests for logarithmic functions
+    #[test]
+    fn test_ln_one() {
+        assert!(
+            (ln(&[Value::Float(1.0)]).unwrap().as_float().unwrap() - 0.0).abs() < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_ln_null() {
+        assert_eq!(ln(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_ln_bool() {
+        assert!(
+            (ln(&[Value::Bool(true)]).unwrap().as_float().unwrap() - 0.0).abs() < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_log10_one() {
+        assert!(
+            (log10(&[Value::Float(1.0)]).unwrap().as_float().unwrap() - 0.0).abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_log10_null() {
+        assert_eq!(log10(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_log10_bool() {
+        assert!(
+            (log10(&[Value::Bool(true)]).unwrap().as_float().unwrap() - 0.0).abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_log10_10() {
+        assert!(
+            (log10(&[Value::Float(10.0)]).unwrap().as_float().unwrap() - 1.0).abs()
+                < 1e-10
+        );
+    }
+
+    // Additional tests for exp
+    #[test]
+    fn test_exp_null() {
+        assert_eq!(exp(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_exp_bool() {
+        assert!(
+            (exp(&[Value::Bool(true)]).unwrap().as_float().unwrap()
+                - std::f64::consts::E)
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_exp_negative() {
+        assert!(
+            (exp(&[Value::Float(-1.0)]).unwrap().as_float().unwrap()
+                - 1.0 / std::f64::consts::E)
+                .abs()
+                < 1e-10
+        );
+    }
+
+    // Test type errors for DateTime and Lambda
+    #[test]
+    fn test_datetime_type_errors() {
+        use chrono::Utc;
+
+        let dt = Value::DateTime(Utc::now());
+        assert!(abs(&[dt.clone()]).is_err());
+        assert!(round(&[dt.clone()]).is_err());
+        assert!(int(&[dt.clone()]).is_err());
+        assert!(float(&[dt.clone()]).is_err());
+        assert!(ceil(&[dt.clone()]).is_err());
+        assert!(floor(&[dt.clone()]).is_err());
+        assert!(sqrt(&[dt.clone()]).is_err());
+        assert!(pow(&[dt.clone(), Value::Int(2)]).is_err());
+        assert!(sin(&[dt.clone()]).is_err());
+        assert!(cos(&[dt.clone()]).is_err());
+        assert!(tan(&[dt.clone()]).is_err());
+        assert!(ln(&[dt.clone()]).is_err());
+        assert!(log10(&[dt.clone()]).is_err());
+        assert!(exp(&[dt.clone()]).is_err());
+    }
+
+    #[test]
+    fn test_lambda_type_errors() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use std::collections::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+        });
+        assert!(abs(&[lambda.clone()]).is_err());
+        assert!(round(&[lambda.clone()]).is_err());
+        assert!(int(&[lambda.clone()]).is_err());
+        assert!(float(&[lambda.clone()]).is_err());
+        assert!(ceil(&[lambda.clone()]).is_err());
+        assert!(floor(&[lambda.clone()]).is_err());
+        assert!(sqrt(&[lambda.clone()]).is_err());
+        assert!(pow(&[lambda.clone(), Value::Int(2)]).is_err());
+        assert!(sin(&[lambda.clone()]).is_err());
+        assert!(cos(&[lambda.clone()]).is_err());
+        assert!(tan(&[lambda.clone()]).is_err());
+        assert!(ln(&[lambda.clone()]).is_err());
+        assert!(log10(&[lambda.clone()]).is_err());
+        assert!(exp(&[lambda.clone()]).is_err());
+    }
+
+    // Test edge cases with special float values
+    #[test]
+    fn test_special_float_values() {
+        // sqrt of infinity
+        assert!(sqrt(&[Value::Float(f64::INFINITY)])
+            .unwrap()
+            .as_float()
+            .unwrap()
+            .is_infinite());
+        // sqrt of NaN
+        assert!(sqrt(&[Value::Float(f64::NAN)])
+            .unwrap()
+            .as_float()
+            .unwrap()
+            .is_nan());
+        // exp of infinity
+        assert!(exp(&[Value::Float(f64::INFINITY)])
+            .unwrap()
+            .as_float()
+            .unwrap()
+            .is_infinite());
+        // exp of large negative
+        assert_eq!(
+            exp(&[Value::Float(-1000.0)]).unwrap().as_float().unwrap(),
+            0.0
+        );
+    }
+
+    // Test max/min with DateTime and Lambda (should be skipped)
+    #[test]
+    fn test_min_max_skips_datetime_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use chrono::Utc;
+        use std::collections::HashMap;
+
+        let dt = Value::DateTime(Utc::now());
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+        });
+
+        // DateTime and Lambda should be skipped
+        assert_eq!(
+            min(&[dt.clone(), Value::Int(5), lambda.clone()]).unwrap(),
+            Value::Int(5)
+        );
+        assert_eq!(
+            max(&[dt.clone(), Value::Int(5), lambda.clone()]).unwrap(),
+            Value::Int(5)
+        );
+    }
 }
