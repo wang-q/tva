@@ -1,6 +1,6 @@
 use crate::libs::expr::runtime::value::Value;
 use crate::libs::expr::runtime::EvalError;
-use std::collections::HashMap;
+use ahash::HashMap;
 use std::sync::OnceLock;
 
 mod datetime;

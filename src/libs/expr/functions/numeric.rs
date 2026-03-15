@@ -566,6 +566,7 @@ pub fn exp(args: &[Value]) -> Result<Value, EvalError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ahash::HashMapExt;
 
     #[test]
     fn test_abs() {
@@ -1391,7 +1392,7 @@ mod tests {
     fn test_lambda_type_errors() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use std::collections::HashMap;
+        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             captured_vars: HashMap::new(),
@@ -1447,8 +1448,8 @@ mod tests {
     fn test_min_max_skips_datetime_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
+        use ahash::HashMap;
         use chrono::Utc;
-        use std::collections::HashMap;
 
         let dt = Value::DateTime(Utc::now());
         let lambda = Value::Lambda(LambdaValue {
@@ -1529,7 +1530,7 @@ mod tests {
     fn test_pow_with_lambda_base_error() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use std::collections::HashMap;
+        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             captured_vars: HashMap::new(),
@@ -1594,7 +1595,7 @@ mod tests {
     fn test_sin_with_lambda_error() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use std::collections::HashMap;
+        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             captured_vars: HashMap::new(),

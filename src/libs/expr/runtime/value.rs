@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use ahash::HashMap;
 use std::fmt;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
@@ -316,6 +316,7 @@ impl Rem for Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ahash::HashMapExt;
 
     #[test]
     fn test_value_arithmetic() {

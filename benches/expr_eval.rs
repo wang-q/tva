@@ -54,7 +54,8 @@ fn benchmark_expression_eval(c: &mut Criterion) {
         let expr = tva::libs::expr::parser::parse("@id").unwrap();
         b.iter(|| {
             for _ in 0..iterations {
-                let mut ctx = tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let mut ctx =
+                    tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
                 let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
                 black_box(result);
             }
@@ -194,7 +195,8 @@ fn benchmark_expression_eval(c: &mut Criterion) {
     // 13. Variable binding
     // Tests 'as' binding
     group.bench_function("variable_bind", |b| {
-        let expr = tva::libs::expr::parser::parse("@1 + @5 as @total; @total * 2").unwrap();
+        let expr =
+            tva::libs::expr::parser::parse("@1 + @5 as @total; @total * 2").unwrap();
         b.iter(|| {
             for _ in 0..iterations {
                 let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
@@ -243,6 +245,40 @@ fn benchmark_expression_eval(c: &mut Criterion) {
         b.iter(|| {
             for _ in 0..iterations {
                 let expr = tva::libs::expr::parse_cached(expr_str).unwrap();
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 17. Constant folding (new optimization)
+    // Tests constant expression pre-computation
+    group.bench_function("constant_folded", |b| {
+        // Parse expression with constants
+        let mut expr = tva::libs::expr::parser::parse("2 + 3 * 4 - 5").unwrap();
+        // Fold constants
+        tva::libs::expr::fold_constants(&mut expr);
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 18. Constant folding with column access
+    // Tests mixed constant and column expressions
+    group.bench_function("constant_folded_mixed", |b| {
+        // Parse expression: @1 + 100 * 2 (100 * 2 should fold to 200)
+        let mut expr = tva::libs::expr::parser::parse("@1 + 100 * 2").unwrap();
+        // Fold constants
+        tva::libs::expr::fold_constants(&mut expr);
+
+        b.iter(|| {
+            for _ in 0..iterations {
                 let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
                 let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
                 black_box(result);
@@ -312,7 +348,8 @@ fn benchmark_column_resolution(c: &mut Criterion) {
         let expr = tva::libs::expr::parser::parse("@id").unwrap();
         b.iter(|| {
             for _ in 0..iterations {
-                let mut ctx = tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let mut ctx =
+                    tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
                 let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
                 black_box(result);
             }
@@ -329,7 +366,8 @@ fn benchmark_column_resolution(c: &mut Criterion) {
         b.iter(|| {
             for _ in 0..iterations {
                 // Evaluate with pre-resolved indices
-                let mut ctx = tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let mut ctx =
+                    tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
                 let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
                 black_box(result);
             }

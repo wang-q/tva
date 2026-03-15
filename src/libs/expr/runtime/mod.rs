@@ -1,7 +1,7 @@
 pub mod value;
 
 use crate::libs::expr::parser::ast::{BinaryOp, ColumnRef, Expr, PipeRight, UnaryOp};
-use std::collections::HashMap;
+use ahash::{HashMap, HashMapExt};
 use thiserror::Error;
 use value::Value;
 

@@ -6,9 +6,9 @@ pub mod functions;
 pub mod parser;
 pub mod runtime;
 
+use ahash::{HashMap, HashMapExt};
 use parser::{ast::Expr, ParseError};
 use runtime::EvalError;
-use std::collections::HashMap;
 use std::sync::Mutex;
 use thiserror::Error;
 
@@ -133,6 +133,202 @@ fn resolve_pipe_right(expr: &mut parser::ast::PipeRight, headers: &[String]) {
                 resolve_columns(arg, headers);
             }
         }
+    }
+}
+
+/// Fold constant expressions
+/// Evaluates constant sub-expressions at compile time
+/// Examples:
+/// - `2 + 3` -> `5`
+/// - `"hello" ++ " world"` -> `"hello world"`
+/// - `!true` -> `false`
+pub fn fold_constants(expr: &mut Expr) {
+    // First, recursively fold children
+    match expr {
+        Expr::Unary { expr: inner, .. } => {
+            fold_constants(inner);
+        }
+        Expr::Binary { left, right, .. } => {
+            fold_constants(left);
+            fold_constants(right);
+        }
+        Expr::Call { args, .. } => {
+            for arg in args {
+                fold_constants(arg);
+            }
+        }
+        Expr::MethodCall { object, args, .. } => {
+            fold_constants(object);
+            for arg in args {
+                fold_constants(arg);
+            }
+        }
+        Expr::Pipe { left, right } => {
+            fold_constants(left);
+            fold_pipe_right(right);
+        }
+        Expr::Bind { expr: inner, .. } => {
+            fold_constants(inner);
+        }
+        Expr::Block(exprs) => {
+            for e in exprs {
+                fold_constants(e);
+            }
+        }
+        Expr::List(items) => {
+            for item in items {
+                fold_constants(item);
+            }
+        }
+        Expr::Lambda { body, .. } => {
+            fold_constants(body);
+        }
+        _ => {}
+    }
+
+    // Then, try to fold this expression if it's a constant
+    match expr {
+        // Unary operations on constants
+        Expr::Unary { op, expr: inner } => {
+            if let Some(val) = try_fold_unary(*op, inner) {
+                *expr = val;
+            }
+        }
+        // Binary operations on constants
+        Expr::Binary { op, left, right } => {
+            if let Some(val) = try_fold_binary(*op, left, right) {
+                *expr = val;
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Fold constants in pipe right-hand side
+fn fold_pipe_right(expr: &mut parser::ast::PipeRight) {
+    use parser::ast::PipeRight;
+
+    match expr {
+        PipeRight::Call { args, .. } => {
+            for arg in args {
+                fold_constants(arg);
+            }
+        }
+        PipeRight::CallWithPlaceholder { args, .. } => {
+            for arg in args {
+                fold_constants(arg);
+            }
+        }
+    }
+}
+
+/// Try to fold a unary operation
+fn try_fold_unary(op: parser::ast::UnaryOp, expr: &Expr) -> Option<Expr> {
+    use parser::ast::UnaryOp;
+
+    match (op, expr) {
+        (UnaryOp::Neg, Expr::Int(n)) => Some(Expr::Int(-n)),
+        (UnaryOp::Neg, Expr::Float(f)) => Some(Expr::Float(-f)),
+        (UnaryOp::Not, Expr::Bool(b)) => Some(Expr::Bool(!b)),
+        _ => None,
+    }
+}
+
+/// Try to fold a binary operation
+fn try_fold_binary(
+    op: parser::ast::BinaryOp,
+    left: &Expr,
+    right: &Expr,
+) -> Option<Expr> {
+    use parser::ast::BinaryOp;
+
+    match (op, left, right) {
+        // Integer arithmetic
+        (BinaryOp::Add, Expr::Int(a), Expr::Int(b)) => Some(Expr::Int(a + b)),
+        (BinaryOp::Sub, Expr::Int(a), Expr::Int(b)) => Some(Expr::Int(a - b)),
+        (BinaryOp::Mul, Expr::Int(a), Expr::Int(b)) => Some(Expr::Int(a * b)),
+        (BinaryOp::Div, Expr::Int(a), Expr::Int(b)) => {
+            if *b != 0 {
+                Some(Expr::Int(a / b))
+            } else {
+                None
+            }
+        }
+        (BinaryOp::Mod, Expr::Int(a), Expr::Int(b)) => {
+            if *b != 0 {
+                Some(Expr::Int(a % b))
+            } else {
+                None
+            }
+        }
+        (BinaryOp::Pow, Expr::Int(a), Expr::Int(b)) => {
+            if *b >= 0 && *b <= 100 {
+                // Limit exponent to avoid huge numbers
+                Some(Expr::Int(a.pow(*b as u32)))
+            } else {
+                None
+            }
+        }
+        // Float arithmetic
+        (BinaryOp::Add, Expr::Float(a), Expr::Float(b)) => Some(Expr::Float(a + b)),
+        (BinaryOp::Sub, Expr::Float(a), Expr::Float(b)) => Some(Expr::Float(a - b)),
+        (BinaryOp::Mul, Expr::Float(a), Expr::Float(b)) => Some(Expr::Float(a * b)),
+        (BinaryOp::Div, Expr::Float(a), Expr::Float(b)) => Some(Expr::Float(a / b)),
+        (BinaryOp::Pow, Expr::Float(a), Expr::Float(b)) => Some(Expr::Float(a.powf(*b))),
+        // Mixed int/float
+        (BinaryOp::Add, Expr::Int(a), Expr::Float(b)) => {
+            Some(Expr::Float(*a as f64 + b))
+        }
+        (BinaryOp::Add, Expr::Float(a), Expr::Int(b)) => {
+            Some(Expr::Float(a + *b as f64))
+        }
+        (BinaryOp::Sub, Expr::Int(a), Expr::Float(b)) => {
+            Some(Expr::Float(*a as f64 - b))
+        }
+        (BinaryOp::Sub, Expr::Float(a), Expr::Int(b)) => {
+            Some(Expr::Float(a - *b as f64))
+        }
+        (BinaryOp::Mul, Expr::Int(a), Expr::Float(b)) => {
+            Some(Expr::Float(*a as f64 * b))
+        }
+        (BinaryOp::Mul, Expr::Float(a), Expr::Int(b)) => {
+            Some(Expr::Float(a * *b as f64))
+        }
+        (BinaryOp::Div, Expr::Int(a), Expr::Float(b)) => {
+            Some(Expr::Float(*a as f64 / b))
+        }
+        (BinaryOp::Div, Expr::Float(a), Expr::Int(b)) => {
+            Some(Expr::Float(a / *b as f64))
+        }
+        // String concatenation
+        (BinaryOp::Concat, Expr::String(a), Expr::String(b)) => {
+            Some(Expr::String(format!("{}{}", a, b)))
+        }
+        // Comparison (numeric)
+        (BinaryOp::Eq, Expr::Int(a), Expr::Int(b)) => Some(Expr::Bool(a == b)),
+        (BinaryOp::Ne, Expr::Int(a), Expr::Int(b)) => Some(Expr::Bool(a != b)),
+        (BinaryOp::Lt, Expr::Int(a), Expr::Int(b)) => Some(Expr::Bool(a < b)),
+        (BinaryOp::Le, Expr::Int(a), Expr::Int(b)) => Some(Expr::Bool(a <= b)),
+        (BinaryOp::Gt, Expr::Int(a), Expr::Int(b)) => Some(Expr::Bool(a > b)),
+        (BinaryOp::Ge, Expr::Int(a), Expr::Int(b)) => Some(Expr::Bool(a >= b)),
+        // Comparison (float)
+        (BinaryOp::Eq, Expr::Float(a), Expr::Float(b)) => Some(Expr::Bool(a == b)),
+        (BinaryOp::Ne, Expr::Float(a), Expr::Float(b)) => Some(Expr::Bool(a != b)),
+        (BinaryOp::Lt, Expr::Float(a), Expr::Float(b)) => Some(Expr::Bool(a < b)),
+        (BinaryOp::Le, Expr::Float(a), Expr::Float(b)) => Some(Expr::Bool(a <= b)),
+        (BinaryOp::Gt, Expr::Float(a), Expr::Float(b)) => Some(Expr::Bool(a > b)),
+        (BinaryOp::Ge, Expr::Float(a), Expr::Float(b)) => Some(Expr::Bool(a >= b)),
+        // Comparison (string)
+        (BinaryOp::StrEq, Expr::String(a), Expr::String(b)) => Some(Expr::Bool(a == b)),
+        (BinaryOp::StrNe, Expr::String(a), Expr::String(b)) => Some(Expr::Bool(a != b)),
+        (BinaryOp::StrLt, Expr::String(a), Expr::String(b)) => Some(Expr::Bool(a < b)),
+        (BinaryOp::StrLe, Expr::String(a), Expr::String(b)) => Some(Expr::Bool(a <= b)),
+        (BinaryOp::StrGt, Expr::String(a), Expr::String(b)) => Some(Expr::Bool(a > b)),
+        (BinaryOp::StrGe, Expr::String(a), Expr::String(b)) => Some(Expr::Bool(a >= b)),
+        // Logical
+        (BinaryOp::And, Expr::Bool(a), Expr::Bool(b)) => Some(Expr::Bool(*a && *b)),
+        (BinaryOp::Or, Expr::Bool(a), Expr::Bool(b)) => Some(Expr::Bool(*a || *b)),
+        _ => None,
     }
 }
 

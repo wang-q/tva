@@ -90,6 +90,7 @@ pub fn platform_fn(args: &[Value]) -> Result<Value, EvalError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ahash::HashMapExt;
 
     // type_fn tests
     #[test]
@@ -443,7 +444,7 @@ mod tests {
     fn test_type_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use std::collections::HashMap;
+        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             captured_vars: HashMap::new(),
@@ -525,7 +526,7 @@ mod tests {
         // Test env() with lambda argument (should fail)
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use std::collections::HashMap;
+        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             captured_vars: HashMap::new(),
