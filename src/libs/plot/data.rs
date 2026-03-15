@@ -601,4 +601,282 @@ mod tests {
         assert_eq!(data["A"], vec![1.0, 2.0]);
         assert_eq!(data["B"], vec![3.0, 4.0]);
     }
+
+    // Additional tests for error handling and edge cases
+
+    #[test]
+    fn test_parse_columns_with_header() {
+        let headers = vec![b"name".to_vec(), b"age".to_vec(), b"score".to_vec()];
+        let header = build_header(&headers);
+        let result = parse_columns("1-2", header.as_ref(), &headers);
+        assert!(result.is_ok());
+        let spec = result.unwrap();
+        assert_eq!(spec.indices, vec![0, 1]);
+        assert_eq!(spec.names, vec!["name", "age"]);
+    }
+
+    #[test]
+    fn test_parse_columns_invalid_spec() {
+        let headers = vec![b"col1".to_vec()];
+        let header = build_header(&headers);
+        let result = parse_columns("invalid", header.as_ref(), &headers);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_columns_empty_result() {
+        // When headers is empty but we request column 1, it should still work
+        // because parse_field_list_with_header returns 1-based indices
+        let headers: Vec<Vec<u8>> = vec![];
+        let result = parse_columns("999", None, &headers);
+        // This will succeed because parse_field_list_with_header doesn't validate
+        // against actual header count when header is None
+        assert!(result.is_ok());
+        let spec = result.unwrap();
+        assert_eq!(spec.indices, vec![998]); // 999 - 1 = 998 (0-based)
+    }
+
+    #[test]
+    fn test_parse_single_column_success() {
+        let headers = vec![b"name".to_vec(), b"age".to_vec()];
+        let header = build_header(&headers);
+        let result = parse_single_column("2", header.as_ref(), &headers);
+        assert!(result.is_ok());
+        let (idx, name) = result.unwrap();
+        assert_eq!(idx, 1);
+        assert_eq!(name, "age");
+    }
+
+    #[test]
+    fn test_parse_single_column_multiple_columns_error() {
+        let headers = vec![b"name".to_vec(), b"age".to_vec()];
+        let header = build_header(&headers);
+        let result = parse_single_column("1,2", header.as_ref(), &headers);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_numeric_column_missing_column() {
+        let data = b"1.0\t2.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let result = load_numeric_column(reader, 5, "col6", false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_numeric_column_missing_column_ignore() {
+        let data = b"1.0\t2.0\n3.0\t4.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let values = load_numeric_column(reader, 5, "col6", true).unwrap();
+        assert!(values.is_empty());
+    }
+
+    #[test]
+    fn test_load_numeric_column_parse_error() {
+        let data = b"1.0\nabc\n3.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let result = load_numeric_column(reader, 0, "col1", false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_scatter_data_missing_x_column() {
+        let data = b"1.0\t2.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![1];
+        let y_names = vec!["y".to_string()];
+        let result = load_scatter_data(reader, 5, &y_indices, &y_names, None, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_scatter_data_missing_x_column_ignore() {
+        let data = b"1.0\t2.0\n3.0\t4.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![1];
+        let y_names = vec!["y".to_string()];
+        let data =
+            load_scatter_data(reader, 5, &y_indices, &y_names, None, true).unwrap();
+        assert!(data.is_empty());
+    }
+
+    #[test]
+    fn test_load_scatter_data_x_parse_error() {
+        let data = b"abc\t2.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![1];
+        let y_names = vec!["y".to_string()];
+        let result = load_scatter_data(reader, 0, &y_indices, &y_names, None, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_scatter_data_x_parse_error_ignore() {
+        let data = b"abc\t2.0\n3.0\t4.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![1];
+        let y_names = vec!["y".to_string()];
+        let data =
+            load_scatter_data(reader, 0, &y_indices, &y_names, None, true).unwrap();
+        assert_eq!(data["y"], vec![(3.0, 4.0)]);
+    }
+
+    #[test]
+    fn test_load_scatter_data_missing_y_column() {
+        let data = b"1.0\t2.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![5];
+        let y_names = vec!["y".to_string()];
+        let result = load_scatter_data(reader, 0, &y_indices, &y_names, None, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_scatter_data_y_parse_error() {
+        let data = b"1.0\tabc\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![1];
+        let y_names = vec!["y".to_string()];
+        let result = load_scatter_data(reader, 0, &y_indices, &y_names, None, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_scatter_data_missing_color_column() {
+        let data = b"1.0\t2.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![1];
+        let y_names = vec!["y".to_string()];
+        let result = load_scatter_data(reader, 0, &y_indices, &y_names, Some(5), false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_scatter_data_missing_color_column_ignore() {
+        let data = b"1.0\t2.0\n3.0\t4.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![1];
+        let y_names = vec!["y".to_string()];
+        let data =
+            load_scatter_data(reader, 0, &y_indices, &y_names, Some(5), true).unwrap();
+        assert!(data.is_empty());
+    }
+
+    #[test]
+    fn test_load_scatter_data_multiple_y_with_color() {
+        let data = b"1.0\t2.0\t3.0\tA\n4.0\t5.0\t6.0\tB\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![1, 2];
+        let y_names = vec!["y1".to_string(), "y2".to_string()];
+        let data =
+            load_scatter_data(reader, 0, &y_indices, &y_names, Some(3), false).unwrap();
+
+        assert!(data.contains_key("A|y1"));
+        assert!(data.contains_key("A|y2"));
+        assert!(data.contains_key("B|y1"));
+        assert!(data.contains_key("B|y2"));
+    }
+
+    #[test]
+    fn test_load_bin2d_data_missing_x() {
+        let data = b"1.0\t2.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let result = load_bin2d_data(reader, 5, "x", 1, "y", false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_bin2d_data_missing_x_ignore() {
+        let data = b"1.0\t2.0\n3.0\t4.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let (x, y) = load_bin2d_data(reader, 5, "x", 1, "y", true).unwrap();
+        assert!(x.is_empty());
+        assert!(y.is_empty());
+    }
+
+    #[test]
+    fn test_load_bin2d_data_x_parse_error() {
+        let data = b"abc\t2.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let result = load_bin2d_data(reader, 0, "x", 1, "y", false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_bin2d_data_missing_y() {
+        let data = b"1.0\t2.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let result = load_bin2d_data(reader, 0, "x", 5, "y", false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_bin2d_data_y_parse_error() {
+        let data = b"1.0\tabc\n";
+        let reader = TsvReader::new(&data[..]);
+        let result = load_bin2d_data(reader, 0, "x", 1, "y", false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_box_data_missing_y_column() {
+        let data = b"1.0\t2.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![5];
+        let y_names = vec!["y".to_string()];
+        let result = load_box_data(reader, &y_indices, &y_names, None, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_box_data_y_parse_error() {
+        let data = b"abc\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![0];
+        let y_names = vec!["y".to_string()];
+        let result = load_box_data(reader, &y_indices, &y_names, None, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_box_data_missing_color_column() {
+        let data = b"1.0\t2.0\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![0];
+        let y_names = vec!["y".to_string()];
+        let result = load_box_data(reader, &y_indices, &y_names, Some(5), false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_box_data_multiple_y_with_color() {
+        let data = b"1.0\t2.0\tA\n3.0\t4.0\tB\n";
+        let reader = TsvReader::new(&data[..]);
+        let y_indices = vec![0, 1];
+        let y_names = vec!["y1".to_string(), "y2".to_string()];
+        let data = load_box_data(reader, &y_indices, &y_names, Some(2), false).unwrap();
+
+        assert!(data.contains_key("A|y1"));
+        assert!(data.contains_key("A|y2"));
+        assert!(data.contains_key("B|y1"));
+        assert!(data.contains_key("B|y2"));
+    }
+
+    #[test]
+    fn test_read_headers_with_data() {
+        let data = b"name\tage\nAlice\t30\n";
+        let mut reader = TsvReader::new(&data[..]);
+        let headers = read_headers(&mut reader).unwrap();
+        assert_eq!(headers.len(), 2);
+        assert_eq!(headers[0], b"name");
+        assert_eq!(headers[1], b"age");
+    }
+
+    #[test]
+    fn test_read_headers_empty() {
+        let data = b"";
+        let mut reader = TsvReader::new(&data[..]);
+        let headers = read_headers(&mut reader).unwrap();
+        assert!(headers.is_empty());
+    }
 }

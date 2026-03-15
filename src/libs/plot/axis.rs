@@ -397,4 +397,136 @@ mod tests {
         assert_eq!(labels[0], "0");
         assert_eq!(labels[labels.len() - 1], "100");
     }
+
+    #[test]
+    fn test_format_number_special_cases() {
+        // NaN
+        assert_eq!(format_number(f64::NAN, 2), "NaN");
+        // Infinity
+        assert_eq!(format_number(f64::INFINITY, 2), "Inf");
+        assert_eq!(format_number(f64::NEG_INFINITY, 2), "-Inf");
+        // Zero
+        assert_eq!(format_number(0.0, 2), "0");
+        assert_eq!(format_number(-0.0, 2), "0");
+    }
+
+    #[test]
+    fn test_format_number_scientific_notation() {
+        // Large numbers
+        assert!(format_number(12345.6, 2).contains("e"));
+        assert!(format_number(99999.9, 2).contains("e"));
+        // Small numbers
+        assert!(format_number(0.0001, 2).contains("e"));
+        assert!(format_number(0.00001, 3).contains("e"));
+    }
+
+    #[test]
+    fn test_format_number_negative() {
+        assert_eq!(format_number(-3.14159, 2), "-3.14");
+        assert_eq!(format_number(-42.0, 0), "-42");
+    }
+
+    #[test]
+    fn test_format_number_trimming() {
+        // Trailing zeros should be removed
+        assert_eq!(format_number(3.100, 2), "3.1");
+        assert_eq!(format_number(3.000, 2), "3");
+    }
+
+    #[test]
+    fn test_format_precision_zero_range() {
+        assert_eq!(format_precision(5.0, 0.0), 2);
+    }
+
+    #[test]
+    fn test_nice_breaks_min_equals_max() {
+        let breaks = nice_breaks(5.0, 5.0, 6);
+        assert_eq!(breaks, vec![5.0]);
+    }
+
+    #[test]
+    fn test_generate_axis_labels_aligned() {
+        let labels = generate_axis_labels_aligned(0.0, 100.0, 80, 15, 3, 8);
+        assert!(!labels.is_empty());
+        // All labels should have the same width
+        let width = labels[0].len();
+        for label in &labels {
+            assert_eq!(label.len(), width);
+        }
+    }
+
+    #[test]
+    fn test_calculate_bounds_basic() {
+        let data = vec![(1.0, 2.0), (3.0, 4.0), (5.0, 1.0)];
+        let (x_min, x_max, y_min, y_max) = calculate_bounds(data.iter().copied());
+        assert_eq!(x_min, 1.0);
+        assert_eq!(x_max, 5.0);
+        assert_eq!(y_min, 1.0);
+        assert_eq!(y_max, 4.0);
+    }
+
+    #[test]
+    fn test_calculate_bounds_single_point() {
+        let data = vec![(5.0, 10.0)];
+        let (x_min, x_max, y_min, y_max) = calculate_bounds(data.iter().copied());
+        // Should expand range by 1.0 on each side
+        assert_eq!(x_min, 4.0);
+        assert_eq!(x_max, 6.0);
+        assert_eq!(y_min, 9.0);
+        assert_eq!(y_max, 11.0);
+    }
+
+    #[test]
+    fn test_calculate_bounds_empty() {
+        let data: Vec<(f64, f64)> = vec![];
+        let (x_min, x_max, y_min, y_max) = calculate_bounds(data.iter().copied());
+        // Should return infinity values for empty data
+        assert!(x_min.is_infinite());
+        assert!(x_max.is_infinite());
+        assert!(y_min.is_infinite());
+        assert!(y_max.is_infinite());
+    }
+
+    #[test]
+    fn test_generate_axis_labels_with_duplicates() {
+        // Create a scenario where labels might have duplicates
+        // This happens when range is very small relative to values
+        let labels = generate_axis_labels(0.0, 0.001, 80, 15, 3, 8);
+        // All labels should be unique
+        let unique: std::collections::HashSet<_> = labels.iter().collect();
+        assert_eq!(unique.len(), labels.len());
+    }
+
+    #[test]
+    fn test_nice_number_negative() {
+        // For negative numbers, the function uses abs() internally
+        // So -23.0 behaves like 23.0 for exp calculation
+        // exp = log10(23) ~ 1.36, floor = 1
+        // f = -23 / 10^1 = -2.3
+        // For round=true: f < 1.5 is false (-2.3 < 1.5 is true), so nf = 1.0
+        // Result: 1.0 * 10^1 = 10.0
+        assert_eq!(nice_number(-23.0, true), 10.0);
+        // For round=false: f <= 1.0 is true (-2.3 <= 1.0 is true), so nf = 1.0
+        // Result: 1.0 * 10^1 = 10.0
+        assert_eq!(nice_number(-23.0, false), 10.0);
+    }
+
+    #[test]
+    fn test_nice_number_boundary_values() {
+        // Test boundary values for the round=true case
+        assert_eq!(nice_number(1.4, true), 1.0);
+        assert_eq!(nice_number(1.5, true), 2.0);
+        assert_eq!(nice_number(2.9, true), 2.0);
+        assert_eq!(nice_number(3.0, true), 5.0);
+        assert_eq!(nice_number(6.9, true), 5.0);
+        assert_eq!(nice_number(7.0, true), 10.0);
+
+        // Test boundary values for the round=false case
+        assert_eq!(nice_number(1.0, false), 1.0);
+        assert_eq!(nice_number(1.1, false), 2.0);
+        assert_eq!(nice_number(2.0, false), 2.0);
+        assert_eq!(nice_number(2.1, false), 5.0);
+        assert_eq!(nice_number(5.0, false), 5.0);
+        assert_eq!(nice_number(5.1, false), 10.0);
+    }
 }
