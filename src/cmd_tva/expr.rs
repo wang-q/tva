@@ -1,7 +1,8 @@
 use clap::*;
 
 use crate::libs::cli::{build_header_config, header_args_with_columns};
-use crate::libs::expr::{parser, runtime};
+use crate::libs::expr::runtime;
+use crate::libs::expr::{fold_constants, parse_cached, resolve_columns};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::header::HeaderMode;
 use crate::libs::tsv::reader::TsvReader;
@@ -63,8 +64,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let expr_str = args.get_one::<String>("expr").unwrap();
 
-    // Parse the expression
-    let parsed_expr = parser::parse(expr_str)
+    // Parse the expression with caching
+    let mut parsed_expr = parse_cached(expr_str)
         .map_err(|e| anyhow::anyhow!("Failed to parse expression: {}", e))?;
 
     // Check if we have inline row data (debug mode)
@@ -158,8 +159,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         .split(|c| c == delimiter)
                         .map(|s| s.to_string())
                         .collect();
-                    // Write header from the last expression's formatted representation
+
+                    // Save original header name before optimization
                     let header_name = parsed_expr.last_expr().format();
+
+                    // Optimize expression: resolve column names to indices
+                    resolve_columns(&mut parsed_expr, &headers);
+                    // Fold constant expressions for better performance
+                    fold_constants(&mut parsed_expr);
+
+                    // Write header from the original formatted representation
                     writeln!(writer, "{}", header_name)?;
                     header_written = true;
                 }

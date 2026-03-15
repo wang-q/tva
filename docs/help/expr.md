@@ -1,11 +1,27 @@
-# eval
+# expr
 
-Evaluates an expression for testing and debugging purposes.
+Evaluates an expression for each row and outputs only the result.
 
 Behavior:
 
-* Parses and evaluates a single expression against provided test data.
-* Does not process files; use this command to test expressions before using them in other commands.
+* Parses and evaluates an expression against each row of input data.
+* Outputs only the expression result for each row (original row data is not included).
+* Supports arithmetic, string, logical operations and function calls.
+
+Input:
+
+* Reads from files or standard input.
+* Files ending in `.gz` are transparently decompressed.
+
+Output:
+
+* Outputs the expression result for each row (original row data is not included).
+* The header line is the formatted expression string.
+
+Header behavior:
+
+* Supports all four header modes. See `tva --help-headers` for details.
+* When headers are enabled, column names can be referenced with `@name` syntax.
 
 Expression syntax:
 
@@ -15,20 +31,31 @@ Expression syntax:
 * Logical: `and`, `or`, `not`
 * Functions: `trim()`, `upper()`, `lower()`, `len()`, `abs()`, `round()`, `min()`, `max()`, `if()`,
   `default()`
+* Pipe operator: `|` for chaining functions (e.g., `@name | trim() | upper()`)
+* Variable binding: `as` for intermediate results (e.g., `@price * @qty as @total; @total * 0.9`)
 
 Examples:
 
-1. Test arithmetic expression:
-   `tva eval '10 + 20'`
+1. Simple arithmetic (no input needed):
+   `tva expr -E '2 + 3 * 4'`
 
-2. Test with column references:
-   `tva eval -H 'price,qty' -r '100,2' '@price * @qty'`
+2. Calculate factorial of 10 using reduce (no input needed):
+   `tva expr -E 'reduce(range(1, 11), 1, (acc, n) => acc * n)'`
 
-3. Test multiple rows:
-   `tva eval -H 'price,qty' -r '100,2' -r '200,3' '@price * @qty'`
+3. Calculate total from price and quantity (with input file):
+   `tva expr -H -E '@price * @qty' data.tsv`
 
-4. Test string functions:
-   `tva eval -H 'name' -r '  alice  ' -r '  bob  ' 'upper(trim(@name))'`
+4. Test with inline row data:
+   `tva expr -n 'price,qty' -r '100,2' -r '200,3' -E '@price * @qty'`
 
-5. Test conditional expression:
-   `tva eval -H 'score' -r '85' 'if(@score >= 70, "pass", "fail")'`
+5. Apply string transformations:
+   `tva expr -H -E 'upper(trim(@name))' data.tsv`
+
+6. Use pipe operator for chaining:
+   `tva expr -H -E '@description | trim() | lower()' data.tsv`
+
+7. Conditional expression:
+   `tva expr -H -E 'if(@score >= 70, "pass", "fail")' data.tsv`
+
+8. Variable binding for complex calculations:
+   `tva expr -H -E '@price * @qty as @total; @total * 0.9 as @discounted; @discounted' data.tsv`

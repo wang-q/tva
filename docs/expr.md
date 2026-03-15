@@ -157,6 +157,21 @@ default ( @ nickname, @ username) # Use nickname if not empty
 | `map`    | Add new column(s)   | `@a, @b`     | `@a, @b, @c`            | Added           |
 | `apply`  | Update column value | `@a, @b, @c` | `@a, @b', @c`           | One updated     |
 
+## Performance Notes
+
+The expression engine includes several optimizations for better performance:
+
+* **Parse caching**: Expressions are parsed once and cached for all rows. Identical expressions reuse the cached AST.
+* **Column name resolution**: When headers are available, `@name` references are resolved to `@index` at parse time for O(1) access.
+* **Constant folding**: Constant sub-expressions (e.g., `2 + 3 * 4`) are pre-computed during parsing.
+* **Function registry**: Built-in functions are looked up once and cached, avoiding repeated hash map lookups.
+* **Hash algorithm**: Uses `ahash` for faster hash map operations.
+
+For best performance:
+* Use column indices (`@1`, `@2`) instead of names when possible
+* Avoid redundant expressions in loops
+* Complex calculations benefit most from these optimizations
+
 ## Notes
 
 - No implicit type conversion - use explicit functions like `int()`, `float()`, `string()`
