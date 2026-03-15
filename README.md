@@ -1,6 +1,5 @@
-# tva
+# tva: Tab-separated Values Assistant
 
-Tab-separated Values Assistant.
 Fast, reliable TSV processing toolkit in Rust.
 
 [![Build](https://github.com/wang-q/tva/actions/workflows/build.yml/badge.svg)](https://github.com/wang-q/tva/actions)
