@@ -188,6 +188,13 @@ impl FunctionRegistry {
 
         // Meta functions
         self.register("type", FunctionInfo::fixed(meta::type_fn, 1));
+        self.register("is_null", FunctionInfo::fixed(meta::is_null_fn, 1));
+        self.register("is_int", FunctionInfo::fixed(meta::is_int_fn, 1));
+        self.register("is_float", FunctionInfo::fixed(meta::is_float_fn, 1));
+        self.register("is_numeric", FunctionInfo::fixed(meta::is_numeric_fn, 1));
+        self.register("is_string", FunctionInfo::fixed(meta::is_string_fn, 1));
+        self.register("is_bool", FunctionInfo::fixed(meta::is_bool_fn, 1));
+        self.register("is_list", FunctionInfo::fixed(meta::is_list_fn, 1));
         self.register("env", FunctionInfo::fixed(meta::env_fn, 1));
         self.register("cwd", FunctionInfo::fixed(meta::cwd_fn, 0));
         self.register("version", FunctionInfo::fixed(meta::version_fn, 0));

@@ -4,12 +4,12 @@
 
 Use `@` prefix to reference columns, avoiding conflicts with Shell variables:
 
-| Syntax         | Description             | Example                                       |
-|:---------------|:------------------------|:----------------------------------------------|
-| `@0`           | Entire row content      | `@0` represents all columns                   |
-| `@1`, `@2`     | 1-based column index    | `@1` represents the first column              |
-| `@col_name`    | Column name reference   | `@price` represents the price column          |
-| ` @"col name"` | Column name with spaces | ` @"user name"` represents column "user name" |
+| Syntax         | Description             | Example                                      |
+|:---------------|:------------------------|:---------------------------------------------|
+| `@0`           | Entire row content      | `@0` represents all columns                  |
+| `@1`, `@2`     | 1-based column index    | `@1` represents the first column             |
+| `@col_name`    | Column name reference   | `@price` represents the price column         |
+| `@"col name"`  | Column name with spaces | `@"user name"` represents column "user name" |
 
 **Design rationale**:
 

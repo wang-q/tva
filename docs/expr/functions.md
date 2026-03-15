@@ -205,6 +205,14 @@ tva expr -E 'sort_by([[2, "b"], [1, "c"], [1, "a"]], r => [r.nth(0), r.nth(1)])'
 
 - type(value) -> string: Returns the type name of the value
   - Returns: "int", "float", "string", "bool", "null", or "list"
+- is_null(value) -> bool: Returns true if value is null
+- is_int(value) -> bool: Returns true if value is an integer
+- is_float(value) -> bool: Returns true if value is a float
+- is_numeric(value) -> bool: Returns true if value is int or float
+- is_string(value) -> bool: Returns true if value is a string
+- is_bool(value) -> bool: Returns true if value is a boolean
+- is_list(value) -> bool: Returns true if value is a list
+
 - env(name) -> string: Get environment variable value
   - Returns `null` if variable not set
 - cwd() -> string: Returns the current working directory
@@ -219,6 +227,18 @@ tva expr -E '[[1,2], "string", true, null, -5]'
 
 tva expr -E '[[1,2], "string", true, null, -5, x => x + 1].map(x => type(x)).join(",")'
 # list,string,bool,null,int,lambda
+
+# Type checking functions
+tva expr -E 'is_null(null)'                # Returns: true
+tva expr -E 'is_null("hello")'             # Returns: false
+tva expr -E 'is_int(42)'                   # Returns: true
+tva expr -E 'is_int(3.14)'                 # Returns: false
+tva expr -E 'is_float(3.14)'               # Returns: true
+tva expr -E 'is_numeric(42)'               # Returns: true
+tva expr -E 'is_numeric(3.14)'             # Returns: true
+tva expr -E 'is_string("hello")'           # Returns: true
+tva expr -E 'is_bool(true)'                # Returns: true
+tva expr -E 'is_list([1, 2, 3])'           # Returns: true
 
 # env() examples
 tva expr -E 'env("HOME")'        # Returns: "/home/user"

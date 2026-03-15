@@ -341,8 +341,6 @@ pub struct EvaluationContext<'a> {
 - `xan-0.56.0/src/moonblade/interpreter.rs` - 具体化与执行
 - `xan-0.56.0/src/moonblade/types/` - DynamicValue 等类型定义
 
-### 现阶段的路径
-
 ### TVA 表达式引擎架构演进
 
 #### 原始架构（单阶段解释执行）
@@ -353,20 +351,20 @@ TVA 最初的表达式引擎采用单阶段解释执行架构：
 源代码 → Pest 解析 → AST (Expr) → 直接解释执行 (eval)
 ```
 
-#### 优化后架构（两阶段编译）
+#### 当前架构（单阶段解释执行）
 
-经过多轮优化，现已实现完整的两阶段编译架构（参考 xan 的 moonblade）：
+TVA 的表达式引擎采用单阶段解释执行架构：
 
 ```
-源代码 → Pest 解析 → AST (Expr) → 具体化 (Concretization) → ConcreteExpr → 执行 (Evaluation)
-                ↑______________________________________________↓
-                              （解析缓存，避免重复解析）
+源代码 → Pest 解析 → AST (Expr) → 直接解释执行 (eval)
+                ↑______________________________↓
+                          （解析缓存）
 ```
 
 **优化阶段**：
-1. **解析阶段**：使用 Pest 解析表达式为 AST
-2. **编译阶段**：将 AST 转换为 ConcreteExpr（列名→索引，函数名→指针）
-3. **执行阶段**：直接执行 ConcreteExpr，零字符串查找
+1. **解析阶段**：使用 Pest 解析表达式为 AST（带缓存）
+2. **优化阶段**：列名索引化、常量折叠
+3. **执行阶段**：直接解释执行 AST
 
 #### 1. AST 定义 (src/libs/expr/parser/ast.rs)
 
@@ -391,7 +389,7 @@ pub enum Expr {
 ```
 
 **特点**：
-- 列引用使用 `ColumnRef` 枚举（Index/Name），运行时解析列名
+- 列引用使用 `ColumnRef` 枚举（Index/Name），支持编译期列名解析
 - 管道使用 `PipeRight` 枚举区分普通调用和占位符模式
 - 支持 Lambda 和变量捕获
 
@@ -423,11 +421,10 @@ pub struct EvalContext<'a> {
 ```
 
 **执行特点**：
-- ~~**每行创建 FunctionRegistry**~~ ✅ **已优化**：使用全局静态注册表
-- ~~**运行时列名解析**~~ ✅ **已优化**：支持编译期列名索引化
+- **全局 FunctionRegistry**：使用全局静态注册表，避免每行创建
+- **运行时列名解析**：支持编译期列名索引化优化
 - **短路求值**：`And`/`Or` 已实现短路
 - **管道执行**：通过 `eval_pipe_right` 传递值
-- **两阶段编译**：新增 `ConcreteExpr` 执行路径，支持编译期优化
 
 #### 4. 值类型 (src/libs/expr/runtime/value.rs)
 
@@ -459,18 +456,18 @@ pub struct FunctionInfo {
 ```
 
 **特点**：
-- 运行时字符串查找函数
+- 全局静态注册表，运行时直接引用
 - 支持变长参数
 
-#### 6. 主要性能瓶颈（已解决 ✅）
+#### 6. 主要性能优化（已解决 ✅）
 
 | 问题 | 影响 | 优化方向 | 状态 |
 |:-----|:-----|:---------|:-----|
 | 每行创建 FunctionRegistry | 大量 HashMap 分配 | 全局静态注册表 | ✅ **已解决（35-57 倍提升）** |
 | 运行时列名解析 | O(n) 每次访问 | 编译期转为索引 | ✅ **已解决（3 倍提升）** |
 | 无静态求值 | 常量表达式重复计算 | 编译期计算 | ✅ **已解决（10 倍提升）** |
-| 字符串函数查找 | HashMap 查找开销 | 直接持有函数指针 | ✅ **已解决（18% 提升）** |
-| 无具体化阶段 | 每行重复解析 AST | 两阶段编译 | ✅ **已解决（37% 提升）** |
+| 重复解析 | 相同表达式多次解析 | 解析缓存 | ✅ **已解决（12 倍提升）** |
+| HashMap 性能 | 标准库 HashMap 较慢 | ahash | ✅ **已解决（6% 提升）** |
 
 #### 7. 基准测试 (benches/expr_eval.rs)
 
@@ -678,13 +675,22 @@ fold_constants(&mut expr);
 - 相比未优化的算术运算提升 **10 倍**
 - 混合表达式也有显著提升（100*2 提前计算为 200）
 
-#### 8. 优化建议（参考 xan）
+#### 8. 优化建议
 
-**短期优化**：
+**短期优化（已完成）**：
 1. ~~全局函数注册表~~ ✅ **已完成（35-57 倍提升）**
 2. ~~解析缓存~~ ✅ **已完成（12 倍提升）**
 3. ~~列名索引化~~ ✅ **已完成（3 倍提升）**
 4. ~~常量折叠~~ ✅ **已完成（10 倍提升）**
+5. ~~ahash 替换~~ ✅ **已完成（6% 提升）**
+
+**累计优化效果**：
+- 函数调用：35-57 倍
+- 解析开销：12 倍
+- 列名访问：3 倍
+- 常量计算：10 倍
+- HashMap (ahash)：6%
+- **综合提升：1000-2000 倍**
 
 **第五轮优化：ahash 替换标准 HashMap**
 
@@ -714,156 +720,12 @@ use ahash::HashMapExt;
 - 在增量哈希场景（如逐步构建 key）优势更大
 - 为未来的 Join 等操作奠定基础
 
-**累计优化效果**：
-- 函数调用：35-57 倍
-- 解析开销：12 倍
-- 列名访问：3 倍
-- 常量计算：10 倍
-- HashMap (ahash)：6%
-- **综合提升：1000-2000 倍**
-
-**第六轮优化：ConcreteExpr 两阶段编译**
-
-实现了完整的两阶段编译架构（参考 xan 的 moonblade）：
-
-```
-源代码 → Pest 解析 → AST (Expr) → 具体化 (Concretization) → ConcreteExpr → 执行 (Evaluation)
-```
-
-**新增文件**：
-- `src/libs/expr/concrete.rs` - `ConcreteExpr` 枚举定义
-- `src/libs/expr/concretize.rs` - `Expr` → `ConcreteExpr` 转换
-- `src/libs/expr/runtime/concrete_eval.rs` - `ConcreteExpr` 执行器
-
-**核心优化点**：
-- **列名解析为索引**：`@name` → `@index` (0-based)，运行时 O(1) 访问
-- **函数指针直接持有**：编译期解析函数名，运行时直接调用
-- **变量使用 Vec 存储**：O(1) 索引访问，替代 HashMap
-- **零字符串查找**：执行阶段没有任何字符串操作
-
-**基准测试结果**（10,000 次迭代）：
-
-| 测试场景 | ConcreteExpr | Regular | 提升 |
-|:---------|:-------------|:--------|:-----|
-| 列访问 | 395.90 µs | 304.91 µs | -23% ⚠️ |
-| 算术运算 | 1.0241 ms | 1.2513 ms | **+22%** ✅ |
-| 函数调用 | 1.1426 ms | 1.3538 ms | **+18%** ✅ |
-| 复杂表达式 | 2.1719 ms | 2.9824 ms | **+37%** ✅ |
-| 管道操作 | 1.4619 ms | 1.7278 ms | **+18%** ✅ |
-| 完整流程 | 323.14 µs | 318.41 µs | -1% ⚠️ |
-
-**结果分析**：
-- **复杂表达式** 提升最明显（37%），因为 ConcreteExpr 消除了多次函数调用的查找开销
-- **算术运算** 提升 22%，受益于直接的运算符调用
-- **函数调用** 提升 18%，函数指针直接持有避免了 HashMap 查找
-- **列访问** 反而慢了 23%，可能是因为 `parse_value` 的字符串解析开销
-- **完整流程** 基本持平，因为编译（concretize）的开销抵消了执行的提升
-
-**使用方式**：
-
-```rust
-// 1. 编译表达式（一次）
-let expr = parse("@1 + @5 * 2")?;
-let concrete = compile(&expr, &headers)?;
-
-// 2. 重复执行（多次）
-for row in rows {
-    let result = eval_compiled(&concrete, row, 0)?;
-}
-
-// 或一站式调用
-let result = eval_expr_compiled("@1 + @5 * 2", row, &headers)?;
-```
-
-**建议**：
-- **高频重复执行**的表达式使用 ConcreteExpr（如处理大数据集时）
-- **简单一次性**表达式保持现有路径
-- 后续可以优化 `parse_value` 的列值解析逻辑
-
-**累计优化效果**：
-- 函数调用：35-57 倍（全局注册表）+ 18%（ConcreteExpr）
-- 解析开销：12 倍（缓存）
-- 列名访问：3 倍（索引化）
-- 常量计算：10 倍（折叠）
-- 复杂表达式：37%（ConcreteExpr）
-- **综合提升：1000-2000 倍**
-
-**parse_value 优化尝试**
-
-尝试对 `parse_value` 添加快速路径优化：
-
-```rust
-// 快速路径：检查首字符，如果是字母/空格/下划线则直接返回字符串
-if let Some(first) = s.chars().next() {
-    if first.is_alphabetic() || first == ' ' || first == '_' {
-        return Value::String(s.to_string());
-    }
-}
-```
-
-**测试结果**：
-- 纯列访问性能下降 39%（198 µs → 270 µs）
-- 函数调用提升 3.7%
-- 整体效果不佳，已回滚
-
-**结论**：字符串解析的 `parse::<i64>()` 和 `parse::<f64>()` 已经相当高效，额外的字符检查反而增加了开销。真正的优化可能需要：
-1. **延迟解析**：列值保持字符串，只在需要数值运算时才解析
-2. **类型缓存**：对重复出现的值缓存解析结果
-3. **SIMD 解析**：批量解析数值
-
-**变量绑定修复**
-
-在实现 ConcreteExpr 时发现变量绑定处理的问题：
-
-**问题**：`@e` 被解析为 `ColumnRef::Name` 而非 `Variable`，导致 `concretize` 时找不到列 'e'。
-
-**解决方案**：
-1. 修改 `concretize` 中 `ColumnRef::Name` 的处理顺序：
-   - 先检查是否是变量（`ctx.get_var(name)`）
-   - 再检查是否是列（`ctx.resolve_column(name)`）
-   - 符合 "变量可以遮蔽列引用" 的约定
-
-2. 修改 `compile` 函数返回变量数量：
-   ```rust
-   pub fn compile(expr: &Expr, headers: &[String]) -> Result<(ConcreteExpr, usize), String>
-   ```
-   返回 `(concrete_expr, var_count)`，确保 `eval_compiled` 能正确初始化变量数组。
-
-**第三步：--precompile 参数**
-
-添加了 `--precompile` / `-p` 参数用于调试和验证表达式优化：
-
-```bash
-$ tva expr -H -E "@estimate + @moe * 2" --precompile tests/data/expr/us_rent_income.tsv
-Expression: @estimate + @moe * 2
-
-=== Original AST ===
-Binary { op: Add, left: ColumnRef(Index(4)), right: Binary { op: Mul, left: ColumnRef(Index(5)), right: Int(2) } }
-
-=== Optimized AST (after column resolution & constant folding) ===
-Binary { op: Add, left: ColumnRef(Index(4)), right: Binary { op: Mul, left: ColumnRef(Index(5)), right: Int(2) } }
-
-=== Compiled ConcreteExpr ===
-Binary { op: Add, left: Column(3), right: Binary { op: Mul, left: Column(4), right: Constant(Int(2)) } }
-
-=== Compilation Summary ===
-- Column names resolved to indices: 5
-- Variables needed: 0
-
-Precompilation successful! Expression is ready for execution.
-```
-
-**用途**：
-- 验证表达式是否正确编译
-- 查看列名解析结果（1-based → 0-based 索引）
-- 调试性能问题
-- 学习表达式引擎的工作原理
-
-**长期优化**：
+**长期优化（待探索）**：
 1. **JIT 编译**：对高频表达式生成机器码
 2. **SIMD 优化**：批量处理数值运算
 3. **列值缓存**：避免重复的字符串解析
 4. **延迟解析**：只在需要时解析数值
 
 暂时不处理:
+* ~~ConcreteExpr 两阶段编译~~ - 已移除，复杂度高收益有限
 * 优化 parse_value 的延迟解析方案 - 真正实施"只在需要时解析数值"的策略

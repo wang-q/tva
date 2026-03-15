@@ -87,6 +87,93 @@ pub fn platform_fn(args: &[Value]) -> Result<Value, EvalError> {
     Ok(Value::String(platform.to_string()))
 }
 
+/// Returns true if value is null
+pub fn is_null_fn(args: &[Value]) -> Result<Value, EvalError> {
+    if args.len() != 1 {
+        return Err(EvalError::WrongArity {
+            name: "is_null".to_string(),
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    Ok(Value::Bool(args[0].is_null()))
+}
+
+/// Returns true if value is an integer
+pub fn is_int_fn(args: &[Value]) -> Result<Value, EvalError> {
+    if args.len() != 1 {
+        return Err(EvalError::WrongArity {
+            name: "is_int".to_string(),
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Int(_))))
+}
+
+/// Returns true if value is a float
+pub fn is_float_fn(args: &[Value]) -> Result<Value, EvalError> {
+    if args.len() != 1 {
+        return Err(EvalError::WrongArity {
+            name: "is_float".to_string(),
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Float(_))))
+}
+
+/// Returns true if value is numeric (int or float)
+pub fn is_numeric_fn(args: &[Value]) -> Result<Value, EvalError> {
+    if args.len() != 1 {
+        return Err(EvalError::WrongArity {
+            name: "is_numeric".to_string(),
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    Ok(Value::Bool(matches!(
+        args[0],
+        Value::Int(_) | Value::Float(_)
+    )))
+}
+
+/// Returns true if value is a string
+pub fn is_string_fn(args: &[Value]) -> Result<Value, EvalError> {
+    if args.len() != 1 {
+        return Err(EvalError::WrongArity {
+            name: "is_string".to_string(),
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    Ok(Value::Bool(matches!(args[0], Value::String(_))))
+}
+
+/// Returns true if value is a boolean
+pub fn is_bool_fn(args: &[Value]) -> Result<Value, EvalError> {
+    if args.len() != 1 {
+        return Err(EvalError::WrongArity {
+            name: "is_bool".to_string(),
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Bool(_))))
+}
+
+/// Returns true if value is a list
+pub fn is_list_fn(args: &[Value]) -> Result<Value, EvalError> {
+    if args.len() != 1 {
+        return Err(EvalError::WrongArity {
+            name: "is_list".to_string(),
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    Ok(Value::Bool(matches!(args[0], Value::List(_))))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -633,6 +720,145 @@ mod tests {
                 assert!(msg.contains("requires a string argument"));
             }
             _ => panic!("Expected TypeError"),
+        }
+    }
+
+    // Type checking function tests
+    #[test]
+    fn test_is_null_with_null() {
+        let result = is_null_fn(&[Value::Null]);
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_null_with_string() {
+        let result = is_null_fn(&[Value::String("hello".to_string())]);
+        assert_eq!(result.unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_is_int_with_int() {
+        let result = is_int_fn(&[Value::Int(42)]);
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_int_with_float() {
+        let result = is_int_fn(&[Value::Float(3.14)]);
+        assert_eq!(result.unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_is_float_with_float() {
+        let result = is_float_fn(&[Value::Float(3.14)]);
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_float_with_int() {
+        let result = is_float_fn(&[Value::Int(42)]);
+        assert_eq!(result.unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_is_numeric_with_int() {
+        let result = is_numeric_fn(&[Value::Int(42)]);
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_numeric_with_float() {
+        let result = is_numeric_fn(&[Value::Float(3.14)]);
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_numeric_with_string() {
+        let result = is_numeric_fn(&[Value::String("42".to_string())]);
+        assert_eq!(result.unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_is_string_with_string() {
+        let result = is_string_fn(&[Value::String("hello".to_string())]);
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_string_with_int() {
+        let result = is_string_fn(&[Value::Int(42)]);
+        assert_eq!(result.unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_is_bool_with_bool() {
+        let result = is_bool_fn(&[Value::Bool(true)]);
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_bool_with_false() {
+        let result = is_bool_fn(&[Value::Bool(false)]);
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_bool_with_string() {
+        let result = is_bool_fn(&[Value::String("true".to_string())]);
+        assert_eq!(result.unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_is_list_with_list() {
+        let result = is_list_fn(&[Value::List(vec![])]);
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_list_with_list_elements() {
+        let result = is_list_fn(&[Value::List(vec![Value::Int(1), Value::Int(2)])]);
+        assert_eq!(result.unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_list_with_string() {
+        let result = is_list_fn(&[Value::String("hello".to_string())]);
+        assert_eq!(result.unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_is_null_wrong_arity() {
+        let result = is_null_fn(&[]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_null");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 0);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
+
+    #[test]
+    fn test_is_int_wrong_arity() {
+        let result = is_int_fn(&[Value::Int(1), Value::Int(2)]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_int");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity"),
         }
     }
 }
