@@ -41,54 +41,32 @@ cargo test
     - Enforces consistent flag naming and help text styles.
 - **`src/lib.rs`** - 库入口，导出模块。
 - **`src/cmd_tva/`** - 命令实现模块。
-    - **Selection & Sampling**: `sample.rs`, `select.rs`, `slice.rs`
-    - **Filtering**: `filter.rs`
-    - **Ordering**: `reverse.rs`, `sort.rs`, `transpose.rs`
-    - **Statistics & Summary**: `bin.rs`, `stats.rs`, `uniq.rs`
-    - **Reshaping**: `blank.rs`, `fill.rs`, `longer.rs`, `wider.rs`
-    - **Combining & Splitting**: `append.rs`, `join.rs`, `split.rs`
-    - **Formatting & Utilities**: `check.rs`, `keep_header.rs`, `nl.rs`
-    - **Import & Export**:
-        - `from/`: `csv.rs`, `html.rs`, `xlsx.rs`, `mod.rs`
-        - `to/`: `csv.rs`, `md.rs`, `xlsx.rs`, `mod.rs`
+    - **Selection & Sampling**: `sample`, `select`, `slice`
+    - **Filtering**: `filter`
+    - **Ordering**: `reverse`, `sort`, `transpose`
+    - **Statistics & Summary**: `bin`, `stats`, `uniq`
+    - **Reshaping**: `blank`, `fill`, `longer`, `wider`
+    - **Combining & Splitting**: `append`, `join`, `split`
+    - **Formatting & Utilities**: `check`, `header`, `keep_header`, `nl`
+    - **Expression**: `expr`
+    - **Plotting**: `plot/` (`bin2d`, `box`, `point`)
+    - **Import**: `from/` (`csv`, `html`, `xlsx`)
+    - **Export**: `to/` (`csv`, `md`, `xlsx`)
 - **`src/libs/`** - 共享工具库和核心逻辑。
-    - **`aggregation/`** - 高性能 SoA 聚合引擎 (用于 `stats`)。
-        - **`aggregator.rs`** - 扁平化的状态存储 (`Vec<f64>`)，实现 Struct-of-Arrays 布局。
-        - **`processor.rs`** - 聚合计划与执行器，管理 `Calculator` 集合。
-        - **`ops/`** - 具体算子实现 (Sum, Mean, Unique 等)，通过 `Calculator` trait 解耦。
-        - **`math.rs`** - 核心数学函数库 (Mean, Variance, Quantile, MAD)。
-    - **`cell.rs`** - AoS 聚合单元 (用于 `wider`)。
-        - `Cell`: 动态类型的聚合状态容器，支持多种 OpKind。
-    - **`filter/`** - 模块化过滤引擎。
-        - **`config.rs`** - 过滤配置结构定义。
-        - **`builder.rs`** - 解析配置并构建测试链。
-        - **`engine.rs`** - `TestKind` 枚举与核心求值逻辑。
-        - **`runner.rs`** - 过滤命令的执行主循环。
-    - **`number.rs`** - 通用数字处理与格式化工具。
-        - `format_number`: 支持千位分隔符与小数位控制。
-    - **`io.rs`** - I/O 辅助函数。
-        - 统一处理 stdin/stdout 和文件。
-        - 透明处理 `.gz` 压缩/解压。
-        - `InputSource`: 提供多文件统一视图。
-    - **`sampling/`** - 高级采样算法。
-        - **`reservoir.rs`**: 实现 Reservoir Sampling (蓄水池采样)。
-        - **`bernoulli.rs`**: 实现 Bernoulli Sampling (Skip Sampling) - 几何分布跳过。
-        - **`other.rs`**: 其他采样辅助。
-    - **`tsv/`** - 核心 TSV 解析与处理模块。
-        - **`reader.rs`** - 高性能零拷贝 TSV 读取器。
-            - `TsvReader`: 管理内部缓冲区，支持行级迭代，避免字符串分配。
-        - **`record.rs`** - 记录抽象。
-            - `TsvRecord` / `TsvRow`: 实现 `Row` trait 的零拷贝访问。
-        - **`fields.rs`** - 强大的字段选择逻辑。
-            - 支持统一的字段语法: 数字索引, 名称匹配, 通配符等。
-        - **`key.rs`** - Key 提取与处理。
-            - `KeyExtractor`: 基于字段选择提取 Key。
-            - `ParsedKey`: 优化的小 Key 存储 (`SmallVec`)。
-        - **`select.rs`** - 列选择与重排引擎。
-            - `SelectPlan`: 预计算字段映射计划。
-            - `write_selected_from_bytes`: 基于计划的高性能零拷贝输出。
-        - **`split.rs`** - 基于 SIMD 的字段切分工具。
-            - `TsvSplitter`: 使用 `memchr` 快速迭代字段切片。
+    - **`aggregation/`** - SoA 聚合引擎 (`stats`)。
+        - `aggregator.rs`: 扁平状态存储; `processor.rs`: 执行器; `ops/`: 算子实现; `math.rs`: 数学函数。
+    - **`cell.rs`** - AoS 聚合单元 (`wider`), 动态类型状态容器。
+    - **`cli.rs`** - CLI 参数工具 (`header_args`, `header_args_with_columns`)。
+    - **`expr/`** - 表达式引擎 (`expr` 命令)。
+        - `parser/`: Pest 解析器 (grammar.pest, ast.rs); `runtime/`: 求值引擎 (value.rs); `functions/`: 内置函数库。
+    - **`filter/`** - 过滤引擎。`config.rs`: 配置; `builder.rs`: 测试链构建; `engine.rs`: 核心求值; `runner.rs`: 执行主循环。
+    - **`io.rs`** - I/O 辅助。stdin/stdout 统一处理, `.gz` 透明解压, `InputSource` 多文件视图。
+    - **`number.rs`** - 数字格式化 (千位分隔符, 小数位控制)。
+    - **`plot/`** - 终端绘图库 (`plot` 命令)。
+        - `axis.rs`: 坐标轴; `binning.rs`: 分箱算法; `boxplot.rs`/`scatter.rs`/`heatmap.rs`: 图表渲染; `data.rs`: 数据加载。
+    - **`sampling/`** - 采样算法。`reservoir.rs`: 蓄水池采样; `bernoulli.rs`: 跳步采样; `traits.rs`: 采样器 trait。
+    - **`tsv/`** - TSV 核心解析。
+        - `reader.rs`: 零拷贝读取器; `record.rs`: 记录抽象; `fields.rs`: 字段选择语法; `header.rs`: 表头处理; `key.rs`: Key 提取; `select.rs`: 列选择引擎; `split.rs`: SIMD 字段切分。
 
 ### 命令结构 (Command Structure)
 
@@ -101,18 +79,6 @@ cargo test
 2. **`execute`**: 命令执行逻辑。
     - 接收 `&clap::ArgMatches`。
     - 返回 `anyhow::Result<()>`。
-
-### 关键架构模式
-
-**流式 vs 内存密集型**:
-
-- 大多数命令（如 `select`, `slice`, `filter`）是流式的，内存占用恒定。
-- 部分命令（如 `sort`, `reverse`, `stats` 的某些模式）可能需要加载更多数据到内存。
-- 文档中应明确标识内存特性。
-
-**错误处理**:
-
-- 使用 `anyhow::Result` 进行统一的错误传播。
 
 ## 开发工作流
 
