@@ -1,6 +1,7 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use std::io::{BufRead, Read};
 use std::time::Duration;
+use std::hint::black_box;
 
 // A small sample of TSV data to repeat
 const DATA: &str = "1\tJohn\tDoe\t30\tNew York\n2\tJane\tSmith\t25\tLos Angeles\n3\tBob\tJohnson\t40\tChicago\n";
