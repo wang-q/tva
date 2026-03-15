@@ -17,16 +17,16 @@
 - [Formatting & Utilities](utilities.md)
 - [Import (from)](from.md)
 - [Export (to)](to.md)
+- [Expr Language](expr.md)
 - [CSS Selectors](selectors.md)
 - [Common Conventions](conventions.md)
 
-# Expression Language
-- [Introduction](expr/introduction.md)
-- [Literals & Types](expr/literals.md)
+# Expr Language Details
+- [Literals](expr/literals.md)
 - [Variables](expr/variables.md)
-- [Expressions](expr/expressions.md)
 - [Operators](expr/operators.md)
 - [Functions](expr/functions.md)
+- [Syntax Guide](expr/syntax.md)
 - [Rosetta Code](expr/rosetta.md)
 - [Other Tools](expr/others.md)
 

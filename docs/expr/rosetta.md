@@ -9,7 +9,7 @@ Most examples use the `tva expr` command for standalone expression evaluation:
 
 ```bash
 # Simple arithmetic
-tva expr -E "2 + 2"
+tva expr -E "2 + 3.14"
 
 # With input data
 tva expr -n "x,y" -r "3,4" -E "@x * @y"

@@ -1,33 +1,87 @@
-# Expression Language
+# TVA's expr language and companions
 
-TVA provides a powerful expression language for data transformation and filtering.
+The `expr` language evaluates expressions (like spreadsheet formulas) to transform TSV data.
+It powers three commands: `tva expr` (create new rows), `tva map` (add columns), and
+`tva mutate` (modify columns).
 
-## Quick Reference
+## Quick Examples
 
-- [Introduction](expr/introduction.md) - Expression language overview
-- [Syntax Guide](expr/expressions.md) - Complete syntax documentation
-- [Functions](expr/functions.md) - Function reference
-- [Rosetta Code](expr/rosetta.md) - Example programs
+```bash
+# Basic arithmetic
+tva expr -E '42 + 3.14'
+# Output: 45.14
 
-## Overview
+# String manipulation
+tva expr -E '"hello" | upper()'
+# Output: HELLO
 
-The expression language supports:
+```
 
-- **Column references**: `@column_name` or `@1` (1-based index)
-- **Literals**: integers, floats, strings, booleans, null, lists
-- **Operators**: arithmetic, comparison, logical, string, pipe
-- **Variable binding**: `expr as @var` for reusing results
-- **Functions**: 40+ built-in functions
+## Topics
+
+### [Literals](literals.md)
+
+Integer, float, string, boolean, null, and list literals.
+
+```text
+42, 3.14, "hello", true, null, [1, 2, 3]
+```
+
+### [Column References](variables.md#column-references)
+
+Use `@` prefix to reference columns.
+
+```text
+@1, @col_name, @"col name"
+```
+
+### [Variable Binding](variables.md#variable-binding)
+
+Use `as` to bind values to variables.
+
+```text
+@price * @qty as @total; @total * 1.1
+```
+
+### [Operators](operators.md)
+
+Arithmetic, comparison, logical, and pipe operators.
+
+```text
++ - * / %, == != < >, and or, |
+```
+
+### [Function Calls](syntax.md#function-calls)
+
+Prefix calls, pipe calls, and method calls.
+
+```text
+trim(@name)
+@name | trim() | upper()
+@name.trim().upper()
+```
+
+### Documentation Index
+
+- [Literals](literals.md) - Literal syntax and type system
+- [Variables](variables.md) - Column references and variable binding
+- [Operators](operators.md) - Operator precedence and details
+- [Functions](functions.md) - Complete function reference
+- [Syntax Guide](expr/syntax.md) - Complete syntax documentation
+- [Rosetta Code](expr/rosetta.md) - Fun programs
+
 - **Lambda expressions**: `x => x * 2` for higher-order functions
 
-### Four Expression Commands
+### Expression Commands
 
 | Command      | Description                             |
 |--------------|-----------------------------------------|
 | `tva expr`   | Evaluate expression to create a new row |
-| `tva filter` | Filter rows based on condition          |
 | `tva map`    | Add new column(s) to existing row       |
-| `tva apply`  | Update existing column value            |
+| `tva mutate` | Modify existing column value            |
+
+Note: Use `tva filter` for simple filtering—it's ~2x faster. Use `tva expr --skip-null`
+only when you need features `tva filter` doesn't support (functions, complex expressions, etc.).
 
 ## Basic Usage
 
@@ -53,21 +107,9 @@ tva expr -n "score" -r "85" -E 'if(@score >= 60, "pass", "fail")'
 
 # Process TSV file - calculate price per carat
 tva expr -H -E "@price / @carat" docs/data/diamonds.tsv
-```
 
-### `tva filter` - Filter Rows
-
-Evaluates expression for each row to decide whether to output the row.
-
-```bash
-# Filter rows where price > 300
-tva filter -E "@price > 300" docs/data/diamonds.tsv
-
-# Filter with string comparison
-tva filter -E '@cut eq "Ideal"' docs/data/diamonds.tsv
-
-# Complex conditions
-tva filter -E '@price > 300 and @cut eq "Ideal"' docs/data/diamonds.tsv
+# Filter rows using --skip-null
+tva expr -H --skip-null -E 'if(@price > 300, @0, null)' docs/data/diamonds.tsv
 ```
 
 ### `tva map` - Add New Column
@@ -85,19 +127,19 @@ tva map -E '@price * 1.1 as @price_with_tax, @carat * 2 as @double_carat' docs/d
 tva map -E '@cut | lower() as @cut_lower' docs/data/diamonds.tsv
 ```
 
-### `tva apply` - Update Column
+### `tva mutate` - Modify Column
 
-Evaluates expression for each row to update an existing column value.
+Evaluates expression for each row to modify an existing column value.
 
 ```bash
 # Modify existing column
-tva apply -E '@price * 1.1' -c price docs/data/diamonds.tsv
+tva mutate -E '@price * 1.1' -c price docs/data/diamonds.tsv
 
 # Transform column value
-tva apply -E '@cut | upper()' -c cut docs/data/diamonds.tsv
+tva mutate -E '@cut | upper()' -c cut docs/data/diamonds.tsv
 
 # Replace with conditional value
-tva apply -E 'if(@price >= 350, "expensive", "cheap")' -c price docs/data/diamonds.tsv
+tva mutate -E 'if(@price >= 350, "expensive", "cheap")' -c price docs/data/diamonds.tsv
 ```
 
 ## Examples
@@ -121,7 +163,8 @@ split( @ tags, ",") # Split to list
 
 ### List Operations
 
-*Note: `map()` and `filter()` here are **functions**, not the `tva map` and `tva filter` commands.*
+The `map()` and `filter()` below are **functions** for working with lists, not the `tva map`
+and `tva filter` commands.
 
 ```rust
 map([1, 2, 3], x => x * 2)                    #[2, 4, 6]
@@ -155,7 +198,7 @@ default ( @ nickname, @ username) # Use nickname if not empty
 | `expr`   | Evaluate to new row | `@a, @b, @c` | `@result`               | All (replaced)  |
 | `filter` | Keep or discard row | `@a, @b, @c` | `@a, @b, @c` or nothing | None            |
 | `map`    | Add new column(s)   | `@a, @b`     | `@a, @b, @c`            | Added           |
-| `apply`  | Update column value | `@a, @b, @c` | `@a, @b', @c`           | One updated     |
+| `mutate` | Modify column value | `@a, @b, @c` | `@a, @b', @c`           | One updated     |
 
 ## Performance Notes
 
@@ -167,10 +210,7 @@ The expression engine includes several optimizations for better performance:
 * **Function registry**: Built-in functions are looked up once and cached, avoiding repeated hash map lookups.
 * **Hash algorithm**: Uses `ahash` for faster hash map operations.
 
-For best performance:
-* Use column indices (`@1`, `@2`) instead of names when possible
-* Avoid redundant expressions in loops
-* Complex calculations benefit most from these optimizations
+For best performance, use column indices (`@1`, `@2`) instead of names.
 
 ## Notes
 

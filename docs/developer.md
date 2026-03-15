@@ -132,7 +132,7 @@ cargo build
   `xan transform surname 'upper(_)'`。
 * **价值**: `tva` 目前缺乏灵活的列处理能力。虽然 `awk` 可以胜任，但内置的 `transform`
   可以提供更好的性能和更简便的语法（无需处理分隔符）。
-* **建议**: 引入轻量级表达式引擎（如 `rhai` 或简单的自定义解析器），实现类似 `tva apply` 或
+* **建议**: 引入轻量级表达式引擎（如 `rhai` 或简单的自定义解析器），实现类似 `tva mutate` 或
   `tva transform` 的命令，支持常见的字符串处理（upper, lower, trim, regex_replace）和数值计算。
 
 #### 2. Search (高级搜索)
