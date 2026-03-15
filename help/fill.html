@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-e4eea1a7.js";
+            window.path_to_searchindex_js = "../searchindex-841d9faa.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d1513fcf.js"></script>
@@ -181,7 +181,8 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="fill"><a class="header" href="#fill">fill</a></h1>
-<p>Fills missing values in selected columns using the last non-missing value (down/LOCF) or a constant value.</p>
+<p>Fills missing values in selected columns using the last non-missing value (down/LOCF) or a constant
+value.</p>
 <p>Input:</p>
 <ul>
 <li>Reads from files or standard input; multiple files are processed as one stream.</li>
@@ -196,9 +197,12 @@ from the first data row.</li>
 </ul>
 <p>Filling logic:</p>
 <ul>
-<li><strong>Down (LOCF)</strong>: By default, missing values are replaced with the most recent non-missing value in the same column.</li>
-<li><strong>Constant</strong>: If <code>--value</code> / <code>-v</code> is provided, missing values are replaced with this constant string.</li>
-<li><strong>Missing Definition</strong>: A value is considered “missing” if it matches the string provided by <code>--na</code> (default: empty string).</li>
+<li>Down (LOCF): By default, missing values are replaced with the most recent non-missing value in
+the same column.</li>
+<li>Constant: If <code>--value</code> / <code>-v</code> is provided, missing values are replaced with this constant
+string.</li>
+<li>Missing Definition: A value is considered “missing” if it matches the string provided by
+<code>--na</code> (default: empty string).</li>
 <li>Filling is stateful across file boundaries when multiple files are provided.</li>
 </ul>
 <p>Field Syntax:</p>

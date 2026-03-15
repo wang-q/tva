@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e4eea1a7.js";
+            window.path_to_searchindex_js = "searchindex-841d9faa.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d1513fcf.js"></script>
@@ -3829,9 +3829,10 @@ filter(range(2, @limit + 1), n =&gt; @sieved.nth(n)) |
 <li><code>filter()</code> with predicate - Collect numbers where sieve value is true</li>
 <li>Optimization: inner loop starts at <code>p * p</code> (smaller multiples already marked)</li>
 </ul>
+<h3 id="greatest-common-divisor"><a class="header" href="#greatest-common-divisor">Greatest common divisor</a></h3>
+<p>Find the greatest common divisor   (GCD)   of two integers.</p>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
 <p>进阶级（字符串、数据结构、算法）
-Greatest common divisor
 Sorting algorithms / Bubble sort / Quick sort
 Binary search
 Stack
@@ -4380,13 +4381,9 @@ from standard input.</li>
 <code>tva stats docs/data/us_rent_income.tsv -H --group-by variable --mean estimate</code></p>
 </li>
 <li>
-<p>Count rows per group:</p>
+<p>Count rows per group:
+<code>tva stats docs/data/us_rent_income.tsv -H --group-by NAME --count</code></p>
 </li>
-</ol>
-<ul>
-<li><code>tva stats docs/data/us_rent_income.tsv -H --group-by NAME --count</code></li>
-</ul>
-<ol start="4">
 <li>
 <p>List unique values in a group:
 <code>tva stats docs/data/us_rent_income.tsv -H --group-by variable --unique estimate</code></p>
@@ -4623,7 +4620,8 @@ reference for subsequent rows.</li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="fill"><a class="header" href="#fill">fill</a></h1>
-<p>Fills missing values in selected columns using the last non-missing value (down/LOCF) or a constant value.</p>
+<p>Fills missing values in selected columns using the last non-missing value (down/LOCF) or a constant
+value.</p>
 <p>Input:</p>
 <ul>
 <li>Reads from files or standard input; multiple files are processed as one stream.</li>
@@ -4638,9 +4636,12 @@ from the first data row.</li>
 </ul>
 <p>Filling logic:</p>
 <ul>
-<li><strong>Down (LOCF)</strong>: By default, missing values are replaced with the most recent non-missing value in the same column.</li>
-<li><strong>Constant</strong>: If <code>--value</code> / <code>-v</code> is provided, missing values are replaced with this constant string.</li>
-<li><strong>Missing Definition</strong>: A value is considered “missing” if it matches the string provided by <code>--na</code> (default: empty string).</li>
+<li>Down (LOCF): By default, missing values are replaced with the most recent non-missing value in
+the same column.</li>
+<li>Constant: If <code>--value</code> / <code>-v</code> is provided, missing values are replaced with this constant
+string.</li>
+<li>Missing Definition: A value is considered “missing” if it matches the string provided by
+<code>--na</code> (default: empty string).</li>
 <li>Filling is stateful across file boundaries when multiple files are provided.</li>
 </ul>
 <p>Field Syntax:</p>
@@ -5010,7 +5011,8 @@ from standard input.</li>
 <p>Behavior:</p>
 <ul>
 <li>Without header mode: The number of fields on the first line is used as the expected count.</li>
-<li>With header mode: The number of fields in the header’s column names line is used as the expected count.</li>
+<li>With header mode: The number of fields in the header’s column names line is used as the expected
+count.</li>
 <li>Each subsequent line must have the same number of fields.</li>
 <li>On mismatch, details about the failing line and expected field count are
 printed to stderr and the command exits with a non-zero status.</li>
