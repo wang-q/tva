@@ -266,3 +266,206 @@ Bar Charts）。
 | 🟡 中 | 简化正则 | 常用操作应简洁 |
 | 🟢 低 | switch 语法 | 语法糖，非必需 |
 | 🟢 低 | REPL 模式 | 开发体验提升 |
+
+## Expression Language 性能优化
+
+### xan moonblade 架构分析
+
+xan 的表达式引擎 moonblade 采用**两阶段编译**设计，值得参考：
+
+```
+源代码 → Pest 解析 → AST (Expr) → 具体化 (Concretization) → ConcreteExpr → 执行 (Evaluation)
+```
+
+#### 1. AST 定义 (parser.rs)
+
+**原始 AST (Expr)**：包含标识符、函数调用、管道、Lambda 等节点类型。
+
+**关键设计**：
+- 使用 [Pratt Parser](https://en.wikipedia.org/wiki/Pratt_parser) 处理运算符优先级
+- 支持管道操作符 `|` 和占位符 `_`
+- Lambda 表达式支持参数绑定
+
+#### 2. 具体化阶段 (interpreter.rs)
+
+将 `Expr` 转换为 `ConcreteExpr`，完成以下优化：
+
+| 优化项 | 说明 |
+|:------|:-----|
+| **标识符解析** | 列名 → 数字索引，避免运行时字符串查找 |
+| **静态求值** | 常量表达式在编译期计算 |
+| **短路优化** | `if/unless/or/and` 条件可在编译期确定时直接选择分支 |
+| **函数查找** | 运行时直接持有函数指针，避免字符串查找 |
+
+**ConcreteExpr 结构**：
+```rust
+pub enum ConcreteExpr {
+    Column(usize),              // 列索引（已解析）
+    GlobalVariable(usize),      // 全局变量索引
+    Value(DynamicValue),        // 编译期计算的常量
+    Call(ConcreteFunctionCall), // 持有函数指针
+    Pipeline(Vec<ConcreteExpr>),
+    // ...
+}
+```
+
+#### 3. 执行阶段
+
+**执行上下文**：
+```rust
+pub struct EvaluationContext<'a> {
+    pub index: Option<usize>,           // 行号
+    pub record: &'a ByteRecord,         // 当前记录
+    pub headers_index: &'a HeadersIndex,
+    pub last_value: Option<DynamicValue>, // 管道中的上一个值
+}
+```
+
+**执行流程**：
+1. `Value` → 直接返回
+2. `Column` → 从 record 按索引提取字段
+3. `Call` → 递归求值参数，调用函数指针
+4. `Pipeline` → 顺序执行，通过 `last_value` 传递中间结果
+
+#### 4. 可借鉴的优化点
+
+1. **两阶段编译**：解析一次，执行多次，避免每行重复解析
+2. **列索引缓存**：表头解析时将列名映射为数字索引
+3. **静态求值**：编译期计算常量子表达式
+4. **管道优化**：通过上下文传递中间结果，避免临时对象分配
+5. **函数内联**：常用操作（如 `add`/`mul`）直接内联，减少调用开销
+
+#### 5. 参考文件
+
+- `xan-0.56.0/src/moonblade/parser.rs` - AST 定义与解析
+- `xan-0.56.0/src/moonblade/interpreter.rs` - 具体化与执行
+- `xan-0.56.0/src/moonblade/types/` - DynamicValue 等类型定义
+
+### 现阶段的路径
+
+### TVA 表达式引擎现状分析
+
+TVA 当前的表达式引擎采用**单阶段解释执行**架构，与 xan 的两阶段编译相比，存在优化空间：
+
+```
+源代码 → Pest 解析 → AST (Expr) → 直接解释执行 (eval)
+```
+
+#### 1. AST 定义 (src/libs/expr/parser/ast.rs)
+
+**Expr 枚举**：
+```rust
+pub enum Expr {
+    ColumnRef(ColumnRef),      // @1, @name
+    Variable(String),          // 变量引用
+    LambdaParam(String),       // Lambda 参数
+    Int(i64), Float(f64),      // 数值
+    String(String), Bool(bool), // 字面量
+    List(Vec<Expr>),           // 列表
+    Unary { op, expr },        // 一元运算
+    Binary { op, left, right }, // 二元运算
+    Call { name, args },       // 函数调用
+    MethodCall { object, name, args }, // 方法调用
+    Pipe { left, right },      // 管道
+    Bind { expr, name },       // 变量绑定
+    Lambda { params, body },   // Lambda
+    Block(Vec<Expr>),          // 代码块
+}
+```
+
+**特点**：
+- 列引用使用 `ColumnRef` 枚举（Index/Name），运行时解析列名
+- 管道使用 `PipeRight` 枚举区分普通调用和占位符模式
+- 支持 Lambda 和变量捕获
+
+#### 2. 解析器 (src/libs/expr/parser/mod.rs)
+
+**解析流程**：
+- 使用 Pest PEG 语法定义（grammar.pest）
+- 分层构建：primary → postfix → unary → power → multiplicative → additive → concat → comparison → logical_and → logical_or → pipe → bind
+- 左折叠处理左结合运算符（fold_left）
+
+**与 xan 的差异**：
+| 特性 | TVA | xan |
+|:-----|:----|:----|
+| 运算符优先级处理 | 分层递归下降 | Pratt Parser |
+| 管道语法 | `expr \| func()` | `expr \| func()` |
+| 列引用 | `@1`, `@name` | 直接使用标识符 |
+| 变量绑定 | `expr as @name` | 无 |
+
+#### 3. 运行时 (src/libs/expr/runtime/mod.rs)
+
+**EvalContext**：
+```rust
+pub struct EvalContext<'a> {
+    pub row: &'a [String],           // 行数据
+    pub headers: Option<&'a [String]>, // 表头
+    pub variables: HashMap<String, Value>, // 变量
+    pub lambda_params: HashMap<String, Value>, // Lambda 参数
+}
+```
+
+**执行特点**：
+- **每行创建 FunctionRegistry**：`registry.call()` 时 `FunctionRegistry::new()`，存在性能问题
+- **运行时列名解析**：`ColumnRef::Name` 每次遍历 headers 查找
+- **短路求值**：`And`/`Or` 已实现短路
+- **管道执行**：通过 `eval_pipe_right` 传递值
+
+#### 4. 值类型 (src/libs/expr/runtime/value.rs)
+
+```rust
+pub enum Value {
+    Null, Bool(bool), Int(i64), Float(f64),
+    String(String), List(Vec<Value>),
+    DateTime(chrono::DateTime<chrono::Utc>),
+    Lambda(LambdaValue),
+}
+```
+
+**特点**：
+- 使用 `Arc` 共享数据（List/Map 等）
+- 支持 Lambda 闭包捕获
+
+#### 5. 函数注册 (src/libs/expr/functions/mod.rs)
+
+```rust
+pub struct FunctionRegistry {
+    functions: HashMap<String, FunctionInfo>,
+}
+
+pub struct FunctionInfo {
+    pub func: Function,        // fn(&[Value]) -> Result<Value, EvalError>
+    pub min_arity: usize,
+    pub max_arity: usize,
+}
+```
+
+**特点**：
+- 运行时字符串查找函数
+- 支持变长参数
+
+#### 6. 主要性能瓶颈
+
+| 问题 | 影响 | 优化方向 |
+|:-----|:-----|:---------|
+| 每行创建 FunctionRegistry | 大量 HashMap 分配 | 全局静态注册表 |
+| 运行时列名解析 | O(n) 每次访问 | 编译期转为索引 |
+| 无静态求值 | 常量表达式重复计算 | 编译期计算 |
+| 字符串函数查找 | HashMap 查找开销 | 直接持有函数指针 |
+| 无具体化阶段 | 每行重复解析 AST | 两阶段编译 |
+
+#### 7. 优化建议（参考 xan）
+
+**短期优化**：
+1. **全局函数注册表**：使用 `lazy_static!` 或 `once_cell` 创建全局 `FunctionRegistry`
+2. **预解析表头**：在编译期将 `ColumnRef::Name` 转为 `ColumnRef::Index`
+3. **常量折叠**：在解析后对 AST 进行常量表达式预计算
+
+**中期优化**：
+1. **引入 ConcreteExpr**：增加具体化阶段，分离编译与执行
+2. **列索引缓存**：`ConcreteExpr::Column(usize)` 替代运行时查找
+3. **函数指针内联**：编译期解析函数名到函数指针
+
+**长期优化**：
+1. **JIT 编译**：对高频表达式生成机器码
+2. **SIMD 优化**：批量处理数值运算
