@@ -121,6 +121,49 @@ impl Value {
         Some(Value::Float(a.powf(b)))
     }
 
+    /// Modulo operation
+    pub fn modulo(
+        &self,
+        rhs: &Value,
+    ) -> Result<Value, crate::libs::expr::runtime::EvalError> {
+        match (self, rhs) {
+            (Value::Int(a), Value::Int(b)) => {
+                if *b == 0 {
+                    Err(crate::libs::expr::runtime::EvalError::DivisionByZero)
+                } else {
+                    Ok(Value::Int(a % b))
+                }
+            }
+            _ => {
+                let a = self.as_f64().ok_or_else(|| {
+                    crate::libs::expr::runtime::EvalError::TypeError(
+                        "Modulo requires numbers".to_string(),
+                    )
+                })?;
+                let b = rhs.as_f64().ok_or_else(|| {
+                    crate::libs::expr::runtime::EvalError::TypeError(
+                        "Modulo requires numbers".to_string(),
+                    )
+                })?;
+                if b == 0.0 {
+                    Err(crate::libs::expr::runtime::EvalError::DivisionByZero)
+                } else {
+                    Ok(Value::Float(a % b))
+                }
+            }
+        }
+    }
+
+    /// String concatenation
+    pub fn concat(
+        &self,
+        rhs: &Value,
+    ) -> Result<Value, crate::libs::expr::runtime::EvalError> {
+        let left_str = self.to_string();
+        let right_str = rhs.to_string();
+        Ok(Value::String(left_str + &right_str))
+    }
+
     /// Comparison operations
     pub fn eq(&self, rhs: &Value) -> Value {
         Value::Bool(self == rhs)

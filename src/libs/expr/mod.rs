@@ -2,6 +2,8 @@
 //!
 //! Provides parsing and evaluation of expressions like `@1 + @2 * 3`
 
+pub mod concrete;
+pub mod concretize;
 pub mod functions;
 pub mod parser;
 pub mod runtime;
@@ -377,4 +379,44 @@ pub fn eval_expr_cached_resolved(
     // Evaluate with resolved indices
     let mut ctx = runtime::EvalContext::with_headers(row, headers);
     Ok(runtime::eval(&expr, &mut ctx)?)
+}
+
+/// Compile an expression to ConcreteExpr for maximum performance
+/// This performs concretization which resolves all names to indices
+/// Returns the compiled expression and the number of variables needed
+pub fn compile(
+    expr: &Expr,
+    headers: &[String],
+) -> Result<(concrete::ConcreteExpr, usize), String> {
+    let mut ctx = concrete::CompileContext::new(headers);
+    let concrete = concretize::concretize(expr, &mut ctx)?;
+    Ok((concrete, ctx.variables.len()))
+}
+
+/// Evaluate a pre-compiled ConcreteExpr
+/// This is the fastest evaluation path with zero string lookups
+pub fn eval_compiled(
+    concrete_expr: &concrete::ConcreteExpr,
+    row: &[String],
+    var_count: usize,
+) -> Result<runtime::value::Value, runtime::EvalError> {
+    let mut ctx = runtime::concrete_eval::ConcreteEvalContext::new(row, var_count);
+    runtime::concrete_eval::eval_concrete(concrete_expr, &mut ctx)
+}
+
+/// Full pipeline: parse, compile to ConcreteExpr, and evaluate
+/// Use this for one-off evaluations where you want the best performance
+pub fn eval_expr_compiled(
+    expr_str: impl AsRef<str>,
+    row: &[String],
+    headers: &[String],
+) -> Result<runtime::value::Value, String> {
+    // Parse
+    let expr = parser::parse(expr_str.as_ref()).map_err(|e| e.to_string())?;
+
+    // Compile to ConcreteExpr
+    let (concrete, var_count) = compile(&expr, headers)?;
+
+    // Evaluate
+    eval_compiled(&concrete, row, var_count).map_err(|e| e.to_string())
 }

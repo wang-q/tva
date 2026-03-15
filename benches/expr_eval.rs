@@ -377,10 +377,201 @@ fn benchmark_column_resolution(c: &mut Criterion) {
     group.finish();
 }
 
+fn benchmark_concrete_expr(c: &mut Criterion) {
+    let row = create_test_row();
+    let headers = create_test_headers();
+    let iterations = 10000;
+
+    let mut group = c.benchmark_group("concrete_expr");
+    group.throughput(Throughput::Elements(iterations as u64));
+    group.warm_up_time(Duration::from_secs(2));
+    group.measurement_time(Duration::from_secs(5));
+
+    // 21. ConcreteExpr: Column access by index
+    // Baseline comparison with regular eval
+    group.bench_function("col_access_concrete", |b| {
+        // Compile once
+        let expr = tva::libs::expr::parser::parse("@1").unwrap();
+        let (concrete, var_count) = tva::libs::expr::compile(&expr, &headers).unwrap();
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let result =
+                    tva::libs::expr::eval_compiled(&concrete, &row, var_count).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 22. ConcreteExpr vs Regular: Column access comparison
+    group.bench_function("col_access_regular", |b| {
+        // Parse and resolve once
+        let mut expr = tva::libs::expr::parser::parse("@1").unwrap();
+        tva::libs::expr::resolve_columns(&mut expr, &headers);
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx =
+                    tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 23. ConcreteExpr: Arithmetic expression
+    group.bench_function("arithmetic_concrete", |b| {
+        let expr = tva::libs::expr::parser::parse("@1 + @5 * 2").unwrap();
+        let (concrete, var_count) = tva::libs::expr::compile(&expr, &headers).unwrap();
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let result =
+                    tva::libs::expr::eval_compiled(&concrete, &row, var_count).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 24. ConcreteExpr vs Regular: Arithmetic comparison
+    group.bench_function("arithmetic_regular", |b| {
+        let mut expr = tva::libs::expr::parser::parse("@1 + @5 * 2").unwrap();
+        tva::libs::expr::resolve_columns(&mut expr, &headers);
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx =
+                    tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 25. ConcreteExpr: Function call
+    group.bench_function("func_call_concrete", |b| {
+        let expr = tva::libs::expr::parser::parse("len(@3)").unwrap();
+        let (concrete, var_count) = tva::libs::expr::compile(&expr, &headers).unwrap();
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let result =
+                    tva::libs::expr::eval_compiled(&concrete, &row, var_count).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 26. ConcreteExpr vs Regular: Function call comparison
+    group.bench_function("func_call_regular", |b| {
+        let mut expr = tva::libs::expr::parser::parse("len(@3)").unwrap();
+        tva::libs::expr::resolve_columns(&mut expr, &headers);
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx =
+                    tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 27. ConcreteExpr: Complex expression with multiple operations
+    group.bench_function("complex_concrete", |b| {
+        let expr = tva::libs::expr::parser::parse("(@1 + @5) * 10 + len(@3)").unwrap();
+        let (concrete, var_count) = tva::libs::expr::compile(&expr, &headers).unwrap();
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let result =
+                    tva::libs::expr::eval_compiled(&concrete, &row, var_count).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 28. ConcreteExpr vs Regular: Complex expression comparison
+    group.bench_function("complex_regular", |b| {
+        let mut expr =
+            tva::libs::expr::parser::parse("(@1 + @5) * 10 + len(@3)").unwrap();
+        tva::libs::expr::resolve_columns(&mut expr, &headers);
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx =
+                    tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 29. ConcreteExpr: Pipe operation
+    group.bench_function("pipe_concrete", |b| {
+        let expr = tva::libs::expr::parser::parse("@3 | upper() | len()").unwrap();
+        let (concrete, var_count) = tva::libs::expr::compile(&expr, &headers).unwrap();
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let result =
+                    tva::libs::expr::eval_compiled(&concrete, &row, var_count).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 30. ConcreteExpr vs Regular: Pipe operation comparison
+    group.bench_function("pipe_regular", |b| {
+        let mut expr = tva::libs::expr::parser::parse("@3 | upper() | len()").unwrap();
+        tva::libs::expr::resolve_columns(&mut expr, &headers);
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let mut ctx =
+                    tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 31. Full pipeline: Parse + Compile + Eval (ConcreteExpr)
+    group.bench_function("full_pipeline_concrete", |b| {
+        b.iter(|| {
+            for _ in 0..100 {
+                let expr = tva::libs::expr::parser::parse("@1 + @5 * 2").unwrap();
+                let (concrete, var_count) =
+                    tva::libs::expr::compile(&expr, &headers).unwrap();
+                let result =
+                    tva::libs::expr::eval_compiled(&concrete, &row, var_count).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    // 32. Full pipeline: Parse + Resolve + Eval (Regular)
+    group.bench_function("full_pipeline_regular", |b| {
+        b.iter(|| {
+            for _ in 0..100 {
+                let mut expr = tva::libs::expr::parser::parse("@1 + @5 * 2").unwrap();
+                tva::libs::expr::resolve_columns(&mut expr, &headers);
+                let mut ctx =
+                    tva::libs::expr::runtime::EvalContext::with_headers(&row, &headers);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     benchmark_expression_eval,
     benchmark_function_registry,
-    benchmark_column_resolution
+    benchmark_column_resolution,
+    benchmark_concrete_expr
 );
 criterion_main!(benches);

@@ -1,8 +1,11 @@
 use clap::*;
 
 use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::expr::concrete::ConcreteExpr;
 use crate::libs::expr::runtime;
-use crate::libs::expr::{fold_constants, parse_cached, resolve_columns};
+use crate::libs::expr::{
+    compile, eval_compiled, fold_constants, parse_cached, resolve_columns,
+};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::header::HeaderMode;
 use crate::libs::tsv::reader::TsvReader;
@@ -56,6 +59,13 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::Append)
                 .help("Comma-separated row values to evaluate against (e.g., 'Alice,30'). Can be specified multiple times for multiple rows."),
         )
+        .arg(
+            Arg::new("precompile")
+                .long("precompile")
+                .short('p')
+                .action(ArgAction::SetTrue)
+                .help("Verify and display the compiled expression structure (for debugging/optimization)"),
+        )
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
@@ -107,6 +117,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     // If no input files and no row data, evaluate expression with empty context
     if infiles.is_empty() {
+        // Check if --precompile mode is requested
+        if args.get_flag("precompile") {
+            writeln!(writer, "Expression: {}", expr_str)?;
+            writeln!(writer, "AST: {:?}", parsed_expr)?;
+            writeln!(writer, "\nNote: Full compilation requires column headers.")?;
+            writeln!(
+                writer,
+                "Use --colnames to provide headers for precompilation."
+            )?;
+            return Ok(());
+        }
+
         let row: Vec<String> = Vec::new();
         let mut ctx = runtime::EvalContext::new(&row);
         let result = runtime::eval(&parsed_expr, &mut ctx)
@@ -135,7 +157,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let delim_byte = delimiter as u8;
 
     let mut header_written = false;
-    let mut headers: Vec<String> = Vec::new();
+    let mut headers: Vec<String>;
+    let mut concrete_expr: Option<ConcreteExpr> = None;
+    let mut var_count: usize = 0;
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut tsv_reader = TsvReader::with_capacity(input.reader, 512 * 1024);
@@ -168,6 +192,34 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     // Fold constant expressions for better performance
                     fold_constants(&mut parsed_expr);
 
+                    // Compile to ConcreteExpr for maximum performance
+                    let (concrete, vcount) =
+                        compile(&parsed_expr, &headers).map_err(|e| {
+                            anyhow::anyhow!("Failed to compile expression: {}", e)
+                        })?;
+                    concrete_expr = Some(concrete);
+                    var_count = vcount;
+
+                    // Check if --precompile mode is requested
+                    if args.get_flag("precompile") {
+                        writeln!(writer, "Expression: {}", expr_str)?;
+                        writeln!(writer, "\n=== Original AST ===")?;
+                        writeln!(writer, "{:?}", parsed_expr)?;
+                        writeln!(writer, "\n=== Optimized AST (after column resolution & constant folding) ===")?;
+                        writeln!(writer, "{:?}", parsed_expr)?;
+                        writeln!(writer, "\n=== Compiled ConcreteExpr ===")?;
+                        writeln!(writer, "{:?}", concrete_expr.as_ref().unwrap())?;
+                        writeln!(writer, "\n=== Compilation Summary ===")?;
+                        writeln!(
+                            writer,
+                            "- Column names resolved to indices: {}",
+                            headers.len()
+                        )?;
+                        writeln!(writer, "- Variables needed: {}", vcount)?;
+                        writeln!(writer, "\nPrecompilation successful! Expression is ready for execution.")?;
+                        return Ok(());
+                    }
+
                     // Write header from the original formatted representation
                     writeln!(writer, "{}", header_name)?;
                     header_written = true;
@@ -180,7 +232,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        // Process data rows
+        // Process data rows using ConcreteExpr if available
         let result: std::io::Result<()> = tsv_reader.for_each_record(|record| {
             // Split record into fields
             let row: Vec<String> = record
@@ -188,17 +240,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 .map(|s| String::from_utf8_lossy(s).to_string())
                 .collect();
 
-            // Create evaluation context
-            let mut ctx = if headers.is_empty() {
-                runtime::EvalContext::new(&row)
+            // Evaluate expression using ConcreteExpr for better performance
+            let result = if let Some(ref concrete) = concrete_expr {
+                // Use compiled ConcreteExpr (fast path)
+                eval_compiled(concrete, &row, var_count).map_err(|e| {
+                    std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
+                })?
             } else {
-                runtime::EvalContext::with_headers(&row, &headers)
+                // Fall back to regular evaluation (no headers)
+                let mut ctx = runtime::EvalContext::new(&row);
+                runtime::eval(&parsed_expr, &mut ctx).map_err(|e| {
+                    std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
+                })?
             };
-
-            // Evaluate expression
-            let result = runtime::eval(&parsed_expr, &mut ctx).map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
-            })?;
 
             // Output result
             writeln!(writer, "{}", result.to_string()).map_err(|e| {
