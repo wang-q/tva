@@ -11,12 +11,6 @@ A box plot visualizes five summary statistics:
 
 Outliers are values beyond 1.5 * IQR (inter-quartile range) from the quartiles.
 
-## Usage
-
-    tva plot box [options] <infile>
-
-## Options
-
 *   `-y, --y <columns>`: Y axis column(s) to plot (1-based index or column name). Required.
 *   `--color <column>`: Color grouping column for categorical box plots.
 *   `--outliers`: Show outlier points beyond the whiskers.
@@ -25,25 +19,13 @@ Outliers are values beyond 1.5 * IQR (inter-quartile range) from the quartiles.
 *   `--ignore`: Ignore rows with non-numeric values.
 *   `<infile>`: Input TSV file (default: stdin).
 
-## Examples
+Examples:
 
-Draw a simple box plot:
+1. Draw a simple box plot:
+    tva plot box -y age data.tsv
 
-    $ tva plot box -y age data.tsv
+2. Draw box plots by category:
+    tva plot box -y age --color species data.tsv
 
-Draw box plots by category:
-
-    $ tva plot box -y age --color species data.tsv
-
-Show outliers:
-
-    $ tva plot box -y age --outliers data.tsv
-
-## Header behavior
-
-*   Supports all four header modes. See `tva --help-headers` for details.
-
-## References
-
-Based on Tukey's box plot design. See McGill, R., Tukey, J. W. and Larsen, W. A. (1978)
-"Variations of box plots", The American Statistician 32, 12-16.
+3. Show outliers:
+    tva plot box -y age --outliers data.tsv
