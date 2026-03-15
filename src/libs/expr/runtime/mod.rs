@@ -262,8 +262,7 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
                 .iter()
                 .map(|arg| eval(arg, ctx))
                 .collect::<Result<Vec<_>, _>>()?;
-            let registry = crate::libs::expr::functions::FunctionRegistry::new();
-            registry.call(name, &arg_values)
+            crate::libs::expr::functions::global_registry().call(name, &arg_values)
         }
         Expr::MethodCall { object, name, args } => {
             // Evaluate the object first
@@ -273,8 +272,7 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
             for arg in args {
                 arg_values.push(eval(arg, ctx)?);
             }
-            let registry = crate::libs::expr::functions::FunctionRegistry::new();
-            registry.call(name, &arg_values)
+            crate::libs::expr::functions::global_registry().call(name, &arg_values)
         }
         Expr::Pipe { left, right } => {
             let left_val = eval(left, ctx)?;
@@ -318,8 +316,7 @@ fn eval_pipe_right(
             for arg in args {
                 arg_values.push(eval(arg, ctx)?);
             }
-            let registry = crate::libs::expr::functions::FunctionRegistry::new();
-            registry.call(name, &arg_values)
+            crate::libs::expr::functions::global_registry().call(name, &arg_values)
         }
         PipeRight::CallWithPlaceholder { name, args } => {
             // Replace placeholder _ with piped value
@@ -330,8 +327,7 @@ fn eval_pipe_right(
             for arg in args {
                 arg_values.push(eval(arg, ctx)?);
             }
-            let registry = crate::libs::expr::functions::FunctionRegistry::new();
-            registry.call(name, &arg_values)
+            crate::libs::expr::functions::global_registry().call(name, &arg_values)
         }
     }
 }

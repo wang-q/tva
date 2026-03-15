@@ -231,6 +231,25 @@ fn benchmark_expression_eval(c: &mut Criterion) {
         })
     });
 
+    // 16. Cached parse (new optimization)
+    // Tests parse caching effectiveness
+    group.bench_function("parse_cached", |b| {
+        // Clear cache before test
+        tva::libs::expr::clear_cache();
+        let expr_str = "@1 + @5 * 2";
+        // First call to populate cache
+        let _ = tva::libs::expr::parse_cached(expr_str).unwrap();
+
+        b.iter(|| {
+            for _ in 0..iterations {
+                let expr = tva::libs::expr::parse_cached(expr_str).unwrap();
+                let mut ctx = tva::libs::expr::runtime::EvalContext::new(&row);
+                let result = tva::libs::expr::runtime::eval(&expr, &mut ctx).unwrap();
+                black_box(result);
+            }
+        })
+    });
+
     group.finish();
 }
 

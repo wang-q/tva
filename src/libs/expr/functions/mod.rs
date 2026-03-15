@@ -1,6 +1,7 @@
 use crate::libs::expr::runtime::value::Value;
 use crate::libs::expr::runtime::EvalError;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 mod datetime;
 mod hash;
@@ -11,6 +12,16 @@ mod meta;
 mod numeric;
 mod regex;
 mod string;
+
+/// Global static function registry
+/// Initialized once on first access, then reused for all evaluations
+static GLOBAL_REGISTRY: OnceLock<FunctionRegistry> = OnceLock::new();
+
+/// Get the global function registry
+/// This avoids creating a new registry for each evaluation
+pub fn global_registry() -> &'static FunctionRegistry {
+    GLOBAL_REGISTRY.get_or_init(FunctionRegistry::new)
+}
 
 /// Function signature
 pub type Function = fn(&[Value]) -> Result<Value, EvalError>;

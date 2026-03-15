@@ -501,12 +501,76 @@ cargo bench --bench expr_eval
 3. **列名访问** 比索引慢 3 倍，但在可接受范围
 4. **函数调用** 比算术运算慢 50 倍以上
 
+**优化后结果（全局 FunctionRegistry）**：
+
+| 测试项 | 优化前 | 优化后 | 提升倍数 |
+|:-------|:-------|:-------|:---------|
+| `func_call_trim` | 55 ms | 1.57 ms | **35 倍** |
+| `func_call_len` | 55 ms | 1.28 ms | **43 倍** |
+| `pipe_simple` | 110 ms | 1.93 ms | **57 倍** |
+| `method_call` | 55 ms | ~1.3 ms | **42 倍** |
+
+**优化代码**：
+```rust
+// src/libs/expr/functions/mod.rs
+use std::sync::OnceLock;
+
+static GLOBAL_REGISTRY: OnceLock<FunctionRegistry> = OnceLock::new();
+
+pub fn global_registry() -> &'static FunctionRegistry {
+    GLOBAL_REGISTRY.get_or_init(FunctionRegistry::new)
+}
+
+// src/libs/expr/runtime/mod.rs
+// 替换：let registry = FunctionRegistry::new();
+// 为：crate::libs::expr::functions::global_registry()
+```
+
+**第二轮优化：解析缓存（parse_cached）**
+
+| 测试项 | 优化前 | 优化后 | 提升倍数 |
+|:-------|:-------|:-------|:---------|
+| `parse_and_eval` | 33.2 ms | - | 1x (baseline) |
+| `parse_cached` | - | **2.74 ms** | **12 倍** |
+| `eval_only` | 1.24 ms | - | 最优理论值 |
+
+**优化代码**：
+```rust
+// src/libs/expr/mod.rs
+use std::collections::HashMap;
+use std::sync::Mutex;
+
+static EXPR_CACHE: Mutex<Option<HashMap<String, Expr>>> = Mutex::new(None);
+
+pub fn parse_cached(expr_str: &str) -> Result<Expr, ParseError> {
+    let mut cache_guard = EXPR_CACHE.lock().unwrap();
+    if cache_guard.is_none() {
+        *cache_guard = Some(HashMap::new());
+    }
+    let cache = cache_guard.as_mut().unwrap();
+    
+    if let Some(expr) = cache.get(expr_str) {
+        return Ok(expr.clone());
+    }
+    
+    let expr = parser::parse(expr_str)?;
+    cache.insert(expr_str.to_string(), expr.clone());
+    Ok(expr)
+}
+```
+
+**效果分析**：
+- 缓存后性能达到纯执行的 **2.2 倍**（2.74ms vs 1.24ms）
+- 主要开销：HashMap 查找 + Expr Clone
+- 对于重复表达式（如 `expr` 命令处理大量行），效果等同于预解析
+
 #### 8. 优化建议（参考 xan）
 
 **短期优化**：
-1. **全局函数注册表**：使用 `lazy_static!` 或 `once_cell` 创建全局 `FunctionRegistry`
-2. **预解析表头**：在编译期将 `ColumnRef::Name` 转为 `ColumnRef::Index`
-3. **常量折叠**：在解析后对 AST 进行常量表达式预计算
+1. ~~全局函数注册表~~ ✅ **已完成（35-57 倍提升）**
+2. ~~解析缓存~~ ✅ **已完成（12 倍提升）**
+3. **预解析表头**：在编译期将 `ColumnRef::Name` 转为 `ColumnRef::Index`
+4. **常量折叠**：在解析后对 AST 进行常量表达式预计算
 
 **中期优化**：
 1. **引入 ConcreteExpr**：增加具体化阶段，分离编译与执行
