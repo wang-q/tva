@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c102a141.js";
+            window.path_to_searchindex_js = "searchindex-cf024eac.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-5de396d1.js"></script>
@@ -219,29 +219,14 @@ tva expr -E '"hello" | upper()'
 </code></pre>
 <h3 id="documentation-index"><a class="header" href="#documentation-index">Documentation Index</a></h3>
 <ul>
-<li>
-<p><a href="literals.html">Literals</a> - Literal syntax and type system</p>
-</li>
-<li>
-<p><a href="variables.html">Variables</a> - Column references and variable binding</p>
-</li>
-<li>
-<p><a href="operators.html">Operators</a> - Operator precedence and details</p>
-</li>
-<li>
-<p><a href="functions.html">Functions</a> - Complete function reference</p>
-</li>
-<li>
-<p><a href="expr/syntax.html">Syntax Guide</a> - Complete syntax documentation</p>
-</li>
-<li>
-<p><a href="expr/rosetta.html">Rosetta Code</a> - Fun programs</p>
-</li>
-<li>
-<p><strong>Lambda expressions</strong>: <code>x =&gt; x * 2</code> for higher-order functions</p>
-</li>
+<li><a href="literals.html">Literals</a> - Literal syntax and type system</li>
+<li><a href="variables.html">Variables</a> - Column references and variable binding</li>
+<li><a href="operators.html">Operators</a> - Operator precedence and details</li>
+<li><a href="functions.html">Functions</a> - Complete function reference</li>
+<li><a href="expr/syntax.html">Syntax Guide</a> - Complete syntax documentation</li>
+<li><a href="expr/rosetta.html">Rosetta Code</a> - Fun programs</li>
 </ul>
-<h3 id="expression-commands"><a class="header" href="#expression-commands">Expression Commands</a></h3>
+<h3 id="expr-commands"><a class="header" href="#expr-commands">Expr Commands</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -251,6 +236,19 @@ tva expr -E '"hello" | upper()'
 <tr><td><code>tva expr</code></td><td>Evaluate expression to create a new row</td></tr>
 <tr><td><code>tva map</code></td><td>Add new column(s) to existing row</td></tr>
 <tr><td><code>tva mutate</code></td><td>Modify existing column value</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>What it does</th><th>Input row</th><th>Output row</th><th>Columns changed</th></tr>
+</thead>
+<tbody>
+<tr><td><code>expr</code></td><td>Evaluate to new row</td><td><code>@a, @b, @c</code></td><td><code>@result</code></td><td>All (replaced)</td></tr>
+<tr><td><code>map</code></td><td>Add new column(s)</td><td><code>@a, @b</code></td><td><code>@a, @b, @c</code></td><td>Added</td></tr>
+<tr><td><code>mutate</code></td><td>Modify column value</td><td><code>@a, @b, @c</code></td><td><code>@a, @b', @c</code></td><td>One updated</td></tr>
+<tr><td><code>filter</code></td><td>Keep or discard row</td><td><code>@a, @b, @c</code></td><td><code>@a, @b, @c</code> or nothing</td><td>None</td></tr>
 </tbody>
 </table>
 </div>
@@ -278,7 +276,7 @@ tva expr -n "score" -r "85" -E 'if(@score &gt;= 60, "pass", "fail")'
 tva expr -H -E "@price / @carat" docs/data/diamonds.tsv
 
 # Filter rows using --skip-null
-tva expr -H --skip-null -E 'if(@price &gt; 300, @0, null)' docs/data/diamonds.tsv
+tva expr -H --skip-null -E 'if(@carat &gt; 1 and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv
 </code></pre>
 <h3 id="tva-map---add-new-column"><a class="header" href="#tva-map---add-new-column"><code>tva map</code> - Add New Column</a></h3>
 <p>Evaluates expression for each row to add a new column to the existing row.</p>
@@ -302,68 +300,6 @@ tva mutate -E '@cut | upper()' -c cut docs/data/diamonds.tsv
 # Replace with conditional value
 tva mutate -E 'if(@price &gt;= 350, "expensive", "cheap")' -c price docs/data/diamonds.tsv
 </code></pre>
-<h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
-<h3 id="numeric-operations"><a class="header" href="#numeric-operations">Numeric Operations</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>@price * 1.1 # Increase price by 10 %
-( @ price - @ cost) / @ cost # Calculate margin
-round( @ value) # Round to integer
-<span class="boring">}</span></code></pre>
-<h3 id="string-operations"><a class="header" href="#string-operations">String Operations</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>@first + + " " + + @ last # Concatenate names
-@email | lower() | trim() # Chain operations
-@name | substr(_, 0, 5) # First 5 characters
-split( @ tags, ",") # Split to list
-<span class="boring">}</span></code></pre>
-<h3 id="list-operations"><a class="header" href="#list-operations">List Operations</a></h3>
-<p>The <code>map()</code> and <code>filter()</code> below are <strong>functions</strong> for working with lists, not the <code>tva map</code>
-and <code>tva filter</code> commands.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>map([1, 2, 3], x =&gt; x * 2)                    #[2, 4, 6]
-filter([1, 2, 3, 4], x =&gt; x &gt; 2)              #[3, 4]
-reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x) # 6
-join(split( @ tags, ","), "; ") # Rejoin with different separator
-<span class="boring">}</span></code></pre>
-<h3 id="conditional-logic"><a class="header" href="#conditional-logic">Conditional Logic</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>if( @ age &gt; = 18, "adult", "minor")
-default ( @ nickname, @ username) # Use nickname if not empty
-<span class="boring">}</span></code></pre>
-<h2 id="type-system"><a class="header" href="#type-system">Type System</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Type</th><th>Example</th><th>Notes</th></tr>
-</thead>
-<tbody>
-<tr><td>Int</td><td><code>42</code>, <code>-10</code></td><td>64-bit signed</td></tr>
-<tr><td>Float</td><td><code>3.14</code>, <code>-0.5</code></td><td>Double precision</td></tr>
-<tr><td>String</td><td><code>"hello"</code></td><td>UTF-8 encoded</td></tr>
-<tr><td>Bool</td><td><code>true</code>, <code>false</code></td><td></td></tr>
-<tr><td>Null</td><td><code>null</code></td><td>Missing/empty value</td></tr>
-<tr><td>List</td><td><code>[1, 2, 3]</code></td><td>Heterogeneous elements</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="command-comparison"><a class="header" href="#command-comparison">Command Comparison</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Command</th><th>What it does</th><th>Input row</th><th>Output row</th><th>Columns changed</th></tr>
-</thead>
-<tbody>
-<tr><td><code>expr</code></td><td>Evaluate to new row</td><td><code>@a, @b, @c</code></td><td><code>@result</code></td><td>All (replaced)</td></tr>
-<tr><td><code>filter</code></td><td>Keep or discard row</td><td><code>@a, @b, @c</code></td><td><code>@a, @b, @c</code> or nothing</td><td>None</td></tr>
-<tr><td><code>map</code></td><td>Add new column(s)</td><td><code>@a, @b</code></td><td><code>@a, @b, @c</code></td><td>Added</td></tr>
-<tr><td><code>mutate</code></td><td>Modify column value</td><td><code>@a, @b, @c</code></td><td><code>@a, @b', @c</code></td><td>One updated</td></tr>
-</tbody>
-</table>
-</div>
 <h2 id="performance-notes"><a class="header" href="#performance-notes">Performance Notes</a></h2>
 <p>The expression engine includes several optimizations for better performance:</p>
 <ul>
