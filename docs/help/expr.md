@@ -59,3 +59,6 @@ Examples:
 
 8. Variable binding for complex calculations:
    `tva expr -H -E '@price * @qty as @total; @total * 0.9 as @discounted; @discounted' data.tsv`
+
+9. Skip rows where result is null (filtering):
+   `tva expr -H --skip-null -E 'if(@score >= 70, @name, null)' data.tsv`

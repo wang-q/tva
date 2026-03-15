@@ -405,3 +405,127 @@ fn expr_header_format_last_expression() {
         lines[0]
     );
 }
+
+#[test]
+fn expr_skip_null_with_rows() {
+    // Test --skip-null with inline row data
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "score,name",
+            "-r",
+            "85,Alice",
+            "-r",
+            "65,Bob",
+            "-r",
+            "90,Charlie",
+            "-E",
+            "if(@score >= 70, @name, null)",
+            "--skip-null",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Should only have 2 lines (Alice and Charlie), Bob's null result should be skipped
+    assert_eq!(
+        lines.len(),
+        2,
+        "Expected 2 output lines with --skip-null, got: {}",
+        stdout
+    );
+    assert!(
+        lines[0].contains("Alice"),
+        "Expected 'Alice' in first line, got: {}",
+        lines[0]
+    );
+    assert!(
+        lines[1].contains("Charlie"),
+        "Expected 'Charlie' in second line, got: {}",
+        lines[1]
+    );
+}
+
+#[test]
+fn expr_skip_null_short_flag() {
+    // Test -s short flag for --skip-null
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "score,name",
+            "-r",
+            "85,Alice",
+            "-r",
+            "65,Bob",
+            "-r",
+            "90,Charlie",
+            "-s",
+            "-E",
+            "if(@score >= 70, @name, null)",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Should only have 2 lines (Alice and Charlie), Bob's null result should be skipped
+    assert_eq!(
+        lines.len(),
+        2,
+        "Expected 2 output lines with -s, got: {}",
+        stdout
+    );
+    assert!(
+        lines[0].contains("Alice"),
+        "Expected 'Alice' in first line, got: {}",
+        lines[0]
+    );
+    assert!(
+        lines[1].contains("Charlie"),
+        "Expected 'Charlie' in second line, got: {}",
+        lines[1]
+    );
+}
+
+#[test]
+fn expr_without_skip_null_includes_null() {
+    // Test that without --skip-null, null results are included
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "score,name",
+            "-r",
+            "85,Alice",
+            "-r",
+            "65,Bob",
+            "-r",
+            "90,Charlie",
+            "-E",
+            "if(@score >= 70, @name, null)",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Should have 3 lines including null
+    assert_eq!(
+        lines.len(),
+        3,
+        "Expected 3 output lines without --skip-null, got: {}",
+        stdout
+    );
+    assert!(
+        lines[0].contains("Alice"),
+        "Expected 'Alice' in first line, got: {}",
+        lines[0]
+    );
+    assert!(
+        lines[1].contains("null"),
+        "Expected 'null' in second line, got: {}",
+        lines[1]
+    );
+    assert!(
+        lines[2].contains("Charlie"),
+        "Expected 'Charlie' in third line, got: {}",
+        lines[2]
+    );
+}

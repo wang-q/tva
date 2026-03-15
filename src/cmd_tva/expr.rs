@@ -56,6 +56,13 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::Append)
                 .help("Comma-separated row values to evaluate against (e.g., 'Alice,30'). Can be specified multiple times for multiple rows."),
         )
+        .arg(
+            Arg::new("skip_null")
+                .long("skip-null")
+                .short('s')
+                .action(ArgAction::SetTrue)
+                .help("Skip rows where the expression result is null"),
+        )
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
@@ -63,6 +70,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     let expr_str = args.get_one::<String>("expr").unwrap();
+    let skip_null = args.get_flag("skip_null");
 
     // Parse the expression with caching
     let mut parsed_expr = parse_cached(expr_str)
@@ -99,6 +107,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             };
             let result = runtime::eval(&parsed_expr, &mut ctx)
                 .map_err(|e| anyhow::anyhow!("Evaluation error: {}", e))?;
+            // Skip null results if --skip-null is enabled
+            if skip_null && result.is_null() {
+                continue;
+            }
             writeln!(writer, "{}", result.to_string())?;
         }
 
@@ -111,7 +123,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut ctx = runtime::EvalContext::new(&row);
         let result = runtime::eval(&parsed_expr, &mut ctx)
             .map_err(|e| anyhow::anyhow!("Evaluation error: {}", e))?;
-        writeln!(writer, "{}", result.to_string())?;
+        // Skip null results if --skip-null is enabled
+        if !skip_null || !result.is_null() {
+            writeln!(writer, "{}", result.to_string())?;
+        }
         return Ok(());
     }
 
@@ -181,6 +196,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
 
         // Process data rows
+        let skip_null_flag = skip_null;
         let result: std::io::Result<()> = tsv_reader.for_each_record(|record| {
             // Split record into fields
             let row: Vec<String> = record
@@ -197,6 +213,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             let result = runtime::eval(&parsed_expr, &mut ctx).map_err(|e| {
                 std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
             })?;
+
+            // Skip null results if --skip-null is enabled
+            if skip_null_flag && result.is_null() {
+                return Ok(());
+            }
 
             // Output result
             writeln!(writer, "{}", result.to_string()).map_err(|e| {
