@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e7a07adc.js";
+            window.path_to_searchindex_js = "searchindex-e1be4e70.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-96593fed.js"></script>
@@ -4054,14 +4054,14 @@ tva expr -E 'max(1, 5, 3)'                   # Returns: 5
 @price.pow(2)          # Equivalent to: pow(@price, 2)
 </code></pre>
 <h3 id="pipe-call-single-argument"><a class="header" href="#pipe-call-single-argument">Pipe Call (Single Argument)</a></h3>
-<p><code>arg | func()</code> - Pipe left value to function. The <code>_</code> placeholder can be omitted for single-argument
-functions.</p>
+<p><code>arg | func()</code> or <code>arg | func(_)</code> - Pipe left value to function. The <code>_</code> placeholder can be omitted for single-argument functions.</p>
 <pre><code class="language-bash">tva expr -E '"hello" | upper()'             # Returns: HELLO
+tva expr -E '"hello" | upper(_)'            # Returns: HELLO
 tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
 tva expr -E '"  hello  " | trim() | upper()'      # Chain multiple pipes
 </code></pre>
 <h3 id="pipe-call-multiple-arguments"><a class="header" href="#pipe-call-multiple-arguments">Pipe Call (Multiple Arguments)</a></h3>
-<p><code>arg | func(_, arg2)</code> - Use <code>_</code> to represent the piped value as the first argument.</p>
+<p><code>arg | func(_, arg2)</code> - Use <code>_</code> to represent the piped value.</p>
 <pre><code class="language-bash">tva expr -E '"hello world" | substr(_, 0, 5)'   # Returns: hello
 tva expr -E '"a,b,c" | split(_, ",")'           # Returns: ["a", "b", "c"]
 tva expr -E '"hello" | replace(_, "l", "x")'    # Returns: "hexxo"
