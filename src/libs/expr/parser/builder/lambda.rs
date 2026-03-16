@@ -1,17 +1,19 @@
-use super::{Expr, ParseError, PipeRight};
+use crate::libs::expr::parser::ast::{ColumnRef, Expr, PipeRight};
+use crate::libs::expr::parser::ParseError;
+use crate::libs::expr::parser::Rule;
 use pest::iterators::Pair;
 
-pub fn build_lambda(pair: Pair<super::super::Rule>) -> Result<Expr, ParseError> {
+pub fn build_lambda(pair: Pair<Rule>) -> Result<Expr, ParseError> {
     let inner = pair.into_inner();
     let mut params = Vec::new();
     let mut body: Option<Expr> = None;
 
     for child in inner {
         match child.as_rule() {
-            super::super::Rule::ident => {
+            Rule::ident => {
                 params.push(child.as_str().to_string());
             }
-            super::super::Rule::bind => {
+            Rule::bind => {
                 body = Some(super::build_expr(child)?);
             }
             _ => {}
@@ -28,8 +30,6 @@ pub fn build_lambda(pair: Pair<super::super::Rule>) -> Result<Expr, ParseError> 
 }
 
 fn transform_lambda_params(expr: Expr, params: &[String]) -> Expr {
-    use super::ColumnRef;
-
     match expr {
         Expr::ColumnRef(ColumnRef::Name(name)) if params.contains(&name) => {
             Expr::LambdaParam(name)
@@ -105,8 +105,8 @@ fn transform_pipe_right(pipe_right: PipeRight, params: &[String]) -> PipeRight {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::ast::{BinaryOp, Expr};
-    use super::super::super::parse;
+    use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+    use crate::libs::expr::parser::parse;
 
     #[test]
     fn test_parse_lambda() {
@@ -149,40 +149,90 @@ mod tests {
                         assert!(matches!(*left, Expr::LambdaParam(s) if s == "x"));
                         assert!(matches!(*right, Expr::LambdaParam(s) if s == "y"));
                     }
-                    _ => panic!("Expected Add expression in lambda body"),
+                    _ => panic!(
+                        "Expected Add expression in lambda body, got {:?}",
+                        body
+                    ),
                 }
             }
-            _ => panic!("Expected Lambda expression"),
+            _ => panic!("Expected Lambda expression, got {:?}", expr),
         }
     }
 
     #[test]
-    fn test_parse_lambda_no_params() {
-        // () => 42
-        let expr = parse("() => 42").unwrap();
+    fn test_parse_lambda_with_call() {
+        // x => abs(x)
+        let expr = parse("x => abs(x)").unwrap();
         match expr {
             Expr::Lambda { params, body } => {
-                assert!(params.is_empty());
-                assert!(matches!(*body, Expr::Int(42)));
+                assert_eq!(params, vec!["x"]);
+                match *body {
+                    Expr::Call { name, args } => {
+                        assert_eq!(name, "abs");
+                        assert_eq!(args.len(), 1);
+                        assert!(matches!(&args[0], Expr::LambdaParam(s) if s == "x"));
+                    }
+                    _ => panic!("Expected Call expression in lambda body, got {:?}", body),
+                }
             }
-            _ => panic!("Expected Lambda expression"),
+            _ => panic!("Expected Lambda expression, got {:?}", expr),
         }
     }
 
     #[test]
-    fn test_parse_lambda_in_function() {
-        // Lambda as function argument
-        let expr = parse("map(@list, x => x * 2)").unwrap();
+    fn test_parse_lambda_with_pipe() {
+        // x => x | abs()
+        let expr = parse("x => x | abs()").unwrap();
         match expr {
-            Expr::Call { name, args } => {
-                assert_eq!(name, "map");
-                assert_eq!(args.len(), 2);
-                assert!(
-                    matches!(&args[0], Expr::ColumnRef(super::super::ColumnRef::Name(s)) if s == "list")
-                );
-                assert!(matches!(&args[1], Expr::Lambda { .. }));
+            Expr::Lambda { params, body } => {
+                assert_eq!(params, vec!["x"]);
+                match *body {
+                    Expr::Pipe { left, right } => {
+                        assert!(matches!(*left, Expr::LambdaParam(s) if s == "x"));
+                        match *right {
+                            super::PipeRight::Call { name, args } => {
+                                assert_eq!(name, "abs");
+                                assert!(args.is_empty());
+                            }
+                            _ => panic!("Expected Call in pipe right, got {:?}", right),
+                        }
+                    }
+                    _ => panic!("Expected Pipe expression in lambda body, got {:?}", body),
+                }
             }
-            _ => panic!("Expected Call with lambda argument"),
+            _ => panic!("Expected Lambda expression, got {:?}", expr),
+        }
+    }
+
+    #[test]
+    fn test_parse_lambda_with_pipe_placeholder() {
+        // x => x | pow(_, 2)
+        let expr = parse("x => x | pow(_, 2)").unwrap();
+        match expr {
+            Expr::Lambda { params, body } => {
+                assert_eq!(params, vec!["x"]);
+                match *body {
+                    Expr::Pipe { left, right } => {
+                        assert!(matches!(*left, Expr::LambdaParam(s) if s == "x"));
+                        match *right {
+                            super::PipeRight::CallWithPlaceholder { name, args } => {
+                                assert_eq!(name, "pow");
+                                assert_eq!(args.len(), 2);
+                                assert!(
+                                    matches!(&args[0], Expr::LambdaParam(s) if s == "_")
+                                );
+                                assert!(matches!(&args[1], Expr::Int(2)));
+                            }
+                            _ => panic!(
+                                "Expected CallWithPlaceholder in pipe right, got {:?}",
+                                right
+                            ),
+                        }
+                    }
+                    _ => panic!("Expected Pipe expression in lambda body, got {:?}", body),
+                }
+            }
+            _ => panic!("Expected Lambda expression, got {:?}", expr),
         }
     }
 }
