@@ -92,6 +92,18 @@ Alternatively, you can download individual files from the [docs/data](https://gi
 - **`bin`**: Discretize numeric values into bins (useful for histograms).
 - **`uniq`**: Deduplicate rows or count unique occurrences (supports equivalence classes).
 
+### [Expr Language](docs/expr.md)
+
+- **`expr`**: Evaluate expressions and output results.
+- **`map`**: Add new columns based on expressions.
+- **`mutate`**: Modify existing columns using expressions.
+
+### [Plotting](docs/plot.md)
+
+- **`plot point`**: Draw scatter plots or line charts in the terminal.
+- **`plot box`**: Draw box plots (box-and-whisker plots) in the terminal.
+- **`plot bin2d`**: Draw 2D histograms/heatmaps in the terminal.
+
 ### [Reshaping](docs/reshape.md)
 
 - **`longer`**: Reshape wide to long (unpivot). Requires a header row.
