@@ -1,4 +1,4 @@
-# Expression Operators
+# Expr Operators
 
 TVA provides a comprehensive set of operators for arithmetic, string, comparison, and logical operations.
 
@@ -208,11 +208,11 @@ Combine multiple operations:
 
 ```bash
 # Data transformation
-tva expr -n "data" -r "1,2,3,4,5" -E '
-    @data
-    | split(_, ",")
-    | map(_, x => int(x) * 2)
-    | join(_, "-")
+tva expr -n "data" -r "1|2|3|4|5" -E '
+    @data |
+    split(_, "|") |
+    map(_, x => int(x) * 2) |
+    join(_, "-")
 '
 # Returns: "2-4-6-8-10"
 
@@ -239,7 +239,7 @@ tva expr -E '(2 + 3) * 4'           # Returns: 20
 tva expr -E '5 > 3 and 10 < 20'     # Returns: true
 
 # Pipe has lowest precedence
-tva expr -E '1 + 2 | int()'         # Returns: 3 (not error)
+tva expr -E '1 + 2 | int()'         # Returns: 3
 ```
 
 ## Best Practices

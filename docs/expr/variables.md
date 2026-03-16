@@ -1,4 +1,4 @@
-# Expression Variables
+# Expr Variables
 
 TVA expressions support two kinds of `@`-prefixed identifiers: column references and variables.
 

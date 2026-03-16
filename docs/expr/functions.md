@@ -1,6 +1,6 @@
-# Expression Functions
+# Expr Functions
 
-TVA expression engine provides a rich set of built-in functions for data processing.
+TVA expr engine provides a rich set of built-in functions for data processing.
 
 ## Numeric Operations
 

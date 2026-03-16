@@ -1,4 +1,4 @@
-# Expression Literals
+# Expr Literals
 
 Literals represent constant values in expressions. TVA supports integers, floats, strings, booleans, null, and lists.
 
