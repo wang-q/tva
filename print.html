@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-02f814f1.js";
+            window.path_to_searchindex_js = "searchindex-623226b1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-5de396d1.js"></script>
@@ -620,25 +620,36 @@ compile times and high code complexity.</p>
 <p><strong>datamash (C)</strong>: Uses sort-based grouping with O(1) memory, but requires pre-sorted input.</p>
 <p><strong>dplyr (R)</strong>: Uses vectorized mask evaluation, but depends on columnar storage and is unsuitable
 for streaming.</p>
-<h2 id="tva-expression-design-principles"><a class="header" href="#tva-expression-design-principles">TVA Expression Design Principles</a></h2>
-<p>The expression language in <code>tva</code> follows these core design principles:</p>
+<h2 id="expr-language"><a class="header" href="#expr-language">Expr Language</a></h2>
+<p>TVA’s Expr language is designed for concise, shell-friendly data processing:</p>
+<pre><code>Source → Pest Parser → AST (Expr) → Direct Interpretation (eval)
+              ↑______________________________↓
+                    (Parse Cache)
+</code></pre>
+<h3 id="design-principles"><a class="header" href="#design-principles">Design Principles</a></h3>
 <ul>
-<li><strong>Conciseness</strong>: Syntax should be as short as possible for common operations (like column
-references).</li>
-<li><strong>Type-aware</strong>: Able to recognize numbers, dates, etc. when needed, but treats data as byte
-strings by default for speed.</li>
-<li><strong>Shell-friendly</strong>: Syntax avoids conflicts with Shell special characters (like <code>$</code>, <code>!</code>,
-<code>`</code>), reducing user escaping burden. Since expressions typically run in command lines and are
-wrapped in quotes, they should avoid triggering Shell variable substitution (like <code>$var</code>).</li>
-<li><strong>Streaming</strong>: Expressions are evaluated row-by-row with no global state, suitable for big data
-processing.</li>
-<li><strong>Error Handling</strong>: Defaults to permissive mode where invalid operations return <code>null</code> instead of
-errors, but can be changed via strict mode switches.</li>
-<li><strong>Consistency</strong>: Maintains similarity with existing tools (like jq, xan) to reduce learning costs.</li>
-<li><strong>Parallel Compatible</strong>: When users need parallel processing, it’s typically <code>parallel</code> calling
-<code>tva</code> (e.g., <code>parallel "tva ... {}"</code>), so <code>tva</code>’s internal syntax should not interfere with
-<code>parallel</code>’s parameter replacement mechanism.</li>
+<li><strong>Conciseness</strong>: Short syntax for common operations (e.g., <code>@1</code>, <code>@name</code> for column references).</li>
+<li><strong>Shell-friendly</strong>: Avoids conflicts with Shell special characters (<code>$</code>, <code>`</code>, <code>!</code>).</li>
+<li><strong>Streaming</strong>: Row-by-row evaluation with no global state, suitable for big data.</li>
+<li><strong>Type-aware</strong>: Recognizes numbers/dates when needed, treats data as strings by default for speed.</li>
+<li><strong>Error Handling</strong>: Defaults to permissive mode (invalid operations return <code>null</code>).</li>
+<li><strong>Consistency</strong>: Similar to jq/xan to reduce learning costs.</li>
 </ul>
+<h3 id="expr-engine-optimizations"><a class="header" href="#expr-engine-optimizations">Expr Engine Optimizations</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Optimization</th><th style="text-align: left">Technique</th><th style="text-align: left">Speedup</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Global Function Registry</td><td style="text-align: left"><code>OnceLock</code> static registry</td><td style="text-align: left">35-57x</td></tr>
+<tr><td style="text-align: left">Parse Cache</td><td style="text-align: left"><code>HashMap&lt;String, Expr&gt;</code> caching</td><td style="text-align: left">12x</td></tr>
+<tr><td style="text-align: left">Column Name Resolution</td><td style="text-align: left">Compile-time name→index conversion</td><td style="text-align: left">3x</td></tr>
+<tr><td style="text-align: left">Constant Folding</td><td style="text-align: left">Compile-time constant evaluation</td><td style="text-align: left">10x</td></tr>
+<tr><td style="text-align: left">HashMap (ahash)</td><td style="text-align: left">Faster HashMap implementation</td><td style="text-align: left">6%</td></tr>
+</tbody>
+</table>
+</div>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="性能基准测试计划"><a class="header" href="#性能基准测试计划">性能基准测试计划</a></h1>
 <p>我们旨在重现 <a href="https://github.com/eBay/tsv-utils/blob/master/docs/comparative-benchmarks-2017.md">tsv-utils</a> 使用的严格基准测试策略。</p>
@@ -944,8 +955,8 @@ print('Plot saved to benchmark_plot.png')
     --warmup 3 \
     --min-runs 10 \
     --export-csv expr_filter.csv \
-    -n "tva expr" "tva expr -H -s -E 'if(@carat &gt; 1 and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv &gt; /dev/null" \
-    -n "tva filter" "tva filter -H --gt carat:1 --lt price:3000 docs/data/diamonds.tsv &gt; /dev/null"
+    -n "tva expr" "tva expr -H -s -E 'if(@carat &gt; 1 and @cut eq q(Premium) and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tva filter" "tva filter -H --gt carat:1 --str-eq cut:Premium --lt price:3000 docs/data/diamonds.tsv &gt; /dev/null"
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="selection--sampling-documentation"><a class="header" href="#selection--sampling-documentation">Selection &amp; Sampling Documentation</a></h1>
@@ -2621,6 +2632,9 @@ tva expr -E '42 + 3.14'
 tva expr -E '"hello" | upper()'
 # Output: HELLO
 
+# Using higher-order functions
+tva expr -E "map([1,2,3,4,5], x =&gt; x * x)"
+# Output: [1, 4, 9, 16, 25]
 </code></pre>
 <h2 id="topics"><a class="header" href="#topics">Topics</a></h2>
 <h3 id="literals"><a class="header" href="#literals"><a href="literals.html">Literals</a></a></h3>
@@ -2683,7 +2697,7 @@ tva expr -E '"hello" | upper()'
 <p>Note: Use <code>tva filter</code> for simple filtering—it’s ~2x faster. Use <code>tva expr --skip-null</code>
 only when you need features <code>tva filter</code> doesn’t support (functions, complex expressions, etc.).</p>
 <h2 id="basic-usage-8"><a class="header" href="#basic-usage-8">Basic Usage</a></h2>
-<h3 id="tva-expr---evaluate-expression-to-new-row"><a class="header" href="#tva-expr---evaluate-expression-to-new-row"><code>tva expr</code> - Evaluate Expression to New Row</a></h3>
+<h3 id="tva-expr---evaluate-expressions-to-new-row"><a class="header" href="#tva-expr---evaluate-expressions-to-new-row"><code>tva expr</code> - Evaluate Expressions to New Row</a></h3>
 <p>Evaluates expression for each row and outputs the expression result as a new row (original row
 structure is discarded).</p>
 <pre><code class="language-bash"># Simple arithmetic expression
@@ -3205,9 +3219,8 @@ tva expr -E 'if(@email == null, "no-email", @email)' -n 'email' -r '' -r 'user@t
 <p>Strings can be enclosed in single or double quotes:</p>
 <pre><code class="language-bash">tva expr -E '"hello"'              # Double quotes
 tva expr -E "'hello'"              # Single quotes (in shell)
-tva expr -E '`hello`'              # Backtick quotes
 </code></pre>
-<h3 id="string-escape-sequences"><a class="header" href="#string-escape-sequences">String Escape Sequences</a></h3>
+<p>In regular quoted strings, these escape sequences are recognized:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -3218,15 +3231,33 @@ tva expr -E '`hello`'              # Backtick quotes
 <tr><td style="text-align: left"><code>\t</code></td><td style="text-align: left">Tab</td><td style="text-align: left"><code>"col1\tcol2"</code></td></tr>
 <tr><td style="text-align: left"><code>\r</code></td><td style="text-align: left">Carriage return</td><td style="text-align: left"><code>"\r\n"</code> (Windows line ending)</td></tr>
 <tr><td style="text-align: left"><code>\\</code></td><td style="text-align: left">Backslash</td><td style="text-align: left"><code>"C:\\Users\\name"</code></td></tr>
-<tr><td style="text-align: left"><code>\"</code></td><td style="text-align: left">Double quote</td><td style="text-align: left"><code>"say \"hello\""</code></td></tr>
-<tr><td style="text-align: left"><code>\'</code></td><td style="text-align: left">Single quote</td><td style="text-align: left"><code>'it\'s ok'</code></td></tr>
+<tr><td style="text-align: left"><code>\"</code></td><td style="text-align: left">Double quote</td><td style="text-align: left"><code>q(say "hello")</code> (or <code>"say \"hello\""</code> in code)</td></tr>
+<tr><td style="text-align: left"><code>\'</code></td><td style="text-align: left">Single quote</td><td style="text-align: left"><code>q(it's ok)</code> (or <code>'it\'s ok'</code> in code)</td></tr>
 </tbody>
 </table>
 </div>
 <pre><code class="language-bash"># Using escape sequences
 tva expr -E '"line1\nline2"'        # Contains newline
 tva expr -E '"col1\tcol2"'          # Contains tab
-tva expr -E '"say \"hello\""'      # Contains quotes
+
+</code></pre>
+<h3 id="the-q-string"><a class="header" href="#the-q-string">The <code>q()</code> string</a></h3>
+<p>For strings containing both single and double quotes, use the <code>q()</code> operator
+(like Perl’s q//). Content inside <code>q()</code> is taken literally, only <code>\(</code>, <code>\)</code>,
+and <code>\\</code> need escaping:</p>
+<pre><code class="language-bash"># No need to escape quotes inside q()
+tva expr -E 'q(He said "It is ok!")'     # Returns: He said "It is ok!"
+tva expr -E "q(it's a 'test')"            # Returns: it's a 'test'
+
+# For strings containing quotes, q() is often easier:
+tva expr -E 'q(say "hello")'        # No need to escape quotes
+tva expr -E "q(it's ok)"            # No need to escape quotes
+
+# Escaping parentheses
+tva expr -E 'q(test \(nested\) parens)'   # Returns: test (nested) parens
+
+tva expr -H -s -E '@cut eq "Premium"' docs/data/diamonds.tsv
+tva expr -H -s -E '@cut eq q(Premium)' docs/data/diamonds.tsv
 </code></pre>
 <h2 id="list-literals"><a class="header" href="#list-literals">List Literals</a></h2>
 <p>Lists are ordered collections that can contain elements of any type:</p>
@@ -3317,7 +3348,7 @@ tva expr -E 'map([1, 2, 3], () =&gt; 42)'
 <tr><td style="text-align: left"><code>@0</code></td><td style="text-align: left">Entire row content (all columns joined with tabs)</td><td style="text-align: left"><code>@0</code></td></tr>
 <tr><td style="text-align: left"><code>@1</code>, <code>@2</code></td><td style="text-align: left">1-based column index</td><td style="text-align: left"><code>@1</code> is the first column</td></tr>
 <tr><td style="text-align: left"><code>@col_name</code></td><td style="text-align: left">Column name reference</td><td style="text-align: left"><code>@price</code> references the price column</td></tr>
-<tr><td style="text-align: left"><code>@"col name"</code></td><td style="text-align: left">Column name with spaces</td><td style="text-align: left"><code>@"user name"</code> references column “user name”</td></tr>
+<tr><td style="text-align: left"><code>@"col name"</code> or <code>@'col name'</code></td><td style="text-align: left">Column name with spaces</td><td style="text-align: left"><code>@"user name"</code> references column “user name”</td></tr>
 </tbody>
 </table>
 </div>
@@ -3348,18 +3379,9 @@ tva expr -n "a,b,c" -r "1,2,3" -E 'len(@0)'       # Returns: 5 (length of "1\t2\
 # Column name with spaces
 tva expr -n "user name" -r "John Doe" -E '@"user name"'  # Returns: John Doe
 </code></pre>
-<h3 id="variable-shadowing"><a class="header" href="#variable-shadowing">Variable Shadowing</a></h3>
-<p>Variables can shadow column references. When both a variable and a column have the same name,
-the variable takes precedence:</p>
-<pre><code class="language-bash"># Variable shadows column
-tva expr -n "price" -r "100" -E '
-    @price *2 as @price;     // Column @price (100) bound to variable @price
-    @price             // Variable @price (now 200)
-'
-# Returns: 200
-</code></pre>
 <h2 id="variable-binding-1"><a class="header" href="#variable-binding-1">Variable Binding</a></h2>
-<p>Use <code>as</code> keyword to bind expression results to variables for reuse:</p>
+<p>Use <code>as</code> keyword to bind expression results to variables. The <code>as</code> form returns the value of the expression,
+allowing it to be used in subsequent operations or piped to functions.</p>
 <pre><code class="language-bash"># Basic syntax: bind calculation result
 tva expr -n "price,qty,tax_rate" -r "10,5,0.1" -E '@price * @qty as @total; @total * (1 + @tax_rate)'
 # Returns: 55
@@ -3371,6 +3393,13 @@ tva expr -n "name" -r "John Smith" -E '@name | split(" ") as @parts; first(@part
 # Multiple variable bindings
 tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
 # Returns: 50
+
+# Binding with pipe operations
+tva expr -E '[1, 2, 3] as @list | len()'          # Returns: 3
+tva expr -E '[1, 2, 3] as @list | len()'          # Returns: 3
+
+# Chain method calls after binding
+tva expr -E '("hello" as @s).upper()'     # Returns: HELLO
 </code></pre>
 <h3 id="variable-scope"><a class="header" href="#variable-scope">Variable Scope</a></h3>
 <ul>
@@ -3379,7 +3408,14 @@ tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
 <li>Variables can shadow column references</li>
 <li>Variables can be rebound (reassigned)</li>
 </ul>
-<pre><code class="language-bash"># Variable rebinding
+<pre><code class="language-bash"># Variable shadows column
+tva expr -n "price" -r "100" -E '
+    @price *2 as @price;     // Column @price (100) bound to variable @price
+    @price             // Variable @price (now 200)
+'
+# Returns: 200
+
+# Variable rebinding
 tva expr -n "price" -r "10" -E '
     @price as @p;         # @p = 10
     @p * 2 as @p;         # @p = 20 (rebound)
@@ -3429,6 +3465,16 @@ tva expr -E '
 <li>Are lexically scoped</li>
 <li>Can capture variables from outer scope</li>
 </ul>
+<h2 id="expression-separator"><a class="header" href="#expression-separator">Expression Separator</a></h2>
+<p><code>;</code> - Separates multiple expressions. Expressions are evaluated in order, and the value of
+the last expression is returned.</p>
+<pre><code class="language-bash"># Multiple expressions: bind then use the variable
+tva expr -E '[1, 2, 3] as @list; @list | len()'  # Returns: 3
+
+# Calculate and reuse
+tva expr -E '@price * @qty as @total; @total * 1.1' -n "price,qty" -r "100,2"
+# Returns: 220 (100*2=200, then 200*1.1=220)
+</code></pre>
 <h2 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h2>
 <ol>
 <li><strong>Use descriptive variable names</strong>: <code>@total_price</code> instead of <code>@tp</code></li>
@@ -3774,6 +3820,7 @@ or null)</li>
 <li>filter(list, lambda) -&gt; list: Filter list elements</li>
 <li>reduce(list, init, lambda) -&gt; value: Reduce list to single value</li>
 <li>sort_by(list, lambda) -&gt; list: Sort list by lambda expression</li>
+<li>take_while(list, lambda) -&gt; list: Take elements while lambda is true</li>
 </ul>
 <pre><code class="language-bash"># Double each number
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
@@ -3814,6 +3861,18 @@ tva expr -E 'sort_by(["Banana", "apple", "Cherry"], s =&gt; lower(s))'
 # Sort by multiple criteria (composite key)
 tva expr -E 'sort_by([[2, "b"], [1, "c"], [1, "a"]], r =&gt; [r.nth(0), r.nth(1)])'
 # Returns: [[1, "a"], [1, "c"], [2, "b"]]
+
+# Take elements while condition is true
+tva expr -E 'take_while([1, 2, 3, 4, 5], x =&gt; x &lt; 4)'
+# Returns: [1, 2, 3]
+
+# Take elements from start while they are even
+tva expr -E 'take_while([2, 4, 6, 7, 8, 10], x =&gt; x % 2 == 0)'
+# Returns: [2, 4, 6]
+
+# Take strings while they start with "a"
+tva expr -E 'take_while(["apple", "apricot", "banana", "avocado"], s =&gt; s.starts_with("a"))'
+# Returns: ["apple", "apricot"]
 </code></pre>
 <h2 id="regular-expressions"><a class="header" href="#regular-expressions">Regular Expressions</a></h2>
 <p><em>Note: Regex operations can be expensive, use with caution.</em></p>
@@ -4134,17 +4193,6 @@ tva expr -n "price,qty" -r "10,5" -E '
 <h1 id="rosetta-code-examples"><a class="header" href="#rosetta-code-examples">Rosetta Code Examples</a></h1>
 <p>This document demonstrates the capabilities of TVA’s expression engine by implementing tasks
 from <a href="https://rosettacode.org/">Rosetta Code</a>.</p>
-<h2 id="basic-usage-9"><a class="header" href="#basic-usage-9">Basic Usage</a></h2>
-<p>Most examples use the <code>tva expr</code> command for standalone expression evaluation:</p>
-<pre><code class="language-bash"># Simple arithmetic
-tva expr -E "2 + 3.14"
-
-# With input data
-tva expr -n "x,y" -r "3,4" -E "@x * @y"
-
-# Using higher-order functions
-tva expr -E "map([1,2,3,4,5], x =&gt; x * x)"
-</code></pre>
 <h2 id="tasks"><a class="header" href="#tasks">Tasks</a></h2>
 <h3 id="hello-world"><a class="header" href="#hello-world">Hello World</a></h3>
 <p>Display the string “Hello world!” on a text console.</p>
@@ -4323,8 +4371,8 @@ over: 1
 <h3 id="sieve-of-eratosthenes"><a class="header" href="#sieve-of-eratosthenes">Sieve of Eratosthenes</a></h3>
 <p>Implement the Sieve of Eratosthenes algorithm, with the only allowed optimization that the outer loop can stop at the square root of the limit, and the inner loop may start at the square of the prime just found.</p>
 <p>Find all prime numbers up to 100:</p>
-<pre><code class="language-bash">tva expr -E '
-100 as @limit;
+<pre><code class="language-bash">tva expr  -r '100' -E '
+int(@1) as @limit;
 int(sqrt(@limit)) as @sqrt_limit;
 
 // Initialize: all numbers &gt;= 2 are potentially prime
@@ -4364,21 +4412,33 @@ filter(range(2, @limit + 1), n =&gt; @sieved.nth(n)) |
 <li>Optimization: inner loop starts at <code>p * p</code> (smaller multiples already marked)</li>
 </ul>
 <h3 id="greatest-common-divisor"><a class="header" href="#greatest-common-divisor">Greatest common divisor</a></h3>
-<p>Find the greatest common divisor   (GCD)   of two integers.</p>
-<h2 id="list"><a class="header" href="#list">list</a></h2>
-<p>进阶级（字符串、数据结构、算法）
-Sorting algorithms / Bubble sort / Quick sort
-Binary search
-Stack
-Queue
-Linked list / Reverse a linked list
-高级 / 工程级（文件、并发、经典问题）
-Read a file line by line
-CSV manipulation
-Concurrent computing / Print in order
-Towers of Hanoi
-Eight queens puzzle
-Conway’s Game of Life</p>
+<p>Find the greatest common divisor (GCD) of two integers.</p>
+<p>Using <code>take_while()</code> to find the GCD by searching from largest to smallest:</p>
+<pre><code class="language-bash"># GCD of 48 and 18: gcd(48, 18) = 6
+tva expr -r '48,18' -E '
+int(@1) as @a;
+int(@2) as @b;
+min(@a, @b) as @limit;
+
+// Generate candidates from largest to smallest
+reverse(range(1, @limit + 1)) as @candidates;
+
+// Take while we haven not found a common divisor yet
+// Then get the first one that is a common divisor
+take_while(@candidates, d =&gt; @a % d != 0 or @b % d != 0) as @not_common;
+len(@not_common) as @skip_count;
+nth(@candidates, @skip_count)
+'
+</code></pre>
+<p>Output:</p>
+<pre><code>6
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li><code>take_while()</code> to skip non-divisors until finding the GCD</li>
+<li><code>reverse()</code> to search from largest to smallest for efficiency</li>
+<li><code>nth()</code> with calculated offset to extract the first matching element</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="other-tools-analysis"><a class="header" href="#other-tools-analysis">Other Tools Analysis</a></h1>
 <p>This document analyzes existing solutions for data processing expression languages, providing

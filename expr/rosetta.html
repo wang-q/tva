@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-02f814f1.js";
+            window.path_to_searchindex_js = "../searchindex-623226b1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5de396d1.js"></script>
@@ -183,17 +183,6 @@
                         <h1 id="rosetta-code-examples"><a class="header" href="#rosetta-code-examples">Rosetta Code Examples</a></h1>
 <p>This document demonstrates the capabilities of TVA’s expression engine by implementing tasks
 from <a href="https://rosettacode.org/">Rosetta Code</a>.</p>
-<h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
-<p>Most examples use the <code>tva expr</code> command for standalone expression evaluation:</p>
-<pre><code class="language-bash"># Simple arithmetic
-tva expr -E "2 + 3.14"
-
-# With input data
-tva expr -n "x,y" -r "3,4" -E "@x * @y"
-
-# Using higher-order functions
-tva expr -E "map([1,2,3,4,5], x =&gt; x * x)"
-</code></pre>
 <h2 id="tasks"><a class="header" href="#tasks">Tasks</a></h2>
 <h3 id="hello-world"><a class="header" href="#hello-world">Hello World</a></h3>
 <p>Display the string “Hello world!” on a text console.</p>
@@ -372,8 +361,8 @@ over: 1
 <h3 id="sieve-of-eratosthenes"><a class="header" href="#sieve-of-eratosthenes">Sieve of Eratosthenes</a></h3>
 <p>Implement the Sieve of Eratosthenes algorithm, with the only allowed optimization that the outer loop can stop at the square root of the limit, and the inner loop may start at the square of the prime just found.</p>
 <p>Find all prime numbers up to 100:</p>
-<pre><code class="language-bash">tva expr -E '
-100 as @limit;
+<pre><code class="language-bash">tva expr  -r '100' -E '
+int(@1) as @limit;
 int(sqrt(@limit)) as @sqrt_limit;
 
 // Initialize: all numbers &gt;= 2 are potentially prime
@@ -413,21 +402,33 @@ filter(range(2, @limit + 1), n =&gt; @sieved.nth(n)) |
 <li>Optimization: inner loop starts at <code>p * p</code> (smaller multiples already marked)</li>
 </ul>
 <h3 id="greatest-common-divisor"><a class="header" href="#greatest-common-divisor">Greatest common divisor</a></h3>
-<p>Find the greatest common divisor   (GCD)   of two integers.</p>
-<h2 id="list"><a class="header" href="#list">list</a></h2>
-<p>进阶级（字符串、数据结构、算法）
-Sorting algorithms / Bubble sort / Quick sort
-Binary search
-Stack
-Queue
-Linked list / Reverse a linked list
-高级 / 工程级（文件、并发、经典问题）
-Read a file line by line
-CSV manipulation
-Concurrent computing / Print in order
-Towers of Hanoi
-Eight queens puzzle
-Conway’s Game of Life</p>
+<p>Find the greatest common divisor (GCD) of two integers.</p>
+<p>Using <code>take_while()</code> to find the GCD by searching from largest to smallest:</p>
+<pre><code class="language-bash"># GCD of 48 and 18: gcd(48, 18) = 6
+tva expr -r '48,18' -E '
+int(@1) as @a;
+int(@2) as @b;
+min(@a, @b) as @limit;
+
+// Generate candidates from largest to smallest
+reverse(range(1, @limit + 1)) as @candidates;
+
+// Take while we haven not found a common divisor yet
+// Then get the first one that is a common divisor
+take_while(@candidates, d =&gt; @a % d != 0 or @b % d != 0) as @not_common;
+len(@not_common) as @skip_count;
+nth(@candidates, @skip_count)
+'
+</code></pre>
+<p>Output:</p>
+<pre><code>6
+</code></pre>
+<p>This demonstrates:</p>
+<ul>
+<li><code>take_while()</code> to skip non-divisors until finding the GCD</li>
+<li><code>reverse()</code> to search from largest to smallest for efficiency</li>
+<li><code>nth()</code> with calculated offset to extract the first matching element</li>
+</ul>
 
                     </main>
 

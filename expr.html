@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-02f814f1.js";
+            window.path_to_searchindex_js = "searchindex-623226b1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-5de396d1.js"></script>
@@ -193,6 +193,9 @@ tva expr -E '42 + 3.14'
 tva expr -E '"hello" | upper()'
 # Output: HELLO
 
+# Using higher-order functions
+tva expr -E "map([1,2,3,4,5], x =&gt; x * x)"
+# Output: [1, 4, 9, 16, 25]
 </code></pre>
 <h2 id="topics"><a class="header" href="#topics">Topics</a></h2>
 <h3 id="literals"><a class="header" href="#literals"><a href="literals.html">Literals</a></a></h3>
@@ -255,7 +258,7 @@ tva expr -E '"hello" | upper()'
 <p>Note: Use <code>tva filter</code> for simple filtering—it’s ~2x faster. Use <code>tva expr --skip-null</code>
 only when you need features <code>tva filter</code> doesn’t support (functions, complex expressions, etc.).</p>
 <h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
-<h3 id="tva-expr---evaluate-expression-to-new-row"><a class="header" href="#tva-expr---evaluate-expression-to-new-row"><code>tva expr</code> - Evaluate Expression to New Row</a></h3>
+<h3 id="tva-expr---evaluate-expressions-to-new-row"><a class="header" href="#tva-expr---evaluate-expressions-to-new-row"><code>tva expr</code> - Evaluate Expressions to New Row</a></h3>
 <p>Evaluates expression for each row and outputs the expression result as a new row (original row
 structure is discarded).</p>
 <pre><code class="language-bash"># Simple arithmetic expression

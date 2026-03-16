@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-02f814f1.js";
+            window.path_to_searchindex_js = "../searchindex-623226b1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5de396d1.js"></script>
@@ -291,9 +291,8 @@ tva expr -E 'if(@email == null, "no-email", @email)' -n 'email' -r '' -r 'user@t
 <p>Strings can be enclosed in single or double quotes:</p>
 <pre><code class="language-bash">tva expr -E '"hello"'              # Double quotes
 tva expr -E "'hello'"              # Single quotes (in shell)
-tva expr -E '`hello`'              # Backtick quotes
 </code></pre>
-<h3 id="string-escape-sequences"><a class="header" href="#string-escape-sequences">String Escape Sequences</a></h3>
+<p>In regular quoted strings, these escape sequences are recognized:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -304,15 +303,33 @@ tva expr -E '`hello`'              # Backtick quotes
 <tr><td style="text-align: left"><code>\t</code></td><td style="text-align: left">Tab</td><td style="text-align: left"><code>"col1\tcol2"</code></td></tr>
 <tr><td style="text-align: left"><code>\r</code></td><td style="text-align: left">Carriage return</td><td style="text-align: left"><code>"\r\n"</code> (Windows line ending)</td></tr>
 <tr><td style="text-align: left"><code>\\</code></td><td style="text-align: left">Backslash</td><td style="text-align: left"><code>"C:\\Users\\name"</code></td></tr>
-<tr><td style="text-align: left"><code>\"</code></td><td style="text-align: left">Double quote</td><td style="text-align: left"><code>"say \"hello\""</code></td></tr>
-<tr><td style="text-align: left"><code>\'</code></td><td style="text-align: left">Single quote</td><td style="text-align: left"><code>'it\'s ok'</code></td></tr>
+<tr><td style="text-align: left"><code>\"</code></td><td style="text-align: left">Double quote</td><td style="text-align: left"><code>q(say "hello")</code> (or <code>"say \"hello\""</code> in code)</td></tr>
+<tr><td style="text-align: left"><code>\'</code></td><td style="text-align: left">Single quote</td><td style="text-align: left"><code>q(it's ok)</code> (or <code>'it\'s ok'</code> in code)</td></tr>
 </tbody>
 </table>
 </div>
 <pre><code class="language-bash"># Using escape sequences
 tva expr -E '"line1\nline2"'        # Contains newline
 tva expr -E '"col1\tcol2"'          # Contains tab
-tva expr -E '"say \"hello\""'      # Contains quotes
+
+</code></pre>
+<h3 id="the-q-string"><a class="header" href="#the-q-string">The <code>q()</code> string</a></h3>
+<p>For strings containing both single and double quotes, use the <code>q()</code> operator
+(like Perl’s q//). Content inside <code>q()</code> is taken literally, only <code>\(</code>, <code>\)</code>,
+and <code>\\</code> need escaping:</p>
+<pre><code class="language-bash"># No need to escape quotes inside q()
+tva expr -E 'q(He said "It is ok!")'     # Returns: He said "It is ok!"
+tva expr -E "q(it's a 'test')"            # Returns: it's a 'test'
+
+# For strings containing quotes, q() is often easier:
+tva expr -E 'q(say "hello")'        # No need to escape quotes
+tva expr -E "q(it's ok)"            # No need to escape quotes
+
+# Escaping parentheses
+tva expr -E 'q(test \(nested\) parens)'   # Returns: test (nested) parens
+
+tva expr -H -s -E '@cut eq "Premium"' docs/data/diamonds.tsv
+tva expr -H -s -E '@cut eq q(Premium)' docs/data/diamonds.tsv
 </code></pre>
 <h2 id="list-literals"><a class="header" href="#list-literals">List Literals</a></h2>
 <p>Lists are ordered collections that can contain elements of any type:</p>

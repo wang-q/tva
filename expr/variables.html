@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-02f814f1.js";
+            window.path_to_searchindex_js = "../searchindex-623226b1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5de396d1.js"></script>
@@ -193,7 +193,7 @@
 <tr><td style="text-align: left"><code>@0</code></td><td style="text-align: left">Entire row content (all columns joined with tabs)</td><td style="text-align: left"><code>@0</code></td></tr>
 <tr><td style="text-align: left"><code>@1</code>, <code>@2</code></td><td style="text-align: left">1-based column index</td><td style="text-align: left"><code>@1</code> is the first column</td></tr>
 <tr><td style="text-align: left"><code>@col_name</code></td><td style="text-align: left">Column name reference</td><td style="text-align: left"><code>@price</code> references the price column</td></tr>
-<tr><td style="text-align: left"><code>@"col name"</code></td><td style="text-align: left">Column name with spaces</td><td style="text-align: left"><code>@"user name"</code> references column “user name”</td></tr>
+<tr><td style="text-align: left"><code>@"col name"</code> or <code>@'col name'</code></td><td style="text-align: left">Column name with spaces</td><td style="text-align: left"><code>@"user name"</code> references column “user name”</td></tr>
 </tbody>
 </table>
 </div>
@@ -224,18 +224,9 @@ tva expr -n "a,b,c" -r "1,2,3" -E 'len(@0)'       # Returns: 5 (length of "1\t2\
 # Column name with spaces
 tva expr -n "user name" -r "John Doe" -E '@"user name"'  # Returns: John Doe
 </code></pre>
-<h3 id="variable-shadowing"><a class="header" href="#variable-shadowing">Variable Shadowing</a></h3>
-<p>Variables can shadow column references. When both a variable and a column have the same name,
-the variable takes precedence:</p>
-<pre><code class="language-bash"># Variable shadows column
-tva expr -n "price" -r "100" -E '
-    @price *2 as @price;     // Column @price (100) bound to variable @price
-    @price             // Variable @price (now 200)
-'
-# Returns: 200
-</code></pre>
 <h2 id="variable-binding"><a class="header" href="#variable-binding">Variable Binding</a></h2>
-<p>Use <code>as</code> keyword to bind expression results to variables for reuse:</p>
+<p>Use <code>as</code> keyword to bind expression results to variables. The <code>as</code> form returns the value of the expression,
+allowing it to be used in subsequent operations or piped to functions.</p>
 <pre><code class="language-bash"># Basic syntax: bind calculation result
 tva expr -n "price,qty,tax_rate" -r "10,5,0.1" -E '@price * @qty as @total; @total * (1 + @tax_rate)'
 # Returns: 55
@@ -247,6 +238,13 @@ tva expr -n "name" -r "John Smith" -E '@name | split(" ") as @parts; first(@part
 # Multiple variable bindings
 tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
 # Returns: 50
+
+# Binding with pipe operations
+tva expr -E '[1, 2, 3] as @list | len()'          # Returns: 3
+tva expr -E '[1, 2, 3] as @list | len()'          # Returns: 3
+
+# Chain method calls after binding
+tva expr -E '("hello" as @s).upper()'     # Returns: HELLO
 </code></pre>
 <h3 id="variable-scope"><a class="header" href="#variable-scope">Variable Scope</a></h3>
 <ul>
@@ -255,7 +253,14 @@ tva expr -n "price,qty" -r "10,5" -E '@price as @p; @qty as @q; @p * @q'
 <li>Variables can shadow column references</li>
 <li>Variables can be rebound (reassigned)</li>
 </ul>
-<pre><code class="language-bash"># Variable rebinding
+<pre><code class="language-bash"># Variable shadows column
+tva expr -n "price" -r "100" -E '
+    @price *2 as @price;     // Column @price (100) bound to variable @price
+    @price             // Variable @price (now 200)
+'
+# Returns: 200
+
+# Variable rebinding
 tva expr -n "price" -r "10" -E '
     @price as @p;         # @p = 10
     @p * 2 as @p;         # @p = 20 (rebound)
@@ -305,6 +310,16 @@ tva expr -E '
 <li>Are lexically scoped</li>
 <li>Can capture variables from outer scope</li>
 </ul>
+<h2 id="expression-separator"><a class="header" href="#expression-separator">Expression Separator</a></h2>
+<p><code>;</code> - Separates multiple expressions. Expressions are evaluated in order, and the value of
+the last expression is returned.</p>
+<pre><code class="language-bash"># Multiple expressions: bind then use the variable
+tva expr -E '[1, 2, 3] as @list; @list | len()'  # Returns: 3
+
+# Calculate and reuse
+tva expr -E '@price * @qty as @total; @total * 1.1' -n "price,qty" -r "100,2"
+# Returns: 220 (100*2=200, then 200*1.1=220)
+</code></pre>
 <h2 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h2>
 <ol>
 <li><strong>Use descriptive variable names</strong>: <code>@total_price</code> instead of <code>@tp</code></li>

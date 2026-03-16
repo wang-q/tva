@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-02f814f1.js";
+            window.path_to_searchindex_js = "../searchindex-623226b1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5de396d1.js"></script>
@@ -308,6 +308,7 @@ or null)</li>
 <li>filter(list, lambda) -&gt; list: Filter list elements</li>
 <li>reduce(list, init, lambda) -&gt; value: Reduce list to single value</li>
 <li>sort_by(list, lambda) -&gt; list: Sort list by lambda expression</li>
+<li>take_while(list, lambda) -&gt; list: Take elements while lambda is true</li>
 </ul>
 <pre><code class="language-bash"># Double each number
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
@@ -348,6 +349,18 @@ tva expr -E 'sort_by(["Banana", "apple", "Cherry"], s =&gt; lower(s))'
 # Sort by multiple criteria (composite key)
 tva expr -E 'sort_by([[2, "b"], [1, "c"], [1, "a"]], r =&gt; [r.nth(0), r.nth(1)])'
 # Returns: [[1, "a"], [1, "c"], [2, "b"]]
+
+# Take elements while condition is true
+tva expr -E 'take_while([1, 2, 3, 4, 5], x =&gt; x &lt; 4)'
+# Returns: [1, 2, 3]
+
+# Take elements from start while they are even
+tva expr -E 'take_while([2, 4, 6, 7, 8, 10], x =&gt; x % 2 == 0)'
+# Returns: [2, 4, 6]
+
+# Take strings while they start with "a"
+tva expr -E 'take_while(["apple", "apricot", "banana", "avocado"], s =&gt; s.starts_with("a"))'
+# Returns: ["apple", "apricot"]
 </code></pre>
 <h2 id="regular-expressions"><a class="header" href="#regular-expressions">Regular Expressions</a></h2>
 <p><em>Note: Regex operations can be expensive, use with caution.</em></p>
