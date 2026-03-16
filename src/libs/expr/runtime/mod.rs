@@ -328,9 +328,11 @@ fn eval_pipe_right(
             let mut arg_values = Vec::new();
             // First arg is always the piped value in placeholder mode
             arg_values.push(piped_value);
-            // Add remaining args
+            // Add remaining args (skip placeholder entries as they are replaced by piped_value)
             for arg in args {
-                arg_values.push(eval(arg, ctx)?);
+                if !matches!(arg, Expr::LambdaParam(_)) {
+                    arg_values.push(eval(arg, ctx)?);
+                }
             }
             crate::libs::expr::functions::global_registry().call(name, &arg_values)
         }
@@ -977,6 +979,32 @@ mod tests {
         assert_eq!(
             eval(&expr, &mut ctx).unwrap(),
             Value::String("hello Rust".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pipe_with_explicit_placeholder() {
+        // Test pipe with explicit _ placeholder: [1,2,3] | join(_, ",")
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Pipe {
+            left: Box::new(Expr::List(vec![
+                Expr::Int(1),
+                Expr::Int(2),
+                Expr::Int(3),
+            ])),
+            right: Box::new(PipeRight::CallWithPlaceholder {
+                name: "join".to_string(),
+                args: vec![
+                    Expr::LambdaParam("_".to_string()), // Explicit placeholder
+                    Expr::String(",".to_string()),
+                ],
+            }),
+        };
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("1,2,3".to_string())
         );
     }
 
