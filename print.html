@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-623226b1.js";
+            window.path_to_searchindex_js = "searchindex-a071c799.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-5de396d1.js"></script>
@@ -248,6 +248,18 @@ cd tva
 <li><strong><code>stats</code></strong>: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.</li>
 <li><strong><code>bin</code></strong>: Discretize numeric values into bins (useful for histograms).</li>
 <li><strong><code>uniq</code></strong>: Deduplicate rows or count unique occurrences (supports equivalence classes).</li>
+</ul>
+<h3 id="expr-language"><a class="header" href="#expr-language"><a href="#tvas-expr-language-and-companions">Expr Language</a></a></h3>
+<ul>
+<li><strong><code>expr</code></strong>: Evaluate expressions and output results.</li>
+<li><strong><code>map</code></strong>: Add new columns based on expressions.</li>
+<li><strong><code>mutate</code></strong>: Modify existing columns using expressions.</li>
+</ul>
+<h3 id="plotting"><a class="header" href="#plotting"><a href="#plotting-documentation">Plotting</a></a></h3>
+<ul>
+<li><strong><code>plot point</code></strong>: Draw scatter plots or line charts in the terminal.</li>
+<li><strong><code>plot box</code></strong>: Draw box plots (box-and-whisker plots) in the terminal.</li>
+<li><strong><code>plot bin2d</code></strong>: Draw 2D histograms/heatmaps in the terminal.</li>
 </ul>
 <h3 id="reshaping"><a class="header" href="#reshaping"><a href="#reshaping-documentation">Reshaping</a></a></h3>
 <ul>
@@ -620,7 +632,7 @@ compile times and high code complexity.</p>
 <p><strong>datamash (C)</strong>: Uses sort-based grouping with O(1) memory, but requires pre-sorted input.</p>
 <p><strong>dplyr (R)</strong>: Uses vectorized mask evaluation, but depends on columnar storage and is unsuitable
 for streaming.</p>
-<h2 id="expr-language"><a class="header" href="#expr-language">Expr Language</a></h2>
+<h2 id="expr-language-1"><a class="header" href="#expr-language-1">Expr Language</a></h2>
 <p>TVA’s Expr language is designed for concise, shell-friendly data processing:</p>
 <pre><code>Source → Pest Parser → AST (Expr) → Direct Interpretation (eval)
               ↑______________________________↓
