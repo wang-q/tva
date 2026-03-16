@@ -332,22 +332,31 @@ compile times and high code complexity.
 **dplyr (R)**: Uses vectorized mask evaluation, but depends on columnar storage and is unsuitable
 for streaming.
 
-## TVA Expression Design Principles
+## Expr Language
 
-The expression language in `tva` follows these core design principles:
+TVA's Expr language is designed for concise, shell-friendly data processing:
 
-* **Conciseness**: Syntax should be as short as possible for common operations (like column
-  references).
-* **Type-aware**: Able to recognize numbers, dates, etc. when needed, but treats data as byte
-  strings by default for speed.
-* **Shell-friendly**: Syntax avoids conflicts with Shell special characters (like `$`, `!`,
-  `` ` ``), reducing user escaping burden. Since expressions typically run in command lines and are
-  wrapped in quotes, they should avoid triggering Shell variable substitution (like `$var`).
-* **Streaming**: Expressions are evaluated row-by-row with no global state, suitable for big data
-  processing.
-* **Error Handling**: Defaults to permissive mode where invalid operations return `null` instead of
-  errors, but can be changed via strict mode switches.
-* **Consistency**: Maintains similarity with existing tools (like jq, xan) to reduce learning costs.
-* **Parallel Compatible**: When users need parallel processing, it's typically `parallel` calling
-  `tva` (e.g., `parallel "tva ... {}"`), so `tva`'s internal syntax should not interfere with
-  `parallel`'s parameter replacement mechanism.
+```
+Source → Pest Parser → AST (Expr) → Direct Interpretation (eval)
+              ↑______________________________↓
+                    (Parse Cache)
+```
+
+### Design Principles
+
+* **Conciseness**: Short syntax for common operations (e.g., `@1`, `@name` for column references).
+* **Shell-friendly**: Avoids conflicts with Shell special characters (`$`, `` ` ``, `!`).
+* **Streaming**: Row-by-row evaluation with no global state, suitable for big data.
+* **Type-aware**: Recognizes numbers/dates when needed, treats data as strings by default for speed.
+* **Error Handling**: Defaults to permissive mode (invalid operations return `null`).
+* **Consistency**: Similar to jq/xan to reduce learning costs.
+
+### Expr Engine Optimizations
+
+| Optimization | Technique | Speedup |
+|:-------------|:----------|:--------|
+| Global Function Registry | `OnceLock` static registry | 35-57x |
+| Parse Cache | `HashMap<String, Expr>` caching | 12x |
+| Column Name Resolution | Compile-time name→index conversion | 3x |
+| Constant Folding | Compile-time constant evaluation | 10x |
+| HashMap (ahash) | Faster HashMap implementation | 6% |
