@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a071c799.js";
+            window.path_to_searchindex_js = "searchindex-ecbcf40d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-5de396d1.js"></script>
@@ -4273,11 +4273,30 @@ tva expr -E 'reduce(range(1, 6), 1, (acc, n) =&gt; acc * n)'
 <pre><code>120
 </code></pre>
 <p>Computing factorials for 0 through 10:</p>
-<pre><code class="language-bash">tva expr -E 'map(
+<pre><code class="language-bash">tva expr -E '
+map(
     range(0, 11),
-    n =&gt; if(n == 0, 1, 
-        reduce(range(1, n + 1), 1, (acc, x) =&gt; acc * x))
-) | join(_, "\n")'
+    n =&gt; 
+        if(
+            n == 0,
+            1, 
+            reduce(range(1, n + 1), 1, (acc, x) =&gt; acc * x)
+        )
+) | join(_, "\n")
+'
+
+tva expr -E '
+range(0, 11)
+.map(n =&gt; 
+    if(
+        n == 0,
+        1, 
+        reduce(range(1, n + 1), 1, (acc, x) =&gt; acc * x)
+    )
+)
+.join("\n")
+'
+
 </code></pre>
 <p>This demonstrates:</p>
 <ul>
