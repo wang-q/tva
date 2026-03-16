@@ -2,6 +2,8 @@
 
 ## Unreleased - ReleaseDate
 
+## 0.3.0 - 2026-03-16
+
 ### Added
 
 #### Expr Language (`expr` command)
