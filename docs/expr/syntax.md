@@ -92,7 +92,6 @@ Lambda expressions create anonymous functions, primarily used with higher-order 
 |:-----|:-------|:--------|
 | Single parameter | `param => expr` | `x => x + 1` |
 | Multiple parameters | `(p1, p2, ...) => expr` | `(x, y) => x + y` |
-| No parameters | `() => expr` | `() => 42` |
 
 **Note**: Lambda parameters are **lexically scoped** and do not use the `@` prefix. This
 distinguishes them from column references (`@col`) and variables (`@var`).

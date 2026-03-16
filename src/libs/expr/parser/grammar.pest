@@ -40,7 +40,7 @@ null = { "null" }
 // Column References and Variables
 // ============================================
 
-// @1, @2, @name, @"col name", @'col name', @`col name`
+// @1, @2, @name, @"col name", @'col name'
 // For numeric refs like @123abc, only the numeric part is used as index
 column_ref = ${ "@" ~ (int ~ ident? | ident | quoted_col_name) }
 

@@ -6,7 +6,7 @@ Literals represent constant values in expressions. TVA supports integers, floats
 
 | Type | Syntax | Examples |
 |:-----|:-------|:---------|
-| Integer | Digit sequence | `42`, `-10`, `1_000_000` |
+| Integer | Digit sequence | `42`, `-10` |
 | Float | Decimal point or exponent | `3.14`, `-0.5`, `1e10` |
 | String | Single or double quotes | `"hello"`, `'world'` |
 | Boolean | `true` / `false` | `true`, `false` |
