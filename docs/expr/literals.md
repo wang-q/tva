@@ -204,13 +204,6 @@ tva expr -E '-10'                   # Negative integer
 tva expr -E '0'                     # Zero
 ```
 
-Underscores can be used as digit separators for readability:
-
-```bash
-tva expr -E '1_000_000'             # One million
-tva expr -E '1_000_000_000'         # One billion
-```
-
 ## Float Literals
 
 Floats are 64-bit IEEE 754 floating-point numbers:
@@ -254,7 +247,4 @@ tva expr -E 'map([1, 2, 3], x => x + 1)'
 
 # Multiple parameters
 tva expr -E 'reduce([1, 2, 3], 0, (acc, x) => acc + x)'
-
-# No parameters
-tva expr -E 'map([1, 2, 3], () => 42)'
 ```
