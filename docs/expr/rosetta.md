@@ -235,8 +235,8 @@ Implement the Sieve of Eratosthenes algorithm, with the only allowed optimizatio
 Find all prime numbers up to 100:
 
 ```bash
-tva expr -E '
-100 as @limit;
+tva expr  -r '100' -E '
+int(@1) as @limit;
 int(sqrt(@limit)) as @sqrt_limit;
 
 // Initialize: all numbers >= 2 are potentially prime
@@ -283,30 +283,41 @@ This demonstrates:
 
 Find the greatest common divisor (GCD) of two integers.
 
+Using `take_while()` to find the GCD by searching from largest to smallest:
+
 ```bash
-# Unrolled Euclidean algorithm (4 iterations)
-# For 48 and 18: GCD is 6
-tva expr -n "a,b" -r "48,18" -E '
-  @a as @x0; @b as @y0;
-  if(@y0 == 0, @x0, (@x0 % @y0 as @x1; @y0 as @y1;
-  if(@y1 == 0, @x1, (@x1 % @y1 as @x2; @y1 as @y2;
-  if(@y2 == 0, @x2, (@x2 % @y2 as @x3; @y2 as @y3;
-  if(@y3 == 0, @x3, "...")))))))
+# GCD of 48 and 18: gcd(48, 18) = 6
+tva expr  -r '48,18' -E '
+int(@1) as @a;
+int(@2) as @b;
+min(@a, @b) as @limit;
+
+// Generate candidates from largest to smallest
+reverse(range(1, @limit + 1)) as @candidates;
+
+// Take while we haven not found a common divisor yet
+// Then get the first one that is a common divisor
+take_while(@candidates, d => @a % d != 0 or @b % d != 0) as @not_common;
+len(@not_common) as @skip_count;
+nth(@candidates, @skip_count)
 '
 ```
+
+Output:
+
+```
+6
+```
+
+This demonstrates:
+
+- `take_while()` to skip non-divisors until finding the GCD
+- `reverse()` to search from largest to smallest for efficiency
+- `nth()` with calculated offset to extract the first matching element
 
 ## list
 
 进阶级（字符串、数据结构、算法）
-Sorting algorithms / Bubble sort / Quick sort
-Binary search
-Stack
-Queue
-Linked list / Reverse a linked list
-高级 / 工程级（文件、并发、经典问题）
-Read a file line by line
-CSV manipulation
-Concurrent computing / Print in order
 Towers of Hanoi
 Eight queens puzzle
 Conway's Game of Life
