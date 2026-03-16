@@ -5,8 +5,8 @@
 ## changelog
 
 ```bash
-git log v0.2.4..HEAD > gitlog.txt
-git diff v0.2.4 HEAD -- "*.rs" "*.md" > gitdiff.txt
+git log v0.2.5..HEAD > gitlog.txt
+git diff v0.2.5 HEAD -- "*.rs" "*.md" > gitdiff.txt
 
 ```
 

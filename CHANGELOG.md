@@ -2,6 +2,77 @@
 
 ## Unreleased - ReleaseDate
 
+### Added
+
+#### Expr Language (`expr` command)
+- **New `expr` command**: Expression evaluation command for TSV data processing with support for:
+    - Column references by name or index (`@NAME`, `@1`)
+    - Whole row reference (`@0`)
+    - Variables with persistence across rows (`@var`)
+    - Pipeline operator (`|`) for chaining operations
+    - Underscore placeholder (`_`) for piped values in multi-argument functions
+    - Lambda expressions with `map`, `filter`, `reduce` functions
+    - Method call syntax (`.upper()`, `.len()`)
+    - List literals and operations
+    - String, numeric, datetime, and hash functions
+    - Type checking functions (`is_null`, `is_string`, `is_number`, etc.)
+    - Meta functions for system info (`version`, `now`, `row`, etc.)
+    - Short-circuit evaluation for logical operators (`and`, `or`)
+    - String escape sequences and q-strings
+    - Range function for number sequence generation
+    - Sorting with `sort_by` and custom comparators
+    - `--skip-null` flag to filter null results
+    - Automatic header generation for expression output
+- **Expression Engine Library** (`src/libs/expr/`):
+    - **Parser** (`parser/`): Pest-based parser with modular builder pattern
+        - `grammar.pest`: PEG grammar definition
+        - `ast.rs`: AST node definitions with `Expr::Underscore` for placeholders
+        - `builder/`: Modular parser components (binary, unary, primary, postfix, lambda, literal)
+    - **Runtime** (`runtime/`): Expression evaluation engine
+        - `mod.rs`: Core interpreter with `EvalContext` and `last_value` support
+        - `value.rs`: Dynamic value type system with `Arc<str>` optimization
+    - **Functions** (`functions/`): Comprehensive function library
+        - `string.rs`: String manipulation (substr, replace, trim, etc.)
+        - `numeric.rs`: Math functions (abs, round, sqrt, trig, etc.)
+        - `datetime.rs`: Date/time parsing and formatting
+        - `hash.rs`: Hash functions (md5, sha256, base64)
+        - `list.rs`: List operations (map, filter, reduce, range, etc.)
+        - `logical.rs`: Type checking and logical operations
+        - `meta.rs`: System info functions
+        - `regex.rs`: Regular expression support
+        - `io.rs`: I/O functions (print, eprint)
+        - `mod.rs`: Function registry with arity tracking
+- **Two-stage compilation**: AST parsing with `ConcreteExpr` for optimized evaluation
+- **Performance optimizations**:
+    - Pre-resolved column names to indices
+    - Parse caching for repeated expressions
+    - Function call optimization
+    - Replaced `std::collections::HashMap` with `ahash` for better performance
+
+#### Documentation
+- **Expr Language Documentation**: Comprehensive documentation for the expr language:
+    - `docs/expr/design.md`: Design principles and syntax overview
+    - `docs/expr/functions.md`: Complete function reference
+    - `docs/expr/literals.md`: Literal types and syntax
+    - `docs/expr/operators.md`: Operators and precedence
+    - `docs/expr/rosetta.md`: Rosetta stone examples comparing with other tools
+
+#### Testing
+- **Comprehensive test coverage for expr engine**:
+    - Unit tests for parser, AST, and runtime modules
+    - Integration tests with real data files
+    - Tests for all function modules (string, numeric, datetime, hash, list)
+    - Edge case tests for numeric functions
+    - Expression parsing and evaluation tests
+    - Comprehensive documentation tests
+
+### Changed
+
+#### Refactoring
+- **Parser modularization**: Restructured expression parser into modular builder components
+- **Test consolidation**: Consolidated test files into module files for better organization
+- **Documentation restructure**: Reorganized expression documentation into separate files
+
 ## 0.2.5 - 2026-03-12
 
 ### Added
