@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-707969f9.js";
+            window.path_to_searchindex_js = "../searchindex-e7a07adc.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5de396d1.js"></script>
+        <script src="../toc-96593fed.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -287,6 +287,28 @@ tva expr -n "x" -r "100" -E '
     map([1, 2, 3], x =&gt; x + @y)  # Lambda param x shadows nothing; @y is variable
 '
 # Returns: [101, 102, 103]
+</code></pre>
+<h3 id="global-variables"><a class="header" href="#global-variables">Global Variables</a></h3>
+<p>Global variables start with <code>@__</code> and persist across rows. They are useful for accumulators and counters.</p>
+<ul>
+<li><code>@__index</code> - Current row index (1-based), auto-set per row</li>
+<li><code>@__file</code> - Current file path, auto-set per file</li>
+<li><code>@__xxx</code> - User-defined variables, initial value is <code>null</code> (use <code>default()</code> to initialize)</li>
+</ul>
+<p><strong>Global variables vs regular variables:</strong></p>
+<ul>
+<li>Regular variables (<code>as @var</code>) are cleared for each new row</li>
+<li>Global variables (<code>@__xxx</code>) persist across rows within the same file</li>
+</ul>
+<pre><code class="language-bash"># Accumulator pattern: sum all values
+# Use default() to initialize on first row
+tva expr -E 'default(@__sum, 0) + @1 as @__sum' input.tsv
+
+# Counter with default() initialization
+tva expr -E 'default(@__counter, 0) + 1 as @__counter' input.tsv
+
+# Collect all file names processed (string concatenation)
+tva expr -E 'default(@__files, "") ++ @__file ++ "," as @__files' file1.tsv file2.tsv file3.tsv
 </code></pre>
 <h2 id="lambda-parameters"><a class="header" href="#lambda-parameters">Lambda Parameters</a></h2>
 <p>Lambda expressions introduce their own parameter scope:</p>

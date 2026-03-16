@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-707969f9.js";
+            window.path_to_searchindex_js = "../searchindex-e7a07adc.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5de396d1.js"></script>
+        <script src="../toc-96593fed.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -189,7 +189,7 @@
 <tr><th style="text-align: left">Type</th><th style="text-align: left">Syntax</th><th style="text-align: left">Examples</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left">Integer</td><td style="text-align: left">Digit sequence</td><td style="text-align: left"><code>42</code>, <code>-10</code>, <code>1_000_000</code></td></tr>
+<tr><td style="text-align: left">Integer</td><td style="text-align: left">Digit sequence</td><td style="text-align: left"><code>42</code>, <code>-10</code></td></tr>
 <tr><td style="text-align: left">Float</td><td style="text-align: left">Decimal point or exponent</td><td style="text-align: left"><code>3.14</code>, <code>-0.5</code>, <code>1e10</code></td></tr>
 <tr><td style="text-align: left">String</td><td style="text-align: left">Single or double quotes</td><td style="text-align: left"><code>"hello"</code>, <code>'world'</code></td></tr>
 <tr><td style="text-align: left">Boolean</td><td style="text-align: left"><code>true</code> / <code>false</code></td><td style="text-align: left"><code>true</code>, <code>false</code></td></tr>
@@ -369,10 +369,6 @@ tva expr -E 'join(["a", "b", "c"], "-")'  # Returns: "a-b-c"
 tva expr -E '-10'                   # Negative integer
 tva expr -E '0'                     # Zero
 </code></pre>
-<p>Underscores can be used as digit separators for readability:</p>
-<pre><code class="language-bash">tva expr -E '1_000_000'             # One million
-tva expr -E '1_000_000_000'         # One billion
-</code></pre>
 <h2 id="float-literals"><a class="header" href="#float-literals">Float Literals</a></h2>
 <p>Floats are 64-bit IEEE 754 floating-point numbers:</p>
 <pre><code class="language-bash"># Decimal notation
@@ -402,9 +398,6 @@ tva expr -E 'map([1, 2, 3], x =&gt; x + 1)'
 
 # Multiple parameters
 tva expr -E 'reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x)'
-
-# No parameters
-tva expr -E 'map([1, 2, 3], () =&gt; 42)'
 </code></pre>
 
                     </main>

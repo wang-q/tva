@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-707969f9.js";
+            window.path_to_searchindex_js = "searchindex-e7a07adc.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-5de396d1.js"></script>
+        <script src="toc-96593fed.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -3129,7 +3129,7 @@ must be escaped with <code>\</code>.</li>
 <tr><th style="text-align: left">Type</th><th style="text-align: left">Syntax</th><th style="text-align: left">Examples</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left">Integer</td><td style="text-align: left">Digit sequence</td><td style="text-align: left"><code>42</code>, <code>-10</code>, <code>1_000_000</code></td></tr>
+<tr><td style="text-align: left">Integer</td><td style="text-align: left">Digit sequence</td><td style="text-align: left"><code>42</code>, <code>-10</code></td></tr>
 <tr><td style="text-align: left">Float</td><td style="text-align: left">Decimal point or exponent</td><td style="text-align: left"><code>3.14</code>, <code>-0.5</code>, <code>1e10</code></td></tr>
 <tr><td style="text-align: left">String</td><td style="text-align: left">Single or double quotes</td><td style="text-align: left"><code>"hello"</code>, <code>'world'</code></td></tr>
 <tr><td style="text-align: left">Boolean</td><td style="text-align: left"><code>true</code> / <code>false</code></td><td style="text-align: left"><code>true</code>, <code>false</code></td></tr>
@@ -3309,10 +3309,6 @@ tva expr -E 'join(["a", "b", "c"], "-")'  # Returns: "a-b-c"
 tva expr -E '-10'                   # Negative integer
 tva expr -E '0'                     # Zero
 </code></pre>
-<p>Underscores can be used as digit separators for readability:</p>
-<pre><code class="language-bash">tva expr -E '1_000_000'             # One million
-tva expr -E '1_000_000_000'         # One billion
-</code></pre>
 <h2 id="float-literals"><a class="header" href="#float-literals">Float Literals</a></h2>
 <p>Floats are 64-bit IEEE 754 floating-point numbers:</p>
 <pre><code class="language-bash"># Decimal notation
@@ -3342,9 +3338,6 @@ tva expr -E 'map([1, 2, 3], x =&gt; x + 1)'
 
 # Multiple parameters
 tva expr -E 'reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x)'
-
-# No parameters
-tva expr -E 'map([1, 2, 3], () =&gt; 42)'
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="expr-variables"><a class="header" href="#expr-variables">Expr Variables</a></h1>
@@ -3454,6 +3447,28 @@ tva expr -n "x" -r "100" -E '
     map([1, 2, 3], x =&gt; x + @y)  # Lambda param x shadows nothing; @y is variable
 '
 # Returns: [101, 102, 103]
+</code></pre>
+<h3 id="global-variables"><a class="header" href="#global-variables">Global Variables</a></h3>
+<p>Global variables start with <code>@__</code> and persist across rows. They are useful for accumulators and counters.</p>
+<ul>
+<li><code>@__index</code> - Current row index (1-based), auto-set per row</li>
+<li><code>@__file</code> - Current file path, auto-set per file</li>
+<li><code>@__xxx</code> - User-defined variables, initial value is <code>null</code> (use <code>default()</code> to initialize)</li>
+</ul>
+<p><strong>Global variables vs regular variables:</strong></p>
+<ul>
+<li>Regular variables (<code>as @var</code>) are cleared for each new row</li>
+<li>Global variables (<code>@__xxx</code>) persist across rows within the same file</li>
+</ul>
+<pre><code class="language-bash"># Accumulator pattern: sum all values
+# Use default() to initialize on first row
+tva expr -E 'default(@__sum, 0) + @1 as @__sum' input.tsv
+
+# Counter with default() initialization
+tva expr -E 'default(@__counter, 0) + 1 as @__counter' input.tsv
+
+# Collect all file names processed (string concatenation)
+tva expr -E 'default(@__files, "") ++ @__file ++ "," as @__files' file1.tsv file2.tsv file3.tsv
 </code></pre>
 <h2 id="lambda-parameters"><a class="header" href="#lambda-parameters">Lambda Parameters</a></h2>
 <p>Lambda expressions introduce their own parameter scope:</p>
@@ -4043,7 +4058,7 @@ tva expr -E 'max(1, 5, 3)'                   # Returns: 5
 functions.</p>
 <pre><code class="language-bash">tva expr -E '"hello" | upper()'             # Returns: HELLO
 tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
-tva expr -E '@name | trim() | lower()'      # Chain multiple pipes
+tva expr -E '"  hello  " | trim() | upper()'      # Chain multiple pipes
 </code></pre>
 <h3 id="pipe-call-multiple-arguments"><a class="header" href="#pipe-call-multiple-arguments">Pipe Call (Multiple Arguments)</a></h3>
 <p><code>arg | func(_, arg2)</code> - Use <code>_</code> to represent the piped value as the first argument.</p>
@@ -4071,7 +4086,6 @@ tva expr -E '"hello" | replace(_, "l", "x")'    # Returns: "hexxo"
 <tbody>
 <tr><td style="text-align: left">Single parameter</td><td style="text-align: left"><code>param =&gt; expr</code></td><td style="text-align: left"><code>x =&gt; x + 1</code></td></tr>
 <tr><td style="text-align: left">Multiple parameters</td><td style="text-align: left"><code>(p1, p2, ...) =&gt; expr</code></td><td style="text-align: left"><code>(x, y) =&gt; x + y</code></td></tr>
-<tr><td style="text-align: left">No parameters</td><td style="text-align: left"><code>() =&gt; expr</code></td><td style="text-align: left"><code>() =&gt; 42</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -4110,7 +4124,7 @@ tva expr -n "email" -r "  Test@Example.COM  " -E '@email | trim() | lower() | re
 # Returns: true
 
 # Data transformation pipeline
-tva expr -n "data" -r "1,2,3,4,5" -E '@data | split(_, ",") | map(_, x =&gt; int(x) * 2) | join(_, "-")'
+tva expr -n "data" -r "1|2|3|4|5" -E '@data | split(_, "|") | map(_, x =&gt; int(x) * 2) | join(_, "-")'
 # Returns: "2-4-6-8-10"
 </code></pre>
 <h2 id="multiple-expressions"><a class="header" href="#multiple-expressions">Multiple Expressions</a></h2>
@@ -4172,9 +4186,9 @@ tva expr -n "price,qty" -r "10,5" -E '
     print("qty:", @qty);
     @price * @qty
 '
-# Prints: price: 10
-#         qty: 5
-#         50
+# 10 price:
+# qty: 5
+# 50
 </code></pre>
 <h2 id="error-handling-1"><a class="header" href="#error-handling-1">Error Handling</a></h2>
 <p>Expression evaluation can produce several types of errors:</p>
@@ -4469,231 +4483,6 @@ nth(@candidates, @skip_count)
 <li><code>take_while()</code> to skip non-divisors until finding the GCD</li>
 <li><code>reverse()</code> to search from largest to smallest for efficiency</li>
 <li><code>nth()</code> with calculated offset to extract the first matching element</li>
-</ul>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="other-tools-analysis"><a class="header" href="#other-tools-analysis">Other Tools Analysis</a></h1>
-<p>This document analyzes existing solutions for data processing expression languages, providing
-context for TVA’s design decisions.</p>
-<h2 id="gnu-parallel-template-substitution"><a class="header" href="#gnu-parallel-template-substitution">GNU Parallel: Template Substitution</a></h2>
-<p>GNU Parallel uses a <strong>string replacement</strong> based placeholder mechanism, particularly suited for
-building Shell commands.</p>
-<ul>
-<li><strong>Core Mechanism</strong>: Predefined placeholders with string interpolation at execution time.</li>
-<li><strong>Placeholder Syntax</strong>:
-<ul>
-<li><code>{1}</code>, <code>{2}</code>: Column reference by index.</li>
-<li><code>{-1}</code>: Reverse index reference.</li>
-<li><code>{col_name}</code>: Header column name reference.</li>
-<li><code>{= perl_expr =}</code>: Embedded Perl expression for immediate evaluation.</li>
-</ul>
-</li>
-<li><strong>Pros</strong>:
-<ul>
-<li>Intuitive, fits Shell scripting habits.</li>
-<li>Suitable for “command construction” scenarios.</li>
-</ul>
-</li>
-<li><strong>Cons</strong>:
-<ul>
-<li>Essentially text processing, lacks a type system.</li>
-<li>Difficult to handle complex logic (unless embedding Perl, which has performance costs).</li>
-</ul>
-</li>
-</ul>
-<h2 id="awk-record-and-field-processing-model"><a class="header" href="#awk-record-and-field-processing-model">AWK: Record and Field Processing Model</a></h2>
-<p>AWK is a classic Unix text processing tool centered around <strong>Records</strong> and <strong>Fields</strong>.</p>
-<ul>
-<li>
-<p><strong>Core Mechanism</strong>:</p>
-<ul>
-<li><strong>Record Splitting</strong>: Input is split into records (default by line, controlled by <code>RS</code>). <code>NR</code>
-tracks current record number, <code>FNR</code> tracks current file’s record number.</li>
-<li><strong>Field Splitting</strong>: Each record is further split into fields (default by whitespace,
-controlled by <code>FS</code>). <code>NF</code> tracks field count.</li>
-<li><strong>Field Reference</strong>: <code>$n</code> syntax references the nth field, <code>$0</code> represents the entire record.
-Field numbers can be variables or expressions (e.g., <code>$NF</code> for last field).</li>
-</ul>
-</li>
-<li>
-<p><strong>Syntax Features</strong>:</p>
-<ul>
-<li><strong>Pattern-Action</strong>: <code>pattern { action }</code> structure executes when pattern matches.</li>
-<li><strong>Built-in Variables</strong>: <code>NR</code>, <code>NF</code>, <code>FS</code>, <code>RS</code>, <code>OFS</code>, <code>ORS</code> control I/O behavior.</li>
-<li><strong>Implicit Type Conversion</strong>: Strings and numbers convert automatically based on context.</li>
-</ul>
-</li>
-<li>
-<p><strong>Pros</strong>:</p>
-<ul>
-<li><strong>Concise and Efficient</strong>: Optimized for text processing, complex tasks in single lines.</li>
-<li><strong>Streaming</strong>: Naturally supports line-by-line processing with low memory usage.</li>
-<li><strong>Widely Available</strong>: Pre-installed on almost all Unix-like systems.</li>
-</ul>
-</li>
-<li>
-<p><strong>Cons</strong>:</p>
-<ul>
-<li><strong>Ancient Syntax</strong>: Differs significantly from modern languages, steep learning curve.</li>
-<li><strong>Weak Type System</strong>: Implicit conversions convenient but error-prone.</li>
-<li><strong>Limited Features</strong>: Standard AWK lacks modern features (JSON support, rich string
-functions).</li>
-</ul>
-</li>
-</ul>
-<h2 id="xan-moonblade-dynamic-expression-engine"><a class="header" href="#xan-moonblade-dynamic-expression-engine">xan (Moonblade): Dynamic Expression Engine</a></h2>
-<p>xan includes <strong>Moonblade</strong>, a dynamic scripting language similar to simplified Python/JavaScript,
-optimized for CSV processing.</p>
-<ul>
-<li>
-<p><strong>Core Mechanism</strong>:</p>
-<ul>
-<li><strong>Parser &amp; Interpreter</strong>: PEG parser (Pest) builds AST, uses Tree-Walker Interpreter.</li>
-<li><strong>Concretization</strong>: Static analysis optimization before execution, e.g., resolving column
-names to indices to avoid runtime hash lookups.</li>
-<li><strong>Arc-based Types</strong>: Uses <code>Arc&lt;T&gt;</code> for strings and complex objects to minimize deep copies,
-suitable for streaming.</li>
-</ul>
-</li>
-<li>
-<p><strong>Syntax Features</strong>:</p>
-<ul>
-<li><strong>Columns as Variables</strong>: Use column names directly (e.g., <code>count &gt; 10</code>), or <code>col("name")</code>/
-<code>col(index)</code>.</li>
-<li><strong>Operator Distinction</strong>: Distinguishes string (<code>eq</code>, <code>++</code>) and numeric (<code>==</code>, <code>+</code>)
-operators (Perl-like design), avoiding implicit conversion ambiguity.</li>
-<li><strong>Rich Built-ins</strong>: String, Math, Date, Regex, Hashing, plus CSS Selector-style HTML scraping.</li>
-<li><strong>Higher-Order Functions</strong>: Supports <code>map</code>, <code>filter</code>, <code>reduce</code> with Lambda expressions (e.g.,
-<code>map(list, x =&gt; x + 1)</code>).</li>
-</ul>
-</li>
-<li>
-<p><strong>Pros</strong>:</p>
-<ul>
-<li><strong>Extremely Expressive</strong>: Handles complex business logic (JSON parsing, date calculations,
-fuzzy matching).</li>
-<li><strong>Relatively High Performance</strong>: Optimized for CSV structure (Header/Row) compared to general
-scripting languages.</li>
-</ul>
-</li>
-<li>
-<p><strong>Cons</strong>:</p>
-<ul>
-<li><strong>High Implementation Complexity</strong>: Maintaining a complete interpreter, type system, and
-function library is costly.</li>
-<li><strong>Runtime Overhead</strong>: Despite optimizations, AST traversal and dynamic dispatch per row have
-some cost compared to pure Native code.</li>
-</ul>
-</li>
-</ul>
-<h2 id="jq-json-processor--stream-computing"><a class="header" href="#jq-json-processor--stream-computing">jq: JSON Processor &amp; Stream Computing</a></h2>
-<p><code>jq</code> is the de facto standard for JSON processing, built on a specialized stack-based VM with
-backtracking and generators.</p>
-<ul>
-<li>
-<p><strong>Core Mechanism</strong>:</p>
-<ul>
-<li><strong>Bytecode Compiler &amp; VM</strong>: Compiles queries (Filters) to bytecode executed in an interpreter
-loop. Unlike xan’s Tree-walker, this provides a more compact execution model.</li>
-<li><strong>Backtracking</strong>: jq’s killer feature. Via <code>FORK</code> and <code>BACKTRACK</code> instructions, one input can
-produce zero, one, or multiple outputs (e.g., <code>.[]</code>). This makes jq essentially a streaming
-generator engine.</li>
-<li><strong>Reference Counting</strong>: Data represented via <code>jv</code> struct (in <code>jv.h</code>), using reference
-counting. Allows efficient “shallow copies” (Copy-on-write), but has overhead with
-high-frequency allocation.</li>
-</ul>
-</li>
-<li>
-<p><strong>Architecture</strong>:</p>
-<ul>
-<li><strong><code>jv</code> Type System</strong>: Unified JSON value representation (Tagged Union): Null, Bool, Number,
-String, Array, Object.</li>
-<li><strong>Hybrid Stdlib</strong>: Many standard library functions (<code>map</code>, <code>select</code>, <code>recurse</code>) written in jq
-language (<code>builtin.jq</code>), only low-level primitives (<code>type</code>, <code>keys</code>) in C. Easy to extend.</li>
-<li><strong>Stack Machine</strong>: VM maintains value stack and frame stack, supports closures and complex
-control flow.</li>
-</ul>
-</li>
-<li>
-<p><strong>Syntax Features</strong>:</p>
-<ul>
-<li><strong>Filters</strong>: Everything is a filter. Input -&gt; Filter -&gt; Output stream.</li>
-<li><strong>Pipe (<code>|</code>)</strong>: Primary way to compose filters. <code>a | b</code> runs <code>b</code> with <strong>each</strong> output of <code>a</code>
-as input.</li>
-<li><strong>Context (<code>.</code>)</strong>: Explicit reference to current context value.</li>
-<li><strong>Variables (<code>$var</code>)</strong>: Bound via <code>... as $x | ...</code>, lexically scoped.</li>
-</ul>
-</li>
-<li>
-<p><strong>Pros</strong>:</p>
-<ul>
-<li><strong>Minimal Streaming Syntax</strong>: Extremely efficient for nested JSON.</li>
-<li><strong>Powerful Composition</strong>: Pipes and backtracking enable Cartesian products, permutations, etc.</li>
-<li><strong>Mature Ecosystem</strong>: Pre-installed almost everywhere, no dependencies.</li>
-</ul>
-</li>
-<li>
-<p><strong>Cons</strong>:</p>
-<ul>
-<li><strong>Performance Bottleneck</strong>: Compared to columnar engines (xan/polars), jq’s per-object
-processing and interpreter overhead is significant.</li>
-<li><strong>Mental Model</strong>: Backtracking is hard to understand for users from traditional programming (
-e.g., why <code>debug</code> prints multiple times).</li>
-</ul>
-</li>
-</ul>
-<h2 id="tera-template-engine--rust-ecosystem"><a class="header" href="#tera-template-engine--rust-ecosystem">Tera: Template Engine &amp; Rust Ecosystem</a></h2>
-<p><code>Tera</code> is Rust’s most popular template engine, inspired by Jinja2 and Django templates. While mainly
-for HTML generation, its design patterns are highly relevant for expression languages.</p>
-<ul>
-<li>
-<p><strong>Core Mechanism</strong>:</p>
-<ul>
-<li><strong>Pest Parser</strong>: Uses PEG (Parsing Expression Grammar) parser (<code>pest</code>) to define syntax (
-<code>tera.pest</code>) and generate AST (<code>ast.rs</code>). Provides extreme syntax flexibility.</li>
-<li><strong>Renderer &amp; CallStack</strong>: Tree-walker pattern. <code>CallStack</code> (<code>call_stack.rs</code>) manages
-<code>StackFrame</code> (<code>stack_frame.rs</code>) for scope, loops (<code>ForLoop</code>), and macro calls.</li>
-<li><strong>JSON-centric</strong>: Data model built entirely on <code>serde_json::Value</code>. <code>Context</code> is essentially
-<code>BTreeMap&lt;String, Value&gt;</code>. Seamlessly handles any Rust data serializable to JSON.</li>
-</ul>
-</li>
-<li>
-<p><strong>Architecture</strong>:</p>
-<ul>
-<li><strong>Function/Filter/Test Traits</strong>: Highly extensible. Implement <code>Function</code>, <code>Filter</code>, <code>Test</code>
-traits (<code>builtins/mod.rs</code>) to inject custom logic.</li>
-<li><strong>Inheritance</strong>: Supports <code>extends</code> and <code>block</code> for template reuse and override, useful for
-complex document structures.</li>
-<li><strong>Whitespace Control</strong>: <code>{%-</code> and <code>-%}</code> for precise whitespace control (
-<code>parser/whitespace.rs</code>), crucial for format-sensitive text (code or specific data formats).</li>
-</ul>
-</li>
-<li>
-<p><strong>Syntax Features</strong>:</p>
-<ul>
-<li><strong>Delimiters</strong>: Variables <code>{{ ... }}</code>, tags <code>{% ... %}</code>, comments <code>{# ... #}</code>.</li>
-<li><strong>Filters</strong>: Pipe style <code>value | filter(arg=1)</code>.</li>
-<li><strong>Control Flow</strong>: Rich <code>if</code>, <code>for</code>, <code>include</code>, <code>macro</code> support.</li>
-<li><strong>Tests</strong>: <code>is</code> operator, e.g., <code>if variable is defined</code>.</li>
-</ul>
-</li>
-<li>
-<p><strong>Pros</strong>:</p>
-<ul>
-<li><strong>Balance of Type Safety and Dynamism</strong>: Rust-based but provides dynamic type experience (JSON
-Value).</li>
-<li><strong>Extremely Mature Syntax</strong>: Jinja2 style has stood the test of time, low cognitive burden.</li>
-<li><strong>Error Handling</strong>: Detailed error location and context (<code>errors.rs</code>).</li>
-</ul>
-</li>
-<li>
-<p><strong>Cons</strong>:</p>
-<ul>
-<li><strong>Allocation Heavy</strong>: Rendering involves significant <code>String</code> allocation and <code>Value</code> cloning (
-Clone-on-write via <code>Cow</code>), potentially too costly for high-performance streaming data
-processing (like tva’s goal).</li>
-<li><strong>Text-oriented</strong>: Core goal is text concatenation, not data structure transformation.</li>
-</ul>
-</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="select"><a class="header" href="#select">select</a></h1>

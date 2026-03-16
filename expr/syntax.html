@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-707969f9.js";
+            window.path_to_searchindex_js = "../searchindex-e7a07adc.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5de396d1.js"></script>
+        <script src="../toc-96593fed.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -231,7 +231,7 @@ tva expr -E 'max(1, 5, 3)'                   # Returns: 5
 functions.</p>
 <pre><code class="language-bash">tva expr -E '"hello" | upper()'             # Returns: HELLO
 tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
-tva expr -E '@name | trim() | lower()'      # Chain multiple pipes
+tva expr -E '"  hello  " | trim() | upper()'      # Chain multiple pipes
 </code></pre>
 <h3 id="pipe-call-multiple-arguments"><a class="header" href="#pipe-call-multiple-arguments">Pipe Call (Multiple Arguments)</a></h3>
 <p><code>arg | func(_, arg2)</code> - Use <code>_</code> to represent the piped value as the first argument.</p>
@@ -259,7 +259,6 @@ tva expr -E '"hello" | replace(_, "l", "x")'    # Returns: "hexxo"
 <tbody>
 <tr><td style="text-align: left">Single parameter</td><td style="text-align: left"><code>param =&gt; expr</code></td><td style="text-align: left"><code>x =&gt; x + 1</code></td></tr>
 <tr><td style="text-align: left">Multiple parameters</td><td style="text-align: left"><code>(p1, p2, ...) =&gt; expr</code></td><td style="text-align: left"><code>(x, y) =&gt; x + y</code></td></tr>
-<tr><td style="text-align: left">No parameters</td><td style="text-align: left"><code>() =&gt; expr</code></td><td style="text-align: left"><code>() =&gt; 42</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -298,7 +297,7 @@ tva expr -n "email" -r "  Test@Example.COM  " -E '@email | trim() | lower() | re
 # Returns: true
 
 # Data transformation pipeline
-tva expr -n "data" -r "1,2,3,4,5" -E '@data | split(_, ",") | map(_, x =&gt; int(x) * 2) | join(_, "-")'
+tva expr -n "data" -r "1|2|3|4|5" -E '@data | split(_, "|") | map(_, x =&gt; int(x) * 2) | join(_, "-")'
 # Returns: "2-4-6-8-10"
 </code></pre>
 <h2 id="multiple-expressions"><a class="header" href="#multiple-expressions">Multiple Expressions</a></h2>
@@ -360,9 +359,9 @@ tva expr -n "price,qty" -r "10,5" -E '
     print("qty:", @qty);
     @price * @qty
 '
-# Prints: price: 10
-#         qty: 5
-#         50
+# 10 price:
+# qty: 5
+# 50
 </code></pre>
 <h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
 <p>Expression evaluation can produce several types of errors:</p>
