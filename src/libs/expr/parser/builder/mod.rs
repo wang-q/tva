@@ -101,8 +101,40 @@ mod tests {
 
     #[test]
     fn test_parse_float() {
+        // Decimal notation
         let expr = parse("3.14").unwrap();
         assert!(matches!(expr, Expr::Float(n) if (n - 3.14).abs() < 0.001));
+
+        let expr = parse("-0.5").unwrap();
+        match expr {
+            Expr::Unary {
+                op: UnaryOp::Neg,
+                expr,
+            } => {
+                assert!(matches!(*expr, Expr::Float(n) if (n - 0.5).abs() < 0.001));
+            }
+            _ => panic!("Expected Neg unary expression for negative float"),
+        }
+
+        // Scientific notation: 1e10, 2.5e-3, -1.5E+6
+        let expr = parse("1e10").unwrap();
+        assert!(matches!(expr, Expr::Float(n) if (n - 1e10).abs() < 0.1));
+
+        let expr = parse("2.5e-3").unwrap();
+        assert!(matches!(expr, Expr::Float(n) if (n - 0.0025).abs() < 0.0001));
+
+        let expr = parse("-1.5e6").unwrap();
+        match expr {
+            Expr::Unary {
+                op: UnaryOp::Neg,
+                expr,
+            } => {
+                assert!(matches!(*expr, Expr::Float(n) if (n - 1.5e6).abs() < 0.1));
+            }
+            _ => {
+                panic!("Expected Neg unary expression for negative scientific notation")
+            }
+        }
     }
 
     #[test]

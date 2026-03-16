@@ -989,11 +989,7 @@ mod tests {
         let mut ctx = EvalContext::new(&row);
 
         let expr = Expr::Pipe {
-            left: Box::new(Expr::List(vec![
-                Expr::Int(1),
-                Expr::Int(2),
-                Expr::Int(3),
-            ])),
+            left: Box::new(Expr::List(vec![Expr::Int(1), Expr::Int(2), Expr::Int(3)])),
             right: Box::new(PipeRight::CallWithPlaceholder {
                 name: "join".to_string(),
                 args: vec![

@@ -69,3 +69,152 @@ pub fn build_func_call(pair: Pair<Rule>) -> Result<Expr, ParseError> {
 
     Ok(Expr::Call { name, args })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libs::expr::parser::parse;
+
+    #[test]
+    fn test_func_call_no_args() {
+        let expr = parse("now()").unwrap();
+        match expr {
+            Expr::Call { name, args } => {
+                assert_eq!(name, "now");
+                assert!(args.is_empty());
+            }
+            _ => panic!("Expected Call expression"),
+        }
+    }
+
+    #[test]
+    fn test_func_call_single_arg() {
+        let expr = parse("abs(-5)").unwrap();
+        match expr {
+            Expr::Call { name, args } => {
+                assert_eq!(name, "abs");
+                assert_eq!(args.len(), 1);
+                assert!(matches!(args[0], Expr::Unary { .. }));
+            }
+            _ => panic!("Expected Call expression"),
+        }
+    }
+
+    #[test]
+    fn test_func_call_multiple_args() {
+        let expr = parse("substr(@name, 0, 5)").unwrap();
+        match expr {
+            Expr::Call { name, args } => {
+                assert_eq!(name, "substr");
+                assert_eq!(args.len(), 3);
+            }
+            _ => panic!("Expected Call expression"),
+        }
+    }
+
+    #[test]
+    fn test_method_call_simple() {
+        let expr = parse("\"hello\".upper()").unwrap();
+        match expr {
+            Expr::MethodCall { object, name, args } => {
+                assert!(matches!(object.as_ref(), Expr::String(s) if s == "hello"));
+                assert_eq!(name, "upper");
+                assert!(args.is_empty());
+            }
+            _ => panic!("Expected MethodCall expression"),
+        }
+    }
+
+    #[test]
+    fn test_method_call_with_args() {
+        let expr = parse("\"hello\".replace(\"l\", \"x\")").unwrap();
+        match expr {
+            Expr::MethodCall { object, name, args } => {
+                assert!(matches!(object.as_ref(), Expr::String(s) if s == "hello"));
+                assert_eq!(name, "replace");
+                assert_eq!(args.len(), 2);
+            }
+            _ => panic!("Expected MethodCall expression"),
+        }
+    }
+
+    #[test]
+    fn test_method_chain() {
+        let expr = parse("\"hello\".upper().len()").unwrap();
+        match expr {
+            Expr::MethodCall { object, name, args } => {
+                assert_eq!(name, "len");
+                assert!(args.is_empty());
+                // object should be "hello".upper()
+                match object.as_ref() {
+                    Expr::MethodCall {
+                        object: inner_obj,
+                        name: inner_name,
+                        args: inner_args,
+                    } => {
+                        assert!(
+                            matches!(inner_obj.as_ref(), Expr::String(s) if s == "hello")
+                        );
+                        assert_eq!(inner_name, "upper");
+                        assert!(inner_args.is_empty());
+                    }
+                    _ => panic!("Expected nested MethodCall expression"),
+                }
+            }
+            _ => panic!("Expected MethodCall expression"),
+        }
+    }
+
+    #[test]
+    fn test_method_call_on_column() {
+        let expr = parse("@name.upper()").unwrap();
+        match expr {
+            Expr::MethodCall { object, name, args } => {
+                assert!(matches!(object.as_ref(), Expr::ColumnRef(_)));
+                assert_eq!(name, "upper");
+                assert!(args.is_empty());
+            }
+            _ => panic!("Expected MethodCall expression"),
+        }
+    }
+
+    #[test]
+    fn test_method_call_on_func_result() {
+        let expr = parse("abs(@x).to_string()").unwrap();
+        match expr {
+            Expr::MethodCall { object, name, args } => {
+                assert_eq!(name, "to_string");
+                assert!(args.is_empty());
+                // object should be abs(@x)
+                assert!(matches!(object.as_ref(), Expr::Call { .. }));
+            }
+            _ => panic!("Expected MethodCall expression"),
+        }
+    }
+
+    #[test]
+    fn test_nested_func_calls() {
+        let expr = parse("abs(min(1, 2))").unwrap();
+        match expr {
+            Expr::Call { name, args } => {
+                assert_eq!(name, "abs");
+                assert_eq!(args.len(), 1);
+                assert!(matches!(args[0], Expr::Call { .. }));
+            }
+            _ => panic!("Expected Call expression"),
+        }
+    }
+
+    #[test]
+    fn test_func_call_with_expr_arg() {
+        let expr = parse("abs(1 + 2)").unwrap();
+        match expr {
+            Expr::Call { name, args } => {
+                assert_eq!(name, "abs");
+                assert_eq!(args.len(), 1);
+                assert!(matches!(args[0], Expr::Binary { .. }));
+            }
+            _ => panic!("Expected Call expression"),
+        }
+    }
+}

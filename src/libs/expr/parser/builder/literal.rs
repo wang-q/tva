@@ -73,8 +73,17 @@ mod tests {
 
     #[test]
     fn test_parse_string() {
+        // Double-quoted string
         let expr = parse("\"hello\"").unwrap();
         assert!(matches!(expr, Expr::String(s) if s == "hello"));
+
+        // Single-quoted string (documented in literals.md)
+        let expr = parse("'hello'").unwrap();
+        assert!(matches!(expr, Expr::String(s) if s == "hello"));
+
+        // Single-quoted string with spaces
+        let expr = parse("'hello world'").unwrap();
+        assert!(matches!(expr, Expr::String(s) if s == "hello world"));
     }
 
     #[test]
