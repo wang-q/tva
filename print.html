@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ecbcf40d.js";
+            window.path_to_searchindex_js = "searchindex-707969f9.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-5de396d1.js"></script>
@@ -2673,10 +2673,10 @@ tva expr -E "map([1,2,3,4,5], x =&gt; x * x)"
 </code></pre>
 <h3 id="documentation-index"><a class="header" href="#documentation-index">Documentation Index</a></h3>
 <ul>
-<li><a href="#expression-literals">Literals</a> - Literal syntax and type system</li>
-<li><a href="#expression-variables">Variables</a> - Column references and variable binding</li>
-<li><a href="#expression-operators">Operators</a> - Operator precedence and details</li>
-<li><a href="#expression-functions">Functions</a> - Complete function reference</li>
+<li><a href="#expr-literals">Literals</a> - Literal syntax and type system</li>
+<li><a href="#expr-variables">Variables</a> - Column references and variable binding</li>
+<li><a href="#expr-operators">Operators</a> - Operator precedence and details</li>
+<li><a href="#expr-functions">Functions</a> - Complete function reference</li>
 <li><a href="#expr-syntax-guide">Syntax Guide</a> - Complete syntax documentation</li>
 <li><a href="#rosetta-code-examples">Rosetta Code</a> - Fun programs</li>
 </ul>
@@ -3120,7 +3120,7 @@ must be escaped with <code>\</code>.</li>
 </code></pre>
 <p>Serious errors return non-zero exit codes.</p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="expression-literals"><a class="header" href="#expression-literals">Expression Literals</a></h1>
+<h1 id="expr-literals"><a class="header" href="#expr-literals">Expr Literals</a></h1>
 <p>Literals represent constant values in expressions. TVA supports integers, floats, strings, booleans, null, and lists.</p>
 <h2 id="literal-syntax"><a class="header" href="#literal-syntax">Literal Syntax</a></h2>
 <div class="table-wrapper">
@@ -3347,7 +3347,7 @@ tva expr -E 'reduce([1, 2, 3], 0, (acc, x) =&gt; acc + x)'
 tva expr -E 'map([1, 2, 3], () =&gt; 42)'
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="expression-variables"><a class="header" href="#expression-variables">Expression Variables</a></h1>
+<h1 id="expr-variables"><a class="header" href="#expr-variables">Expr Variables</a></h1>
 <p>TVA expressions support two kinds of <code>@</code>-prefixed identifiers: column references and variables.</p>
 <h2 id="column-references-1"><a class="header" href="#column-references-1">Column References</a></h2>
 <p>Use <code>@</code> prefix to reference columns, avoiding conflicts with Shell variables:</p>
@@ -3506,7 +3506,7 @@ tva expr -n "price,qty,discount" -r "100,5,0.1" -E '
 tva expr -n "price,qty,discount" -r "100,5,0.1" -E '@price * @qty as @a; @a * (1 - @discount)'
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="expression-operators"><a class="header" href="#expression-operators">Expression Operators</a></h1>
+<h1 id="expr-operators"><a class="header" href="#expr-operators">Expr Operators</a></h1>
 <p>TVA provides a comprehensive set of operators for arithmetic, string, comparison, and logical operations.</p>
 <h2 id="operator-precedence-high-to-low"><a class="header" href="#operator-precedence-high-to-low">Operator Precedence (high to low)</a></h2>
 <ol>
@@ -3666,11 +3666,11 @@ tva expr -E '"hello" | replace(_, "l", "x")'     # Returns: hexxo
 <h3 id="complex-pipelines"><a class="header" href="#complex-pipelines">Complex Pipelines</a></h3>
 <p>Combine multiple operations:</p>
 <pre><code class="language-bash"># Data transformation
-tva expr -n "data" -r "1,2,3,4,5" -E '
-    @data
-    | split(_, ",")
-    | map(_, x =&gt; int(x) * 2)
-    | join(_, "-")
+tva expr -n "data" -r "1|2|3|4|5" -E '
+    @data |
+    split(_, "|") |
+    map(_, x =&gt; int(x) * 2) |
+    join(_, "-")
 '
 # Returns: "2-4-6-8-10"
 
@@ -3694,7 +3694,7 @@ tva expr -E '(2 + 3) * 4'           # Returns: 20
 tva expr -E '5 &gt; 3 and 10 &lt; 20'     # Returns: true
 
 # Pipe has lowest precedence
-tva expr -E '1 + 2 | int()'         # Returns: 3 (not error)
+tva expr -E '1 + 2 | int()'         # Returns: 3
 </code></pre>
 <h2 id="best-practices-1"><a class="header" href="#best-practices-1">Best Practices</a></h2>
 <ol>
@@ -3704,8 +3704,8 @@ tva expr -E '1 + 2 | int()'         # Returns: 3 (not error)
 <li><strong>Chain with pipes</strong>: <code>@data | trim() | lower()</code> is more readable than <code>lower(trim(@data))</code></li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="expression-functions"><a class="header" href="#expression-functions">Expression Functions</a></h1>
-<p>TVA expression engine provides a rich set of built-in functions for data processing.</p>
+<h1 id="expr-functions"><a class="header" href="#expr-functions">Expr Functions</a></h1>
+<p>TVA expr engine provides a rich set of built-in functions for data processing.</p>
 <h2 id="numeric-operations"><a class="header" href="#numeric-operations">Numeric Operations</a></h2>
 <ul>
 <li>abs(x) -&gt; number: Absolute value</li>
