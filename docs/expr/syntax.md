@@ -59,7 +59,7 @@ functions.
 ```bash
 tva expr -E '"hello" | upper()'             # Returns: HELLO
 tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
-tva expr -E '@name | trim() | lower()'      # Chain multiple pipes
+tva expr -E '"  hello  " | trim() | upper()'      # Chain multiple pipes
 ```
 
 ### Pipe Call (Multiple Arguments)
@@ -136,7 +136,7 @@ tva expr -n "email" -r "  Test@Example.COM  " -E '@email | trim() | lower() | re
 # Returns: true
 
 # Data transformation pipeline
-tva expr -n "data" -r "1,2,3,4,5" -E '@data | split(_, ",") | map(_, x => int(x) * 2) | join(_, "-")'
+tva expr -n "data" -r "1|2|3|4|5" -E '@data | split(_, "|") | map(_, x => int(x) * 2) | join(_, "-")'
 # Returns: "2-4-6-8-10"
 ```
 
@@ -213,9 +213,9 @@ tva expr -n "price,qty" -r "10,5" -E '
     print("qty:", @qty);
     @price * @qty
 '
-# Prints: price: 10
-#         qty: 5
-#         50
+# 10 price:
+# qty: 5
+# 50
 ```
 
 ## Error Handling
