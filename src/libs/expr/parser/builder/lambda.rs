@@ -102,3 +102,87 @@ fn transform_pipe_right(pipe_right: PipeRight, params: &[String]) -> PipeRight {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::ast::{BinaryOp, Expr};
+    use super::super::super::parse;
+
+    #[test]
+    fn test_parse_lambda() {
+        // x => x + 1
+        let expr = parse("x => x + 1").unwrap();
+        match expr {
+            Expr::Lambda { params, body } => {
+                assert_eq!(params, vec!["x"]);
+                match *body {
+                    Expr::Binary {
+                        op: BinaryOp::Add,
+                        left,
+                        right,
+                    } => {
+                        assert!(matches!(*left, Expr::LambdaParam(s) if s == "x"));
+                        assert!(matches!(*right, Expr::Int(1)));
+                    }
+                    _ => {
+                        panic!("Expected Add expression in lambda body, got {:?}", body)
+                    }
+                }
+            }
+            _ => panic!("Expected Lambda expression, got {:?}", expr),
+        }
+    }
+
+    #[test]
+    fn test_parse_lambda_multi_params() {
+        // (x, y) => x + y
+        let expr = parse("(x, y) => x + y").unwrap();
+        match expr {
+            Expr::Lambda { params, body } => {
+                assert_eq!(params, vec!["x", "y"]);
+                match *body {
+                    Expr::Binary {
+                        op: BinaryOp::Add,
+                        left,
+                        right,
+                    } => {
+                        assert!(matches!(*left, Expr::LambdaParam(s) if s == "x"));
+                        assert!(matches!(*right, Expr::LambdaParam(s) if s == "y"));
+                    }
+                    _ => panic!("Expected Add expression in lambda body"),
+                }
+            }
+            _ => panic!("Expected Lambda expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_lambda_no_params() {
+        // () => 42
+        let expr = parse("() => 42").unwrap();
+        match expr {
+            Expr::Lambda { params, body } => {
+                assert!(params.is_empty());
+                assert!(matches!(*body, Expr::Int(42)));
+            }
+            _ => panic!("Expected Lambda expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_lambda_in_function() {
+        // Lambda as function argument
+        let expr = parse("map(@list, x => x * 2)").unwrap();
+        match expr {
+            Expr::Call { name, args } => {
+                assert_eq!(name, "map");
+                assert_eq!(args.len(), 2);
+                assert!(
+                    matches!(&args[0], Expr::ColumnRef(super::super::ColumnRef::Name(s)) if s == "list")
+                );
+                assert!(matches!(&args[1], Expr::Lambda { .. }));
+            }
+            _ => panic!("Expected Call with lambda argument"),
+        }
+    }
+}
