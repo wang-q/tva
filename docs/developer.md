@@ -24,6 +24,10 @@ cargo llvm-cov
 
 XXX 的测试覆盖度不高，使用 `cargo llvm-cov` 生成覆盖率报告，找出需要提升的地方.
 
+为这些地方，添加单元测试与整合测试
+
+为刚才的修改，添加单元测试与整合测试
+
 ## WSL
 
 ```bash
@@ -250,130 +254,3 @@ Bar Charts）。
 | 🟢 低 | 字符串填充 (`pad`) | 格式化输出 |
 | 🟢 低 | 路径处理函数 | 特定场景 |
 | 🔵 未来 | 类型系统重构 (`Arc`, `DateTime`) | 需要大量测试 |
-
-## _ 占位符问题分析
-
-### 当前实现的问题
-
-TVA 当前的 `_` 实现存在以下问题：
-
-1. **解析阶段将 `_` 映射为 `LambdaParam("_")`**
-   - 在 `build_pipe_right` 中，`_` 被解析为 `Expr::LambdaParam("_".to_string())`
-   - 这导致 `_` 在求值时通过 `get_lambda_param` 查找，而不是获取管道值
-
-2. **`CallWithPlaceholder` 的处理逻辑有缺陷**
-   ```rust
-   PipeRight::CallWithPlaceholder { name, args } => {
-       let mut arg_values = Vec::new();
-       arg_values.push(piped_value);  // 第一个参数是管道值
-       for arg in args {
-           if !matches!(arg, Expr::LambdaParam(_)) {  // 跳过 LambdaParam
-               arg_values.push(eval(arg, ctx)?);
-           }
-       }
-       // 调用函数...
-   }
-   ```
-   - 问题：`_` 被跳过而不是被替换，导致参数位置错乱
-   - 例如 `substr(_, 1, 2)` 实际变成 `substr(piped_value, 2)`，丢失了 `1`
-
-3. **嵌套函数调用中 `_` 无法工作**
-   - `"hello" | print(substr(_, 1, 2))` 会报错 `Column '_' not found`
-   - 因为 `substr` 的参数在管道求值上下文之外求值
-
-### Xan Moonblade 的正确实现
-
-**核心设计：Pipeline 作为一等表达式**
-
-```rust
-// AST 定义
-enum ConcreteExpr {
-    Underscore,           // 专门的 _ 变体
-    Pipeline(Vec<ConcreteExpr>),  // 管道是表达式列表
-    // ...
-}
-
-// 求值上下文
-struct EvaluationContext<'a> {
-    last_value: Option<DynamicValue>,  // 存储管道左侧的值
-    // ...
-}
-```
-
-**Pipeline 求值逻辑：**
-
-```rust
-Self::Pipeline(pipeline) => {
-    let mut pipeline_context = context.clone();
-    for expr in pipeline {
-        let value = expr.evaluate(&pipeline_context)?;
-        pipeline_context.last_value = Some(value);  // 更新 last_value
-    }
-    Ok(pipeline_context.last_value.unwrap())
-}
-```
-
-**_ 求值逻辑：**
-
-```rust
-Self::Underscore => match context.last_value.as_ref() {
-    None => return Err(EvaluationError::UnfillableUnderscore),
-    Some(last_value) => last_value.clone(),
-}
-```
-
-### 关键差异对比
-
-| 特性 | TVA 当前 | Xan Moonblade |
-|:-----|:---------|:--------------|
-| `_` 的 AST 表示 | `LambdaParam("_")` | 专门的 `Underscore` 变体 |
-| 管道值存储 | 通过参数传递 | 存储在 `last_value` 字段 |
-| 管道求值 | 二元递归结构 | 线性表达式列表 |
-| 嵌套函数中的 `_` | 不支持 | 支持（通过上下文继承） |
-| 错误处理 | 报 Column not found | 报 UnfillableUnderscore |
-
-### 修复建议
-
-要修复 TVA 的 `_` 实现，需要：
-
-1. **AST 修改**：添加 `Expr::Underscore` 变体
-2. **上下文修改**：在 `EvalContext` 中添加 `last_value: Option<Value>`
-3. **解析修改**：将 `_` 解析为 `Expr::Underscore` 而非 `LambdaParam`
-4. **求值修改**：
-   - Pipeline 求值时更新 `last_value`
-   - `Expr::Underscore` 从 `last_value` 获取值
-5. **移除 `PipeRight` 的两种变体**：统一使用 `Call` 处理
-
-### 当前行为的限制
-
-```bash
-# 正确
-tva expr -E '"hello" | upper()'             # Returns: HELLO
-tva expr -E '"hello" | upper(_)'             # Returns: HELLO
-tva expr -E '"hello" | substr(_, 1, 2)'   # Returns: el
-tva expr -E '"hello" | print(_, "2nd")'
-# hello 2nd
-# 2nd
-
-# 错误
-tva expr -E '"hello" | substr(1, 2)'   # Returns: el
-tva expr -E '"hello" | print("1st", _)'
-# hello 1st
-# 1st
-
-tva expr -E '"hello" | print(substr(_, 1, 2))'
-# Error: Evaluation error: Column '_' not found
-
-# 这些可以工作（无 _ 或 _ 在顶层）
-tva expr -E '"hello" | upper()'
-tva expr -E '"hello" | upper(_)'
-
-# 这些有问题
-# 1. _ 在非第一个参数位置
-#    期望: substr("hello", 1, 2) -> "el"
-#    实际: 参数位置错乱
-
-# 2. 嵌套函数中的 _
-#    期望: print(substr("hello", 1, 2))
-#    实际: Error: Column '_' not found
-```

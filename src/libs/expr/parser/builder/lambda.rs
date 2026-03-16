@@ -221,9 +221,7 @@ mod tests {
                             super::PipeRight::CallWithPlaceholder { name, args } => {
                                 assert_eq!(name, "pow");
                                 assert_eq!(args.len(), 2);
-                                assert!(
-                                    matches!(&args[0], Expr::LambdaParam(s) if s == "_")
-                                );
+                                assert!(matches!(&args[0], Expr::Underscore));
                                 assert!(matches!(&args[1], Expr::Int(2)));
                             }
                             _ => panic!(

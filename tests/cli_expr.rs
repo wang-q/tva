@@ -344,6 +344,110 @@ fn expr_with_real_file_pipe_operator() {
 }
 
 #[test]
+fn expr_multiple_underscore_placeholders() {
+    // Multiple _ in same call should all get the piped value
+    // "hello" | replace(replace(_, "l", "L"), "o", "O")
+    // Should produce "heLLO"
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-E",
+            "'hello' | replace(replace(_, 'l', 'L'), 'o', 'O')",
+        ])
+        .run();
+
+    assert!(
+        stdout.contains("heLLO"),
+        "Expected 'heLLO' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_single_arg_function_without_underscore() {
+    // Single-arg functions can omit _: "hello" | upper()
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "'hello' | upper()"])
+        .run();
+
+    assert!(
+        stdout.contains("HELLO"),
+        "Expected 'HELLO' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_single_arg_function_with_underscore() {
+    // Single-arg functions can also use _: "hello" | upper(_)
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "'hello' | upper(_)"])
+        .run();
+
+    assert!(
+        stdout.contains("HELLO"),
+        "Expected 'HELLO' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_multi_arg_function_without_underscore_errors() {
+    // Multi-arg functions without _ should error
+    let (_, stderr) = TvaCmd::new()
+        .args(&["expr", "-E", "'hello' | substr(1, 2)"])
+        .run();
+
+    assert!(
+        stderr.contains("expected 3 arguments") || stderr.contains("got 2"),
+        "Expected arity error in stderr, got: {}",
+        stderr
+    );
+}
+
+#[test]
+fn expr_multi_arg_function_with_underscore() {
+    // Multi-arg functions with _ should work
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "'hello' | substr(_, 1, 2)"])
+        .run();
+
+    assert!(
+        stdout.contains("el"),
+        "Expected 'el' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_split_join_require_underscore() {
+    // split and join require 2 args, must use _
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "'a,b,c' | split(_, ',') | join(_, '-')"])
+        .run();
+
+    assert!(
+        stdout.contains("a-b-c"),
+        "Expected 'a-b-c' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_split_without_underscore_errors() {
+    // split without _ should error
+    let (_, stderr) = TvaCmd::new()
+        .args(&["expr", "-E", "'a,b,c' | split(',')"])
+        .run();
+
+    assert!(
+        stderr.contains("expected 2 arguments") || stderr.contains("got 1"),
+        "Expected arity error for split, got: {}",
+        stderr
+    );
+}
+
+#[test]
 fn expr_with_real_file_variable_binding() {
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -636,5 +740,117 @@ fn expr_file_not_found() {
         stderr.contains("Failed to read expression file") || stderr.contains("error"),
         "Expected error message for missing file, got: {}",
         stderr
+    );
+}
+
+#[test]
+fn expr_underscore_placeholder_basic() {
+    // Test basic underscore usage: "hello" | upper()
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "'hello' | upper(_)"])
+        .run();
+
+    assert!(
+        stdout.contains("HELLO"),
+        "Expected 'HELLO' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_underscore_placeholder_with_data() {
+    // Test underscore with column data
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "name",
+            "-r",
+            "alice",
+            "-E",
+            "@name | upper(_)",
+        ])
+        .run();
+
+    assert!(
+        stdout.contains("ALICE"),
+        "Expected 'ALICE' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_underscore_placeholder_nested() {
+    // Test nested function with underscore: "hello" | print(substr(_, 1, 2))
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "'hello' | print(substr(_, 1, 2))"])
+        .run();
+
+    assert!(
+        stdout.contains("el"),
+        "Expected 'el' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_underscore_placeholder_chained() {
+    // Test chained pipes with underscore: "hello" | upper() | substr(_, 1, 3)
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "'hello' | upper() | substr(_, 1, 3)"])
+        .run();
+
+    assert!(
+        stdout.contains("ELL"),
+        "Expected 'ELL' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_underscore_placeholder_with_position() {
+    // Test underscore in non-first position: "hello" | replace(_, "l", "L")
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "'hello' | replace(_, 'l', 'L')"])
+        .run();
+
+    assert!(
+        stdout.contains("heLLo"),
+        "Expected 'heLLo' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_underscore_placeholder_multiple_args() {
+    // Test underscore with multiple args: "hello world" | substr(_, 0, 5)
+    let (stdout, _) = TvaCmd::new()
+        .args(&["expr", "-E", "'hello world' | substr(_, 0, 5)"])
+        .run();
+
+    assert!(
+        stdout.contains("hello"),
+        "Expected 'hello' in stdout, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn expr_underscore_placeholder_with_file() {
+    // Test underscore with real file data
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "@NAME | lower(_)",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    assert!(
+        stdout.contains("alabama"),
+        "Expected 'alabama' in output, got: {}",
+        stdout
     );
 }

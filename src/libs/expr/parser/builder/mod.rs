@@ -82,7 +82,12 @@ pub fn build_expr(pair: Pair<super::Rule>) -> Result<Expr, ParseError> {
         }
         super::Rule::null => Ok(Expr::Null),
         super::Rule::ident => {
-            Ok(Expr::ColumnRef(ColumnRef::Name(pair.as_str().to_string())))
+            let name = pair.as_str();
+            if name == "_" {
+                Ok(Expr::Underscore)
+            } else {
+                Ok(Expr::ColumnRef(ColumnRef::Name(name.to_string())))
+            }
         }
         _ => Err(ParseError::UnexpectedRule(pair.as_rule())),
     }

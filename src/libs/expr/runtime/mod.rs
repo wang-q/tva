@@ -29,6 +29,8 @@ pub enum EvalError {
         expected: usize,
         got: usize,
     },
+    #[error("Underscore '_' can only be used within a pipe expression")]
+    UnfillableUnderscore,
 }
 
 /// Context for expression evaluation
@@ -45,6 +47,8 @@ pub struct EvalContext<'a> {
     /// NOTE: Using Rc<RefCell> for single-threaded execution.
     /// If parallelizing in the future, change to Arc<Mutex> or use thread-local storage.
     pub globals: Rc<RefCell<HashMap<String, Value>>>,
+    /// Last value from pipe expression (for underscore placeholder)
+    pub last_value: Option<Value>,
 }
 
 impl<'a> EvalContext<'a> {
@@ -55,6 +59,7 @@ impl<'a> EvalContext<'a> {
             variables: HashMap::new(),
             lambda_params: HashMap::new(),
             globals: Rc::new(RefCell::new(HashMap::new())),
+            last_value: None,
         }
     }
 
@@ -65,6 +70,19 @@ impl<'a> EvalContext<'a> {
             variables: HashMap::new(),
             lambda_params: HashMap::new(),
             globals: Rc::new(RefCell::new(HashMap::new())),
+            last_value: None,
+        }
+    }
+
+    /// Clone the context for pipeline evaluation (shares globals, clears last_value)
+    pub fn clone_for_pipeline(&self) -> Self {
+        Self {
+            row: self.row,
+            headers: self.headers,
+            variables: self.variables.clone(),
+            lambda_params: self.lambda_params.clone(),
+            globals: Rc::clone(&self.globals),
+            last_value: None,
         }
     }
 
@@ -182,6 +200,10 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
         Expr::Variable(name) => ctx.get_variable(name),
         Expr::LambdaParam(name) => ctx.get_lambda_param(name),
         Expr::GlobalVar(name) => ctx.get_global(name),
+        Expr::Underscore => match ctx.last_value.as_ref() {
+            Some(v) => Ok(v.clone()),
+            None => Err(EvalError::UnfillableUnderscore),
+        },
         Expr::Int(n) => Ok(Value::Int(*n)),
         Expr::Float(n) => Ok(Value::Float(*n)),
         Expr::String(s) => Ok(Value::String(s.clone())),
@@ -311,7 +333,10 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
         }
         Expr::Pipe { left, right } => {
             let left_val = eval(left, ctx)?;
-            eval_pipe_right(right, left_val, ctx)
+            // Clone context for pipeline to propagate last_value through nested calls
+            let mut pipe_ctx = ctx.clone_for_pipeline();
+            pipe_ctx.last_value = Some(left_val.clone());
+            eval_pipe_right(right, left_val, &mut pipe_ctx)
         }
         Expr::Bind { expr, name } => {
             let val = eval(expr, ctx)?;
@@ -343,6 +368,34 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
     }
 }
 
+/// Check if an expression contains an underscore placeholder (recursively)
+fn contains_underscore(expr: &Expr) -> bool {
+    match expr {
+        Expr::Underscore => true,
+        Expr::Call { args, .. } | Expr::MethodCall { args, .. } => {
+            args.iter().any(contains_underscore)
+        }
+        Expr::List(items) => items.iter().any(contains_underscore),
+        Expr::Unary { expr, .. } => contains_underscore(expr),
+        Expr::Binary { left, right, .. } => {
+            contains_underscore(left) || contains_underscore(right)
+        }
+        Expr::Pipe { left, right } => {
+            contains_underscore(left) || contains_underscore_pipe_right(right)
+        }
+        _ => false,
+    }
+}
+
+/// Check if a pipe right contains an underscore
+fn contains_underscore_pipe_right(pipe_right: &PipeRight) -> bool {
+    match pipe_right {
+        PipeRight::Call { args, .. } | PipeRight::CallWithPlaceholder { args, .. } => {
+            args.iter().any(contains_underscore)
+        }
+    }
+}
+
 /// Evaluate pipe right-hand side with the piped value
 fn eval_pipe_right(
     pipe_right: &PipeRight,
@@ -351,26 +404,190 @@ fn eval_pipe_right(
 ) -> Result<Value, EvalError> {
     match pipe_right {
         PipeRight::Call { name, args } => {
-            // Build args: piped value as first arg, followed by explicit args
-            let mut arg_values = vec![piped_value];
-            for arg in args {
-                arg_values.push(eval(arg, ctx)?);
-            }
-            crate::libs::expr::functions::global_registry().call(name, &arg_values)
-        }
-        PipeRight::CallWithPlaceholder { name, args } => {
-            // Replace placeholder _ with piped value
-            let mut arg_values = Vec::new();
-            // First arg is always the piped value in placeholder mode
-            arg_values.push(piped_value);
-            // Add remaining args (skip placeholder entries as they are replaced by piped_value)
-            for arg in args {
-                if !matches!(arg, Expr::LambdaParam(_)) {
-                    arg_values.push(eval(arg, ctx)?);
+            // Check if any arg contains underscore
+            let has_underscore = args.iter().any(contains_underscore);
+            if has_underscore {
+                // Treat as CallWithPlaceholder: replace _ with piped_value
+                let mut arg_values = Vec::new();
+                for arg in args {
+                    arg_values.push(eval_with_placeholder(
+                        arg,
+                        piped_value.clone(),
+                        ctx,
+                    )?);
+                }
+                crate::libs::expr::functions::global_registry().call(name, &arg_values)
+            } else {
+                // No underscore: check if function requires multiple arguments
+                // For multi-arg functions, user must explicitly use _
+                // For single-arg functions, auto-fill piped_value for convenience
+                let registry = crate::libs::expr::functions::global_registry();
+                let needs_explicit_placeholder = registry
+                    .get(name)
+                    .map(|info| info.min_arity > 1)
+                    .unwrap_or(false);
+
+                if needs_explicit_placeholder {
+                    // Multi-arg function without _: evaluate args as-is
+                    let mut arg_values = Vec::new();
+                    for arg in args {
+                        arg_values.push(eval(arg, ctx)?);
+                    }
+                    registry.call(name, &arg_values)
+                } else {
+                    // Single-arg function: auto-fill piped_value as first arg
+                    let mut arg_values = vec![piped_value];
+                    for arg in args {
+                        arg_values.push(eval(arg, ctx)?);
+                    }
+                    registry.call(name, &arg_values)
                 }
             }
+        }
+        PipeRight::CallWithPlaceholder { name, args } => {
+            // Replace each _ with piped_value, keep other args as-is
+            let mut arg_values = Vec::new();
+            for arg in args {
+                arg_values.push(eval_with_placeholder(arg, piped_value.clone(), ctx)?);
+            }
             crate::libs::expr::functions::global_registry().call(name, &arg_values)
         }
+    }
+}
+
+/// Evaluate expression, replacing underscore with the given value
+fn eval_with_placeholder(
+    expr: &Expr,
+    placeholder_value: Value,
+    ctx: &mut EvalContext,
+) -> Result<Value, EvalError> {
+    match expr {
+        Expr::Underscore => Ok(placeholder_value),
+        Expr::Call { name, args } => {
+            let arg_values: Vec<Value> = args
+                .iter()
+                .map(|arg| eval_with_placeholder(arg, placeholder_value.clone(), ctx))
+                .collect::<Result<Vec<_>, _>>()?;
+            crate::libs::expr::functions::global_registry().call(name, &arg_values)
+        }
+        Expr::MethodCall { object, name, args } => {
+            let obj_val = eval_with_placeholder(object, placeholder_value.clone(), ctx)?;
+            let mut arg_values = vec![obj_val];
+            for arg in args {
+                arg_values.push(eval_with_placeholder(
+                    arg,
+                    placeholder_value.clone(),
+                    ctx,
+                )?);
+            }
+            crate::libs::expr::functions::global_registry().call(name, &arg_values)
+        }
+        Expr::List(items) => {
+            let values: Result<Vec<Value>, EvalError> = items
+                .iter()
+                .map(|e| eval_with_placeholder(e, placeholder_value.clone(), ctx))
+                .collect();
+            Ok(Value::List(values?))
+        }
+        Expr::Unary { op, expr } => {
+            let val = eval_with_placeholder(expr, placeholder_value, ctx)?;
+            match op {
+                UnaryOp::Neg => match val {
+                    Value::Int(i) => Ok(Value::Int(-i)),
+                    Value::Float(f) => Ok(Value::Float(-f)),
+                    _ => Err(EvalError::TypeError("expected numeric".to_string())),
+                },
+                UnaryOp::Not => Ok(Value::Bool(!val.as_bool())),
+            }
+        }
+        Expr::Binary { op, left, right } => {
+            // For logical operators, we need special handling to avoid evaluating both sides
+            match op {
+                BinaryOp::And => {
+                    let left_val =
+                        eval_with_placeholder(left, placeholder_value.clone(), ctx)?;
+                    if !left_val.as_bool() {
+                        Ok(Value::Bool(false))
+                    } else {
+                        let right_val =
+                            eval_with_placeholder(right, placeholder_value, ctx)?;
+                        Ok(Value::Bool(right_val.as_bool()))
+                    }
+                }
+                BinaryOp::Or => {
+                    let left_val =
+                        eval_with_placeholder(left, placeholder_value.clone(), ctx)?;
+                    if left_val.as_bool() {
+                        Ok(Value::Bool(true))
+                    } else {
+                        let right_val =
+                            eval_with_placeholder(right, placeholder_value, ctx)?;
+                        Ok(Value::Bool(right_val.as_bool()))
+                    }
+                }
+                _ => {
+                    let left_val =
+                        eval_with_placeholder(left, placeholder_value.clone(), ctx)?;
+                    let right_val =
+                        eval_with_placeholder(right, placeholder_value, ctx)?;
+                    match op {
+                        BinaryOp::Add => (left_val + right_val)
+                            .ok_or(EvalError::TypeError("expected numeric".to_string())),
+                        BinaryOp::Sub => (left_val - right_val)
+                            .ok_or(EvalError::TypeError("expected numeric".to_string())),
+                        BinaryOp::Mul => (left_val * right_val)
+                            .ok_or(EvalError::TypeError("expected numeric".to_string())),
+                        BinaryOp::Div => {
+                            (left_val / right_val).ok_or(EvalError::DivisionByZero)
+                        }
+                        BinaryOp::Mod => {
+                            (left_val % right_val).ok_or(EvalError::DivisionByZero)
+                        }
+                        BinaryOp::Pow => left_val
+                            .pow(&right_val)
+                            .ok_or(EvalError::TypeError("expected numeric".to_string())),
+                        BinaryOp::Concat => Ok(Value::String(
+                            left_val.as_string() + &right_val.as_string(),
+                        )),
+                        BinaryOp::Eq => Ok(left_val.eq(&right_val)),
+                        BinaryOp::Ne => Ok(left_val.ne(&right_val)),
+                        BinaryOp::Lt => left_val.lt(&right_val).ok_or(
+                            EvalError::TypeError("expected comparable".to_string()),
+                        ),
+                        BinaryOp::Le => left_val.le(&right_val).ok_or(
+                            EvalError::TypeError("expected comparable".to_string()),
+                        ),
+                        BinaryOp::Gt => left_val.gt(&right_val).ok_or(
+                            EvalError::TypeError("expected comparable".to_string()),
+                        ),
+                        BinaryOp::Ge => left_val.ge(&right_val).ok_or(
+                            EvalError::TypeError("expected comparable".to_string()),
+                        ),
+                        BinaryOp::StrEq => Ok(Value::Bool(
+                            left_val.as_string() == right_val.as_string(),
+                        )),
+                        BinaryOp::StrNe => Ok(Value::Bool(
+                            left_val.as_string() != right_val.as_string(),
+                        )),
+                        BinaryOp::StrLt => {
+                            Ok(Value::Bool(left_val.as_string() < right_val.as_string()))
+                        }
+                        BinaryOp::StrLe => Ok(Value::Bool(
+                            left_val.as_string() <= right_val.as_string(),
+                        )),
+                        BinaryOp::StrGt => {
+                            Ok(Value::Bool(left_val.as_string() > right_val.as_string()))
+                        }
+                        BinaryOp::StrGe => Ok(Value::Bool(
+                            left_val.as_string() >= right_val.as_string(),
+                        )),
+                        BinaryOp::And | BinaryOp::Or => unreachable!(),
+                    }
+                }
+            }
+        }
+        // For other expressions, use normal eval (they don't contain underscore)
+        _ => eval(expr, ctx),
     }
 }
 
@@ -964,12 +1181,13 @@ mod tests {
         let headers = vec!["text".to_string()];
         let mut ctx = EvalContext::with_headers(&row, &headers);
 
-        // Test @text |> replace("world", "Rust")
+        // Test @text |> replace(_, "world", "Rust")
         let expr = Expr::Pipe {
             left: Box::new(Expr::ColumnRef(ColumnRef::Name("text".to_string()))),
             right: Box::new(PipeRight::CallWithPlaceholder {
                 name: "replace".to_string(),
                 args: vec![
+                    Expr::Underscore,
                     Expr::String("world".to_string()),
                     Expr::String("Rust".to_string()),
                 ],
@@ -992,7 +1210,7 @@ mod tests {
             right: Box::new(PipeRight::CallWithPlaceholder {
                 name: "join".to_string(),
                 args: vec![
-                    Expr::LambdaParam("_".to_string()), // Explicit placeholder
+                    Expr::Underscore, // Explicit placeholder
                     Expr::String(",".to_string()),
                 ],
             }),
@@ -1000,6 +1218,206 @@ mod tests {
         assert_eq!(
             eval(&expr, &mut ctx).unwrap(),
             Value::String("1,2,3".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pipe_with_nested_placeholder() {
+        // Test nested function with _: "hello" | print(substr(_, 1, 2))
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Pipe {
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(PipeRight::Call {
+                name: "print".to_string(),
+                args: vec![Expr::Call {
+                    name: "substr".to_string(),
+                    args: vec![Expr::Underscore, Expr::Int(1), Expr::Int(2)],
+                }],
+            }),
+        };
+        // print returns its last argument, which is the result of substr
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("el".to_string())
+        );
+    }
+
+    #[test]
+    fn test_underscore_placeholder_basic() {
+        // Test basic underscore usage: "hello" | upper()
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Pipe {
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(PipeRight::Call {
+                name: "upper".to_string(),
+                args: vec![Expr::Underscore],
+            }),
+        };
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("HELLO".to_string())
+        );
+    }
+
+    #[test]
+    fn test_underscore_placeholder_with_position() {
+        // Test underscore in non-first position: "hello" | replace(_, "l", "L")
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Pipe {
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(PipeRight::Call {
+                name: "replace".to_string(),
+                args: vec![
+                    Expr::Underscore,
+                    Expr::String("l".to_string()),
+                    Expr::String("L".to_string()),
+                ],
+            }),
+        };
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("heLLo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_underscore_placeholder_chained() {
+        // Test chained pipes with underscore: "hello" | upper() | substr(_, 1, 3)
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Pipe {
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(PipeRight::Call {
+                name: "upper".to_string(),
+                args: vec![Expr::Underscore],
+            }),
+        };
+        let result = eval(&expr, &mut ctx).unwrap();
+        assert_eq!(result, Value::String("HELLO".to_string()));
+
+        // Now pipe to substr
+        let expr2 = Expr::Pipe {
+            left: Box::new(Expr::String("HELLO".to_string())),
+            right: Box::new(PipeRight::Call {
+                name: "substr".to_string(),
+                args: vec![Expr::Underscore, Expr::Int(1), Expr::Int(3)],
+            }),
+        };
+        assert_eq!(
+            eval(&expr2, &mut ctx).unwrap(),
+            Value::String("ELL".to_string())
+        );
+    }
+
+    #[test]
+    fn test_underscore_placeholder_without_pipe() {
+        // Underscore without pipe should error
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let result = eval(&Expr::Underscore, &mut ctx);
+        assert!(result.is_err(), "Underscore without pipe should error");
+    }
+
+    #[test]
+    fn test_single_arg_function_without_underscore() {
+        // Single-arg functions can omit _: "hello" | upper()
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Pipe {
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(PipeRight::Call {
+                name: "upper".to_string(),
+                args: vec![],
+            }),
+        };
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("HELLO".to_string())
+        );
+    }
+
+    #[test]
+    fn test_multi_arg_function_without_underscore_errors() {
+        // Multi-arg functions without _ should error
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Pipe {
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(PipeRight::Call {
+                name: "substr".to_string(),
+                args: vec![Expr::Int(1), Expr::Int(2)],
+            }),
+        };
+        let result = eval(&expr, &mut ctx);
+        assert!(result.is_err(), "Multi-arg function without _ should error");
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(
+            err_msg.contains("expected 3 arguments"),
+            "Error should mention expected argument count: {}",
+            err_msg
+        );
+    }
+
+    #[test]
+    fn test_multi_arg_function_with_underscore() {
+        // Multi-arg functions with _ should work
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Pipe {
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(PipeRight::Call {
+                name: "substr".to_string(),
+                args: vec![Expr::Underscore, Expr::Int(1), Expr::Int(2)],
+            }),
+        };
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("el".to_string())
+        );
+    }
+
+    #[test]
+    fn test_multiple_underscore_placeholders() {
+        // Multiple _ in same call should all get the piped value
+        // "hello" | concat(substr(_, 1, 2), substr(_, 2, 2))
+        // Should produce "el" ++ "ll" = "elll"
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        // Use replace(_, "l", "L") and replace(_, "o", "O") to test multiple _
+        // "hello" -> "heLLo" and "heLLo" -> "heLLO"
+        let expr = Expr::Pipe {
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(PipeRight::Call {
+                name: "replace".to_string(),
+                args: vec![
+                    Expr::Call {
+                        name: "replace".to_string(),
+                        args: vec![
+                            Expr::Underscore,
+                            Expr::String("l".to_string()),
+                            Expr::String("L".to_string()),
+                        ],
+                    },
+                    Expr::String("o".to_string()),
+                    Expr::String("O".to_string()),
+                ],
+            }),
+        };
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("heLLO".to_string())
         );
     }
 
@@ -1582,6 +2000,7 @@ mod tests {
         let pipe_right = PipeRight::CallWithPlaceholder {
             name: "replace".to_string(),
             args: vec![
+                Expr::Underscore,
                 Expr::String("old".to_string()),
                 Expr::String("new".to_string()),
             ],
@@ -2324,8 +2743,9 @@ mod tests {
 
         let row: Vec<String> = vec![];
 
+        // join requires 2 args, must use _ explicitly
         assert_eq!(
-            eval_expr("[1, 2, 3] | join(\",\")", &row, None)
+            eval_expr("[1, 2, 3] | join(_, \",\")", &row, None)
                 .unwrap()
                 .to_string(),
             "1,2,3"
@@ -2338,8 +2758,9 @@ mod tests {
 
         let row: Vec<String> = vec![];
 
+        // split requires 2 args, must use _ explicitly
         let result =
-            eval_expr("\"a,b,c\" | split(\",\") | reverse()", &row, None).unwrap();
+            eval_expr("\"a,b,c\" | split(_, \",\") | reverse()", &row, None).unwrap();
         match result {
             Value::List(items) => {
                 assert_eq!(items.len(), 3);
@@ -2746,8 +3167,9 @@ mod tests {
 
         let row: Vec<String> = vec![];
 
+        // split and join require 2 args, must use _ explicitly
         let result = eval_expr(
-            "\"hello\" | split(\"\") | reverse() | join(\"\")",
+            "\"hello\" | split(_, \"\") | reverse() | join(_, \"\")",
             &row,
             None,
         )
@@ -2804,7 +3226,10 @@ mod tests {
 
         // Set another global variable
         ctx.set_global("__name".to_string(), Value::String("alice".to_string()));
-        assert_eq!(ctx.get_global("__name").unwrap(), Value::String("alice".to_string()));
+        assert_eq!(
+            ctx.get_global("__name").unwrap(),
+            Value::String("alice".to_string())
+        );
     }
 
     #[test]
@@ -2816,7 +3241,10 @@ mod tests {
         ctx.set_builtin_globals(10, "test.tsv");
 
         assert_eq!(ctx.get_global("__index").unwrap(), Value::Int(10));
-        assert_eq!(ctx.get_global("__file").unwrap(), Value::String("test.tsv".to_string()));
+        assert_eq!(
+            ctx.get_global("__file").unwrap(),
+            Value::String("test.tsv".to_string())
+        );
     }
 
     #[test]

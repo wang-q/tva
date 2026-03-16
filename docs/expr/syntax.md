@@ -53,11 +53,11 @@ Method call is syntactic sugar for function calls:
 
 ### Pipe Call (Single Argument)
 
-`arg | func()` - Pipe left value to function. The `_` placeholder can be omitted for single-argument
-functions.
+`arg | func()` or `arg | func(_)` - Pipe left value to function. The `_` placeholder can be omitted for single-argument functions.
 
 ```bash
 tva expr -E '"hello" | upper()'             # Returns: HELLO
+tva expr -E '"hello" | upper(_)'            # Returns: HELLO
 tva expr -E '[1, 2, 3] | reverse()'         # Returns: [3, 2, 1]
 tva expr -E '"  hello  " | trim() | upper()'      # Chain multiple pipes
 ```

@@ -122,7 +122,7 @@ pub fn build_pipe_right(pair: Pair<Rule>) -> Result<PipeRight, ParseError> {
             let arg_inner: Vec<Pair<Rule>> = inner[i].clone().into_inner().collect();
             if !arg_inner.is_empty() {
                 if arg_inner[0].as_rule() == Rule::placeholder {
-                    args.push(Expr::LambdaParam("_".to_string()));
+                    args.push(Expr::Underscore);
                 } else {
                     args.push(super::build_expr(arg_inner[0].clone())?);
                 }
@@ -131,7 +131,7 @@ pub fn build_pipe_right(pair: Pair<Rule>) -> Result<PipeRight, ParseError> {
         i += 1;
     }
 
-    if args.iter().any(|arg| matches!(arg, Expr::LambdaParam(_))) {
+    if args.iter().any(|arg| matches!(arg, Expr::Underscore)) {
         Ok(PipeRight::CallWithPlaceholder { name, args })
     } else {
         Ok(PipeRight::Call { name, args })

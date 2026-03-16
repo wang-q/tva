@@ -11,6 +11,8 @@ pub enum Expr {
     LambdaParam(String),
     /// Global variable reference: @__index, @__file, @__xxx
     GlobalVar(String),
+    /// Underscore placeholder for pipe: _
+    Underscore,
     /// Integer literal: 123
     Int(i64),
     /// Float literal: 3.14
@@ -189,6 +191,7 @@ impl Expr {
             Expr::ColumnRef(ColumnRef::WholeRow) => "@0".to_string(),
             Expr::Variable(name) => format!("@{}", name),
             Expr::GlobalVar(name) => format!("@{}", name),
+            Expr::Underscore => "_".to_string(),
             Expr::LambdaParam(name) => name.clone(),
             Expr::Int(n) => n.to_string(),
             Expr::Float(n) => n.to_string(),

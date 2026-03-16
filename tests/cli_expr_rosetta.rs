@@ -241,7 +241,7 @@ fn rosetta_palindrome_simple() {
         .args(&[
             "expr",
             "-E",
-            "\"radar\" | split(\"\") | reverse() | join(\"\") as @reversed; \"radar\" == @reversed",
+            "\"radar\" | split(_, \"\") | reverse() | join(_, \"\") as @reversed; \"radar\" == @reversed",
         ])
         .run();
 
@@ -259,7 +259,7 @@ fn rosetta_palindrome_not_palindrome() {
         .args(&[
             "expr",
             "-E",
-            "\"hello\" | split(\"\") | reverse() | join(\"\") as @reversed; \"hello\" == @reversed",
+            "\"hello\" | split(_, \"\") | reverse() | join(_, \"\") as @reversed; \"hello\" == @reversed",
         ])
         .run();
 
@@ -277,7 +277,7 @@ fn rosetta_palindrome_case_insensitive() {
         .args(&[
             "expr",
             "-E",
-            "\"Racecar\" | lower() | split(\"\") | reverse() | join(\"\") as @reversed; \"racecar\" == @reversed",
+            "\"Racecar\" | lower() | split(_, \"\") | reverse() | join(_, \"\") as @reversed; \"racecar\" == @reversed",
         ])
         .run();
 
