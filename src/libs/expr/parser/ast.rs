@@ -77,7 +77,7 @@ pub enum ColumnRef {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UnaryOp {
     Neg, // -
-    Not, // !
+    Not, // not
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -106,8 +106,8 @@ pub enum BinaryOp {
     StrGt, // gt
     StrGe, // ge
     // Logical
-    And, // && / and
-    Or,  // || / or
+    And, // and
+    Or,  // or
 }
 
 impl Expr {

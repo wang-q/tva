@@ -68,8 +68,8 @@ op_or = { "or" }
 op_and = { "and" }
 
 // Comparison (numeric)
-op_eq = { "==" | "=" }
-op_ne = { "!=" | "<>" }
+op_eq = { "==" }
+op_ne = { "!=" }
 op_le = { "<=" }
 op_ge = { ">=" }
 op_lt = { "<" }
