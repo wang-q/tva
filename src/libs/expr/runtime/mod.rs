@@ -720,42 +720,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_value_empty() {
-        // Empty string should parse to Null
-        let row = vec!["".to_string()];
-        let mut ctx = EvalContext::new(&row);
-
-        let expr = Expr::ColumnRef(ColumnRef::Index(1));
-        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_parse_value_float() {
-        // Float string should parse to Float
-        let row = vec!["3.14".to_string()];
-        let mut ctx = EvalContext::new(&row);
-
-        let expr = Expr::ColumnRef(ColumnRef::Index(1));
-        match eval(&expr, &mut ctx).unwrap() {
-            Value::Float(f) => assert!((f - 3.14).abs() < 0.001),
-            _ => panic!("Expected Float"),
-        }
-    }
-
-    #[test]
-    fn test_parse_value_string() {
-        // Non-numeric string should remain as String
-        let row = vec!["hello".to_string()];
-        let mut ctx = EvalContext::new(&row);
-
-        let expr = Expr::ColumnRef(ColumnRef::Index(1));
-        assert_eq!(
-            eval(&expr, &mut ctx).unwrap(),
-            Value::String("hello".to_string())
-        );
-    }
-
-    #[test]
     fn test_unary_neg_non_numeric() {
         let row = vec!["hello".to_string()];
         let mut ctx = EvalContext::new(&row);
@@ -1073,20 +1037,6 @@ mod tests {
             args: vec![Expr::Int(-5)],
         };
         assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(5));
-    }
-
-    #[test]
-    fn test_eval_unknown_function() {
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        let expr = Expr::Call {
-            name: "unknown_function_xyz".to_string(),
-            args: vec![],
-        };
-        let result = eval(&expr, &mut ctx);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Unknown function"));
     }
 
     #[test]
@@ -1438,5 +1388,1370 @@ mod tests {
             "Short-circuit should prevent division by zero"
         );
         assert_eq!(result.unwrap().to_string(), "true");
+    }
+
+    #[test]
+    fn test_eval_context_with_headers() {
+        let row = vec!["Alice".to_string(), "30".to_string()];
+        let headers = vec!["name".to_string(), "age".to_string()];
+        let ctx = EvalContext::with_headers(&row, &headers);
+
+        assert_eq!(ctx.row.len(), 2);
+        assert!(ctx.headers.is_some());
+        assert_eq!(ctx.headers.unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_eval_context_new() {
+        let row = vec!["test".to_string()];
+        let ctx = EvalContext::new(&row);
+
+        assert_eq!(ctx.row.len(), 1);
+        assert!(ctx.headers.is_none());
+        assert!(ctx.variables.is_empty());
+        assert!(ctx.lambda_params.is_empty());
+    }
+
+    #[test]
+    fn test_eval_context_set_get_variable() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        ctx.set_variable("test".to_string(), Value::Int(42));
+        assert_eq!(ctx.get_variable("test").unwrap(), Value::Int(42));
+    }
+
+    #[test]
+    fn test_eval_context_set_get_lambda_param() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        ctx.set_lambda_param("x".to_string(), Value::Int(10));
+        assert_eq!(ctx.get_lambda_param("x").unwrap(), Value::Int(10));
+    }
+
+    #[test]
+    fn test_eval_context_clear_lambda_params() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        ctx.set_lambda_param("x".to_string(), Value::Int(1));
+        ctx.set_lambda_param("y".to_string(), Value::Int(2));
+        assert_eq!(ctx.lambda_params.len(), 2);
+
+        ctx.clear_lambda_params();
+        assert!(ctx.lambda_params.is_empty());
+    }
+
+    #[test]
+    fn test_eval_context_get_by_index() {
+        let row = vec!["10".to_string(), "20".to_string(), "30".to_string()];
+        let ctx = EvalContext::new(&row);
+
+        assert_eq!(ctx.get_by_index(1).unwrap(), Value::Int(10));
+        assert_eq!(ctx.get_by_index(2).unwrap(), Value::Int(20));
+        assert_eq!(ctx.get_by_index(3).unwrap(), Value::Int(30));
+    }
+
+    #[test]
+    fn test_eval_context_get_by_index_out_of_bounds() {
+        let row = vec!["10".to_string()];
+        let ctx = EvalContext::new(&row);
+
+        assert!(matches!(
+            ctx.get_by_index(2),
+            Err(EvalError::ColumnIndexOutOfBounds(2))
+        ));
+    }
+
+    #[test]
+    fn test_eval_context_get_by_name() {
+        let row = vec!["Alice".to_string(), "30".to_string()];
+        let headers = vec!["name".to_string(), "age".to_string()];
+        let ctx = EvalContext::with_headers(&row, &headers);
+
+        assert_eq!(
+            ctx.get_by_name("name").unwrap(),
+            Value::String("Alice".to_string())
+        );
+        assert_eq!(ctx.get_by_name("age").unwrap(), Value::Int(30));
+    }
+
+    #[test]
+    fn test_eval_context_get_by_name_not_found() {
+        let row = vec!["Alice".to_string()];
+        let headers = vec!["name".to_string()];
+        let ctx = EvalContext::with_headers(&row, &headers);
+
+        assert!(matches!(
+            ctx.get_by_name("unknown"),
+            Err(EvalError::ColumnNotFound(name)) if name == "unknown"
+        ));
+    }
+
+    #[test]
+    fn test_eval_context_get_by_name_no_headers() {
+        let row = vec!["Alice".to_string()];
+        let ctx = EvalContext::new(&row);
+
+        assert!(matches!(
+            ctx.get_by_name("name"),
+            Err(EvalError::ColumnNotFound(name)) if name == "name"
+        ));
+    }
+
+    #[test]
+    fn test_parse_value_empty() {
+        assert_eq!(parse_value(""), Value::Null);
+    }
+
+    #[test]
+    fn test_parse_value_integer() {
+        assert_eq!(parse_value("42"), Value::Int(42));
+        assert_eq!(parse_value("-100"), Value::Int(-100));
+        assert_eq!(parse_value("0"), Value::Int(0));
+    }
+
+    #[test]
+    fn test_parse_value_float() {
+        assert_eq!(parse_value("3.14"), Value::Float(3.14));
+        assert_eq!(parse_value("-2.5"), Value::Float(-2.5));
+        assert_eq!(parse_value("0.0"), Value::Float(0.0));
+    }
+
+    #[test]
+    fn test_parse_value_string() {
+        assert_eq!(parse_value("hello"), Value::String("hello".to_string()));
+        assert_eq!(parse_value("123abc"), Value::String("123abc".to_string()));
+    }
+
+    #[test]
+    fn test_eval_pipe_right_call() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let pipe_right = PipeRight::Call {
+            name: "abs".to_string(),
+            args: vec![],
+        };
+
+        let result = eval_pipe_right(&pipe_right, Value::Int(-5), &mut ctx);
+        assert_eq!(result.unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_eval_pipe_right_call_with_placeholder() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let pipe_right = PipeRight::CallWithPlaceholder {
+            name: "replace".to_string(),
+            args: vec![
+                Expr::String("old".to_string()),
+                Expr::String("new".to_string()),
+            ],
+        };
+
+        let result = eval_pipe_right(
+            &pipe_right,
+            Value::String("hello old world".to_string()),
+            &mut ctx,
+        );
+        assert_eq!(
+            result.unwrap(),
+            Value::String("hello new world".to_string())
+        );
+    }
+
+    #[test]
+    fn test_eval_call_with_args() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Call {
+            name: "max".to_string(),
+            args: vec![Expr::Int(1), Expr::Int(5), Expr::Int(3)],
+        };
+
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_eval_method_call_with_object() {
+        let row = vec!["hello".to_string()];
+        let headers = vec!["text".to_string()];
+        let mut ctx = EvalContext::with_headers(&row, &headers);
+
+        let expr = Expr::MethodCall {
+            object: Box::new(Expr::ColumnRef(ColumnRef::Name("text".to_string()))),
+            name: "upper".to_string(),
+            args: vec![],
+        };
+
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("HELLO".to_string())
+        );
+    }
+
+    #[test]
+    fn test_eval_lambda_with_captured_vars() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+        ctx.set_variable("outer".to_string(), Value::Int(10));
+
+        let expr = Expr::Lambda {
+            params: vec!["x".to_string()],
+            body: Box::new(Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::Variable("outer".to_string())),
+                right: Box::new(Expr::LambdaParam("x".to_string())),
+            }),
+        };
+
+        let result = eval(&expr, &mut ctx).unwrap();
+        match result {
+            Value::Lambda(lambda) => {
+                assert_eq!(lambda.captured_vars.get("outer"), Some(&Value::Int(10)));
+            }
+            _ => panic!("Expected Lambda"),
+        }
+    }
+
+    #[test]
+    fn test_eval_lambda_param_in_body() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+        ctx.set_lambda_param("x".to_string(), Value::Int(5));
+
+        let expr = Expr::LambdaParam("x".to_string());
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_eval_variable_not_found() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Variable("nonexistent".to_string());
+        assert!(matches!(
+            eval(&expr, &mut ctx),
+            Err(EvalError::VariableNotFound(name)) if name == "nonexistent"
+        ));
+    }
+
+    #[test]
+    fn test_eval_unary_neg_float() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Unary {
+            op: UnaryOp::Neg,
+            expr: Box::new(Expr::Float(3.14)),
+        };
+
+        match eval(&expr, &mut ctx).unwrap() {
+            Value::Float(f) => assert!((f + 3.14).abs() < 0.001),
+            _ => panic!("Expected Float"),
+        }
+    }
+
+    #[test]
+    fn test_eval_unary_not_non_bool() {
+        let row = vec!["hello".to_string()];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Unary {
+            op: UnaryOp::Not,
+            expr: Box::new(Expr::ColumnRef(ColumnRef::Index(1))),
+        };
+
+        // Non-empty string is truthy, so not should be false
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_eval_list_with_expressions() {
+        let row = vec!["10".to_string(), "20".to_string()];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::List(vec![
+            Expr::ColumnRef(ColumnRef::Index(1)),
+            Expr::ColumnRef(ColumnRef::Index(2)),
+            Expr::Int(30),
+        ]);
+
+        match eval(&expr, &mut ctx).unwrap() {
+            Value::List(values) => {
+                assert_eq!(values.len(), 3);
+                assert_eq!(values[0], Value::Int(10));
+                assert_eq!(values[1], Value::Int(20));
+                assert_eq!(values[2], Value::Int(30));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_nested_list() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::List(vec![
+            Expr::List(vec![Expr::Int(1), Expr::Int(2)]),
+            Expr::List(vec![Expr::Int(3), Expr::Int(4)]),
+        ]);
+
+        match eval(&expr, &mut ctx).unwrap() {
+            Value::List(values) => {
+                assert_eq!(values.len(), 2);
+                match &values[0] {
+                    Value::List(inner) => {
+                        assert_eq!(inner.len(), 2);
+                        assert_eq!(inner[0], Value::Int(1));
+                    }
+                    _ => panic!("Expected nested List"),
+                }
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_block_single_expr() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Block(vec![Expr::Int(42)]);
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(42));
+    }
+
+    #[test]
+    fn test_eval_block_multiple_binds() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Block(vec![
+            Expr::Bind {
+                expr: Box::new(Expr::Int(1)),
+                name: "a".to_string(),
+            },
+            Expr::Bind {
+                expr: Box::new(Expr::Int(2)),
+                name: "b".to_string(),
+            },
+            Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::Variable("a".to_string())),
+                right: Box::new(Expr::Variable("b".to_string())),
+            },
+        ]);
+
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(3));
+    }
+
+    #[test]
+    fn test_eval_comparison_with_floats() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Binary {
+            op: BinaryOp::Lt,
+            left: Box::new(Expr::Float(1.5)),
+            right: Box::new(Expr::Float(2.5)),
+        };
+
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_eval_string_comparison() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Binary {
+            op: BinaryOp::StrEq,
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(Expr::String("hello".to_string())),
+        };
+
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_eval_concat() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Binary {
+            op: BinaryOp::Concat,
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(Expr::String(" world".to_string())),
+        };
+
+        assert_eq!(
+            eval(&expr, &mut ctx).unwrap(),
+            Value::String("hello world".to_string())
+        );
+    }
+
+    #[test]
+    fn test_eval_power() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Binary {
+            op: BinaryOp::Pow,
+            left: Box::new(Expr::Int(2)),
+            right: Box::new(Expr::Int(3)),
+        };
+
+        match eval(&expr, &mut ctx).unwrap() {
+            Value::Float(f) => assert!((f - 8.0).abs() < 0.001),
+            _ => panic!("Expected Float"),
+        }
+    }
+
+    #[test]
+    fn test_eval_modulo() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Binary {
+            op: BinaryOp::Mod,
+            left: Box::new(Expr::Int(10)),
+            right: Box::new(Expr::Int(3)),
+        };
+
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(1));
+    }
+
+    #[test]
+    fn test_eval_division_by_zero() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Binary {
+            op: BinaryOp::Div,
+            left: Box::new(Expr::Int(10)),
+            right: Box::new(Expr::Int(0)),
+        };
+
+        assert!(matches!(
+            eval(&expr, &mut ctx),
+            Err(EvalError::DivisionByZero)
+        ));
+    }
+
+    #[test]
+    fn test_eval_unknown_function() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        let expr = Expr::Call {
+            name: "nonexistent_function".to_string(),
+            args: vec![],
+        };
+
+        assert!(matches!(
+            eval(&expr, &mut ctx),
+            Err(EvalError::UnknownFunction(name)) if name == "nonexistent_function"
+        ));
+    }
+
+    #[test]
+    fn test_eval_wrong_arity() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        // abs() expects exactly 1 argument
+        let expr = Expr::Call {
+            name: "abs".to_string(),
+            args: vec![],
+        };
+
+        assert!(matches!(
+            eval(&expr, &mut ctx),
+            Err(EvalError::WrongArity { name, expected: 1, got: 0 }) if name == "abs"
+        ));
+    }
+
+    #[test]
+    fn test_eval_expr_helper() {
+        use crate::libs::expr::eval_expr;
+
+        let row = vec!["10".to_string(), "20".to_string()];
+        let headers = vec!["a".to_string(), "b".to_string()];
+
+        assert_eq!(eval_expr("@1 + @2", &row, None).unwrap().to_string(), "30");
+        assert_eq!(
+            eval_expr("@a + @b", &row, Some(&headers))
+                .unwrap()
+                .to_string(),
+            "30"
+        );
+    }
+
+    #[test]
+    fn test_eval_expr_with_error() {
+        use crate::libs::expr::eval_expr;
+
+        let row = vec!["10".to_string()];
+
+        assert!(eval_expr("@2", &row, None).is_err());
+        assert!(eval_expr("unknown()", &row, None).is_err());
+    }
+
+    #[test]
+    fn test_eval_pipe_with_method_call() {
+        use crate::libs::expr::eval_expr;
+
+        let row = vec!["  hello  ".to_string()];
+        let headers = vec!["name".to_string()];
+
+        let result = eval_expr("@name | trim() | upper()", &row, Some(&headers));
+        assert_eq!(result.unwrap().to_string(), "HELLO");
+    }
+
+    #[test]
+    fn test_eval_complex_arithmetic() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        // Test operator precedence
+        assert_eq!(
+            eval_expr("2 + 3 * 4", &row, None).unwrap().to_string(),
+            "14"
+        );
+        assert_eq!(
+            eval_expr("(2 + 3) * 4", &row, None).unwrap().to_string(),
+            "20"
+        );
+        assert_eq!(
+            eval_expr("10 - 3 - 2", &row, None).unwrap().to_string(),
+            "5"
+        );
+    }
+
+    #[test]
+    fn test_eval_float_arithmetic() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        let result = eval_expr("3.14 + 2.86", &row, None).unwrap();
+        match result {
+            Value::Float(f) => assert!((f - 6.0).abs() < 0.001),
+            _ => panic!("Expected Float"),
+        }
+    }
+
+    #[test]
+    fn test_eval_mixed_type_arithmetic() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        // Int + Float = Float
+        let result = eval_expr("10 + 2.5", &row, None).unwrap();
+        match result {
+            Value::Float(f) => assert!((f - 12.5).abs() < 0.001),
+            _ => panic!("Expected Float"),
+        }
+    }
+
+    #[test]
+    fn test_eval_null_handling() {
+        use crate::libs::expr::eval_expr;
+
+        let row = vec!["".to_string()];
+
+        // Empty field is null
+        assert_eq!(
+            eval_expr("@1 == null", &row, None).unwrap().to_string(),
+            "true"
+        );
+        assert_eq!(eval_expr("not @1", &row, None).unwrap().to_string(), "true");
+    }
+
+    #[test]
+    fn test_eval_boolean_operations() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("true and true", &row, None).unwrap().to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("true and false", &row, None).unwrap().to_string(),
+            "false"
+        );
+        assert_eq!(
+            eval_expr("true or false", &row, None).unwrap().to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("false or false", &row, None).unwrap().to_string(),
+            "false"
+        );
+        assert_eq!(
+            eval_expr("not true", &row, None).unwrap().to_string(),
+            "false"
+        );
+        assert_eq!(
+            eval_expr("not false", &row, None).unwrap().to_string(),
+            "true"
+        );
+    }
+
+    #[test]
+    fn test_eval_comparison_operators() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(eval_expr("5 == 5", &row, None).unwrap().to_string(), "true");
+        assert_eq!(eval_expr("5 != 3", &row, None).unwrap().to_string(), "true");
+        assert_eq!(eval_expr("3 < 5", &row, None).unwrap().to_string(), "true");
+        assert_eq!(eval_expr("5 <= 5", &row, None).unwrap().to_string(), "true");
+        assert_eq!(eval_expr("5 > 3", &row, None).unwrap().to_string(), "true");
+        assert_eq!(eval_expr("5 >= 5", &row, None).unwrap().to_string(), "true");
+    }
+
+    #[test]
+    fn test_eval_string_operations() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        // String concatenation
+        assert_eq!(
+            eval_expr("\"hello\" ++ \" world\"", &row, None)
+                .unwrap()
+                .to_string(),
+            "hello world"
+        );
+
+        // String comparison
+        assert_eq!(
+            eval_expr("\"a\" lt \"b\"", &row, None).unwrap().to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("\"hello\" eq \"hello\"", &row, None)
+                .unwrap()
+                .to_string(),
+            "true"
+        );
+    }
+
+    #[test]
+    fn test_eval_list_operations() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        // List literal
+        let result = eval_expr("[1, 2, 3]", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Value::Int(1));
+            }
+            _ => panic!("Expected List"),
+        }
+
+        // List functions
+        assert_eq!(
+            eval_expr("len([1, 2, 3])", &row, None).unwrap().to_string(),
+            "3"
+        );
+        assert_eq!(
+            eval_expr("first([1, 2, 3])", &row, None)
+                .unwrap()
+                .to_string(),
+            "1"
+        );
+        assert_eq!(
+            eval_expr("last([1, 2, 3])", &row, None)
+                .unwrap()
+                .to_string(),
+            "3"
+        );
+    }
+
+    #[test]
+    fn test_eval_lambda_operations() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        // map with lambda
+        let result = eval_expr("map([1, 2, 3], x => x * 2)", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Value::Int(2));
+                assert_eq!(items[1], Value::Int(4));
+                assert_eq!(items[2], Value::Int(6));
+            }
+            _ => panic!("Expected List"),
+        }
+
+        // filter with lambda
+        let result = eval_expr("filter([1, 2, 3, 4], x => x > 2)", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 2);
+                assert_eq!(items[0], Value::Int(3));
+                assert_eq!(items[1], Value::Int(4));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_variable_binding() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        let result = eval_expr("10 as @x; @x * 2", &row, None).unwrap();
+        assert_eq!(result.to_string(), "20");
+
+        let result = eval_expr("5 as @a; 3 as @b; @a + @b", &row, None).unwrap();
+        assert_eq!(result.to_string(), "8");
+    }
+
+    #[test]
+    fn test_eval_nested_function_calls() {
+        use crate::libs::expr::eval_expr;
+
+        let row = vec!["  hello  ".to_string()];
+
+        assert_eq!(
+            eval_expr("upper(trim(@1))", &row, None)
+                .unwrap()
+                .to_string(),
+            "HELLO"
+        );
+    }
+
+    #[test]
+    fn test_eval_if_expression() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("if(true, 1, 0)", &row, None).unwrap().to_string(),
+            "1"
+        );
+        assert_eq!(
+            eval_expr("if(false, 1, 0)", &row, None)
+                .unwrap()
+                .to_string(),
+            "0"
+        );
+        assert_eq!(
+            eval_expr("if(5 > 3, \"yes\", \"no\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "yes"
+        );
+    }
+
+    #[test]
+    fn test_eval_type_checking_functions() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("is_int(42)", &row, None).unwrap().to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("is_float(3.14)", &row, None).unwrap().to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("is_string(\"hello\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("is_bool(true)", &row, None).unwrap().to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("is_null(null)", &row, None).unwrap().to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("is_list([1, 2, 3])", &row, None)
+                .unwrap()
+                .to_string(),
+            "true"
+        );
+    }
+
+    #[test]
+    fn test_eval_numeric_functions() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(eval_expr("abs(-5)", &row, None).unwrap().to_string(), "5");
+        assert_eq!(
+            eval_expr("round(3.7)", &row, None).unwrap().to_string(),
+            "4"
+        );
+        assert_eq!(
+            eval_expr("floor(3.7)", &row, None).unwrap().to_string(),
+            "3"
+        );
+        assert_eq!(eval_expr("ceil(3.2)", &row, None).unwrap().to_string(), "4");
+        assert_eq!(eval_expr("sqrt(16)", &row, None).unwrap().to_string(), "4");
+        assert_eq!(
+            eval_expr("max(1, 5, 3)", &row, None).unwrap().to_string(),
+            "5"
+        );
+        assert_eq!(
+            eval_expr("min(1, 5, 3)", &row, None).unwrap().to_string(),
+            "1"
+        );
+    }
+
+    #[test]
+    fn test_eval_string_functions() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("upper(\"hello\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "HELLO"
+        );
+        assert_eq!(
+            eval_expr("lower(\"WORLD\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "world"
+        );
+        assert_eq!(
+            eval_expr("trim(\"  hello  \")", &row, None)
+                .unwrap()
+                .to_string(),
+            "hello"
+        );
+        assert_eq!(
+            eval_expr("len(\"hello\")", &row, None).unwrap().to_string(),
+            "5"
+        );
+        assert_eq!(
+            eval_expr("substr(\"hello\", 0, 3)", &row, None)
+                .unwrap()
+                .to_string(),
+            "hel"
+        );
+    }
+
+    #[test]
+    fn test_eval_default_function() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("default(null, \"fallback\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "fallback"
+        );
+        assert_eq!(
+            eval_expr("default(\"value\", \"fallback\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "value"
+        );
+    }
+
+    #[test]
+    fn test_eval_pipe_with_join() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("[1, 2, 3] | join(\",\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "1,2,3"
+        );
+    }
+
+    #[test]
+    fn test_eval_split_and_reverse() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        let result =
+            eval_expr("\"a,b,c\" | split(\",\") | reverse()", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Value::String("c".to_string()));
+                assert_eq!(items[1], Value::String("b".to_string()));
+                assert_eq!(items[2], Value::String("a".to_string()));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_reduce() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        // Sum of [1, 2, 3, 4, 5] = 15
+        let result = eval_expr(
+            "reduce([1, 2, 3, 4, 5], 0, (acc, x) => acc + x)",
+            &row,
+            None,
+        )
+        .unwrap();
+        assert_eq!(result.to_string(), "15");
+    }
+
+    #[test]
+    fn test_eval_sort_by() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        let result = eval_expr(
+            "sort_by([\"cherry\", \"apple\", \"pear\"], s => len(s))",
+            &row,
+            None,
+        )
+        .unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Value::String("pear".to_string()));
+                assert_eq!(items[1], Value::String("apple".to_string()));
+                assert_eq!(items[2], Value::String("cherry".to_string()));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_take_while() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        let result =
+            eval_expr("take_while([1, 2, 3, 4, 5], x => x < 4)", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Value::Int(1));
+                assert_eq!(items[1], Value::Int(2));
+                assert_eq!(items[2], Value::Int(3));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_range() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        // range(upto)
+        let result = eval_expr("range(5)", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 5);
+                assert_eq!(items[0], Value::Int(0));
+                assert_eq!(items[4], Value::Int(4));
+            }
+            _ => panic!("Expected List"),
+        }
+
+        // range(from, upto)
+        let result = eval_expr("range(2, 5)", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Value::Int(2));
+                assert_eq!(items[2], Value::Int(4));
+            }
+            _ => panic!("Expected List"),
+        }
+
+        // range(from, upto, by)
+        let result = eval_expr("range(0, 10, 3)", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 4);
+                assert_eq!(items[0], Value::Int(0));
+                assert_eq!(items[1], Value::Int(3));
+                assert_eq!(items[2], Value::Int(6));
+                assert_eq!(items[3], Value::Int(9));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_unique() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        let result = eval_expr("unique([1, 2, 2, 3, 3, 3])", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Value::Int(1));
+                assert_eq!(items[1], Value::Int(2));
+                assert_eq!(items[2], Value::Int(3));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_sort() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        let result = eval_expr("sort([3, 1, 4, 1, 5])", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 5);
+                assert_eq!(items[0], Value::Int(1));
+                assert_eq!(items[1], Value::Int(1));
+                assert_eq!(items[2], Value::Int(3));
+                assert_eq!(items[3], Value::Int(4));
+                assert_eq!(items[4], Value::Int(5));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_replace_nth() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        let result = eval_expr("replace_nth([1, 2, 3], 1, 99)", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Value::Int(1));
+                assert_eq!(items[1], Value::Int(99));
+                assert_eq!(items[2], Value::Int(3));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_slice() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        let result = eval_expr("slice([1, 2, 3, 4, 5], 1, 4)", &row, None).unwrap();
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Value::Int(2));
+                assert_eq!(items[1], Value::Int(3));
+                assert_eq!(items[2], Value::Int(4));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_eval_contains() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("contains(\"hello world\", \"world\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("contains(\"hello world\", \"foo\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "false"
+        );
+    }
+
+    #[test]
+    fn test_eval_starts_with() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("starts_with(\"hello world\", \"hello\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("starts_with(\"hello world\", \"world\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "false"
+        );
+    }
+
+    #[test]
+    fn test_eval_ends_with() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("ends_with(\"hello world\", \"world\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("ends_with(\"hello world\", \"hello\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "false"
+        );
+    }
+
+    #[test]
+    fn test_eval_replace() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("replace(\"hello world\", \"world\", \"Rust\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "hello Rust"
+        );
+    }
+
+    #[test]
+    fn test_eval_truncate() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("truncate(\"hello world\", 8)", &row, None)
+                .unwrap()
+                .to_string(),
+            "hello..."
+        );
+    }
+
+    #[test]
+    fn test_eval_wordcount() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("wordcount(\"hello world\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "2"
+        );
+        assert_eq!(
+            eval_expr("wordcount(\"one two three four\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "4"
+        );
+    }
+
+    #[test]
+    fn test_eval_nth() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("nth([1, 2, 3], 0)", &row, None)
+                .unwrap()
+                .to_string(),
+            "1"
+        );
+        assert_eq!(
+            eval_expr("nth([1, 2, 3], 1)", &row, None)
+                .unwrap()
+                .to_string(),
+            "2"
+        );
+        assert_eq!(
+            eval_expr("nth([1, 2, 3], 2)", &row, None)
+                .unwrap()
+                .to_string(),
+            "3"
+        );
+    }
+
+    #[test]
+    fn test_eval_type_function() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("type(42)", &row, None).unwrap().to_string(),
+            "int"
+        );
+        assert_eq!(
+            eval_expr("type(3.14)", &row, None).unwrap().to_string(),
+            "float"
+        );
+        assert_eq!(
+            eval_expr("type(\"hello\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "string"
+        );
+        assert_eq!(
+            eval_expr("type(true)", &row, None).unwrap().to_string(),
+            "bool"
+        );
+        assert_eq!(
+            eval_expr("type(null)", &row, None).unwrap().to_string(),
+            "null"
+        );
+        assert_eq!(
+            eval_expr("type([1, 2, 3])", &row, None)
+                .unwrap()
+                .to_string(),
+            "list"
+        );
+    }
+
+    #[test]
+    fn test_eval_is_numeric() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("is_numeric(42)", &row, None).unwrap().to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("is_numeric(3.14)", &row, None)
+                .unwrap()
+                .to_string(),
+            "true"
+        );
+        assert_eq!(
+            eval_expr("is_numeric(\"hello\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "false"
+        );
+    }
+
+    #[test]
+    fn test_eval_char_len() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        assert_eq!(
+            eval_expr("char_len(\"hello\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "5"
+        );
+        // UTF-8 characters
+        assert_eq!(
+            eval_expr("char_len(\"你好\")", &row, None)
+                .unwrap()
+                .to_string(),
+            "2"
+        );
+    }
+
+    #[test]
+    fn test_eval_reverse_string() {
+        use crate::libs::expr::eval_expr;
+
+        let row: Vec<String> = vec![];
+
+        let result = eval_expr(
+            "\"hello\" | split(\"\") | reverse() | join(\"\")",
+            &row,
+            None,
+        )
+        .unwrap();
+        assert_eq!(result.to_string(), "olleh");
+    }
+
+    #[test]
+    fn test_eval_complex_chain() {
+        use crate::libs::expr::eval_expr;
+
+        let row = vec!["1,2,3,4,5".to_string()];
+
+        // Split, convert to int, double, filter > 4, join
+        let result = eval_expr(
+            "@1 | split(_,\",\") | map(_, x => int(x) * 2) | filter(_, x => x > 4) | join(_,\"-\")",
+            &row,
+            None,
+        )
+        .unwrap();
+        assert_eq!(result.to_string(), "6-8-10");
+    }
+
+    #[test]
+    fn test_eval_error_messages() {
+        use crate::libs::expr::eval_expr;
+
+        let row = vec!["10".to_string()];
+
+        // Column index out of bounds
+        let result = eval_expr("@2", &row, None);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("out of bounds"));
+
+        // Unknown function
+        let result = eval_expr("unknown_func()", &row, None);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("Unknown function"));
     }
 }

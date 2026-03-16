@@ -359,7 +359,7 @@ impl Rem for Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ahash::HashMapExt;
+    use crate::libs::expr::EvalError;
 
     #[test]
     fn test_value_arithmetic() {
@@ -410,14 +410,6 @@ mod tests {
         let b = Value::Int(3);
 
         assert_eq!(a.pow(&b), Some(Value::Float(8.0)));
-    }
-
-    #[test]
-    fn test_value_modulo() {
-        let a = Value::Int(10);
-        let b = Value::Int(3);
-
-        assert_eq!(a % b, Some(Value::Int(1)));
     }
 
     #[test]
@@ -616,7 +608,7 @@ mod tests {
             Value::Lambda(LambdaValue {
                 params: vec![],
                 body: crate::libs::expr::parser::ast::Expr::Int(1),
-                captured_vars: HashMap::new(),
+                captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
             })
             .is_numeric(),
             false
@@ -644,7 +636,7 @@ mod tests {
             Value::Lambda(LambdaValue {
                 params: vec![],
                 body: crate::libs::expr::parser::ast::Expr::Int(1),
-                captured_vars: HashMap::new(),
+                captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
             })
             .type_name(),
             "lambda"
@@ -669,7 +661,7 @@ mod tests {
             Value::Lambda(LambdaValue {
                 params: vec![],
                 body: crate::libs::expr::parser::ast::Expr::Int(1),
-                captured_vars: HashMap::new(),
+                captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
             })
             .to_string(),
             "<lambda>"
@@ -719,18 +711,6 @@ mod tests {
     }
 
     #[test]
-    fn test_display_trait() {
-        use std::fmt::Write;
-        let mut buf = String::new();
-        write!(&mut buf, "{}", Value::Int(42)).unwrap();
-        assert_eq!(buf, "42");
-
-        buf.clear();
-        write!(&mut buf, "{}", Value::String("hello".to_string())).unwrap();
-        assert_eq!(buf, "hello");
-    }
-
-    #[test]
     fn test_as_bool_with_list() {
         // Empty list is falsy
         assert_eq!(Value::List(vec![]).as_bool(), false);
@@ -751,7 +731,7 @@ mod tests {
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
             body: crate::libs::expr::parser::ast::Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
+            captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
         });
         assert_eq!(lambda.as_bool(), true);
     }
@@ -842,12 +822,12 @@ mod tests {
         let lambda1 = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
             body: crate::libs::expr::parser::ast::Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
+            captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
         });
         let lambda2 = Value::Lambda(LambdaValue {
             params: vec!["y".to_string()],
             body: crate::libs::expr::parser::ast::Expr::LambdaParam("y".to_string()),
-            captured_vars: HashMap::new(),
+            captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
         });
 
         // Lambda comparison returns None (not comparable)
@@ -872,7 +852,7 @@ mod tests {
         let lambda = Value::Lambda(LambdaValue {
             params: vec![],
             body: crate::libs::expr::parser::ast::Expr::Int(1),
-            captured_vars: HashMap::new(),
+            captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
         });
         assert_eq!(
             Value::DateTime(Utc::now()).compare(&lambda),
@@ -886,7 +866,7 @@ mod tests {
         let lambda = Value::Lambda(LambdaValue {
             params: vec![],
             body: crate::libs::expr::parser::ast::Expr::Int(1),
-            captured_vars: HashMap::new(),
+            captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
         });
         // Two lists with lambda elements at same position - should return None
         let list1 = Value::List(vec![lambda.clone()]);
@@ -926,5 +906,603 @@ mod tests {
 
         assert_eq!(a.eq(&b), Value::Bool(false));
         assert_eq!(a.eq(&c), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_value_concat() {
+        // Test string concatenation
+        let a = Value::String("hello".to_string());
+        let b = Value::String("world".to_string());
+        assert_eq!(
+            a.concat(&b).unwrap(),
+            Value::String("helloworld".to_string())
+        );
+
+        // Test concatenation with non-strings (should convert to string)
+        let a = Value::Int(42);
+        let b = Value::String("test".to_string());
+        assert_eq!(a.concat(&b).unwrap(), Value::String("42test".to_string()));
+    }
+
+    #[test]
+    fn test_value_modulo() {
+        // Test integer modulo
+        let a = Value::Int(10);
+        let b = Value::Int(3);
+        assert_eq!(a.modulo(&b).unwrap(), Value::Int(1));
+
+        // Test float modulo
+        let a = Value::Float(10.5);
+        let b = Value::Float(3.0);
+        assert_eq!(a.modulo(&b).unwrap(), Value::Float(1.5));
+
+        // Test mixed types
+        let a = Value::Int(10);
+        let b = Value::Float(3.0);
+        assert_eq!(a.modulo(&b).unwrap(), Value::Float(1.0));
+    }
+
+    #[test]
+    fn test_value_modulo_by_zero() {
+        let a = Value::Int(10);
+        let b = Value::Int(0);
+        assert!(matches!(a.modulo(&b), Err(EvalError::DivisionByZero)));
+
+        let a = Value::Float(10.0);
+        let b = Value::Float(0.0);
+        assert!(matches!(a.modulo(&b), Err(EvalError::DivisionByZero)));
+    }
+
+    #[test]
+    fn test_value_modulo_type_error() {
+        let a = Value::String("hello".to_string());
+        let b = Value::Int(3);
+        assert!(matches!(a.modulo(&b), Err(EvalError::TypeError(_))));
+    }
+
+    #[test]
+    fn test_as_f64_various_types() {
+        assert_eq!(Value::Int(42).as_f64(), Some(42.0));
+        assert_eq!(Value::Float(3.14).as_f64(), Some(3.14));
+        assert_eq!(Value::Null.as_f64(), None);
+        assert_eq!(Value::Bool(true).as_f64(), None);
+        assert_eq!(Value::String("hello".to_string()).as_f64(), None);
+        assert_eq!(Value::List(vec![]).as_f64(), None);
+    }
+
+    #[test]
+    fn test_as_int_various_types() {
+        assert_eq!(Value::Int(42).as_int(), Some(42));
+        assert_eq!(Value::Float(3.7).as_int(), Some(3)); // Truncates
+        assert_eq!(Value::String("123".to_string()).as_int(), Some(123));
+        assert_eq!(Value::String("abc".to_string()).as_int(), None);
+        assert_eq!(Value::Bool(true).as_int(), Some(1));
+        assert_eq!(Value::Bool(false).as_int(), Some(0));
+        assert_eq!(Value::Null.as_int(), None);
+    }
+
+    #[test]
+    fn test_as_string_various_types() {
+        assert_eq!(Value::String("hello".to_string()).as_string(), "hello");
+        assert_eq!(Value::Int(42).as_string(), "42");
+        assert_eq!(Value::Float(3.14).as_string(), "3.14");
+        assert_eq!(Value::Bool(true).as_string(), "true");
+        assert_eq!(Value::Null.as_string(), "null");
+    }
+
+    #[test]
+    fn test_value_equality() {
+        // Same types
+        assert_eq!(Value::Int(42), Value::Int(42));
+        assert_ne!(Value::Int(42), Value::Int(43));
+        assert_eq!(Value::Float(3.14), Value::Float(3.14));
+        assert_eq!(
+            Value::String("hello".to_string()),
+            Value::String("hello".to_string())
+        );
+        assert_eq!(Value::Bool(true), Value::Bool(true));
+        assert_eq!(Value::Null, Value::Null);
+
+        // Different types
+        assert_ne!(Value::Int(42), Value::Float(42.0));
+        assert_ne!(Value::Int(42), Value::String("42".to_string()));
+        assert_ne!(Value::Bool(true), Value::Int(1));
+    }
+
+    #[test]
+    fn test_list_equality() {
+        let a = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let b = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let c = Value::List(vec![Value::Int(1), Value::Int(3)]);
+        let d = Value::List(vec![Value::Int(1)]);
+
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+        assert_ne!(a, d);
+    }
+
+    #[test]
+    fn test_nested_list_equality() {
+        let a = Value::List(vec![
+            Value::List(vec![Value::Int(1), Value::Int(2)]),
+            Value::Int(3),
+        ]);
+        let b = Value::List(vec![
+            Value::List(vec![Value::Int(1), Value::Int(2)]),
+            Value::Int(3),
+        ]);
+        let c = Value::List(vec![
+            Value::List(vec![Value::Int(1), Value::Int(3)]),
+            Value::Int(3),
+        ]);
+
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn test_datetime_equality() {
+        use chrono::Utc;
+        let dt1 = Utc::now();
+        let dt2 = dt1;
+        let dt3 = Utc::now();
+
+        assert_eq!(Value::DateTime(dt1), Value::DateTime(dt2));
+        // Note: dt3 might be equal or not depending on timing
+        // Just verify the comparison works
+        let _ = Value::DateTime(dt1) == Value::DateTime(dt3);
+    }
+
+    #[test]
+    fn test_lambda_equality() {
+        use crate::libs::expr::parser::ast::Expr;
+        let lambda1 = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Int(1),
+            captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
+        });
+        let lambda2 = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Int(1),
+            captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
+        });
+        let lambda3 = Value::Lambda(LambdaValue {
+            params: vec!["y".to_string()],
+            body: Expr::Int(2),
+            captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
+        });
+
+        assert_eq!(lambda1, lambda2);
+        assert_ne!(lambda1, lambda3);
+    }
+
+    #[test]
+    fn test_arithmetic_with_negative_numbers() {
+        let a = Value::Int(-10);
+        let b = Value::Int(-3);
+
+        assert_eq!((a.clone() + b.clone()).unwrap(), Value::Int(-13));
+        assert_eq!((a.clone() - b.clone()).unwrap(), Value::Int(-7));
+        assert_eq!((a.clone() * b.clone()).unwrap(), Value::Int(30));
+    }
+
+    #[test]
+    fn test_arithmetic_with_zero() {
+        let a = Value::Int(10);
+        let zero = Value::Int(0);
+
+        assert_eq!((a.clone() + zero.clone()).unwrap(), Value::Int(10));
+        assert_eq!((a.clone() - zero.clone()).unwrap(), Value::Int(10));
+        assert_eq!((zero.clone() * a.clone()).unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_float_special_values() {
+        // Test with infinity
+        let inf = Value::Float(f64::INFINITY);
+        let neg_inf = Value::Float(f64::NEG_INFINITY);
+        let num = Value::Float(1.0);
+
+        assert!(
+            matches!(inf.clone() + num.clone(), Some(Value::Float(f)) if f.is_infinite())
+        );
+        assert!(
+            matches!(neg_inf.clone() + num.clone(), Some(Value::Float(f)) if f.is_infinite())
+        );
+
+        // Test with NaN
+        let nan = Value::Float(f64::NAN);
+        assert!(
+            matches!(nan.clone() + num.clone(), Some(Value::Float(f)) if f.is_nan())
+        );
+
+        // NaN comparisons
+        assert_eq!(nan.eq(&nan), Value::Bool(false)); // NaN != NaN
+    }
+
+    #[test]
+    fn test_compare_empty_lists() {
+        let empty1: Vec<Value> = vec![];
+        let empty2: Vec<Value> = vec![];
+        let non_empty = Value::List(vec![Value::Int(1)]);
+
+        assert_eq!(
+            Value::List(empty1.clone()).compare(&Value::List(empty2)),
+            Some(std::cmp::Ordering::Equal)
+        );
+        assert_eq!(
+            Value::List(empty1).compare(&non_empty),
+            Some(std::cmp::Ordering::Less)
+        );
+    }
+
+    #[test]
+    fn test_compare_lists_different_lengths() {
+        let a = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let b = Value::List(vec![Value::Int(1)]);
+
+        assert_eq!(a.compare(&b), Some(std::cmp::Ordering::Greater));
+        assert_eq!(b.compare(&a), Some(std::cmp::Ordering::Less));
+    }
+
+    #[test]
+    fn test_compare_list_with_incomparable_nested() {
+        // Lists with lambda elements should not be comparable
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec![],
+            body: crate::libs::expr::parser::ast::Expr::Int(1),
+            captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
+        });
+        let list1 = Value::List(vec![lambda.clone()]);
+        let list2 = Value::List(vec![lambda.clone()]);
+
+        assert_eq!(list1.compare(&list2), None);
+    }
+
+    #[test]
+    fn test_value_clone() {
+        let original = Value::List(vec![
+            Value::Int(1),
+            Value::String("hello".to_string()),
+            Value::Bool(true),
+        ]);
+        let cloned = original.clone();
+
+        assert_eq!(original, cloned);
+    }
+
+    #[test]
+    fn test_lambda_clone() {
+        let lambda = LambdaValue {
+            params: vec!["x".to_string(), "y".to_string()],
+            body: crate::libs::expr::parser::ast::Expr::Binary {
+                op: crate::libs::expr::parser::ast::BinaryOp::Add,
+                left: Box::new(crate::libs::expr::parser::ast::Expr::LambdaParam(
+                    "x".to_string(),
+                )),
+                right: Box::new(crate::libs::expr::parser::ast::Expr::LambdaParam(
+                    "y".to_string(),
+                )),
+            },
+            captured_vars: {
+                let mut map = HashMap::with_hasher(ahash::RandomState::new());
+                map.insert("outer".to_string(), Value::Int(42));
+                map
+            },
+        };
+
+        let cloned = lambda.clone();
+        assert_eq!(lambda.params, cloned.params);
+        assert_eq!(lambda.captured_vars, cloned.captured_vars);
+    }
+
+    #[test]
+    fn test_rem_trait() {
+        let a = Value::Int(10);
+        let b = Value::Int(3);
+        assert_eq!(a % b, Some(Value::Int(1)));
+
+        let a = Value::Float(10.5);
+        let b = Value::Float(3.0);
+        assert_eq!(a % b, Some(Value::Float(1.5)));
+
+        let a = Value::Int(10);
+        let b = Value::Int(0);
+        assert_eq!(a % b, None);
+    }
+
+    #[test]
+    fn test_add_trait() {
+        let a = Value::Int(10);
+        let b = Value::Int(20);
+        assert_eq!(a + b, Some(Value::Int(30)));
+
+        let a = Value::Float(1.5);
+        let b = Value::Float(2.5);
+        assert_eq!(a + b, Some(Value::Float(4.0)));
+
+        let a = Value::String("hello".to_string());
+        let b = Value::Int(1);
+        assert_eq!(a + b, None);
+    }
+
+    #[test]
+    fn test_sub_trait() {
+        let a = Value::Int(20);
+        let b = Value::Int(10);
+        assert_eq!(a - b, Some(Value::Int(10)));
+
+        let a = Value::Float(5.5);
+        let b = Value::Float(2.5);
+        assert_eq!(a - b, Some(Value::Float(3.0)));
+    }
+
+    #[test]
+    fn test_mul_trait() {
+        let a = Value::Int(5);
+        let b = Value::Int(6);
+        assert_eq!(a * b, Some(Value::Int(30)));
+
+        let a = Value::Float(2.5);
+        let b = Value::Float(4.0);
+        assert_eq!(a * b, Some(Value::Float(10.0)));
+    }
+
+    #[test]
+    fn test_div_trait() {
+        let a = Value::Float(10.0);
+        let b = Value::Float(2.0);
+        assert_eq!(a / b, Some(Value::Float(5.0)));
+
+        let a = Value::Float(10.0);
+        let b = Value::Float(0.0);
+        assert_eq!(a / b, None);
+    }
+
+    #[test]
+    fn test_power_with_zero() {
+        let a = Value::Int(5);
+        let b = Value::Int(0);
+        assert_eq!(a.pow(&b), Some(Value::Float(1.0)));
+
+        let a = Value::Int(0);
+        let b = Value::Int(5);
+        assert_eq!(a.pow(&b), Some(Value::Float(0.0)));
+    }
+
+    #[test]
+    fn test_power_negative() {
+        let a = Value::Int(2);
+        let b = Value::Int(-1);
+        assert_eq!(a.pow(&b), Some(Value::Float(0.5)));
+    }
+
+    #[test]
+    fn test_compare_bool_with_int() {
+        // Different types should use type priority
+        let bool_val = Value::Bool(true);
+        let int_val = Value::Int(1);
+
+        assert_eq!(bool_val.compare(&int_val), Some(std::cmp::Ordering::Less));
+        assert_eq!(
+            int_val.compare(&bool_val),
+            Some(std::cmp::Ordering::Greater)
+        );
+    }
+
+    #[test]
+    fn test_compare_string_with_list() {
+        let string_val = Value::String("hello".to_string());
+        let list_val = Value::List(vec![]);
+
+        assert_eq!(
+            string_val.compare(&list_val),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            list_val.compare(&string_val),
+            Some(std::cmp::Ordering::Greater)
+        );
+    }
+
+    #[test]
+    fn test_is_null_various_types() {
+        assert!(Value::Null.is_null());
+        assert!(!Value::Int(0).is_null());
+        assert!(!Value::Bool(false).is_null());
+        assert!(!Value::String("".to_string()).is_null());
+        assert!(!Value::List(vec![]).is_null());
+    }
+
+    #[test]
+    fn test_as_bool_edge_cases() {
+        // Zero is falsy
+        assert!(!Value::Int(0).as_bool());
+        assert!(!Value::Float(0.0).as_bool());
+
+        // Non-zero is truthy
+        assert!(Value::Int(-1).as_bool());
+        assert!(Value::Float(-0.1).as_bool());
+        assert!(Value::Float(f64::MIN_POSITIVE).as_bool());
+
+        // Empty/null is falsy
+        assert!(!Value::Null.as_bool());
+        assert!(!Value::String("".to_string()).as_bool());
+        assert!(!Value::List(vec![]).as_bool());
+
+        // Non-empty is truthy
+        assert!(Value::String(" ".to_string()).as_bool());
+        assert!(Value::List(vec![Value::Null]).as_bool());
+    }
+
+    #[test]
+    fn test_list_to_string() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let str = list.to_string();
+        assert!(str.contains("Int(1)"));
+        assert!(str.contains("Int(2)"));
+    }
+
+    #[test]
+    fn test_datetime_to_string() {
+        use chrono::Utc;
+        let dt = Utc::now();
+        let val = Value::DateTime(dt);
+        assert_eq!(val.to_string(), dt.to_rfc3339());
+    }
+
+    #[test]
+    fn test_lambda_to_string() {
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: crate::libs::expr::parser::ast::Expr::Int(1),
+            captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
+        });
+        assert_eq!(lambda.to_string(), "<lambda>");
+    }
+
+    #[test]
+    fn test_null_to_string() {
+        assert_eq!(Value::Null.to_string(), "null");
+    }
+
+    #[test]
+    fn test_bool_to_string() {
+        assert_eq!(Value::Bool(true).to_string(), "true");
+        assert_eq!(Value::Bool(false).to_string(), "false");
+    }
+
+    #[test]
+    fn test_int_to_string() {
+        assert_eq!(Value::Int(42).to_string(), "42");
+        assert_eq!(Value::Int(-100).to_string(), "-100");
+        assert_eq!(Value::Int(0).to_string(), "0");
+    }
+
+    #[test]
+    fn test_float_to_string() {
+        assert_eq!(Value::Float(3.14).to_string(), "3.14");
+        assert_eq!(Value::Float(-2.5).to_string(), "-2.5");
+    }
+
+    #[test]
+    fn test_string_to_string() {
+        assert_eq!(Value::String("hello".to_string()).to_string(), "hello");
+        assert_eq!(Value::String("".to_string()).to_string(), "");
+    }
+
+    #[test]
+    fn test_display_trait() {
+        use std::fmt::Write;
+
+        let mut buf = String::new();
+        write!(&mut buf, "{}", Value::Int(42)).unwrap();
+        assert_eq!(buf, "42");
+
+        buf.clear();
+        write!(&mut buf, "{}", Value::String("test".to_string())).unwrap();
+        assert_eq!(buf, "test");
+
+        buf.clear();
+        write!(&mut buf, "{}", Value::Null).unwrap();
+        assert_eq!(buf, "null");
+    }
+
+    #[test]
+    fn test_le_comparison() {
+        let a = Value::Int(5);
+        let b = Value::Int(5);
+        let c = Value::Int(10);
+
+        assert_eq!(a.le(&b), Some(Value::Bool(true)));
+        assert_eq!(a.le(&c), Some(Value::Bool(true)));
+        assert_eq!(c.le(&a), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_ge_comparison() {
+        let a = Value::Int(10);
+        let b = Value::Int(10);
+        let c = Value::Int(5);
+
+        assert_eq!(a.ge(&b), Some(Value::Bool(true)));
+        assert_eq!(a.ge(&c), Some(Value::Bool(true)));
+        assert_eq!(c.ge(&a), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_compare_same_type_different_values() {
+        // Int
+        assert_eq!(
+            Value::Int(5).compare(&Value::Int(10)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Int(10).compare(&Value::Int(5)),
+            Some(std::cmp::Ordering::Greater)
+        );
+
+        // Float
+        assert_eq!(
+            Value::Float(1.5).compare(&Value::Float(2.5)),
+            Some(std::cmp::Ordering::Less)
+        );
+
+        // String
+        assert_eq!(
+            Value::String("apple".to_string())
+                .compare(&Value::String("banana".to_string())),
+            Some(std::cmp::Ordering::Less)
+        );
+    }
+
+    #[test]
+    fn test_compare_null_with_others() {
+        assert_eq!(
+            Value::Null.compare(&Value::Null),
+            Some(std::cmp::Ordering::Equal)
+        );
+        assert_eq!(
+            Value::Null.compare(&Value::Bool(false)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Null.compare(&Value::Int(0)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Null.compare(&Value::Float(0.0)),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Null.compare(&Value::String("".to_string())),
+            Some(std::cmp::Ordering::Less)
+        );
+        assert_eq!(
+            Value::Null.compare(&Value::List(vec![])),
+            Some(std::cmp::Ordering::Less)
+        );
+    }
+
+    #[test]
+    fn test_type_name_all_types() {
+        use chrono::Utc;
+
+        assert_eq!(Value::Null.type_name(), "null");
+        assert_eq!(Value::Bool(true).type_name(), "bool");
+        assert_eq!(Value::Int(42).type_name(), "int");
+        assert_eq!(Value::Float(3.14).type_name(), "float");
+        assert_eq!(Value::String("hello".to_string()).type_name(), "string");
+        assert_eq!(Value::List(vec![]).type_name(), "list");
+        assert_eq!(Value::DateTime(Utc::now()).type_name(), "datetime");
+        assert_eq!(
+            Value::Lambda(LambdaValue {
+                params: vec![],
+                body: crate::libs::expr::parser::ast::Expr::Int(1),
+                captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
+            })
+            .type_name(),
+            "lambda"
+        );
     }
 }

@@ -740,6 +740,341 @@ mod tests {
     }
 
     #[test]
+    fn test_whole_row_format() {
+        let whole_row = Expr::ColumnRef(ColumnRef::WholeRow);
+        assert_eq!(whole_row.format(), "@0");
+    }
+
+    #[test]
+    fn test_lambda_param_expr() {
+        let param = Expr::LambdaParam("x".to_string());
+        assert_eq!(param.format(), "x");
+
+        let param2 = Expr::LambdaParam("item".to_string());
+        assert_eq!(param2.format(), "item");
+    }
+
+    #[test]
+    fn test_nested_binary_format() {
+        // Test nested binary expressions
+        let inner = Expr::binary(BinaryOp::Mul, Expr::int(2), Expr::int(3));
+        let outer = Expr::binary(BinaryOp::Add, Expr::int(1), inner);
+        assert_eq!(outer.format(), "1 + 2 * 3");
+    }
+
+    #[test]
+    fn test_all_string_comparison_ops() {
+        // Test all string comparison operators
+        let str_eq = Expr::binary(BinaryOp::StrEq, Expr::string("a"), Expr::string("b"));
+        assert_eq!(str_eq.format(), "\"a\" eq \"b\"");
+
+        let str_ne = Expr::binary(BinaryOp::StrNe, Expr::string("a"), Expr::string("b"));
+        assert_eq!(str_ne.format(), "\"a\" ne \"b\"");
+
+        let str_lt = Expr::binary(BinaryOp::StrLt, Expr::string("a"), Expr::string("b"));
+        assert_eq!(str_lt.format(), "\"a\" lt \"b\"");
+
+        let str_le = Expr::binary(BinaryOp::StrLe, Expr::string("a"), Expr::string("b"));
+        assert_eq!(str_le.format(), "\"a\" le \"b\"");
+
+        let str_gt = Expr::binary(BinaryOp::StrGt, Expr::string("a"), Expr::string("b"));
+        assert_eq!(str_gt.format(), "\"a\" gt \"b\"");
+
+        let str_ge = Expr::binary(BinaryOp::StrGe, Expr::string("a"), Expr::string("b"));
+        assert_eq!(str_ge.format(), "\"a\" ge \"b\"");
+    }
+
+    #[test]
+    fn test_all_arithmetic_ops() {
+        // Test all arithmetic operators
+        let add = Expr::binary(BinaryOp::Add, Expr::int(1), Expr::int(2));
+        assert_eq!(add.format(), "1 + 2");
+
+        let sub = Expr::binary(BinaryOp::Sub, Expr::int(1), Expr::int(2));
+        assert_eq!(sub.format(), "1 - 2");
+
+        let mul = Expr::binary(BinaryOp::Mul, Expr::int(1), Expr::int(2));
+        assert_eq!(mul.format(), "1 * 2");
+
+        let div = Expr::binary(BinaryOp::Div, Expr::int(1), Expr::int(2));
+        assert_eq!(div.format(), "1 / 2");
+
+        let modulo = Expr::binary(BinaryOp::Mod, Expr::int(1), Expr::int(2));
+        assert_eq!(modulo.format(), "1 % 2");
+
+        let pow = Expr::binary(BinaryOp::Pow, Expr::int(2), Expr::int(3));
+        assert_eq!(pow.format(), "2 ** 3");
+
+        let concat =
+            Expr::binary(BinaryOp::Concat, Expr::string("a"), Expr::string("b"));
+        assert_eq!(concat.format(), "\"a\" ++ \"b\"");
+    }
+
+    #[test]
+    fn test_all_numeric_comparison_ops() {
+        // Test all numeric comparison operators
+        let eq = Expr::binary(BinaryOp::Eq, Expr::int(1), Expr::int(2));
+        assert_eq!(eq.format(), "1 == 2");
+
+        let ne = Expr::binary(BinaryOp::Ne, Expr::int(1), Expr::int(2));
+        assert_eq!(ne.format(), "1 != 2");
+
+        let lt = Expr::binary(BinaryOp::Lt, Expr::int(1), Expr::int(2));
+        assert_eq!(lt.format(), "1 < 2");
+
+        let le = Expr::binary(BinaryOp::Le, Expr::int(1), Expr::int(2));
+        assert_eq!(le.format(), "1 <= 2");
+
+        let gt = Expr::binary(BinaryOp::Gt, Expr::int(1), Expr::int(2));
+        assert_eq!(gt.format(), "1 > 2");
+
+        let ge = Expr::binary(BinaryOp::Ge, Expr::int(1), Expr::int(2));
+        assert_eq!(ge.format(), "1 >= 2");
+    }
+
+    #[test]
+    fn test_logical_ops_format() {
+        let and = Expr::binary(BinaryOp::And, Expr::bool(true), Expr::bool(false));
+        assert_eq!(and.format(), "true and false");
+
+        let or = Expr::binary(BinaryOp::Or, Expr::bool(true), Expr::bool(false));
+        assert_eq!(or.format(), "true or false");
+    }
+
+    #[test]
+    fn test_unary_ops_format() {
+        let neg = Expr::unary(UnaryOp::Neg, Expr::int(5));
+        assert_eq!(neg.format(), "-5");
+
+        let not = Expr::unary(UnaryOp::Not, Expr::bool(true));
+        assert_eq!(not.format(), "not true");
+    }
+
+    #[test]
+    fn test_complex_nested_list() {
+        let list = Expr::List(vec![
+            Expr::List(vec![Expr::int(1), Expr::int(2)]),
+            Expr::List(vec![Expr::int(3), Expr::int(4)]),
+            Expr::List(vec![Expr::int(5), Expr::int(6)]),
+        ]);
+        assert_eq!(list.format(), "[[1, 2], [3, 4], [5, 6]]");
+    }
+
+    #[test]
+    fn test_mixed_list() {
+        let list = Expr::List(vec![
+            Expr::int(1),
+            Expr::string("hello"),
+            Expr::bool(true),
+            Expr::null(),
+        ]);
+        assert_eq!(list.format(), "[1, \"hello\", true, null]");
+    }
+
+    #[test]
+    fn test_block_with_multiple_exprs() {
+        let block = Expr::Block(vec![Expr::int(1), Expr::int(2), Expr::int(3)]);
+        // Block formats as its last expression
+        assert_eq!(block.format(), "3");
+    }
+
+    #[test]
+    fn test_pipe_with_complex_left() {
+        let left = Expr::binary(BinaryOp::Add, Expr::int(1), Expr::int(2));
+        let pipe = Expr::Pipe {
+            left: Box::new(left),
+            right: Box::new(PipeRight::Call {
+                name: "abs".to_string(),
+                args: vec![],
+            }),
+        };
+        assert_eq!(pipe.format(), "1 + 2 | abs()");
+    }
+
+    #[test]
+    fn test_lambda_with_complex_body() {
+        let lambda = Expr::Lambda {
+            params: vec!["x".to_string()],
+            body: Box::new(Expr::binary(
+                BinaryOp::Mul,
+                Expr::LambdaParam("x".to_string()),
+                Expr::binary(
+                    BinaryOp::Add,
+                    Expr::LambdaParam("x".to_string()),
+                    Expr::int(1),
+                ),
+            )),
+        };
+        assert_eq!(lambda.format(), "x => x * x + 1");
+    }
+
+    #[test]
+    fn test_method_call_chain_format() {
+        let chain = Expr::MethodCall {
+            object: Box::new(Expr::MethodCall {
+                object: Box::new(Expr::col_name("name")),
+                name: "trim".to_string(),
+                args: vec![],
+            }),
+            name: "upper".to_string(),
+            args: vec![],
+        };
+        assert_eq!(chain.format(), "@name.trim().upper()");
+    }
+
+    #[test]
+    fn test_bind_with_pipe() {
+        let bind = Expr::Bind {
+            expr: Box::new(Expr::Pipe {
+                left: Box::new(Expr::col_name("name")),
+                right: Box::new(PipeRight::Call {
+                    name: "trim".to_string(),
+                    args: vec![],
+                }),
+            }),
+            name: "clean_name".to_string(),
+        };
+        assert_eq!(bind.format(), "@name | trim() as @clean_name");
+    }
+
+    #[test]
+    fn test_expr_equality_different_types() {
+        let int = Expr::Int(42);
+        let float = Expr::Float(42.0);
+        let string = Expr::String("42".to_string());
+
+        assert_ne!(int, float);
+        assert_ne!(int, string);
+        assert_ne!(float, string);
+    }
+
+    #[test]
+    fn test_column_ref_equality() {
+        let idx1 = ColumnRef::Index(1);
+        let idx2 = ColumnRef::Index(1);
+        let idx3 = ColumnRef::Index(2);
+        let name = ColumnRef::Name("test".to_string());
+        let whole = ColumnRef::WholeRow;
+
+        assert_eq!(idx1, idx2);
+        assert_ne!(idx1, idx3);
+        assert_ne!(idx1, name);
+        assert_ne!(idx1, whole);
+        assert_ne!(name, whole);
+    }
+
+    #[test]
+    fn test_unary_op_equality() {
+        assert_eq!(UnaryOp::Neg, UnaryOp::Neg);
+        assert_eq!(UnaryOp::Not, UnaryOp::Not);
+        assert_ne!(UnaryOp::Neg, UnaryOp::Not);
+    }
+
+    #[test]
+    fn test_binary_op_equality() {
+        assert_eq!(BinaryOp::Add, BinaryOp::Add);
+        assert_eq!(BinaryOp::Sub, BinaryOp::Sub);
+        assert_ne!(BinaryOp::Add, BinaryOp::Sub);
+        assert_ne!(BinaryOp::StrEq, BinaryOp::Eq);
+    }
+
+    #[test]
+    fn test_pipe_right_equality() {
+        let call1 = PipeRight::Call {
+            name: "upper".to_string(),
+            args: vec![],
+        };
+        let call2 = PipeRight::Call {
+            name: "upper".to_string(),
+            args: vec![],
+        };
+        let call3 = PipeRight::Call {
+            name: "lower".to_string(),
+            args: vec![],
+        };
+
+        assert_eq!(call1, call2);
+        assert_ne!(call1, call3);
+    }
+
+    #[test]
+    fn test_expr_clone_preserves_structure() {
+        let original = Expr::binary(
+            BinaryOp::Add,
+            Expr::col_name("price"),
+            Expr::col_name("tax"),
+        );
+        let cloned = original.clone();
+
+        assert_eq!(original, cloned);
+        assert_eq!(original.format(), cloned.format());
+    }
+
+    #[test]
+    fn test_float_edge_cases_format() {
+        let very_small = Expr::float(0.000001);
+        assert!(
+            very_small.format().starts_with("0.000001")
+                || very_small.format().contains("e")
+        );
+
+        let negative = Expr::float(-123.456);
+        assert_eq!(negative.format(), "-123.456");
+
+        let zero = Expr::float(0.0);
+        assert_eq!(zero.format(), "0");
+    }
+
+    #[test]
+    fn test_large_int_format() {
+        let large = Expr::int(1_000_000_000_000);
+        assert_eq!(large.format(), "1000000000000");
+
+        let negative = Expr::int(-999999);
+        assert_eq!(negative.format(), "-999999");
+    }
+
+    #[test]
+    fn test_string_with_special_chars_format() {
+        let string_with_quotes = Expr::string("hello \"world\"");
+        assert_eq!(string_with_quotes.format(), "\"hello \"world\"\"");
+
+        let string_with_newline = Expr::string("hello\nworld");
+        assert_eq!(string_with_newline.format(), "\"hello\nworld\"");
+    }
+
+    #[test]
+    fn test_empty_string_format() {
+        let empty = Expr::string("");
+        assert_eq!(empty.format(), "\"\"");
+    }
+
+    #[test]
+    fn test_call_with_single_arg() {
+        let call = Expr::call("abs", vec![Expr::int(-5)]);
+        assert_eq!(call.format(), "abs(-5)");
+    }
+
+    #[test]
+    fn test_method_call_with_single_arg() {
+        let method = Expr::MethodCall {
+            object: Box::new(Expr::col_name("name")),
+            name: "substr".to_string(),
+            args: vec![Expr::int(0)],
+        };
+        assert_eq!(method.format(), "@name.substr(0)");
+    }
+
+    #[test]
+    fn test_lambda_no_params() {
+        let lambda = Expr::Lambda {
+            params: vec![],
+            body: Box::new(Expr::int(42)),
+        };
+        assert_eq!(lambda.format(), "() => 42");
+    }
+
+    #[test]
     fn test_method_call_no_args() {
         let method = Expr::MethodCall {
             object: Box::new(Expr::col_name("name")),

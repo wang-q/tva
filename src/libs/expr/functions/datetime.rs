@@ -246,4 +246,85 @@ mod tests {
             strftime(&[dt, Value::String("%Y-%m-%d %H:%M:%S".to_string())]).unwrap();
         assert_eq!(formatted, Value::String(original.to_string()));
     }
+
+    #[test]
+    fn test_strftime_with_datetime_value() {
+        // Test strftime with DateTime value directly (not string)
+        let dt = strptime(&[
+            Value::String("2024-06-15 18:30:00".to_string()),
+            Value::String("%Y-%m-%d %H:%M:%S".to_string()),
+        ])
+        .unwrap();
+
+        // Format with various format strings
+        let result = strftime(&[dt.clone(), Value::String("%Y".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("2024".to_string()));
+
+        let result = strftime(&[dt.clone(), Value::String("%m/%d/%Y".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("06/15/2024".to_string()));
+
+        let result = strftime(&[dt.clone(), Value::String("%H:%M".to_string())]);
+        assert_eq!(result.unwrap(), Value::String("18:30".to_string()));
+    }
+
+    #[test]
+    fn test_strftime_edge_cases() {
+        // Test with RFC3339 format string
+        let result = strftime(&[
+            Value::String("2024-03-15T14:30:00Z".to_string()),
+            Value::String("%Y-%m-%dT%H:%M:%SZ".to_string()),
+        ]);
+        assert!(result.is_ok());
+
+        // Test with empty format string
+        let result = strftime(&[
+            Value::String("2024-03-15T14:30:00Z".to_string()),
+            Value::String("".to_string()),
+        ]);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Value::String("".to_string()));
+    }
+
+    #[test]
+    fn test_strptime_edge_cases() {
+        // Test with timezone offset
+        let result = strptime(&[
+            Value::String("2024-03-15 14:30:00 +05:00".to_string()),
+            Value::String("%Y-%m-%d %H:%M:%S %z".to_string()),
+        ]);
+        assert!(result.is_ok());
+
+        // Test with milliseconds
+        let result = strptime(&[
+            Value::String("2024-03-15 14:30:00.123".to_string()),
+            Value::String("%Y-%m-%d %H:%M:%S%.3f".to_string()),
+        ]);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_strftime_list_error() {
+        // List should error
+        let result = strftime(&[
+            Value::List(vec![Value::Int(1)]),
+            Value::String("%Y".to_string()),
+        ]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_strftime_lambda_error() {
+        // Lambda should error
+        use crate::libs::expr::parser::ast::Expr;
+        use ahash::HashMap;
+        let result = strftime(&[
+            Value::Lambda(crate::libs::expr::runtime::value::LambdaValue {
+                params: vec![],
+                body: Expr::Int(1),
+                captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
+            }),
+            Value::String("%Y".to_string()),
+        ]);
+        assert!(result.is_err());
+    }
 }
