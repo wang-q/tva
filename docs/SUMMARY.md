@@ -28,7 +28,6 @@
 - [Functions](expr/functions.md)
 - [Syntax Guide](expr/syntax.md)
 - [Rosetta Code](expr/rosetta.md)
-- [Other Tools](expr/others.md)
 
 # Command Reference
 - [select](help/select.md)
