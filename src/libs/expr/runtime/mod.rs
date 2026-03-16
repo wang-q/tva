@@ -2,6 +2,8 @@ pub mod value;
 
 use crate::libs::expr::parser::ast::{BinaryOp, ColumnRef, Expr, PipeRight, UnaryOp};
 use ahash::{HashMap, HashMapExt};
+use std::cell::RefCell;
+use std::rc::Rc;
 use thiserror::Error;
 use value::Value;
 
@@ -13,6 +15,8 @@ pub enum EvalError {
     ColumnNotFound(String),
     #[error("Variable '{0}' not found")]
     VariableNotFound(String),
+    #[error("Global variable '{0}' not found")]
+    GlobalVarNotFound(String),
     #[error("Type error: {0}")]
     TypeError(String),
     #[error("Division by zero")]
@@ -37,6 +41,10 @@ pub struct EvalContext<'a> {
     pub variables: HashMap<String, Value>,
     /// Lambda parameter bindings (name -> value)
     pub lambda_params: HashMap<String, Value>,
+    /// Global variables (name -> value), shared across rows
+    /// NOTE: Using Rc<RefCell> for single-threaded execution.
+    /// If parallelizing in the future, change to Arc<Mutex> or use thread-local storage.
+    pub globals: Rc<RefCell<HashMap<String, Value>>>,
 }
 
 impl<'a> EvalContext<'a> {
@@ -46,6 +54,7 @@ impl<'a> EvalContext<'a> {
             headers: None,
             variables: HashMap::new(),
             lambda_params: HashMap::new(),
+            globals: Rc::new(RefCell::new(HashMap::new())),
         }
     }
 
@@ -55,7 +64,27 @@ impl<'a> EvalContext<'a> {
             headers: Some(headers),
             variables: HashMap::new(),
             lambda_params: HashMap::new(),
+            globals: Rc::new(RefCell::new(HashMap::new())),
         }
+    }
+
+    /// Set built-in global variables (called per row)
+    pub fn set_builtin_globals(&self, index: i64, file: &str) {
+        let mut g = self.globals.borrow_mut();
+        g.insert("__index".to_string(), Value::Int(index));
+        g.insert("__file".to_string(), Value::String(file.to_string()));
+    }
+
+    /// Get global variable value
+    /// Returns null if not found (allows default() to provide fallback)
+    fn get_global(&self, name: &str) -> Result<Value, EvalError> {
+        let globals = self.globals.borrow();
+        Ok(globals.get(name).cloned().unwrap_or(Value::Null))
+    }
+
+    /// Set global variable value
+    fn set_global(&self, name: String, value: Value) {
+        self.globals.borrow_mut().insert(name, value);
     }
 
     /// Get value by 1-based column index
@@ -152,6 +181,7 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
         },
         Expr::Variable(name) => ctx.get_variable(name),
         Expr::LambdaParam(name) => ctx.get_lambda_param(name),
+        Expr::GlobalVar(name) => ctx.get_global(name),
         Expr::Int(n) => Ok(Value::Int(*n)),
         Expr::Float(n) => Ok(Value::Float(*n)),
         Expr::String(s) => Ok(Value::String(s.clone())),
@@ -285,7 +315,12 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
         }
         Expr::Bind { expr, name } => {
             let val = eval(expr, ctx)?;
-            ctx.set_variable(name.clone(), val.clone());
+            // Global variables start with "__"
+            if name.starts_with("__") {
+                ctx.set_global(name.clone(), val.clone());
+            } else {
+                ctx.set_variable(name.clone(), val.clone());
+            }
             Ok(val)
         }
         Expr::Block(exprs) => {
@@ -2753,5 +2788,166 @@ mod tests {
         assert!(result.is_err());
         let err_msg = format!("{}", result.unwrap_err());
         assert!(err_msg.contains("Unknown function"));
+    }
+
+    #[test]
+    fn test_global_var_basic() {
+        let row: Vec<String> = vec![];
+        let ctx = EvalContext::new(&row);
+
+        // Initially unset global variable returns null
+        assert_eq!(ctx.get_global("__test").unwrap(), Value::Null);
+
+        // Set a global variable
+        ctx.set_global("__test".to_string(), Value::Int(42));
+        assert_eq!(ctx.get_global("__test").unwrap(), Value::Int(42));
+
+        // Set another global variable
+        ctx.set_global("__name".to_string(), Value::String("alice".to_string()));
+        assert_eq!(ctx.get_global("__name").unwrap(), Value::String("alice".to_string()));
+    }
+
+    #[test]
+    fn test_global_var_builtin() {
+        let row: Vec<String> = vec![];
+        let ctx = EvalContext::new(&row);
+
+        // Set built-in globals
+        ctx.set_builtin_globals(10, "test.tsv");
+
+        assert_eq!(ctx.get_global("__index").unwrap(), Value::Int(10));
+        assert_eq!(ctx.get_global("__file").unwrap(), Value::String("test.tsv".to_string()));
+    }
+
+    #[test]
+    fn test_global_var_persistence() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        // Simulate two rows sharing the same globals
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+
+        // First row processing
+        let row1: Vec<String> = vec!["10".to_string()];
+        let mut ctx1 = EvalContext::new(&row1);
+        ctx1.globals = globals.clone();
+        ctx1.set_global("__sum".to_string(), Value::Int(10));
+
+        // Second row processing - shares the same globals
+        let row2: Vec<String> = vec!["20".to_string()];
+        let mut ctx2 = EvalContext::new(&row2);
+        ctx2.globals = globals.clone();
+
+        // Should see the value set by the first row
+        assert_eq!(ctx2.get_global("__sum").unwrap(), Value::Int(10));
+
+        // Update the value
+        ctx2.set_global("__sum".to_string(), Value::Int(30));
+
+        // First context should also see the updated value
+        assert_eq!(ctx1.get_global("__sum").unwrap(), Value::Int(30));
+    }
+
+    #[test]
+    fn test_eval_global_var_expr() {
+        let row: Vec<String> = vec![];
+        let mut ctx = EvalContext::new(&row);
+
+        // Set a global variable
+        ctx.set_global("__counter".to_string(), Value::Int(5));
+
+        // Evaluate global variable expression
+        let expr = Expr::GlobalVar("__counter".to_string());
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_eval_global_var_bind() {
+        let row = vec!["10".to_string()];
+        let mut ctx = EvalContext::new(&row);
+
+        // @1 + 5 as @__total
+        let expr = Expr::Bind {
+            expr: Box::new(Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::ColumnRef(ColumnRef::Index(1))),
+                right: Box::new(Expr::Int(5)),
+            }),
+            name: "__total".to_string(),
+        };
+
+        // Evaluate the bind expression
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(15));
+
+        // Global variable should be accessible
+        assert_eq!(ctx.get_global("__total").unwrap(), Value::Int(15));
+
+        // Should also be accessible via GlobalVar expression
+        let var_expr = Expr::GlobalVar("__total".to_string());
+        assert_eq!(eval(&var_expr, &mut ctx).unwrap(), Value::Int(15));
+    }
+
+    #[test]
+    fn test_eval_global_var_accumulator_pattern() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        // Simulate accumulator pattern across rows
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+
+        // Row 1: value = 10
+        let row1 = vec!["10".to_string()];
+        let mut ctx1 = EvalContext::new(&row1);
+        ctx1.globals = globals.clone();
+
+        // default(@__sum, 0) + @1 as @__sum
+        let current = ctx1.get_global("__sum").unwrap_or(Value::Null);
+        let current = if current == Value::Null {
+            Value::Int(0)
+        } else {
+            current
+        };
+        let sum = match current {
+            Value::Int(n) => Value::Int(n + 10),
+            _ => Value::Int(10),
+        };
+        ctx1.set_global("__sum".to_string(), sum);
+        assert_eq!(ctx1.get_global("__sum").unwrap(), Value::Int(10));
+
+        // Row 2: value = 20
+        let row2 = vec!["20".to_string()];
+        let mut ctx2 = EvalContext::new(&row2);
+        ctx2.globals = globals.clone();
+
+        let current = ctx2.get_global("__sum").unwrap_or(Value::Null);
+        let current = if current == Value::Null {
+            Value::Int(0)
+        } else {
+            current
+        };
+        let sum = match current {
+            Value::Int(n) => Value::Int(n + 20),
+            _ => Value::Int(20),
+        };
+        ctx2.set_global("__sum".to_string(), sum);
+        assert_eq!(ctx2.get_global("__sum").unwrap(), Value::Int(30));
+
+        // Row 3: value = 30
+        let row3 = vec!["30".to_string()];
+        let mut ctx3 = EvalContext::new(&row3);
+        ctx3.globals = globals.clone();
+
+        let current = ctx3.get_global("__sum").unwrap_or(Value::Null);
+        let current = if current == Value::Null {
+            Value::Int(0)
+        } else {
+            current
+        };
+        let sum = match current {
+            Value::Int(n) => Value::Int(n + 30),
+            _ => Value::Int(30),
+        };
+        ctx3.set_global("__sum".to_string(), sum);
+        assert_eq!(ctx3.get_global("__sum").unwrap(), Value::Int(60));
     }
 }

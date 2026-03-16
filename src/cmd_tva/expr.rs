@@ -6,6 +6,7 @@ use crate::libs::expr::{fold_constants, parse_cached, resolve_columns};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::header::HeaderMode;
 use crate::libs::tsv::reader::TsvReader;
+use ahash::{HashMap, HashMapExt};
 
 pub fn make_subcommand() -> Command {
     Command::new("expr")
@@ -122,14 +123,22 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .as_ref()
             .map(|h| h.split(',').map(|s| s.trim().to_string()).collect());
 
+        // Create shared globals for cross-row persistence
+        let globals = std::rc::Rc::new(std::cell::RefCell::new(HashMap::new()));
+
         // Process each row
-        for row_str in &row_values {
+        for (row_idx, row_str) in row_values.iter().enumerate() {
             let row: Vec<String> =
                 row_str.split(',').map(|s| s.trim().to_string()).collect();
             let mut ctx = match headers.as_ref() {
                 Some(h) => runtime::EvalContext::with_headers(&row, h),
                 None => runtime::EvalContext::new(&row),
             };
+            // Share globals across rows
+            ctx.globals = globals.clone();
+            // Set built-in global variables
+            ctx.set_builtin_globals((row_idx + 1) as i64, "<inline>");
+
             let result = runtime::eval(&parsed_expr, &mut ctx)
                 .map_err(|e| anyhow::anyhow!("Evaluation error: {}", e))?;
             // Skip null results if --skip-null is enabled
@@ -177,7 +186,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut header_written = false;
     let mut headers: Vec<String> = Vec::new();
 
+    // Create shared globals for cross-row persistence across all files
+    let globals = std::rc::Rc::new(std::cell::RefCell::new(HashMap::new()));
+    // Use Cell for interior mutability in the closure
+    let row_num = std::cell::Cell::new(1i64);
+
     for input in crate::libs::io::raw_input_sources(&infiles)? {
+        let filename = input.name.clone();
         let mut tsv_reader = TsvReader::with_capacity(input.reader, 512 * 1024);
 
         if has_header {
@@ -222,6 +237,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         // Process data rows
         let skip_null_flag = skip_null;
+        let globals_clone = globals.clone();
         let result: std::io::Result<()> = tsv_reader.for_each_record(|record| {
             // Split record into fields
             let row: Vec<String> = record
@@ -235,6 +251,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             } else {
                 runtime::EvalContext::with_headers(&row, &headers)
             };
+            // Share globals across rows
+            ctx.globals = globals_clone.clone();
+            // Set built-in global variables
+            let current_row = row_num.get();
+            ctx.set_builtin_globals(current_row, &filename);
+            row_num.set(current_row + 1);
+
             let result = runtime::eval(&parsed_expr, &mut ctx).map_err(|e| {
                 std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
             })?;

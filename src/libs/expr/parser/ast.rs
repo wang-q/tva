@@ -9,6 +9,8 @@ pub enum Expr {
     Variable(String),
     /// Lambda parameter reference (resolved during lambda evaluation)
     LambdaParam(String),
+    /// Global variable reference: @__index, @__file, @__xxx
+    GlobalVar(String),
     /// Integer literal: 123
     Int(i64),
     /// Float literal: 3.14
@@ -186,6 +188,7 @@ impl Expr {
             Expr::ColumnRef(ColumnRef::Name(name)) => format!("@{}", name),
             Expr::ColumnRef(ColumnRef::WholeRow) => "@0".to_string(),
             Expr::Variable(name) => format!("@{}", name),
+            Expr::GlobalVar(name) => format!("@{}", name),
             Expr::LambdaParam(name) => name.clone(),
             Expr::Int(n) => n.to_string(),
             Expr::Float(n) => n.to_string(),

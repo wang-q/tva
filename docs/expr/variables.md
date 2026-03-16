@@ -115,6 +115,30 @@ tva expr -n "x" -r "100" -E '
 # Returns: [101, 102, 103]
 ```
 
+### Global Variables
+
+Global variables start with `@__` and persist across rows. They are useful for accumulators and counters.
+
+- `@__index` - Current row index (1-based), auto-set per row
+- `@__file` - Current file path, auto-set per file
+- `@__xxx` - User-defined variables, initial value is `null` (use `default()` to initialize)
+
+**Global variables vs regular variables:**
+- Regular variables (`as @var`) are cleared for each new row
+- Global variables (`@__xxx`) persist across rows within the same file
+
+```bash
+# Accumulator pattern: sum all values
+# Use default() to initialize on first row
+tva expr -E 'default(@__sum, 0) + @1 as @__sum' input.tsv
+
+# Counter with default() initialization
+tva expr -E 'default(@__counter, 0) + 1 as @__counter' input.tsv
+
+# Collect all file names processed (string concatenation)
+tva expr -E 'default(@__files, "") ++ @__file ++ "," as @__files' file1.tsv file2.tsv file3.tsv
+```
+
 ## Lambda Parameters
 
 Lambda expressions introduce their own parameter scope:

@@ -13,6 +13,15 @@ pub fn build_column_ref(s: &str) -> Result<Expr, ParseError> {
 
     let inner = &s[1..]; // Remove '@'
 
+    // Check for global variable: @__xxx
+    // Note: Keep the '__' prefix in the name for consistency with 'as @__xxx' binding
+    if inner.starts_with("__") {
+        if inner.len() == 2 {
+            return Err(ParseError::InvalidColumnIndex(s.to_string()));
+        }
+        return Ok(Expr::GlobalVar(inner.to_string()));
+    }
+
     // Check if it's a quoted column name (starts with " or ')
     if inner.starts_with('"') || inner.starts_with('\'') {
         // Extract the content between quotes
