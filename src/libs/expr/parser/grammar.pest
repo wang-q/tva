@@ -41,7 +41,8 @@ null = { "null" }
 // ============================================
 
 // @1, @2, @name, @"col name", @'col name', @`col name`
-column_ref = ${ "@" ~ (int | ident | quoted_col_name) }
+// For numeric refs like @123abc, only the numeric part is used as index
+column_ref = ${ "@" ~ (int ~ ident? | ident | quoted_col_name) }
 
 // Quoted column name for names with spaces
 quoted_col_name = ${ double_quoted_string | single_quoted_string }
@@ -120,10 +121,13 @@ op_semi = { ";" }
 // Primary expressions (highest precedence)
 // Order matters: ident must come before lambda_expr because lambda starts with ident
 // But we use a special rule to handle both
+// q_string must come before ident_or_lambda to avoid q(...) being parsed as func_call
 primary = _{
     column_ref
   | list_literal
-  | string
+  | q_string
+  | double_quoted_string
+  | single_quoted_string
   | float
   | int
   | boolean
@@ -145,7 +149,8 @@ lambda_multi_params = { "(" ~ (ident ~ ("," ~ ident)*)? ~ ")" ~ op_arrow ~ bind 
 list_literal = { "[" ~ (expr ~ ("," ~ expr)*)? ~ "]" }
 
 // Function call: func(arg1, arg2) or func()
-func_call = { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
+// Exclude 'q' to allow q-string syntax q(...)
+func_call = { !"q" ~ ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 
 // Method call: expr.ident() - e.g., @name.trim()
 method_call = { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }

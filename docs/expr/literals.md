@@ -114,23 +114,6 @@ tva expr -E '"hello"'              # Double quotes
 tva expr -E "'hello'"              # Single quotes (in shell)
 ```
 
-### The `q()` Operator
-
-For strings containing both single and double quotes, use the `q()` operator
-(like Perl's q//). Content inside `q()` is taken literally, only `\(`, `\)`,
-and `\\` need escaping:
-
-```bash
-# No need to escape quotes inside q()
-tva expr -E 'q(He said "It is ok!")'     # Returns: He said "It is ok!"
-tva expr -E "q(it's a 'test')"            # Returns: it's a 'test'
-
-# Escaping parentheses
-tva expr -E 'q(test \(nested\) parens)'   # Returns: test (nested) parens
-```
-
-### String Escape Sequences
-
 In regular quoted strings, these escape sequences are recognized:
 
 | Escape | Meaning | Example |
@@ -147,9 +130,28 @@ In regular quoted strings, these escape sequences are recognized:
 tva expr -E '"line1\nline2"'        # Contains newline
 tva expr -E '"col1\tcol2"'          # Contains tab
 
+```
+
+### The `q()` string
+
+For strings containing both single and double quotes, use the `q()` operator
+(like Perl's q//). Content inside `q()` is taken literally, only `\(`, `\)`,
+and `\\` need escaping:
+
+```bash
+# No need to escape quotes inside q()
+tva expr -E 'q(He said "It is ok!")'     # Returns: He said "It is ok!"
+tva expr -E "q(it's a 'test')"            # Returns: it's a 'test'
+
 # For strings containing quotes, q() is often easier:
 tva expr -E 'q(say "hello")'        # No need to escape quotes
 tva expr -E "q(it's ok)"            # No need to escape quotes
+
+# Escaping parentheses
+tva expr -E 'q(test \(nested\) parens)'   # Returns: test (nested) parens
+
+tva expr -H -s -E '@cut eq "Premium"' docs/data/diamonds.tsv
+tva expr -H -s -E '@cut eq q(Premium)' docs/data/diamonds.tsv
 ```
 
 ## List Literals

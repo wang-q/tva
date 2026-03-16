@@ -255,6 +255,6 @@ hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv expr_filter.csv \
-    -n "tva expr" "tva expr -H -s -E 'if(@carat > 1 and @price < 3000, @0, null)' docs/data/diamonds.tsv > /dev/null" \
-    -n "tva filter" "tva filter -H --gt carat:1 --lt price:3000 docs/data/diamonds.tsv > /dev/null"
+    -n "tva expr" "tva expr -H -s -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv > /dev/null" \
+    -n "tva filter" "tva filter -H --gt carat:1 --str-eq cut:Premium --lt price:3000 docs/data/diamonds.tsv > /dev/null"
 ```

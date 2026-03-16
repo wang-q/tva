@@ -127,24 +127,6 @@ returns empty list.
 - if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (
   or null)
 - default(val, fallback) -> T: Returns fallback if val is null or empty
-- while(cond, update) -> value: Repeatedly apply update until cond is false
-
-The `while(cond, update)` function repeatedly applies `update` to the current value until
-`cond` evaluates to false. Returns the final value.
-
-```bash
-# Compute GCD of 48 and 18 using Euclidean algorithm
-tva expr -n "a,b" -r "48,18" -E '
-  @a as @x; @b as @y;
-  while(@y != 0, (@x % @y as @new_y; @y as @x; @new_y as @y));
-  @x
-'
-# Returns: 6
-
-# Generate powers of 2 less than 100
-tva expr -E 'while(@n < 100, @n * 2 as @n; @n)'
-# Input with @n=1 produces: 1, 2, 4, 8, 16, 32, 64
-```
 
 ## Higher-Order Functions
 

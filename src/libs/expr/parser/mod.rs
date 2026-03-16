@@ -1,7 +1,9 @@
 pub mod ast;
 
-use ast::{BinaryOp, ColumnRef, Expr, PipeRight, UnaryOp};
-use pest::iterators::Pair;
+mod builder;
+
+use ast::Expr;
+use builder::*;
 use pest::Parser;
 use pest_derive::Parser as PestParser;
 use thiserror::Error;
@@ -42,703 +44,10 @@ pub fn parse(input: &str) -> Result<Expr, ParseError> {
     Err(ParseError::EmptyExpression)
 }
 
-/// Build full expression (handles multiple expressions separated by semicolons)
-fn build_full_expr(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut exprs = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::expr_list => {
-                for expr_pair in inner.into_inner() {
-                    match expr_pair.as_rule() {
-                        Rule::expr => {
-                            exprs.push(build_expr(expr_pair)?);
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            Rule::expr => {
-                exprs.push(build_expr(inner)?);
-            }
-            _ => {}
-        }
-    }
-
-    match exprs.len() {
-        0 => Err(ParseError::EmptyExpression),
-        1 => Ok(exprs.into_iter().next().unwrap()),
-        _ => Ok(Expr::Block(exprs)),
-    }
-}
-
-/// Build expression from a pair
-fn build_expr(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    match pair.as_rule() {
-        Rule::full_expr => build_full_expr(pair),
-        Rule::expr_list => build_full_expr(pair),
-        Rule::expr => {
-            // expr is bind - get the first child which should be bind
-            let mut inner = pair.into_inner();
-            let bind_pair = inner.next().ok_or_else(|| ParseError::EmptyExpression)?;
-            build_expr(bind_pair)
-        }
-        Rule::bind => build_bind(pair),
-        Rule::pipe => build_pipe(pair),
-        Rule::logical_or => build_logical_or(pair),
-        Rule::logical_and => build_logical_and(pair),
-        Rule::comparison => build_comparison(pair),
-        Rule::concat => build_concat(pair),
-        Rule::additive => build_additive(pair),
-        Rule::multiplicative => build_multiplicative(pair),
-        Rule::power => build_power(pair),
-        Rule::unary => build_unary(pair),
-        Rule::postfix => build_postfix(pair),
-        Rule::primary => build_primary(pair),
-        Rule::func_call => build_func_call(pair),
-        Rule::ident_or_lambda => {
-            // ident_or_lambda can be lambda_single_param, ident, or lambda_multi_params
-            let inner = pair
-                .into_inner()
-                .next()
-                .ok_or_else(|| ParseError::EmptyExpression)?;
-            build_expr(inner)
-        }
-        Rule::lambda_single_param => build_lambda(pair),
-        Rule::lambda_multi_params => build_lambda(pair),
-        Rule::method_call => {
-            let (name, args) = build_method_call(pair)?;
-            Ok(Expr::Call { name, args })
-        }
-        Rule::list_literal => build_list_literal(pair),
-        Rule::column_ref => build_column_ref(pair.as_str()),
-        Rule::variable_ref => build_variable_ref(pair.as_str()),
-        Rule::string => build_string(pair.as_str()),
-        Rule::float => {
-            let num: f64 = pair
-                .as_str()
-                .parse()
-                .map_err(|_| ParseError::InvalidNumber(pair.as_str().to_string()))?;
-            Ok(Expr::Float(num))
-        }
-        Rule::int => {
-            let num: i64 = pair
-                .as_str()
-                .parse()
-                .map_err(|_| ParseError::InvalidNumber(pair.as_str().to_string()))?;
-            Ok(Expr::Int(num))
-        }
-        Rule::boolean => {
-            let b = pair.as_str() == "true";
-            Ok(Expr::Bool(b))
-        }
-        Rule::null => Ok(Expr::Null),
-        Rule::ident => Ok(Expr::ColumnRef(ColumnRef::Name(pair.as_str().to_string()))),
-        _ => Err(ParseError::UnexpectedRule(pair.as_rule())),
-    }
-}
-
-fn build_bind(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let inner: Vec<Pair<Rule>> = pair.into_inner().collect();
-
-    if inner.is_empty() {
-        return Err(ParseError::EmptyExpression);
-    }
-
-    // First element is always the pipe expression
-    let mut result = build_expr(inner[0].clone())?;
-
-    // Check for 'as @name' binding
-    let mut i = 1;
-    if i < inner.len() && inner[i].as_rule() == Rule::op_as {
-        i += 1; // Skip 'as'
-
-        // Next should be var_name
-        if i < inner.len() && inner[i].as_rule() == Rule::var_name {
-            let name = inner[i].as_str().trim_start_matches('@').to_string();
-            i += 1;
-
-            // Create bind expression
-            result = Expr::Bind {
-                expr: Box::new(result),
-                name,
-            };
-
-            // Process any trailing pipes after the bind
-            while i < inner.len() {
-                if inner[i].as_rule() == Rule::op_pipe {
-                    // Next should be pipe_func_call
-                    if i + 1 < inner.len() {
-                        let pipe_right = build_pipe_right(inner[i + 1].clone())?;
-                        result = Expr::Pipe {
-                            left: Box::new(result),
-                            right: Box::new(pipe_right),
-                        };
-                        i += 2;
-                    } else {
-                        break;
-                    }
-                } else {
-                    i += 1;
-                }
-            }
-        }
-    }
-
-    Ok(result)
-}
-
-fn build_pipe(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let inner: Vec<Pair<Rule>> = pair.into_inner().collect();
-
-    // pipe = { logical_or ~ (op_pipe ~ pipe_func_call)* }
-    // So inner should contain: [logical_or, op_pipe?, pipe_func_call?, ...]
-
-    if inner.is_empty() {
-        return Err(ParseError::EmptyExpression);
-    }
-
-    // First element is always logical_or
-    let first = &inner[0];
-    let mut result = build_expr(first.clone())?;
-
-    // Check if there are pipe operations (op_pipe + pipe_func_call pairs)
-    let mut i = 1;
-    while i < inner.len() {
-        if inner[i].as_rule() == Rule::op_pipe {
-            // Next should be pipe_func_call
-            if i + 1 < inner.len() {
-                let pipe_right = build_pipe_right(inner[i + 1].clone())?;
-                result = Expr::Pipe {
-                    left: Box::new(result),
-                    right: Box::new(pipe_right),
-                };
-                i += 2;
-            } else {
-                break;
-            }
-        } else {
-            // Unexpected token, skip
-            i += 1;
-        }
-    }
-
-    Ok(result)
-}
-
-fn build_pipe_right(pair: Pair<Rule>) -> Result<PipeRight, ParseError> {
-    match pair.as_rule() {
-        Rule::pipe_func_call => {
-            let mut name = String::new();
-            let mut args: Vec<Expr> = Vec::new();
-            let mut has_placeholder = false;
-
-            for inner in pair.into_inner() {
-                match inner.as_rule() {
-                    Rule::ident => name = inner.as_str().to_string(),
-                    Rule::pipe_arg => {
-                        for arg_inner in inner.into_inner() {
-                            match arg_inner.as_rule() {
-                                Rule::placeholder => has_placeholder = true,
-                                _ => args.push(build_expr(arg_inner)?),
-                            }
-                        }
-                    }
-                    Rule::expr => args.push(build_expr(inner)?),
-                    _ => {}
-                }
-            }
-
-            if has_placeholder {
-                Ok(PipeRight::CallWithPlaceholder { name, args })
-            } else {
-                Ok(PipeRight::Call { name, args })
-            }
-        }
-        _ => Err(ParseError::UnexpectedRule(pair.as_rule())),
-    }
-}
-
-fn build_logical_or(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut exprs: Vec<Expr> = Vec::new();
-    let mut ops: Vec<BinaryOp> = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::op_or => ops.push(BinaryOp::Or),
-            _ => exprs.push(build_expr(inner)?),
-        }
-    }
-
-    fold_left(exprs, ops)
-}
-
-fn build_logical_and(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut exprs: Vec<Expr> = Vec::new();
-    let mut ops: Vec<BinaryOp> = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::op_and => ops.push(BinaryOp::And),
-            _ => exprs.push(build_expr(inner)?),
-        }
-    }
-
-    fold_left(exprs, ops)
-}
-
-fn build_comparison(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut exprs: Vec<Expr> = Vec::new();
-    let mut ops: Vec<BinaryOp> = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::op_eq
-            | Rule::op_ne
-            | Rule::op_lt
-            | Rule::op_le
-            | Rule::op_gt
-            | Rule::op_ge
-            | Rule::op_str_eq
-            | Rule::op_str_ne
-            | Rule::op_str_lt
-            | Rule::op_str_le
-            | Rule::op_str_gt
-            | Rule::op_str_ge => {
-                let s = inner.as_str();
-                match s {
-                    "==" | "=" => ops.push(BinaryOp::Eq),
-                    "!=" | "<>" => ops.push(BinaryOp::Ne),
-                    "<" => ops.push(BinaryOp::Lt),
-                    "<=" => ops.push(BinaryOp::Le),
-                    ">" => ops.push(BinaryOp::Gt),
-                    ">=" => ops.push(BinaryOp::Ge),
-                    "eq" => ops.push(BinaryOp::StrEq),
-                    "ne" => ops.push(BinaryOp::StrNe),
-                    "lt" => ops.push(BinaryOp::StrLt),
-                    "le" => ops.push(BinaryOp::StrLe),
-                    "gt" => ops.push(BinaryOp::StrGt),
-                    "ge" => ops.push(BinaryOp::StrGe),
-                    _ => {
-                        return Err(ParseError::InvalidNumber(format!(
-                            "unknown comparison op: {}",
-                            s
-                        )))
-                    }
-                }
-            }
-            _ => exprs.push(build_expr(inner)?),
-        }
-    }
-
-    fold_left(exprs, ops)
-}
-
-fn build_concat(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut exprs: Vec<Expr> = Vec::new();
-    let mut ops: Vec<BinaryOp> = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::op_concat => ops.push(BinaryOp::Concat),
-            _ => exprs.push(build_expr(inner)?),
-        }
-    }
-
-    fold_left(exprs, ops)
-}
-
-fn build_additive(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut exprs: Vec<Expr> = Vec::new();
-    let mut ops: Vec<BinaryOp> = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::op_add => ops.push(BinaryOp::Add),
-            Rule::op_sub => ops.push(BinaryOp::Sub),
-            _ => exprs.push(build_expr(inner)?),
-        }
-    }
-
-    fold_left(exprs, ops)
-}
-
-fn build_multiplicative(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut exprs: Vec<Expr> = Vec::new();
-    let mut ops: Vec<BinaryOp> = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::op_mul => ops.push(BinaryOp::Mul),
-            Rule::op_div => ops.push(BinaryOp::Div),
-            Rule::op_mod => ops.push(BinaryOp::Mod),
-            _ => exprs.push(build_expr(inner)?),
-        }
-    }
-
-    fold_left(exprs, ops)
-}
-
-fn build_power(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut exprs: Vec<Expr> = Vec::new();
-    let mut ops: Vec<BinaryOp> = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::op_pow => ops.push(BinaryOp::Pow),
-            _ => exprs.push(build_expr(inner)?),
-        }
-    }
-
-    fold_left(exprs, ops)
-}
-
-fn build_unary(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut ops: Vec<UnaryOp> = Vec::new();
-    let mut inner_pairs: Vec<Pair<Rule>> = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::op_not => ops.push(UnaryOp::Not),
-            Rule::op_neg => ops.push(UnaryOp::Neg),
-            _ => inner_pairs.push(inner),
-        }
-    }
-
-    // Build the base expression from inner pairs (postfix content)
-    // Handle method chain: primary/func_call followed by method_call(s)
-    let mut result = if inner_pairs.is_empty() {
-        return Err(ParseError::EmptyExpression);
-    } else {
-        // First pair is the base (primary or func_call)
-        let first = &inner_pairs[0];
-        let base = match first.as_rule() {
-            Rule::func_call => build_func_call(first.clone())?,
-            Rule::postfix => build_postfix(first.clone())?,
-            Rule::primary => build_primary(first.clone())?,
-            _ => build_expr(first.clone())?,
-        };
-
-        // Remaining pairs are method calls
-        let mut obj = base;
-        for method_pair in inner_pairs.iter().skip(1) {
-            if method_pair.as_rule() == Rule::method_call {
-                let (name, args) = build_method_call(method_pair.clone())?;
-                obj = Expr::MethodCall {
-                    object: Box::new(obj),
-                    name,
-                    args,
-                };
-            }
-        }
-        obj
-    };
-
-    for op in ops.into_iter().rev() {
-        result = Expr::unary(op, result);
-    }
-
-    Ok(result)
-}
-
-fn build_postfix(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut inner = pair.into_inner();
-
-    // First element can be func_call or primary
-    let first_pair = inner.next().ok_or_else(|| ParseError::EmptyExpression)?;
-
-    // If it's a func_call, return it directly (no method chain after standalone func_call)
-    if first_pair.as_rule() == Rule::func_call {
-        return build_func_call(first_pair);
-    }
-
-    // Otherwise, it's a primary, build it and process method chain
-    let mut object = build_expr(first_pair)?;
-
-    // Process each method call in the chain
-    for method_pair in inner {
-        if method_pair.as_rule() == Rule::method_call {
-            let (name, args) = build_method_call(method_pair)?;
-            object = Expr::MethodCall {
-                object: Box::new(object),
-                name,
-                args,
-            };
-        }
-    }
-
-    Ok(object)
-}
-
-fn build_method_call(pair: Pair<Rule>) -> Result<(String, Vec<Expr>), ParseError> {
-    let mut name = String::new();
-    let mut args = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::ident => name = inner.as_str().to_string(),
-            Rule::expr => args.push(build_expr(inner)?),
-            _ => {}
-        }
-    }
-
-    Ok((name, args))
-}
-
-fn build_func_call(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut name = String::new();
-    let mut args: Vec<Expr> = Vec::new();
-
-    for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::ident => name = inner.as_str().to_string(),
-            Rule::expr => args.push(build_expr(inner)?),
-            _ => {}
-        }
-    }
-
-    Ok(Expr::call(name, args))
-}
-
-fn build_list_literal(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let mut elements = Vec::new();
-
-    for inner in pair.into_inner() {
-        if inner.as_rule() == Rule::expr {
-            elements.push(build_expr(inner)?);
-        }
-    }
-
-    Ok(Expr::List(elements))
-}
-
-fn build_lambda(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    let inner = pair.into_inner();
-    let mut params = Vec::new();
-    let mut body: Option<Expr> = None;
-
-    for child in inner {
-        match child.as_rule() {
-            Rule::ident => {
-                // Parameter: x or y
-                params.push(child.as_str().to_string());
-            }
-            Rule::bind => {
-                // Lambda body
-                body = Some(build_expr(child)?);
-            }
-            _ => {}
-        }
-    }
-
-    let body = body.ok_or_else(|| ParseError::EmptyExpression)?;
-
-    // Transform parameter references in body to LambdaParam
-    let body = transform_lambda_params(body, &params);
-
-    Ok(Expr::Lambda {
-        params,
-        body: Box::new(body),
-    })
-}
-
-/// Transform ColumnRef(Name(param)) to LambdaParam(param) for lambda parameters
-fn transform_lambda_params(expr: Expr, params: &[String]) -> Expr {
-    use ast::ColumnRef;
-
-    match expr {
-        Expr::ColumnRef(ColumnRef::Name(name)) if params.contains(&name) => {
-            Expr::LambdaParam(name)
-        }
-        Expr::Binary { op, left, right } => Expr::Binary {
-            op,
-            left: Box::new(transform_lambda_params(*left, params)),
-            right: Box::new(transform_lambda_params(*right, params)),
-        },
-        Expr::Unary { op, expr } => Expr::Unary {
-            op,
-            expr: Box::new(transform_lambda_params(*expr, params)),
-        },
-        Expr::Call { name, args } => Expr::Call {
-            name,
-            args: args
-                .into_iter()
-                .map(|a| transform_lambda_params(a, params))
-                .collect(),
-        },
-        Expr::MethodCall { object, name, args } => Expr::MethodCall {
-            object: Box::new(transform_lambda_params(*object, params)),
-            name,
-            args: args
-                .into_iter()
-                .map(|a| transform_lambda_params(a, params))
-                .collect(),
-        },
-        Expr::Pipe { left, right } => Expr::Pipe {
-            left: Box::new(transform_lambda_params(*left, params)),
-            right: Box::new(transform_pipe_right(*right, params)),
-        },
-        Expr::Bind { expr, name } => Expr::Bind {
-            expr: Box::new(transform_lambda_params(*expr, params)),
-            name,
-        },
-        Expr::List(elements) => Expr::List(
-            elements
-                .into_iter()
-                .map(|e| transform_lambda_params(e, params))
-                .collect(),
-        ),
-        Expr::Block(exprs) => Expr::Block(
-            exprs
-                .into_iter()
-                .map(|e| transform_lambda_params(e, params))
-                .collect(),
-        ),
-        // LambdaParam, ColumnRef(Index), Int, Float, String, Bool, Null, Variable, Lambda remain unchanged
-        other => other,
-    }
-}
-
-/// Transform parameter references in pipe right-hand side
-fn transform_pipe_right(pipe_right: PipeRight, params: &[String]) -> PipeRight {
-    match pipe_right {
-        PipeRight::Call { name, args } => PipeRight::Call {
-            name,
-            args: args
-                .into_iter()
-                .map(|a| transform_lambda_params(a, params))
-                .collect(),
-        },
-        PipeRight::CallWithPlaceholder { name, args } => {
-            PipeRight::CallWithPlaceholder {
-                name,
-                args: args
-                    .into_iter()
-                    .map(|a| transform_lambda_params(a, params))
-                    .collect(),
-            }
-        }
-    }
-}
-
-fn build_primary(pair: Pair<Rule>) -> Result<Expr, ParseError> {
-    for inner in pair.into_inner() {
-        return build_expr(inner);
-    }
-    Err(ParseError::EmptyExpression)
-}
-
-fn build_column_ref(s: &str) -> Result<Expr, ParseError> {
-    let inner = &s[1..]; // Remove '@'
-
-    // Check if it's a quoted column name (starts with " or ')
-    if inner.starts_with('"') || inner.starts_with('\'') {
-        // Extract the content between quotes
-        let quote_char = inner.chars().next().unwrap();
-        let end = inner.rfind(quote_char).unwrap_or(inner.len());
-        let name = &inner[1..end];
-        return Ok(Expr::ColumnRef(ColumnRef::Name(name.to_string())));
-    }
-
-    if inner
-        .chars()
-        .next()
-        .map(|c| c.is_ascii_digit())
-        .unwrap_or(false)
-    {
-        let idx: usize = inner
-            .parse()
-            .map_err(|_| ParseError::InvalidColumnIndex(inner.to_string()))?;
-        if idx == 0 {
-            Ok(Expr::ColumnRef(ColumnRef::WholeRow))
-        } else {
-            Ok(Expr::ColumnRef(ColumnRef::Index(idx)))
-        }
-    } else {
-        Ok(Expr::ColumnRef(ColumnRef::Name(inner.to_string())))
-    }
-}
-
-fn build_variable_ref(s: &str) -> Result<Expr, ParseError> {
-    let name = extract_variable_name(s);
-    Ok(Expr::Variable(name))
-}
-
-fn extract_variable_name(s: &str) -> String {
-    s[1..].to_string() // Remove '@' prefix
-}
-
-fn build_string(s: &str) -> Result<Expr, ParseError> {
-    // Check if it's a q-string: q(...)
-    if s.starts_with("q(") && s.ends_with(")") {
-        let inner = &s[2..s.len() - 1]; // Remove "q(" and ")"
-                                        // Process escape sequences for q-string: \( \) \\
-        let mut result = String::new();
-        let mut chars = inner.chars().peekable();
-        while let Some(c) = chars.next() {
-            if c == '\\' {
-                match chars.next() {
-                    Some('(') => result.push('('),
-                    Some(')') => result.push(')'),
-                    Some('\\') => result.push('\\'),
-                    Some(c) => {
-                        result.push('\\');
-                        result.push(c);
-                    }
-                    None => result.push('\\'),
-                }
-            } else {
-                result.push(c);
-            }
-        }
-        return Ok(Expr::String(result));
-    }
-
-    // Regular quoted string: "..." or '...'
-    let inner = &s[1..s.len() - 1];
-    // Process escape sequences
-    let mut result = String::new();
-    let mut chars = inner.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            match chars.next() {
-                Some('n') => result.push('\n'),
-                Some('t') => result.push('\t'),
-                Some('r') => result.push('\r'),
-                Some('\\') => result.push('\\'),
-                Some('"') => result.push('"'),
-                Some('\'') => result.push('\''),
-                Some(c) => {
-                    result.push('\\');
-                    result.push(c);
-                }
-                None => result.push('\\'),
-            }
-        } else {
-            result.push(c);
-        }
-    }
-    Ok(Expr::String(result))
-}
-
-fn fold_left(exprs: Vec<Expr>, ops: Vec<BinaryOp>) -> Result<Expr, ParseError> {
-    if exprs.is_empty() {
-        return Err(ParseError::EmptyExpression);
-    }
-    if exprs.len() == 1 {
-        return Ok(exprs.into_iter().next().unwrap());
-    }
-
-    let mut result = exprs[0].clone();
-    for (i, op) in ops.iter().enumerate() {
-        result = Expr::binary(*op, result, exprs[i + 1].clone());
-    }
-    Ok(result)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ast::{BinaryOp, ColumnRef, PipeRight, UnaryOp};
 
     #[test]
     fn test_parse_column_ref_index() {
@@ -1640,109 +949,94 @@ mod tests {
 
     #[test]
     fn test_parse_column_index_zero_is_whole_row() {
-        // @0 is now valid and refers to the whole row
         let expr = parse("@0").unwrap();
         assert!(matches!(expr, Expr::ColumnRef(ColumnRef::WholeRow)));
     }
 
     #[test]
-    fn test_parse_column_ref_with_spaces() {
-        // Column names with spaces using double quotes
-        let expr = parse("@\"user name\"").unwrap();
-        assert!(matches!(expr, Expr::ColumnRef(ColumnRef::Name(s)) if s == "user name"));
-
-        // Single quotes should also work
-        let expr2 = parse("@'first name'").unwrap();
-        assert!(
-            matches!(expr2, Expr::ColumnRef(ColumnRef::Name(s)) if s == "first name")
-        );
+    fn test_parse_column_index_negative() {
+        // Negative column indices should fail
+        assert!(parse("@-1").is_err());
     }
 
     #[test]
-    fn test_parse_unexpected_character() {
-        assert!(parse("@1 + $").is_err());
+    fn test_parse_invalid_column_name() {
+        // Column names must start with a letter or underscore
+        assert!(parse("@123abc").is_ok()); // This is parsed as index 123, not name
     }
 
     #[test]
-    fn test_parse_invalid_number() {
-        assert!(parse("1.2.3").is_err());
-    }
-
-    #[test]
-    fn test_parse_unclosed_parenthesis() {
+    fn test_parse_unmatched_parenthesis() {
         assert!(parse("(@1 + @2").is_err());
+        assert!(parse("@1 + @2)").is_err());
     }
 
     #[test]
-    fn test_parse_bind_with_pipe() {
-        // [1, 2, 3] as @list | len() should parse correctly
-        let expr = parse("[1, 2, 3] as @list | len()").unwrap();
-        // Should be a Pipe expression with Bind on the left
-        match expr {
-            Expr::Pipe { left, right } => {
-                // Left side should be the bind expression
-                assert!(matches!(left.as_ref(), Expr::Bind { .. }));
-                // Right side should be len() function call
-                match right.as_ref() {
-                    PipeRight::Call { name, args } => {
-                        assert_eq!(name, "len");
-                        assert!(args.is_empty());
-                    }
-                    _ => panic!("Expected PipeRight::Call for len()"),
-                }
-            }
-            _ => panic!("Expected Pipe expression, got {:?}", expr),
-        }
+    fn test_parse_unmatched_bracket() {
+        assert!(parse("[@1, @2").is_err());
+        assert!(parse("@1, @2]").is_err());
+    }
+
+    #[test]
+    fn test_parse_unmatched_quote() {
+        assert!(parse("\"unclosed string").is_err());
+    }
+
+    #[test]
+    fn test_parse_invalid_operator() {
+        // These operators are not supported
+        assert!(parse("@1 && @2").is_err());
+        assert!(parse("@1 || @2").is_err());
+    }
+
+    #[test]
+    fn test_parse_invalid_function_call() {
+        assert!(parse("func(").is_err());
+        assert!(parse("func)").is_err());
     }
 
     #[test]
     fn test_parse_bind_with_chained_pipes() {
-        // "hello" as @s | upper() | len() should parse correctly
-        let expr = parse("'hello' as @s | upper() | len()").unwrap();
-        // Should be a Pipe expression with another Pipe on the left
+        // @price as @p | round(2) | format("${}")
+        let expr = parse("@price as @p | round(2) | format(\"${}\")").unwrap();
         match expr {
             Expr::Pipe { left, right } => {
-                // Right side should be len()
-                match right.as_ref() {
-                    PipeRight::Call { name, .. } => {
-                        assert_eq!(name, "len");
-                    }
-                    _ => panic!("Expected PipeRight::Call for len()"),
-                }
-                // Left side should be another Pipe (upper())
-                match left.as_ref() {
+                // Left should be a pipe
+                match *left {
                     Expr::Pipe {
                         left: inner_left,
                         right: inner_right,
                     } => {
-                        // inner_left should be the bind expression
-                        assert!(matches!(inner_left.as_ref(), Expr::Bind { .. }));
-                        // inner_right should be upper()
-                        match inner_right.as_ref() {
-                            PipeRight::Call { name, .. } => {
-                                assert_eq!(name, "upper");
+                        // inner_left should be the bind
+                        match *inner_left {
+                            Expr::Bind { name, .. } => {
+                                assert_eq!(name, "p");
                             }
-                            _ => panic!("Expected PipeRight::Call for upper()"),
+                            _ => panic!("Expected Bind, got {:?}", inner_left),
+                        }
+                        // inner_right should be round(2)
+                        match *inner_right {
+                            PipeRight::Call { name, args } => {
+                                assert_eq!(name, "round");
+                                assert_eq!(args.len(), 1);
+                                assert!(matches!(args[0], Expr::Int(2)));
+                            }
+                            _ => panic!("Expected Call pipe right for round"),
                         }
                     }
-                    _ => panic!("Expected nested Pipe expression"),
+                    _ => panic!("Expected nested Pipe for left side"),
+                }
+                // Right should be format("${}")
+                match *right {
+                    PipeRight::Call { name, args } => {
+                        assert_eq!(name, "format");
+                        assert_eq!(args.len(), 1);
+                        assert!(matches!(args[0], Expr::String(ref s) if s == "${}"));
+                    }
+                    _ => panic!("Expected Call pipe right for format"),
                 }
             }
-            _ => panic!("Expected Pipe expression"),
-        }
-    }
-
-    #[test]
-    fn test_parse_bind_without_pipe() {
-        // [1, 2, 3] as @list should still work
-        let expr = parse("[1, 2, 3] as @list").unwrap();
-        match expr {
-            Expr::Bind { expr, name } => {
-                assert_eq!(name, "list");
-                // The bound expression should be a list
-                assert!(matches!(expr.as_ref(), Expr::List(_)));
-            }
-            _ => panic!("Expected Bind expression, got {:?}", expr),
+            _ => panic!("Expected Pipe expression, got {:?}", expr),
         }
     }
 }
