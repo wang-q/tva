@@ -64,7 +64,7 @@ tva expr -E '"  hello  " | trim() | upper()'      # Chain multiple pipes
 
 ### Pipe Call (Multiple Arguments)
 
-`arg | func(_, arg2)` - Use `_` to represent the piped value as the first argument.
+`arg | func(_, arg2)` - Use `_` to represent the piped value.
 
 ```bash
 tva expr -E '"hello world" | substr(_, 0, 5)'   # Returns: hello
