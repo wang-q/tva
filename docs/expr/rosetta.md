@@ -287,7 +287,7 @@ Using `take_while()` to find the GCD by searching from largest to smallest:
 
 ```bash
 # GCD of 48 and 18: gcd(48, 18) = 6
-tva expr  -r '48,18' -E '
+tva expr -r '48,18' -E '
 int(@1) as @a;
 int(@2) as @b;
 min(@a, @b) as @limit;
@@ -314,10 +314,3 @@ This demonstrates:
 - `take_while()` to skip non-divisors until finding the GCD
 - `reverse()` to search from largest to smallest for efficiency
 - `nth()` with calculated offset to extract the first matching element
-
-## list
-
-进阶级（字符串、数据结构、算法）
-Towers of Hanoi
-Eight queens puzzle
-Conway's Game of Life
