@@ -378,3 +378,678 @@ pub fn eval_expr_cached_resolved(
     let mut ctx = runtime::EvalContext::with_headers(row, headers);
     Ok(runtime::eval(&expr, &mut ctx)?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use parser::ast::{BinaryOp, ColumnRef, Expr, UnaryOp};
+
+    #[test]
+    fn test_parse_cached_basic() {
+        // Clear cache first
+        clear_cache();
+        assert_eq!(cache_size(), 0);
+
+        // Parse and cache
+        let expr1 = parse_cached("@1 + @2").unwrap();
+        assert_eq!(cache_size(), 1);
+
+        // Parse same expression - should hit cache
+        let expr2 = parse_cached("@1 + @2").unwrap();
+        assert_eq!(cache_size(), 1); // Still 1, not 2
+
+        // Parse different expression
+        let _expr3 = parse_cached("@1 * @2").unwrap();
+        assert_eq!(cache_size(), 2);
+
+        // Verify expressions are equivalent
+        match (&expr1, &expr2) {
+            (Expr::Binary { op: op1, .. }, Expr::Binary { op: op2, .. }) => {
+                assert_eq!(*op1, *op2);
+            }
+            _ => panic!("Expected Binary expressions"),
+        }
+    }
+
+    #[test]
+    fn test_clear_cache() {
+        parse_cached("@1 + 1").unwrap();
+        parse_cached("@1 + 2").unwrap();
+        assert_eq!(cache_size(), 2);
+
+        clear_cache();
+        assert_eq!(cache_size(), 0);
+    }
+
+    #[test]
+    fn test_cache_size_empty() {
+        clear_cache();
+        assert_eq!(cache_size(), 0);
+    }
+
+    #[test]
+    fn test_resolve_columns_by_name() {
+        let mut expr = Expr::ColumnRef(ColumnRef::Name("price".to_string()));
+        let headers = vec!["name".to_string(), "price".to_string(), "qty".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        // Should be resolved to index 2 (1-based)
+        match expr {
+            Expr::ColumnRef(ColumnRef::Index(idx)) => {
+                assert_eq!(idx, 2);
+            }
+            _ => panic!("Expected ColumnRef::Index, got {:?}", expr),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_name_not_found() {
+        // Column name not in headers - should remain as Name
+        let mut expr = Expr::ColumnRef(ColumnRef::Name("unknown".to_string()));
+        let headers = vec!["name".to_string(), "price".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::ColumnRef(ColumnRef::Name(name)) => {
+                assert_eq!(name, "unknown");
+            }
+            _ => panic!("Expected ColumnRef::Name to remain unchanged"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_index_unchanged() {
+        // Index references should remain unchanged
+        let mut expr = Expr::ColumnRef(ColumnRef::Index(1));
+        let headers = vec!["name".to_string(), "price".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::ColumnRef(ColumnRef::Index(idx)) => {
+                assert_eq!(idx, 1);
+            }
+            _ => panic!("Expected ColumnRef::Index to remain unchanged"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_binary() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Add,
+            left: Box::new(Expr::ColumnRef(ColumnRef::Name("price".to_string()))),
+            right: Box::new(Expr::ColumnRef(ColumnRef::Name("qty".to_string()))),
+        };
+        let headers = vec!["name".to_string(), "price".to_string(), "qty".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::Binary { left, right, .. } => {
+                match (*left, *right) {
+                    (
+                        Expr::ColumnRef(ColumnRef::Index(left_idx)),
+                        Expr::ColumnRef(ColumnRef::Index(right_idx)),
+                    ) => {
+                        assert_eq!(left_idx, 2); // price is at index 2
+                        assert_eq!(right_idx, 3); // qty is at index 3
+                    }
+                    _ => panic!("Expected both columns to be resolved to indices"),
+                }
+            }
+            _ => panic!("Expected Binary expression"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_unary() {
+        let mut expr = Expr::Unary {
+            op: UnaryOp::Neg,
+            expr: Box::new(Expr::ColumnRef(ColumnRef::Name("value".to_string()))),
+        };
+        let headers = vec!["value".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::Unary { expr, .. } => match *expr {
+                Expr::ColumnRef(ColumnRef::Index(idx)) => {
+                    assert_eq!(idx, 1);
+                }
+                _ => panic!("Expected inner column to be resolved"),
+            },
+            _ => panic!("Expected Unary expression"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_call() {
+        let mut expr = Expr::Call {
+            name: "max".to_string(),
+            args: vec![
+                Expr::ColumnRef(ColumnRef::Name("a".to_string())),
+                Expr::ColumnRef(ColumnRef::Name("b".to_string())),
+            ],
+        };
+        let headers = vec!["a".to_string(), "b".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::Call { args, .. } => {
+                assert_eq!(args.len(), 2);
+                match (&args[0], &args[1]) {
+                    (
+                        Expr::ColumnRef(ColumnRef::Index(1)),
+                        Expr::ColumnRef(ColumnRef::Index(2)),
+                    ) => {}
+                    _ => panic!("Expected args to be resolved to indices 1 and 2"),
+                }
+            }
+            _ => panic!("Expected Call expression"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_method_call() {
+        let mut expr = Expr::MethodCall {
+            object: Box::new(Expr::ColumnRef(ColumnRef::Name("name".to_string()))),
+            name: "upper".to_string(),
+            args: vec![],
+        };
+        let headers = vec!["name".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::MethodCall { object, .. } => match *object {
+                Expr::ColumnRef(ColumnRef::Index(1)) => {}
+                _ => panic!("Expected object to be resolved to index 1"),
+            },
+            _ => panic!("Expected MethodCall expression"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_list() {
+        let mut expr = Expr::List(vec![
+            Expr::ColumnRef(ColumnRef::Name("a".to_string())),
+            Expr::ColumnRef(ColumnRef::Name("b".to_string())),
+        ]);
+        let headers = vec!["a".to_string(), "b".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::List(items) => {
+                assert_eq!(items.len(), 2);
+                match (&items[0], &items[1]) {
+                    (
+                        Expr::ColumnRef(ColumnRef::Index(1)),
+                        Expr::ColumnRef(ColumnRef::Index(2)),
+                    ) => {}
+                    _ => panic!("Expected list items to be resolved"),
+                }
+            }
+            _ => panic!("Expected List expression"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_lambda() {
+        let mut expr = Expr::Lambda {
+            params: vec!["x".to_string()],
+            body: Box::new(Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::LambdaParam("x".to_string())),
+                right: Box::new(Expr::ColumnRef(ColumnRef::Name("offset".to_string()))),
+            }),
+        };
+        let headers = vec!["offset".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::Lambda { body, .. } => match *body {
+                Expr::Binary { right, .. } => match *right {
+                    Expr::ColumnRef(ColumnRef::Index(1)) => {}
+                    _ => panic!("Expected column in lambda body to be resolved"),
+                },
+                _ => panic!("Expected Binary in lambda body"),
+            },
+            _ => panic!("Expected Lambda expression"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_block() {
+        let mut expr = Expr::Block(vec![
+            Expr::ColumnRef(ColumnRef::Name("a".to_string())),
+            Expr::ColumnRef(ColumnRef::Name("b".to_string())),
+        ]);
+        let headers = vec!["a".to_string(), "b".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::Block(exprs) => {
+                assert_eq!(exprs.len(), 2);
+                match (&exprs[0], &exprs[1]) {
+                    (
+                        Expr::ColumnRef(ColumnRef::Index(1)),
+                        Expr::ColumnRef(ColumnRef::Index(2)),
+                    ) => {}
+                    _ => panic!("Expected block expressions to be resolved"),
+                }
+            }
+            _ => panic!("Expected Block expression"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_bind() {
+        let mut expr = Expr::Bind {
+            name: "total".to_string(),
+            expr: Box::new(Expr::ColumnRef(ColumnRef::Name("price".to_string()))),
+        };
+        let headers = vec!["price".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::Bind { expr, .. } => match *expr {
+                Expr::ColumnRef(ColumnRef::Index(1)) => {}
+                _ => panic!("Expected bound expression to be resolved"),
+            },
+            _ => panic!("Expected Bind expression"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_unary_neg_int() {
+        let mut expr = Expr::Unary {
+            op: UnaryOp::Neg,
+            expr: Box::new(Expr::Int(42)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Int(-42)));
+    }
+
+    #[test]
+    fn test_fold_constants_unary_neg_float() {
+        let mut expr = Expr::Unary {
+            op: UnaryOp::Neg,
+            expr: Box::new(Expr::Float(3.14)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f + 3.14).abs() < 0.001),
+            _ => panic!("Expected Float(-3.14)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_unary_not() {
+        let mut expr = Expr::Unary {
+            op: UnaryOp::Not,
+            expr: Box::new(Expr::Bool(true)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(false)));
+    }
+
+    #[test]
+    fn test_fold_constants_binary_add_int() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Add,
+            left: Box::new(Expr::Int(10)),
+            right: Box::new(Expr::Int(5)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Int(15)));
+    }
+
+    #[test]
+    fn test_fold_constants_binary_sub_int() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Sub,
+            left: Box::new(Expr::Int(10)),
+            right: Box::new(Expr::Int(3)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Int(7)));
+    }
+
+    #[test]
+    fn test_fold_constants_binary_mul_int() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Mul,
+            left: Box::new(Expr::Int(6)),
+            right: Box::new(Expr::Int(7)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Int(42)));
+    }
+
+    #[test]
+    fn test_fold_constants_binary_div_int() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Div,
+            left: Box::new(Expr::Int(20)),
+            right: Box::new(Expr::Int(4)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Int(5)));
+    }
+
+    #[test]
+    fn test_fold_constants_binary_div_by_zero() {
+        // Division by zero should not fold
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Div,
+            left: Box::new(Expr::Int(10)),
+            right: Box::new(Expr::Int(0)),
+        };
+        fold_constants(&mut expr);
+        // Should remain unchanged
+        match expr {
+            Expr::Binary { op, left, right } => {
+                assert!(matches!(op, BinaryOp::Div));
+                assert!(matches!(*left, Expr::Int(10)));
+                assert!(matches!(*right, Expr::Int(0)));
+            }
+            _ => panic!("Expected expression to remain unchanged"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_mod() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Mod,
+            left: Box::new(Expr::Int(17)),
+            right: Box::new(Expr::Int(5)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Int(2)));
+    }
+
+    #[test]
+    fn test_fold_constants_binary_pow_int() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Pow,
+            left: Box::new(Expr::Int(2)),
+            right: Box::new(Expr::Int(10)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Int(1024)));
+    }
+
+    #[test]
+    fn test_fold_constants_binary_pow_large_exponent() {
+        // Large exponents should not fold
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Pow,
+            left: Box::new(Expr::Int(2)),
+            right: Box::new(Expr::Int(200)),
+        };
+        fold_constants(&mut expr);
+        // Should remain unchanged
+        match expr {
+            Expr::Binary { op, .. } => {
+                assert!(matches!(op, BinaryOp::Pow));
+            }
+            _ => panic!("Expected expression to remain unchanged for large exponent"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_float_arithmetic() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Add,
+            left: Box::new(Expr::Float(1.5)),
+            right: Box::new(Expr::Float(2.5)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 4.0).abs() < 0.001),
+            _ => panic!("Expected Float(4.0)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_mixed_int_float() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Add,
+            left: Box::new(Expr::Int(10)),
+            right: Box::new(Expr::Float(2.5)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 12.5).abs() < 0.001),
+            _ => panic!("Expected Float(12.5)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_string_concat() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Concat,
+            left: Box::new(Expr::String("hello".to_string())),
+            right: Box::new(Expr::String(" world".to_string())),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::String(s) => assert_eq!(s, "hello world"),
+            _ => panic!("Expected String(\"hello world\")"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_comparison_int() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Lt,
+            left: Box::new(Expr::Int(5)),
+            right: Box::new(Expr::Int(10)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_comparison_float() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Ge,
+            left: Box::new(Expr::Float(3.14)),
+            right: Box::new(Expr::Float(2.71)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_string_comparison() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::StrEq,
+            left: Box::new(Expr::String("test".to_string())),
+            right: Box::new(Expr::String("test".to_string())),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_logical_and() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::And,
+            left: Box::new(Expr::Bool(true)),
+            right: Box::new(Expr::Bool(false)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(false)));
+    }
+
+    #[test]
+    fn test_fold_constants_logical_or() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Or,
+            left: Box::new(Expr::Bool(false)),
+            right: Box::new(Expr::Bool(true)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_nested() {
+        // (2 + 3) * 4 should fold to 20
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Mul,
+            left: Box::new(Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::Int(2)),
+                right: Box::new(Expr::Int(3)),
+            }),
+            right: Box::new(Expr::Int(4)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Int(20)));
+    }
+
+    #[test]
+    fn test_fold_constants_in_list() {
+        let mut expr = Expr::List(vec![
+            Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::Int(1)),
+                right: Box::new(Expr::Int(2)),
+            },
+            Expr::Binary {
+                op: BinaryOp::Mul,
+                left: Box::new(Expr::Int(3)),
+                right: Box::new(Expr::Int(4)),
+            },
+        ]);
+        fold_constants(&mut expr);
+
+        match expr {
+            Expr::List(items) => {
+                assert_eq!(items.len(), 2);
+                assert!(matches!(items[0], Expr::Int(3)));
+                assert!(matches!(items[1], Expr::Int(12)));
+            }
+            _ => panic!("Expected List expression"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_in_call() {
+        let mut expr = Expr::Call {
+            name: "max".to_string(),
+            args: vec![
+                Expr::Binary {
+                    op: BinaryOp::Add,
+                    left: Box::new(Expr::Int(1)),
+                    right: Box::new(Expr::Int(2)),
+                },
+                Expr::Int(5),
+            ],
+        };
+        fold_constants(&mut expr);
+
+        match expr {
+            Expr::Call { args, .. } => {
+                assert_eq!(args.len(), 2);
+                assert!(matches!(args[0], Expr::Int(3)));
+                assert!(matches!(args[1], Expr::Int(5)));
+            }
+            _ => panic!("Expected Call expression"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_no_fold_variable() {
+        // Variables should not be folded
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Add,
+            left: Box::new(Expr::ColumnRef(ColumnRef::Index(1))),
+            right: Box::new(Expr::Int(5)),
+        };
+        fold_constants(&mut expr);
+
+        // Should remain unchanged
+        match expr {
+            Expr::Binary { left, right, .. } => {
+                assert!(matches!(*left, Expr::ColumnRef(ColumnRef::Index(1))));
+                assert!(matches!(*right, Expr::Int(5)));
+            }
+            _ => panic!("Expected expression to remain unchanged"),
+        }
+    }
+
+    #[test]
+    fn test_eval_expr_basic() {
+        let row = vec!["10".to_string(), "20".to_string()];
+        let result = eval_expr("@1 + @2", &row, None).unwrap();
+        match result {
+            runtime::value::Value::Int(n) => assert_eq!(n, 30),
+            _ => panic!("Expected Int(30)"),
+        }
+    }
+
+    #[test]
+    fn test_eval_expr_with_headers() {
+        let row = vec!["100".to_string(), "200".to_string()];
+        let headers = vec!["price".to_string(), "qty".to_string()];
+        let result = eval_expr("@price + @qty", &row, Some(&headers)).unwrap();
+        match result {
+            runtime::value::Value::Int(n) => assert_eq!(n, 300),
+            _ => panic!("Expected Int(300)"),
+        }
+    }
+
+    #[test]
+    fn test_eval_expr_parse_error() {
+        let row: Vec<String> = vec![];
+        let result = eval_expr("@", &row, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_eval_expr_cached_basic() {
+        clear_cache();
+        let row = vec!["5".to_string(), "3".to_string()];
+
+        // First call - parses and caches
+        let result1 = eval_expr_cached("@1 * @2", &row, None).unwrap();
+
+        // Second call - uses cache
+        let result2 = eval_expr_cached("@1 * @2", &row, None).unwrap();
+
+        match (result1, result2) {
+            (runtime::value::Value::Int(n1), runtime::value::Value::Int(n2)) => {
+                assert_eq!(n1, 15);
+                assert_eq!(n2, 15);
+            }
+            _ => panic!("Expected Int(15)"),
+        }
+
+        // Cache should contain at least this expression (may contain more from other tests)
+        assert!(cache_size() >= 1);
+    }
+
+    #[test]
+    fn test_eval_expr_cached_resolved() {
+        clear_cache();
+        let row = vec!["10".to_string(), "5".to_string()];
+        let headers = vec!["a".to_string(), "b".to_string()];
+
+        let result = eval_expr_cached_resolved("@a + @b", &row, &headers).unwrap();
+
+        match result {
+            runtime::value::Value::Int(n) => assert_eq!(n, 15),
+            _ => panic!("Expected Int(15)"),
+        }
+    }
+}

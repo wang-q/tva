@@ -120,7 +120,7 @@ mod tests {
         let ops = vec![BinaryOp::Concat, BinaryOp::Concat];
         let result = fold_left(exprs, ops).unwrap();
         match result {
-            Expr::Binary { op, left, right } => {
+            Expr::Binary { op, right, .. } => {
                 assert!(matches!(op, BinaryOp::Concat));
                 assert!(matches!(right.as_ref(), Expr::String(s) if s == "world"));
             }
