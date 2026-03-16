@@ -149,10 +149,9 @@ mod tests {
                         assert!(matches!(*left, Expr::LambdaParam(s) if s == "x"));
                         assert!(matches!(*right, Expr::LambdaParam(s) if s == "y"));
                     }
-                    _ => panic!(
-                        "Expected Add expression in lambda body, got {:?}",
-                        body
-                    ),
+                    _ => {
+                        panic!("Expected Add expression in lambda body, got {:?}", body)
+                    }
                 }
             }
             _ => panic!("Expected Lambda expression, got {:?}", expr),
@@ -172,7 +171,9 @@ mod tests {
                         assert_eq!(args.len(), 1);
                         assert!(matches!(&args[0], Expr::LambdaParam(s) if s == "x"));
                     }
-                    _ => panic!("Expected Call expression in lambda body, got {:?}", body),
+                    _ => {
+                        panic!("Expected Call expression in lambda body, got {:?}", body)
+                    }
                 }
             }
             _ => panic!("Expected Lambda expression, got {:?}", expr),
@@ -197,7 +198,9 @@ mod tests {
                             _ => panic!("Expected Call in pipe right, got {:?}", right),
                         }
                     }
-                    _ => panic!("Expected Pipe expression in lambda body, got {:?}", body),
+                    _ => {
+                        panic!("Expected Pipe expression in lambda body, got {:?}", body)
+                    }
                 }
             }
             _ => panic!("Expected Lambda expression, got {:?}", expr),
@@ -229,7 +232,9 @@ mod tests {
                             ),
                         }
                     }
-                    _ => panic!("Expected Pipe expression in lambda body, got {:?}", body),
+                    _ => {
+                        panic!("Expected Pipe expression in lambda body, got {:?}", body)
+                    }
                 }
             }
             _ => panic!("Expected Lambda expression, got {:?}", expr),

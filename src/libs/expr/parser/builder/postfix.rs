@@ -32,9 +32,7 @@ pub fn build_postfix(pair: Pair<Rule>) -> Result<Expr, ParseError> {
     Ok(object)
 }
 
-pub fn build_method_call(
-    pair: Pair<Rule>,
-) -> Result<(String, Vec<Expr>), ParseError> {
+pub fn build_method_call(pair: Pair<Rule>) -> Result<(String, Vec<Expr>), ParseError> {
     let inner: Vec<Pair<Rule>> = pair.into_inner().collect();
 
     if inner.is_empty() {

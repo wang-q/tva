@@ -338,6 +338,39 @@ pub fn filter(args: &[Value]) -> Result<Value, EvalError> {
     }
 }
 
+/// Take elements from a list while a lambda condition is true
+/// Stops at the first element where the condition is false
+pub fn take_while(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => {
+            let lambda = match &args[1] {
+                Value::Lambda(l) => l,
+                _ => {
+                    return Err(EvalError::TypeError(
+                        "take_while: second argument must be a lambda".to_string(),
+                    ))
+                }
+            };
+
+            let mut result = Vec::new();
+            for item in list {
+                let keep = apply_lambda(lambda, item)?;
+                if keep.as_bool() {
+                    result.push(item.clone());
+                } else {
+                    break;
+                }
+            }
+
+            Ok(Value::List(result))
+        }
+        Value::Null => Ok(Value::Null),
+        _ => Err(EvalError::TypeError(
+            "take_while: first argument must be a list".to_string(),
+        )),
+    }
+}
+
 /// Sort a list by a key extracted by a lambda function
 /// Each element is transformed by the lambda to produce a sort key
 /// Keys are cached to avoid calling lambda multiple times per element
@@ -1898,5 +1931,167 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("argument must be a number"));
+    }
+
+    #[test]
+    fn test_take_while_basic() {
+        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use ahash::HashMap;
+
+        // Create lambda: x => x < 4
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Lt,
+                left: Box::new(Expr::LambdaParam("x".to_string())),
+                right: Box::new(Expr::Int(4)),
+            },
+            captured_vars: HashMap::new(),
+        });
+
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+            Value::Int(5),
+        ]);
+
+        let result = take_while(&[list, lambda]).unwrap();
+        assert_eq!(
+            result,
+            Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
+        );
+    }
+
+    #[test]
+    fn test_take_while_empty_list() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use ahash::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Bool(true),
+            captured_vars: HashMap::new(),
+        });
+
+        let list = Value::List(vec![]);
+        let result = take_while(&[list, lambda]).unwrap();
+        assert_eq!(result, Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_take_while_all_match() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use ahash::HashMap;
+
+        // Lambda always returns true
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Bool(true),
+            captured_vars: HashMap::new(),
+        });
+
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        let result = take_while(&[list.clone(), lambda]).unwrap();
+        assert_eq!(result, list);
+    }
+
+    #[test]
+    fn test_take_while_no_match() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use ahash::HashMap;
+
+        // Lambda always returns false
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Bool(false),
+            captured_vars: HashMap::new(),
+        });
+
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        let result = take_while(&[list, lambda]).unwrap();
+        assert_eq!(result, Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_take_while_stops_at_first_false() {
+        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use ahash::HashMap;
+
+        // Lambda: x => x < 3 (stops at first element >= 3)
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Lt,
+                left: Box::new(Expr::LambdaParam("x".to_string())),
+                right: Box::new(Expr::Int(3)),
+            },
+            captured_vars: HashMap::new(),
+        });
+
+        // Even though 2 < 3 is true later, we stop at 5
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(5),
+            Value::Int(2),
+            Value::Int(1),
+        ]);
+
+        let result = take_while(&[list, lambda]).unwrap();
+        assert_eq!(result, Value::List(vec![Value::Int(1), Value::Int(2)]));
+    }
+
+    #[test]
+    fn test_take_while_with_null() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use ahash::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Bool(true),
+            captured_vars: HashMap::new(),
+        });
+
+        let result = take_while(&[Value::Null, lambda]).unwrap();
+        assert_eq!(result, Value::Null);
+    }
+
+    #[test]
+    fn test_take_while_with_non_list() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use ahash::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Bool(true),
+            captured_vars: HashMap::new(),
+        });
+
+        let result = take_while(&[Value::Int(42), lambda]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("first argument must be a list"));
+    }
+
+    #[test]
+    fn test_take_while_with_non_lambda() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let result = take_while(&[list, Value::Int(42)]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("second argument must be a lambda"));
     }
 }

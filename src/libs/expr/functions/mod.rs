@@ -162,6 +162,7 @@ impl FunctionRegistry {
         self.register("reduce", FunctionInfo::fixed(list::reduce, 3));
         self.register("map", FunctionInfo::fixed(list::map, 2));
         self.register("filter", FunctionInfo::fixed(list::filter, 2));
+        self.register("take_while", FunctionInfo::fixed(list::take_while, 2));
         self.register("range", FunctionInfo::variadic(list::range, 1));
 
         // Regex functions

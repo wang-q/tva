@@ -134,6 +134,7 @@ returns empty list.
 - filter(list, lambda) -> list: Filter list elements
 - reduce(list, init, lambda) -> value: Reduce list to single value
 - sort_by(list, lambda) -> list: Sort list by lambda expression
+- take_while(list, lambda) -> list: Take elements while lambda is true
 
 ```bash
 # Double each number
@@ -175,6 +176,18 @@ tva expr -E 'sort_by(["Banana", "apple", "Cherry"], s => lower(s))'
 # Sort by multiple criteria (composite key)
 tva expr -E 'sort_by([[2, "b"], [1, "c"], [1, "a"]], r => [r.nth(0), r.nth(1)])'
 # Returns: [[1, "a"], [1, "c"], [2, "b"]]
+
+# Take elements while condition is true
+tva expr -E 'take_while([1, 2, 3, 4, 5], x => x < 4)'
+# Returns: [1, 2, 3]
+
+# Take elements from start while they are even
+tva expr -E 'take_while([2, 4, 6, 7, 8, 10], x => x % 2 == 0)'
+# Returns: [2, 4, 6]
+
+# Take strings while they start with "a"
+tva expr -E 'take_while(["apple", "apricot", "banana", "avocado"], s => s.starts_with("a"))'
+# Returns: ["apple", "apricot"]
 ```
 
 ## Regular Expressions

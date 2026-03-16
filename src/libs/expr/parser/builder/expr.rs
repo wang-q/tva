@@ -119,8 +119,7 @@ pub fn build_pipe_right(pair: Pair<Rule>) -> Result<PipeRight, ParseError> {
     let mut i = 1;
     while i < inner.len() {
         if inner[i].as_rule() == Rule::pipe_arg {
-            let arg_inner: Vec<Pair<Rule>> =
-                inner[i].clone().into_inner().collect();
+            let arg_inner: Vec<Pair<Rule>> = inner[i].clone().into_inner().collect();
             if !arg_inner.is_empty() {
                 if arg_inner[0].as_rule() == Rule::placeholder {
                     args.push(Expr::LambdaParam("_".to_string()));
