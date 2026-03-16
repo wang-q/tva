@@ -1926,4 +1926,462 @@ mod tests {
             "10"
         );
     }
+
+    // Additional edge case tests for abs
+    #[test]
+    fn test_abs_float_string_integer() {
+        // Float string that parses as integer (no decimal)
+        assert_eq!(
+            abs(&[Value::String("42.0".to_string())]).unwrap(),
+            Value::Float(42.0)
+        );
+    }
+
+    #[test]
+    fn test_abs_zero_string() {
+        assert_eq!(
+            abs(&[Value::String("0".to_string())]).unwrap(),
+            Value::Int(0)
+        );
+        assert_eq!(
+            abs(&[Value::String("-0".to_string())]).unwrap(),
+            Value::Int(0)
+        );
+    }
+
+    #[test]
+    fn test_abs_large_float_string() {
+        assert_eq!(
+            abs(&[Value::String("-1.5e10".to_string())]).unwrap(),
+            Value::Float(1.5e10)
+        );
+    }
+
+    // Additional edge case tests for round
+    #[test]
+    fn test_round_exact_half() {
+        assert_eq!(round(&[Value::Float(2.5)]).unwrap(), Value::Int(3));
+        assert_eq!(round(&[Value::Float(3.5)]).unwrap(), Value::Int(4));
+        // Rust's round() rounds half away from zero
+        assert_eq!(round(&[Value::Float(-2.5)]).unwrap(), Value::Int(-3));
+    }
+
+    #[test]
+    fn test_round_negative_edge_cases() {
+        assert_eq!(round(&[Value::Float(-2.7)]).unwrap(), Value::Int(-3));
+        assert_eq!(round(&[Value::Float(-2.3)]).unwrap(), Value::Int(-2));
+    }
+
+    #[test]
+    fn test_round_zero() {
+        assert_eq!(round(&[Value::Float(0.0)]).unwrap(), Value::Int(0));
+        assert_eq!(round(&[Value::Float(-0.0)]).unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_round_string_scientific() {
+        assert_eq!(
+            round(&[Value::String("1.5e2".to_string())]).unwrap(),
+            Value::Int(150)
+        );
+    }
+
+    // Additional edge case tests for min/max
+    #[test]
+    fn test_min_max_with_only_null() {
+        assert_eq!(min(&[Value::Null, Value::Null]).unwrap(), Value::Null);
+        assert_eq!(max(&[Value::Null, Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_min_max_with_only_lists() {
+        let list = Value::List(vec![Value::Int(1)]);
+        assert_eq!(
+            min(&[list.clone(), Value::List(vec![])]).unwrap(),
+            Value::Null
+        );
+        assert_eq!(
+            max(&[list.clone(), Value::List(vec![])]).unwrap(),
+            Value::Null
+        );
+    }
+
+    #[test]
+    fn test_min_max_with_only_datetimes() {
+        use chrono::Utc;
+        let dt1 = Value::DateTime(Utc::now());
+        let dt2 = Value::DateTime(Utc::now());
+        assert_eq!(min(&[dt1.clone(), dt2.clone()]).unwrap(), Value::Null);
+        assert_eq!(max(&[dt1.clone(), dt2.clone()]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_min_max_with_only_lambdas() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+        use ahash::HashMap;
+
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+        });
+        assert_eq!(min(&[lambda.clone(), lambda.clone()]).unwrap(), Value::Null);
+        assert_eq!(max(&[lambda.clone(), lambda.clone()]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_min_max_mixed_with_invalid_strings() {
+        assert!(min(&[Value::String("abc".to_string()), Value::Int(1)]).is_err());
+        assert!(max(&[Value::String("abc".to_string()), Value::Int(1)]).is_err());
+    }
+
+    #[test]
+    fn test_min_max_empty_string() {
+        assert!(min(&[Value::String("".to_string()), Value::Int(1)]).is_err());
+        assert!(max(&[Value::String("".to_string()), Value::Int(1)]).is_err());
+    }
+
+    // Additional edge case tests for int
+    #[test]
+    fn test_int_scientific_notation() {
+        assert_eq!(
+            int(&[Value::String("1e5".to_string())]).unwrap(),
+            Value::Int(100000)
+        );
+        assert_eq!(
+            int(&[Value::String("1.5e2".to_string())]).unwrap(),
+            Value::Int(150)
+        );
+    }
+
+    #[test]
+    fn test_int_negative_string_edge_case() {
+        assert_eq!(
+            int(&[Value::String("-42".to_string())]).unwrap(),
+            Value::Int(-42)
+        );
+    }
+
+    #[test]
+    fn test_int_zero_string() {
+        assert_eq!(
+            int(&[Value::String("0".to_string())]).unwrap(),
+            Value::Int(0)
+        );
+    }
+
+    #[test]
+    fn test_int_empty_string() {
+        assert!(int(&[Value::String("".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_int_whitespace_string() {
+        assert!(int(&[Value::String("  ".to_string())]).is_err());
+        assert!(int(&[Value::String(" 42 ".to_string())]).is_err());
+    }
+
+    // Additional edge case tests for float
+    #[test]
+    fn test_float_scientific_notation_edge_cases() {
+        assert_eq!(
+            float(&[Value::String("1e-5".to_string())]).unwrap(),
+            Value::Float(1e-5)
+        );
+        assert_eq!(
+            float(&[Value::String("-1.5e10".to_string())]).unwrap(),
+            Value::Float(-1.5e10)
+        );
+    }
+
+    #[test]
+    fn test_float_zero() {
+        assert_eq!(
+            float(&[Value::String("0.0".to_string())]).unwrap(),
+            Value::Float(0.0)
+        );
+        assert_eq!(
+            float(&[Value::String("-0.0".to_string())]).unwrap(),
+            Value::Float(-0.0)
+        );
+    }
+
+    #[test]
+    fn test_float_empty_string() {
+        assert!(float(&[Value::String("".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_float_whitespace_string() {
+        assert!(float(&[Value::String("  ".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_float_infinity() {
+        assert_eq!(
+            float(&[Value::String("inf".to_string())]).unwrap(),
+            Value::Float(f64::INFINITY)
+        );
+        assert_eq!(
+            float(&[Value::String("-inf".to_string())]).unwrap(),
+            Value::Float(f64::NEG_INFINITY)
+        );
+    }
+
+    // Additional edge case tests for ceil
+    #[test]
+    fn test_ceil_scientific_notation() {
+        assert_eq!(
+            ceil(&[Value::String("1.1e2".to_string())]).unwrap(),
+            Value::Int(110)
+        );
+    }
+
+    #[test]
+    fn test_ceil_zero() {
+        assert_eq!(ceil(&[Value::Float(0.0)]).unwrap(), Value::Int(0));
+        assert_eq!(ceil(&[Value::Float(-0.0)]).unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_ceil_empty_string() {
+        assert!(ceil(&[Value::String("".to_string())]).is_err());
+    }
+
+    // Additional edge case tests for floor
+    #[test]
+    fn test_floor_scientific_notation() {
+        assert_eq!(
+            floor(&[Value::String("1.9e2".to_string())]).unwrap(),
+            Value::Int(190)
+        );
+    }
+
+    #[test]
+    fn test_floor_zero() {
+        assert_eq!(floor(&[Value::Float(0.0)]).unwrap(), Value::Int(0));
+        assert_eq!(floor(&[Value::Float(-0.0)]).unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_floor_empty_string() {
+        assert!(floor(&[Value::String("".to_string())]).is_err());
+    }
+
+    // Additional edge case tests for sqrt
+    #[test]
+    fn test_sqrt_scientific_notation() {
+        assert!(
+            (sqrt(&[Value::String("1e4".to_string())])
+                .unwrap()
+                .as_float()
+                .unwrap()
+                - 100.0)
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_sqrt_very_small() {
+        assert!(
+            (sqrt(&[Value::Float(1e-10)]).unwrap().as_float().unwrap() - 1e-5).abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_sqrt_empty_string() {
+        assert!(sqrt(&[Value::String("".to_string())]).is_err());
+    }
+
+    // Additional edge case tests for pow
+    #[test]
+    fn test_pow_one() {
+        assert_eq!(
+            pow(&[Value::Int(5), Value::Int(1)]).unwrap(),
+            Value::Float(5.0)
+        );
+    }
+
+    #[test]
+    fn test_pow_negative_base_even_exponent() {
+        assert_eq!(
+            pow(&[Value::Int(-2), Value::Int(4)]).unwrap(),
+            Value::Float(16.0)
+        );
+    }
+
+    #[test]
+    fn test_pow_negative_base_odd_exponent() {
+        assert_eq!(
+            pow(&[Value::Int(-2), Value::Int(3)]).unwrap(),
+            Value::Float(-8.0)
+        );
+    }
+
+    #[test]
+    fn test_pow_scientific_notation() {
+        assert!(
+            (pow(&[Value::String("1e2".to_string()), Value::Int(2)])
+                .unwrap()
+                .as_float()
+                .unwrap()
+                - 10000.0)
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_pow_empty_string() {
+        assert!(pow(&[Value::String("".to_string()), Value::Int(2)]).is_err());
+        assert!(pow(&[Value::Int(2), Value::String("".to_string())]).is_err());
+    }
+
+    // Additional edge case tests for trigonometric functions
+    #[test]
+    fn test_sin_negative() {
+        assert!(
+            (sin(&[Value::Float(-std::f64::consts::PI / 2.0)])
+                .unwrap()
+                .as_float()
+                .unwrap()
+                + 1.0)
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_sin_empty_string() {
+        assert!(sin(&[Value::String("".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_cos_negative() {
+        assert!(
+            (cos(&[Value::Float(-std::f64::consts::PI)])
+                .unwrap()
+                .as_float()
+                .unwrap()
+                + 1.0)
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_cos_empty_string() {
+        assert!(cos(&[Value::String("".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_tan_empty_string() {
+        assert!(tan(&[Value::String("".to_string())]).is_err());
+    }
+
+    // Additional edge case tests for logarithmic functions
+    #[test]
+    fn test_ln_fraction() {
+        assert!(
+            (ln(&[Value::Float(0.5)]).unwrap().as_float().unwrap()
+                - (-0.6931471805599453))
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_ln_empty_string() {
+        assert!(ln(&[Value::String("".to_string())]).is_err());
+    }
+
+    #[test]
+    fn test_log10_fraction() {
+        assert!(
+            (log10(&[Value::Float(0.1)]).unwrap().as_float().unwrap() - (-1.0)).abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_log10_empty_string() {
+        assert!(log10(&[Value::String("".to_string())]).is_err());
+    }
+
+    // Additional edge case tests for exp
+    #[test]
+    fn test_exp_negative_edge_case() {
+        assert!(
+            (exp(&[Value::Float(-1.0)]).unwrap().as_float().unwrap()
+                - 0.36787944117144233)
+                .abs()
+                < 1e-10
+        );
+    }
+
+    #[test]
+    fn test_exp_large() {
+        assert!(exp(&[Value::Float(1000.0)])
+            .unwrap()
+            .as_float()
+            .unwrap()
+            .is_infinite());
+    }
+
+    #[test]
+    fn test_exp_empty_string() {
+        assert!(exp(&[Value::String("".to_string())]).is_err());
+    }
+
+    // Additional integration tests
+    #[test]
+    fn test_int_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["3.14".to_string()];
+        assert_eq!(eval_expr("int(@1)", &row, None).unwrap().to_string(), "3");
+
+        let row: Vec<String> = vec!["42".to_string()];
+        assert_eq!(eval_expr("int(@1)", &row, None).unwrap().to_string(), "42");
+    }
+
+    #[test]
+    fn test_float_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["42".to_string()];
+        assert_eq!(
+            eval_expr("float(@1)", &row, None).unwrap().to_string(),
+            "42"
+        );
+    }
+
+    #[test]
+    fn test_ceil_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["3.2".to_string()];
+        assert_eq!(eval_expr("ceil(@1)", &row, None).unwrap().to_string(), "4");
+    }
+
+    #[test]
+    fn test_floor_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["3.9".to_string()];
+        assert_eq!(eval_expr("floor(@1)", &row, None).unwrap().to_string(), "3");
+    }
+
+    #[test]
+    fn test_sqrt_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec!["16".to_string()];
+        assert_eq!(eval_expr("sqrt(@1)", &row, None).unwrap().to_string(), "4");
+    }
+
+    #[test]
+    fn test_pow_integration() {
+        use crate::libs::expr::eval_expr;
+        let row: Vec<String> = vec![];
+        assert_eq!(eval_expr("pow(2, 3)", &row, None).unwrap().to_string(), "8");
+    }
 }
