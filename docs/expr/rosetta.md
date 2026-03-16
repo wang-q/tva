@@ -98,11 +98,30 @@ Output:
 Computing factorials for 0 through 10:
 
 ```bash
-tva expr -E 'map(
+tva expr -E '
+map(
     range(0, 11),
-    n => if(n == 0, 1, 
-        reduce(range(1, n + 1), 1, (acc, x) => acc * x))
-) | join(_, "\n")'
+    n => 
+        if(
+            n == 0,
+            1, 
+            reduce(range(1, n + 1), 1, (acc, x) => acc * x)
+        )
+) | join(_, "\n")
+'
+
+tva expr -E '
+range(0, 11)
+.map(n => 
+    if(
+        n == 0,
+        1, 
+        reduce(range(1, n + 1), 1, (acc, x) => acc * x)
+    )
+)
+.join("\n")
+'
+
 ```
 
 This demonstrates:
