@@ -880,6 +880,278 @@ mod tests {
     }
 
     #[test]
+    fn test_fold_constants_binary_float_sub() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Sub,
+            left: Box::new(Expr::Float(5.0)),
+            right: Box::new(Expr::Float(3.0)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 2.0).abs() < 0.001),
+            _ => panic!("Expected Float(2.0)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_float_mul() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Mul,
+            left: Box::new(Expr::Float(2.5)),
+            right: Box::new(Expr::Float(4.0)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 10.0).abs() < 0.001),
+            _ => panic!("Expected Float(10.0)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_float_div() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Div,
+            left: Box::new(Expr::Float(10.0)),
+            right: Box::new(Expr::Float(2.0)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 5.0).abs() < 0.001),
+            _ => panic!("Expected Float(5.0)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_float_pow() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Pow,
+            left: Box::new(Expr::Float(2.0)),
+            right: Box::new(Expr::Float(3.0)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 8.0).abs() < 0.001),
+            _ => panic!("Expected Float(8.0)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_mixed_sub_int_float() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Sub,
+            left: Box::new(Expr::Int(10)),
+            right: Box::new(Expr::Float(3.5)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 6.5).abs() < 0.001),
+            _ => panic!("Expected Float(6.5)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_mixed_sub_float_int() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Sub,
+            left: Box::new(Expr::Float(10.5)),
+            right: Box::new(Expr::Int(3)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 7.5).abs() < 0.001),
+            _ => panic!("Expected Float(7.5)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_mixed_mul_int_float() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Mul,
+            left: Box::new(Expr::Int(5)),
+            right: Box::new(Expr::Float(2.5)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 12.5).abs() < 0.001),
+            _ => panic!("Expected Float(12.5)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_mixed_mul_float_int() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Mul,
+            left: Box::new(Expr::Float(2.5)),
+            right: Box::new(Expr::Int(4)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 10.0).abs() < 0.001),
+            _ => panic!("Expected Float(10.0)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_mixed_div_int_float() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Div,
+            left: Box::new(Expr::Int(10)),
+            right: Box::new(Expr::Float(2.5)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 4.0).abs() < 0.001),
+            _ => panic!("Expected Float(4.0)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_binary_mixed_div_float_int() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Div,
+            left: Box::new(Expr::Float(10.0)),
+            right: Box::new(Expr::Int(4)),
+        };
+        fold_constants(&mut expr);
+        match expr {
+            Expr::Float(f) => assert!((f - 2.5).abs() < 0.001),
+            _ => panic!("Expected Float(2.5)"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_comparison_int_eq() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Eq,
+            left: Box::new(Expr::Int(5)),
+            right: Box::new(Expr::Int(5)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_comparison_int_ne() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Ne,
+            left: Box::new(Expr::Int(5)),
+            right: Box::new(Expr::Int(10)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_comparison_float_eq() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Eq,
+            left: Box::new(Expr::Float(3.14)),
+            right: Box::new(Expr::Float(3.14)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_comparison_float_ne() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Ne,
+            left: Box::new(Expr::Float(3.14)),
+            right: Box::new(Expr::Float(2.71)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_comparison_float_lt() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Lt,
+            left: Box::new(Expr::Float(2.71)),
+            right: Box::new(Expr::Float(3.14)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_comparison_float_le() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Le,
+            left: Box::new(Expr::Float(3.14)),
+            right: Box::new(Expr::Float(3.14)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_comparison_float_gt() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Gt,
+            left: Box::new(Expr::Float(3.14)),
+            right: Box::new(Expr::Float(2.71)),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_string_comparison_ne() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::StrNe,
+            left: Box::new(Expr::String("a".to_string())),
+            right: Box::new(Expr::String("b".to_string())),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_string_comparison_lt() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::StrLt,
+            left: Box::new(Expr::String("a".to_string())),
+            right: Box::new(Expr::String("b".to_string())),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_string_comparison_le() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::StrLe,
+            left: Box::new(Expr::String("a".to_string())),
+            right: Box::new(Expr::String("a".to_string())),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_string_comparison_gt() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::StrGt,
+            left: Box::new(Expr::String("b".to_string())),
+            right: Box::new(Expr::String("a".to_string())),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
+    fn test_fold_constants_string_comparison_ge() {
+        let mut expr = Expr::Binary {
+            op: BinaryOp::StrGe,
+            left: Box::new(Expr::String("b".to_string())),
+            right: Box::new(Expr::String("a".to_string())),
+        };
+        fold_constants(&mut expr);
+        assert!(matches!(expr, Expr::Bool(true)));
+    }
+
+    #[test]
     fn test_fold_constants_logical_and() {
         let mut expr = Expr::Binary {
             op: BinaryOp::And,
@@ -1050,6 +1322,326 @@ mod tests {
         match result {
             runtime::value::Value::Int(n) => assert_eq!(n, 15),
             _ => panic!("Expected Int(15)"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_pipe_call() {
+        use parser::ast::PipeRight;
+
+        let mut expr = Expr::Pipe {
+            left: Box::new(Expr::ColumnRef(ColumnRef::Name("value".to_string()))),
+            right: Box::new(PipeRight::Call {
+                name: "abs".to_string(),
+                args: vec![],
+            }),
+        };
+        let headers = vec!["value".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::Pipe { left, right } => {
+                match *left {
+                    Expr::ColumnRef(ColumnRef::Index(1)) => {}
+                    _ => panic!("Expected left to be resolved to index 1"),
+                }
+                match *right {
+                    PipeRight::Call { name, args } => {
+                        assert_eq!(name, "abs");
+                        assert!(args.is_empty());
+                    }
+                    _ => panic!("Expected PipeRight::Call"),
+                }
+            }
+            _ => panic!("Expected Pipe expression"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_pipe_with_placeholder() {
+        use parser::ast::PipeRight;
+
+        let mut expr = Expr::Pipe {
+            left: Box::new(Expr::ColumnRef(ColumnRef::Name("desc".to_string()))),
+            right: Box::new(PipeRight::CallWithPlaceholder {
+                name: "substr".to_string(),
+                args: vec![Expr::Int(0), Expr::Int(50)],
+            }),
+        };
+        let headers = vec!["name".to_string(), "desc".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::Pipe { left, right } => {
+                match *left {
+                    Expr::ColumnRef(ColumnRef::Index(2)) => {}
+                    _ => panic!("Expected left to be resolved to index 2"),
+                }
+                match *right {
+                    PipeRight::CallWithPlaceholder { name, args } => {
+                        assert_eq!(name, "substr");
+                        assert_eq!(args.len(), 2);
+                    }
+                    _ => panic!("Expected PipeRight::CallWithPlaceholder"),
+                }
+            }
+            _ => panic!("Expected Pipe expression"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_in_pipe_nested() {
+        use parser::ast::PipeRight;
+
+        let mut expr = Expr::Pipe {
+            left: Box::new(Expr::ColumnRef(ColumnRef::Name("name".to_string()))),
+            right: Box::new(PipeRight::CallWithPlaceholder {
+                name: "replace".to_string(),
+                args: vec![
+                    Expr::ColumnRef(ColumnRef::Name("old".to_string())),
+                    Expr::ColumnRef(ColumnRef::Name("new".to_string())),
+                ],
+            }),
+        };
+        let headers = vec!["name".to_string(), "old".to_string(), "new".to_string()];
+
+        resolve_columns(&mut expr, &headers);
+
+        match expr {
+            Expr::Pipe { left, right } => {
+                match *left {
+                    Expr::ColumnRef(ColumnRef::Index(1)) => {}
+                    _ => panic!("Expected left to be resolved to index 1"),
+                }
+                match *right {
+                    PipeRight::CallWithPlaceholder { args, .. } => {
+                        assert_eq!(args.len(), 2);
+                        match (&args[0], &args[1]) {
+                            (
+                                Expr::ColumnRef(ColumnRef::Index(2)),
+                                Expr::ColumnRef(ColumnRef::Index(3)),
+                            ) => {}
+                            _ => {
+                                panic!("Expected args to be resolved to indices 2 and 3")
+                            }
+                        }
+                    }
+                    _ => panic!("Expected PipeRight::CallWithPlaceholder"),
+                }
+            }
+            _ => panic!("Expected Pipe expression"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_in_pipe_call() {
+        use parser::ast::PipeRight;
+
+        let mut expr = Expr::Pipe {
+            left: Box::new(Expr::Int(5)),
+            right: Box::new(PipeRight::Call {
+                name: "abs".to_string(),
+                args: vec![],
+            }),
+        };
+        fold_constants(&mut expr);
+
+        match expr {
+            Expr::Pipe { left, right } => {
+                assert!(matches!(*left, Expr::Int(5)));
+                match *right {
+                    PipeRight::Call { name, args } => {
+                        assert_eq!(name, "abs");
+                        assert!(args.is_empty());
+                    }
+                    _ => panic!("Expected PipeRight::Call"),
+                }
+            }
+            _ => panic!("Expected Pipe expression"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_in_pipe_with_placeholder() {
+        use parser::ast::PipeRight;
+
+        let mut expr = Expr::Pipe {
+            left: Box::new(Expr::Int(10)),
+            right: Box::new(PipeRight::CallWithPlaceholder {
+                name: "pow".to_string(),
+                args: vec![Expr::Binary {
+                    op: BinaryOp::Add,
+                    left: Box::new(Expr::Int(1)),
+                    right: Box::new(Expr::Int(2)),
+                }],
+            }),
+        };
+        fold_constants(&mut expr);
+
+        match expr {
+            Expr::Pipe { left, right } => {
+                assert!(matches!(*left, Expr::Int(10)));
+                match *right {
+                    PipeRight::CallWithPlaceholder { name, args } => {
+                        assert_eq!(name, "pow");
+                        assert_eq!(args.len(), 1);
+                        // The arg should be folded from (1 + 2) to 3
+                        assert!(matches!(args[0], Expr::Int(3)));
+                    }
+                    _ => panic!("Expected PipeRight::CallWithPlaceholder"),
+                }
+            }
+            _ => panic!("Expected Pipe expression"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_in_pipe_call_with_args() {
+        use parser::ast::PipeRight;
+
+        // PipeRight::Call with constant arguments that should be folded
+        let mut expr = Expr::Pipe {
+            left: Box::new(Expr::Int(10)),
+            right: Box::new(PipeRight::Call {
+                name: "max".to_string(),
+                args: vec![
+                    Expr::Binary {
+                        op: BinaryOp::Add,
+                        left: Box::new(Expr::Int(1)),
+                        right: Box::new(Expr::Int(2)),
+                    },
+                    Expr::Int(5),
+                ],
+            }),
+        };
+        fold_constants(&mut expr);
+
+        match expr {
+            Expr::Pipe { left, right } => {
+                assert!(matches!(*left, Expr::Int(10)));
+                match *right {
+                    PipeRight::Call { name, args } => {
+                        assert_eq!(name, "max");
+                        assert_eq!(args.len(), 2);
+                        // First arg should be folded from (1 + 2) to 3
+                        assert!(matches!(args[0], Expr::Int(3)));
+                        assert!(matches!(args[1], Expr::Int(5)));
+                    }
+                    _ => panic!("Expected PipeRight::Call"),
+                }
+            }
+            _ => panic!("Expected Pipe expression"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_in_method_call() {
+        // Method call with constant expression in object and args
+        let mut expr = Expr::MethodCall {
+            object: Box::new(Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::Int(1)),
+                right: Box::new(Expr::Int(2)),
+            }),
+            name: "to_string".to_string(),
+            args: vec![],
+        };
+        fold_constants(&mut expr);
+
+        match expr {
+            Expr::MethodCall { object, name, args } => {
+                assert_eq!(name, "to_string");
+                assert!(args.is_empty());
+                // Object should be folded from (1 + 2) to 3
+                assert!(matches!(*object, Expr::Int(3)));
+            }
+            _ => panic!("Expected MethodCall expression"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_in_method_call_with_args() {
+        // Method call with constant arguments
+        let mut expr = Expr::MethodCall {
+            object: Box::new(Expr::String("hello".to_string())),
+            name: "replace".to_string(),
+            args: vec![
+                Expr::String("l".to_string()),
+                Expr::Binary {
+                    op: BinaryOp::Add,
+                    left: Box::new(Expr::Int(1)),
+                    right: Box::new(Expr::Int(2)),
+                },
+            ],
+        };
+        fold_constants(&mut expr);
+
+        match expr {
+            Expr::MethodCall { object, args, .. } => {
+                assert!(matches!(*object, Expr::String(_)));
+                assert_eq!(args.len(), 2);
+                // Second arg should be folded from (1 + 2) to 3
+                assert!(matches!(args[1], Expr::Int(3)));
+            }
+            _ => panic!("Expected MethodCall expression"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_in_lambda() {
+        // Lambda with constant expression in body
+        let mut expr = Expr::Lambda {
+            params: vec!["x".to_string()],
+            body: Box::new(Expr::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(Expr::LambdaParam("x".to_string())),
+                right: Box::new(Expr::Binary {
+                    op: BinaryOp::Mul,
+                    left: Box::new(Expr::Int(2)),
+                    right: Box::new(Expr::Int(3)),
+                }),
+            }),
+        };
+        fold_constants(&mut expr);
+
+        match expr {
+            Expr::Lambda { params, body } => {
+                assert_eq!(params.len(), 1);
+                match *body {
+                    Expr::Binary { left, right, .. } => {
+                        assert!(matches!(*left, Expr::LambdaParam(_)));
+                        // Right side should be folded from (2 * 3) to 6
+                        assert!(matches!(*right, Expr::Int(6)));
+                    }
+                    _ => panic!("Expected Binary in lambda body"),
+                }
+            }
+            _ => panic!("Expected Lambda expression"),
+        }
+    }
+
+    #[test]
+    fn test_fold_constants_no_fold_method_call() {
+        // Method call on non-constant should not be folded
+        let mut expr = Expr::MethodCall {
+            object: Box::new(Expr::ColumnRef(ColumnRef::Name("value".to_string()))),
+            name: "to_string".to_string(),
+            args: vec![],
+        };
+        fold_constants(&mut expr);
+
+        // Should remain unchanged
+        match expr {
+            Expr::MethodCall { object, name, args } => {
+                assert_eq!(name, "to_string");
+                assert!(args.is_empty());
+                assert!(
+                    matches!(*object, Expr::ColumnRef(ColumnRef::Name(s)) if s == "value")
+                );
+            }
+            _ => panic!("Expected MethodCall expression"),
         }
     }
 }

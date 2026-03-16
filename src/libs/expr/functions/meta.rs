@@ -861,4 +861,187 @@ mod tests {
             _ => panic!("Expected WrongArity"),
         }
     }
+
+    #[test]
+    fn test_is_float_wrong_arity_zero_args() {
+        let result = is_float_fn(&[]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_float");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 0);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
+
+    #[test]
+    fn test_is_float_wrong_arity_multiple_args() {
+        let result = is_float_fn(&[Value::Float(1.0), Value::Float(2.0)]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_float");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
+
+    #[test]
+    fn test_is_numeric_wrong_arity_zero_args() {
+        let result = is_numeric_fn(&[]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_numeric");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 0);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
+
+    #[test]
+    fn test_is_numeric_wrong_arity_multiple_args() {
+        let result = is_numeric_fn(&[Value::Int(1), Value::Int(2)]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_numeric");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
+
+    #[test]
+    fn test_is_string_wrong_arity_zero_args() {
+        let result = is_string_fn(&[]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_string");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 0);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
+
+    #[test]
+    fn test_is_string_wrong_arity_multiple_args() {
+        let result = is_string_fn(&[
+            Value::String("a".to_string()),
+            Value::String("b".to_string()),
+        ]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_string");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
+
+    #[test]
+    fn test_is_bool_wrong_arity_zero_args() {
+        let result = is_bool_fn(&[]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_bool");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 0);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
+
+    #[test]
+    fn test_is_bool_wrong_arity_multiple_args() {
+        let result = is_bool_fn(&[Value::Bool(true), Value::Bool(false)]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_bool");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
+
+    #[test]
+    fn test_is_list_wrong_arity_zero_args() {
+        let result = is_list_fn(&[]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_list");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 0);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
+
+    #[test]
+    fn test_is_list_wrong_arity_multiple_args() {
+        let result = is_list_fn(&[Value::List(vec![]), Value::List(vec![])]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EvalError::WrongArity {
+                name,
+                expected,
+                got,
+            } => {
+                assert_eq!(name, "is_list");
+                assert_eq!(expected, 1);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected WrongArity"),
+        }
+    }
 }

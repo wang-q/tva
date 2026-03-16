@@ -26,21 +26,41 @@ pub enum ParseError {
     EmptyExpression,
 }
 
-/// Parse an expression string into an AST
+/// Parses an expression string into an AST.
+///
+/// This function parses a complete expression using the `full_expr` grammar rule,
+/// which expects the entire input to be a valid expression (from start to end).
+///
+/// # Arguments
+///
+/// * `input` - The expression string to parse
+///
+/// # Returns
+///
+/// * `Ok(Expr)` - The parsed AST on success
+/// * `Err(ParseError)` - If the input is empty or has invalid syntax
+///
+/// # Examples
+///
+/// ```
+/// use tva::libs::expr::parser::parse;
+///
+/// let expr = parse("1 + 2").unwrap();
+/// let expr = parse("@name.upper()").unwrap();
+/// let expr = parse("abs(-5)").unwrap();
+/// ```
 pub fn parse(input: &str) -> Result<Expr, ParseError> {
+    // Parse the input using the full_expr grammar rule.
+    // The ? operator converts pest::Error to ParseError::Pest on failure.
     let pairs = ExprParser::parse(Rule::full_expr, input)?;
+    // full_expr is silent (_{...}), so we get expr_list directly.
+    // The for loop iterates over the parsed pairs. Since full_expr
+    // always contains expr_list, pairs will have at least one element
+    // on successful parse.
     for pair in pairs {
-        match pair.as_rule() {
-            // full_expr is silent (_{...}), so we get expr_list directly
-            Rule::expr_list => {
-                return build_full_expr(pair);
-            }
-            Rule::full_expr => {
-                return build_full_expr(pair);
-            }
-            _ => {}
-        }
+        return build_full_expr(pair);
     }
+    // The Err below is defensive - unreachable in practice.
     Err(ParseError::EmptyExpression)
 }
 
