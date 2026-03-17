@@ -116,8 +116,6 @@ the [docs/data](https://github.com/wang-q/tva/tree/master/docs/data) directory o
 ### [Expr Language](docs/expr.md)
 
 - **`expr`**: Evaluate expressions and output results.
-- **`map`**: Add new columns based on expressions.
-- **`mutate`**: Modify existing columns using expressions.
 
 ### [Formatting & Utilities](docs/utilities.md)
 

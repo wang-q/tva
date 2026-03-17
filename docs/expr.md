@@ -75,22 +75,16 @@ trim(@name)
 
 ### Expr Commands
 
-| Command      | Description                             |
-|--------------|-----------------------------------------|
-| `tva expr`   | Evaluate expression to create a new row |
-| `tva map`    | Add new column(s) to existing row       |
-| `tva mutate` | Modify existing column value            |
-
 Compared to other tools:
 
-| Command  | What it does        | Input row         | Output row        | Columns changed |
-|----------|---------------------|-------------------|-------------------|-----------------|
-| `expr`   | Evaluate to new row | `a, b`            | `c`               | All (replaced)  |
-| `map`    | Add new column(s)   | `a, b`            | `a, b, c`         | Added           |
-| `mutate` | Modify column value | `a, b`            | `a, c`            | One updated     |
-| `select` | Select columns      | `a, b, c`         | `b, c`            | Selected        |
-| `filter` | Keep or discard row | `a, b`            | `a, b` or nothing | None            |
-| `join`   | Join two tables     | `a, b` and `a, c` | `a, b, c`         | Merged          |
+| Command         | What it does        | Input row         | Output row        | Columns changed |
+|-----------------|---------------------|-------------------|-------------------|-----------------|
+| `expr`          | Evaluate to new row | `a, b`            | `c`               | All (replaced)  |
+| `expr --add`    | Add new column(s)   | `a, b`            | `a, b, c`         | Added           |
+| `expr --mutate` | Modify column value | `a, b`            | `a, c`            | One updated     |
+| `select`        | Select columns      | `a, b, c`         | `b, c`            | Selected        |
+| `filter`        | Keep or discard row | `a, b`            | `a, b` or nothing | None            |
+| `join`          | Join two tables     | `a, b` and `a, c` | `a, b, c`         | Merged          |
 
 Note: Use `tva filter` for simple filtering—it's ~2x faster. Use `tva expr --skip-null`
 only when you need features `tva filter` doesn't support (functions, complex expressions, etc.).
@@ -117,41 +111,17 @@ tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 # Conditional expression
 tva expr -n "score" -r "85" -E 'if(@score >= 60, "pass", "fail")'
 
-# Process TSV file - calculate price per carat
-tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r -5
-
 # Filter rows using --skip-null
 tva expr -H --skip-null -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv
-```
 
-### `tva map` - Add New Column
+# Header - @price / @carat
+tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r -5
 
-Evaluates expression for each row to add a new column to the existing row.
+# Header - price_per_carat
+tva expr -H -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r -5
 
-```bash
-# Add a new column with calculated value
-tva map -E "@price * 1.1 as @price_with_tax" docs/data/diamonds.tsv
-
-# Add multiple columns
-tva map -E '@price * 1.1 as @price_with_tax, @carat * 2 as @double_carat' docs/data/diamonds.tsv
-
-# Add column with transformed value
-tva map -E '@cut | lower() as @cut_lower' docs/data/diamonds.tsv
-```
-
-### `tva mutate` - Modify Column
-
-Evaluates expression for each row to modify an existing column value.
-
-```bash
-# Modify existing column
-tva mutate -E '@price * 1.1' -c price docs/data/diamonds.tsv
-
-# Transform column value
-tva mutate -E '@cut | upper()' -c cut docs/data/diamonds.tsv
-
-# Replace with conditional value
-tva mutate -E 'if(@price >= 350, "expensive", "cheap")' -c price docs/data/diamonds.tsv
+# Header - [@price / @carat as @price_per_carat]
+tva expr -H -E "[@price / @carat as @price_per_carat]" docs/data/diamonds.tsv | tva slice -r -5
 ```
 
 ## Notes
