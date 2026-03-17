@@ -1,7 +1,7 @@
 use clap::builder::PossibleValue;
 use clap::*;
 
-use crate::libs::cli::{build_header_config, header_arg_basic};
+use crate::libs::cli::{build_header_config, expr_common_args};
 use crate::libs::expr::runtime;
 use crate::libs::expr::runtime::value::Value;
 use crate::libs::expr::{fold_constants, parse_cached, resolve_columns};
@@ -36,57 +36,7 @@ pub fn make_subcommand() -> Command {
     Command::new("expr")
         .about("Evaluates expressions for each row to create new row")
         .after_help(include_str!("../../docs/help/expr.md"))
-        .arg(
-            Arg::new("infiles")
-                .num_args(0..)
-                .index(1)
-                .help("Input TSV file(s) to process (default: stdin)"),
-        )
-        .arg(
-            Arg::new("expr")
-                .long("expr")
-                .short('E')
-                .num_args(1)
-                .help("Expression to evaluate (e.g., '@price * @qty as @total')"),
-        )
-        .arg(
-            Arg::new("expr_file")
-                .long("expr-file")
-                .short('F')
-                .num_args(1)
-                .help("Read expression from file"),
-        )
-        .arg(
-            Arg::new("outfile")
-                .long("outfile")
-                .short('o')
-                .num_args(1)
-                .default_value("stdout")
-                .help("Output filename. [stdout] for screen"),
-        )
-        .arg(header_arg_basic())
-        .arg(
-            Arg::new("delimiter")
-                .long("delimiter")
-                .short('d')
-                .num_args(1)
-                .default_value("\t")
-                .help("Field delimiter character (default: TAB)"),
-        )
-        .arg(
-            Arg::new("colnames")
-                .long("colnames")
-                .short('n')
-                .num_args(1)
-                .help("Comma-separated column names for reference (e.g., 'name,age')"),
-        )
-        .arg(
-            Arg::new("row")
-                .long("row")
-                .short('r')
-                .action(ArgAction::Append)
-                .help("Comma-separated row values to evaluate against (e.g., 'Alice,30'). Can be specified multiple times for multiple rows."),
-        )
+        .args(expr_common_args())
         .arg(
             Arg::new("mode")
                 .long("mode")
@@ -94,17 +44,28 @@ pub fn make_subcommand() -> Command {
                 .num_args(1)
                 .value_parser([
                     PossibleValue::new("eval").alias("e"),
-                    PossibleValue::new("add").alias("a"),
+                    PossibleValue::new("extend").alias("a"),
                     PossibleValue::new("mutate").alias("u"),
                     PossibleValue::new("skip-null").alias("s"),
                     PossibleValue::new("filter").alias("f"),
                 ])
                 .default_value("eval")
-                .help("Output mode: eval (default), add, mutate, skip-null, or filter"),
+                .help(
+                    "Output mode: eval (default), extend, mutate, skip-null, or filter",
+                ),
         )
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
+    let mode = args
+        .get_one::<String>("mode")
+        .map(|s| s.as_str())
+        .unwrap_or("eval");
+    execute_with_mode(args, mode)
+}
+
+/// Execute with a specific mode override (used by mutate command).
+pub fn execute_with_mode(args: &ArgMatches, mode: &str) -> anyhow::Result<()> {
     let mut writer =
         crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
@@ -127,14 +88,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     if expr_str.is_empty() {
         return Err(anyhow::anyhow!("Expression cannot be empty"));
     }
-
-    let mode = args
-        .get_one::<String>("mode")
-        .map(|s| s.as_str())
-        .unwrap_or("eval");
     let skip_null = mode == "skip-null" || mode == "s";
     let filter_mode = mode == "filter" || mode == "f";
-    let add_mode = mode == "add" || mode == "a";
+    let add_mode = mode == "extend" || mode == "a";
     let mutate_mode = mode == "mutate" || mode == "u";
 
     // Parse the expression with caching

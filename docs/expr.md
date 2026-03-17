@@ -75,17 +75,17 @@ trim(@name)
 
 Comparing modes and other commands:
 
-| Command                 | What it does        | Input row         | Output row        |
-|-------------------------|---------------------|-------------------|-------------------|
-| `expr` / `expr -m eval` | Evaluate to new row | `a, b`            | `c`               |
-| `expr -m add`           | Add new column(s)   | `a, b`            | `a, b, c`         |
-| `expr -m mutate`        | Modify column value | `a, b`            | `a, c`            |
-| `expr -m skip-null`     | Skip null results   | `a, b`            | `c` or nothing    |
-| `expr -m filter`        | Keep or discard row | `a, b`            | `a, b` or nothing |
-| `filter`                |                     | `a, b`            | `a, b` or nothing |
-| `expr -E '[@b, @c]'`    | Select columns      | `a, b, c`         | `b, c`            |
-| `select`                |                     | `a, b, c`         | `b, c`            |
-| `join`                  | Join two tables     | `a, b` and `a, c` | `a, b, c`         |
+| Command                   | What it does        | Input row         | Output row        |
+|---------------------------|---------------------|-------------------|-------------------|
+| `expr`/`expr -m eval`     | Evaluate to new row | `a, b`            | `c`               |
+| `extend`/`expr -m extend` | Add new column(s)   | `a, b`            | `a, b, c`         |
+| `mutate`/`expr -m mutate` | Modify column value | `a, b`            | `a, c`            |
+| `expr -m skip-null`       | Skip null results   | `a, b`            | `c` or nothing    |
+| `expr -m filter`          | Keep or discard row | `a, b`            | `a, b` or nothing |
+| `filter`                  |                     | `a, b`            | `a, b` or nothing |
+| `expr -E '[@b, @c]'`      | Select columns      | `a, b, c`         | `b, c`            |
+| `select`                  |                     | `a, b, c`         | `b, c`            |
+| `join`                    | Join two tables     | `a, b` and `a, c` | `a, b, c`         |
 
 ## Output Modes
 
@@ -111,16 +111,16 @@ tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r 5
 
 Use this mode when you want to compute new values without preserving the original columns.
 
-### `add` mode (`-m add` or `-m a`)
+### `extend` mode (`-m extend` or `-m a`)
 
 Evaluates the expression and appends the result as new column(s) to the original row.
 
 ```bash
 # Add a single column
-tva expr -H -m add -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r 5
+tva expr -H -m extend -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r 5
 
 # Add multiple columns using list expression
-tva expr -H -m add -E "[@price / @carat as @price_per_carat, @carat as @carat_rounded]" docs/data/diamonds.tsv | tva slice -r 5
+tva expr -H -m extend -E "[@price / @carat as @price_per_carat, @carat as @carat_rounded]" docs/data/diamonds.tsv | tva slice -r 5
 ```
 
 Key behaviors:

@@ -30,6 +30,7 @@ fn main() -> anyhow::Result<()> {
                 .action(ArgAction::SetTrue)
                 .help("Print help on expr syntax and exit"),
         )
+        .subcommand(cmd_tva::extend::make_subcommand())
         .subcommand(cmd_tva::append::make_subcommand())
         .subcommand(cmd_tva::bin::make_subcommand())
         .subcommand(cmd_tva::blank::make_subcommand())
@@ -42,6 +43,7 @@ fn main() -> anyhow::Result<()> {
         .subcommand(cmd_tva::join::make_subcommand())
         .subcommand(cmd_tva::keep_header::make_subcommand())
         .subcommand(cmd_tva::longer::make_subcommand())
+        .subcommand(cmd_tva::mutate::make_subcommand())
         .subcommand(cmd_tva::nl::make_subcommand())
         .subcommand(cmd_tva::plot::make_subcommand())
         .subcommand(cmd_tva::reverse::make_subcommand())
@@ -58,15 +60,16 @@ fn main() -> anyhow::Result<()> {
         .after_help(
             r###"Subcommands groups:
 
-* Selection & Sampling: sample, select, slice
+* Selection & Sampling: select, slice, sample
 * Filtering: filter
-* Ordering: reverse, sort, transpose
-* Statistics & Summary: bin, stats, uniq
-* Reshaping: blank, fill, longer, wider
-* Combining & Splitting: append, join, split
-* Formatting & Utilities: check, header, keep-header, nl
+* Ordering: sort, reverse, transpose
+* Statistics & Summary: stats, bin, uniq
+* Reshaping: longer, wider, fill, blank
+* Combining & Splitting: join, append, split
+* Expr Language: expr, extend, mutate
+* Formatting & Utilities: check, nl, keep-header
+* Plotting: plot (point, box, bin2d)
 * Import & Export: from, to (csv, xlsx, md)
-* Plotting: plot (bin2d, box, point)
 "###,
         );
 
@@ -95,6 +98,7 @@ fn main() -> anyhow::Result<()> {
         Some(("bin", sub_matches)) => cmd_tva::bin::execute(sub_matches),
         Some(("blank", sub_matches)) => cmd_tva::blank::execute(sub_matches),
         Some(("check", sub_matches)) => cmd_tva::check::execute(sub_matches),
+        Some(("extend", sub_matches)) => cmd_tva::extend::execute(sub_matches),
         Some(("expr", sub_matches)) => cmd_tva::expr::execute(sub_matches),
         Some(("fill", sub_matches)) => cmd_tva::fill::execute(sub_matches),
         Some(("filter", sub_matches)) => cmd_tva::filter::execute(sub_matches),
@@ -103,6 +107,7 @@ fn main() -> anyhow::Result<()> {
         Some(("join", sub_matches)) => cmd_tva::join::execute(sub_matches),
         Some(("keep-header", sub_matches)) => cmd_tva::keep_header::execute(sub_matches),
         Some(("longer", sub_matches)) => cmd_tva::longer::execute(sub_matches),
+        Some(("mutate", sub_matches)) => cmd_tva::mutate::execute(sub_matches),
         Some(("nl", sub_matches)) => cmd_tva::nl::execute(sub_matches),
         Some(("plot", sub_matches)) => cmd_tva::plot::execute(sub_matches),
         Some(("reverse", sub_matches)) => cmd_tva::reverse::execute(sub_matches),

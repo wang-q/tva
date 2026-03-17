@@ -1027,11 +1027,11 @@ fn expr_underscore_placeholder_with_file() {
 }
 
 #[test]
-fn expr_add_mode_basic() {
-    // Test add mode: append expression result to original row
+fn expr_extend_mode_basic() {
+    // Test extend mode: append expression result to original row
     let (stdout, _) = TvaCmd::new()
         .args(&[
-            "expr", "-n", "name,age", "-r", "Alice,30", "-r", "Bob,25", "-m", "add",
+            "expr", "-n", "name,age", "-r", "Alice,30", "-r", "Bob,25", "-m", "extend",
             "-E", "@age * 2",
         ])
         .run();
@@ -1062,14 +1062,14 @@ fn expr_add_mode_basic() {
 }
 
 #[test]
-fn expr_add_mode_with_header() {
-    // Test add mode with header: original headers + expression header
+fn expr_extend_mode_with_header() {
+    // Test extend mode with header: original headers + expression header
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "expr",
             "-H",
             "-m",
-            "add",
+            "extend",
             "-E",
             "@estimate * 2",
             "tests/data/expr/us_rent_income.tsv",
@@ -1103,8 +1103,8 @@ fn expr_add_mode_with_header() {
 }
 
 #[test]
-fn expr_add_mode_list_expansion() {
-    // Test add mode with list expansion: multiple columns appended
+fn expr_extend_mode_list_expansion() {
+    // Test extend mode with list expansion: multiple columns appended
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "expr",
@@ -1113,7 +1113,7 @@ fn expr_add_mode_list_expansion() {
             "-r",
             "Alice,30",
             "-m",
-            "add",
+            "extend",
             "-E",
             "[@age, @age * 2, @age + 10]",
         ])
@@ -1136,8 +1136,8 @@ fn expr_add_mode_list_expansion() {
 }
 
 #[test]
-fn expr_add_mode_short_flag() {
-    // Test -m a short flag for add mode
+fn expr_extend_mode_short_flag() {
+    // Test -m a short flag for extend mode
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "expr",
@@ -1164,14 +1164,14 @@ fn expr_add_mode_short_flag() {
 }
 
 #[test]
-fn expr_add_mode_with_as_binding() {
-    // Test add mode with 'as' binding for custom header
+fn expr_extend_mode_with_as_binding() {
+    // Test extend mode with 'as' binding for custom header
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "expr",
             "-H",
             "-m",
-            "add",
+            "extend",
             "-E",
             "@estimate / @moe as @ratio",
             "tests/data/expr/us_rent_income.tsv",

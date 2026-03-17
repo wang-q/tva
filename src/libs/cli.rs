@@ -104,6 +104,55 @@ pub fn header_arg_basic() -> Arg {
         .help("Treat the first line as header (FirstLine mode)")
 }
 
+/// Returns common arguments for expr-like commands (expr, mutate, etc.).
+///
+/// Includes: infiles, expr, expr-file, outfile, header, delimiter, colnames, row
+pub fn expr_common_args() -> Vec<Arg> {
+    vec![
+        Arg::new("infiles")
+            .num_args(0..)
+            .index(1)
+            .help("Input TSV file(s) to process (default: stdin)"),
+        Arg::new("expr")
+            .long("expr")
+            .short('E')
+            .num_args(1)
+            .help("Expression to evaluate (e.g., '@price * @qty as @total')"),
+        Arg::new("expr_file")
+            .long("expr-file")
+            .short('F')
+            .num_args(1)
+            .help("Read expression from file"),
+        Arg::new("outfile")
+            .long("outfile")
+            .short('o')
+            .num_args(1)
+            .default_value("stdout")
+            .help("Output filename. [stdout] for screen"),
+        Arg::new("header")
+            .long("header")
+            .short('H')
+            .action(ArgAction::SetTrue)
+            .help("Treat the first row as headers"),
+        Arg::new("delimiter")
+            .long("delimiter")
+            .short('d')
+            .num_args(1)
+            .default_value("\t")
+            .help("Field delimiter for input files"),
+        Arg::new("colnames")
+            .long("colnames")
+            .short('n')
+            .num_args(1)
+            .help("Comma-separated column names for reference (e.g., 'name,age')"),
+        Arg::new("row")
+            .long("row")
+            .short('r')
+            .action(ArgAction::Append)
+            .help("Comma-separated row values to evaluate against (e.g., 'Alice,30')"),
+    ]
+}
+
 /// Builds a `HeaderConfig` from parsed command-line arguments.
 ///
 /// # Arguments

@@ -47,7 +47,7 @@ Examples:
    `tva expr -H -E 'if(@score >= 70, "pass", "fail")' data.tsv`
 
 6. Add new column(s) to original row:
-   `tva expr -H -m add -E '@price * @qty as @total' data.tsv`
+   `tva expr -H -m extend -E '@price * @qty as @total' data.tsv`
 
 7. Mutate (modify) existing column value:
    `tva expr -H -m mutate -E '@age + 1 as @age' data.tsv`
