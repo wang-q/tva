@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f8040cb9.js";
+            window.path_to_searchindex_js = "searchindex-9be99569.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-96593fed.js"></script>
@@ -248,10 +248,12 @@ tva expr -E "map([1,2,3,4,5], x =&gt; x * x)"
 <tr><th>Command</th><th>What it does</th><th>Input row</th><th>Output row</th><th>Columns changed</th></tr>
 </thead>
 <tbody>
-<tr><td><code>expr</code></td><td>Evaluate to new row</td><td><code>@a, @b, @c</code></td><td><code>@result</code></td><td>All (replaced)</td></tr>
-<tr><td><code>map</code></td><td>Add new column(s)</td><td><code>@a, @b</code></td><td><code>@a, @b, @c</code></td><td>Added</td></tr>
-<tr><td><code>mutate</code></td><td>Modify column value</td><td><code>@a, @b, @c</code></td><td><code>@a, @b', @c</code></td><td>One updated</td></tr>
-<tr><td><code>filter</code></td><td>Keep or discard row</td><td><code>@a, @b, @c</code></td><td><code>@a, @b, @c</code> or nothing</td><td>None</td></tr>
+<tr><td><code>expr</code></td><td>Evaluate to new row</td><td><code>a, b</code></td><td><code>c</code></td><td>All (replaced)</td></tr>
+<tr><td><code>map</code></td><td>Add new column(s)</td><td><code>a, b</code></td><td><code>a, b, c</code></td><td>Added</td></tr>
+<tr><td><code>mutate</code></td><td>Modify column value</td><td><code>a, b</code></td><td><code>a, c</code></td><td>One updated</td></tr>
+<tr><td><code>filter</code></td><td>Keep or discard row</td><td><code>a, b</code></td><td><code>a, b</code> or nothing</td><td>None</td></tr>
+<tr><td><code>select</code></td><td>Select columns</td><td><code>a, b, c</code></td><td><code>b, c</code></td><td>Selected</td></tr>
+<tr><td><code>join</code></td><td>Join two tables</td><td><code>a, b</code> and <code>a, c</code></td><td><code>a, b, c</code></td><td>Merged</td></tr>
 </tbody>
 </table>
 </div>
@@ -303,16 +305,6 @@ tva mutate -E '@cut | upper()' -c cut docs/data/diamonds.tsv
 # Replace with conditional value
 tva mutate -E 'if(@price &gt;= 350, "expensive", "cheap")' -c price docs/data/diamonds.tsv
 </code></pre>
-<h2 id="performance-notes"><a class="header" href="#performance-notes">Performance Notes</a></h2>
-<p>The expression engine includes several optimizations for better performance:</p>
-<ul>
-<li><strong>Parse caching</strong>: Expressions are parsed once and cached for all rows. Identical expressions reuse the cached AST.</li>
-<li><strong>Column name resolution</strong>: When headers are available, <code>@name</code> references are resolved to <code>@index</code> at parse time for O(1) access.</li>
-<li><strong>Constant folding</strong>: Constant sub-expressions (e.g., <code>2 + 3 * 4</code>) are pre-computed during parsing.</li>
-<li><strong>Function registry</strong>: Built-in functions are looked up once and cached, avoiding repeated hash map lookups.</li>
-<li><strong>Hash algorithm</strong>: Uses <code>ahash</code> for faster hash map operations.</li>
-</ul>
-<p>For best performance, use column indices (<code>@1</code>, <code>@2</code>) instead of names.</p>
 <h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
 <ul>
 <li>No implicit type conversion - use explicit functions like <code>int()</code>, <code>float()</code>, <code>string()</code></li>

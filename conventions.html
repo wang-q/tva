@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f8040cb9.js";
+            window.path_to_searchindex_js = "searchindex-9be99569.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-96593fed.js"></script>
@@ -269,7 +269,7 @@ the column names line</li>
 <code>--header-in-only</code> (input has header, output does not write header). <code>--header</code> is an alias for
 <code>--header-in-out</code>.</li>
 <li><code>keep-header</code>: Uses <code>--lines N</code> / <code>-n</code> to specify number of header lines (default: 1)</li>
-<li><code>sample</code>: Uses simple <code>--header</code> / <code>-H</code> flag (treats first non-empty line as header)</li>
+<li><code>sample</code>: Uses simple <code>--header</code> / <code>-H</code> flag (treats first line as header)</li>
 <li><code>transpose</code>: Does not support header modes (processes all lines as data)</li>
 </ul>
 <p><strong>Multi-file Header Behavior:</strong></p>
@@ -380,6 +380,28 @@ must be escaped with <code>\</code>.</li>
 <li><code>--header</code> not <code>--header true</code></li>
 <li><code>--append</code> / <code>-a</code> not <code>--append true</code></li>
 </ul>
+<h2 id="expr-syntax"><a class="header" href="#expr-syntax">Expr Syntax</a></h2>
+<p>The <code>expr</code> command supports a rich expression language for data transformation.</p>
+<ul>
+<li><strong>Column references</strong>: <code>@1</code>, <code>@2</code> (1-based) or <code>@name</code> (when headers provided)</li>
+<li><strong>Whole row reference</strong>: <code>@0</code> (original row data)</li>
+<li><strong>Variables</strong>: <code>@var_name</code> (bound by <code>as</code>, persists across rows)</li>
+<li><strong>Global variables</strong>: <code>@__index</code>, <code>@__file</code>, <code>@__row</code> (built-in)</li>
+<li><strong>Arithmetic</strong>: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code>, <code>**</code></li>
+<li><strong>Comparison</strong>: <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code></li>
+<li><strong>String comparison</strong>: <code>eq</code>, <code>ne</code>, <code>lt</code>, <code>le</code>, <code>gt</code>, <code>ge</code></li>
+<li><strong>Logical</strong>: <code>and</code>, <code>or</code>, <code>not</code></li>
+<li><strong>String concatenation</strong>: <code>++</code></li>
+<li><strong>Functions</strong>: <code>trim()</code>, <code>upper()</code>, <code>lower()</code>, <code>len()</code>, <code>abs()</code>, <code>round()</code>, <code>min()</code>, <code>max()</code>, <code>if()</code>,
+<code>default()</code>, <code>substr()</code>, <code>replace()</code>, <code>split()</code>, <code>join()</code>, <code>range()</code>, <code>map()</code>, <code>filter()</code>, <code>reduce()</code></li>
+<li><strong>Pipe operator</strong>: <code>|</code> for chaining functions (e.g., <code>@name | trim() | upper()</code>)</li>
+<li><strong>Underscore placeholder</strong>: <code>_</code> for piped values in multi-argument functions (e.g., <code>@name | substr(_, 0, 3)</code>)</li>
+<li><strong>Lambda expressions</strong>: <code>x =&gt; x + 1</code> or <code>(x, y) =&gt; x + y</code></li>
+<li><strong>List literals</strong>: <code>[1, 2, 3]</code> or <code>[@a, @b, @c]</code></li>
+<li><strong>Variable binding</strong>: <code>as</code> for intermediate results (e.g., <code>@price * @qty as @total; @total * 0.9</code>)</li>
+<li><strong>Method call syntax</strong>: <code>@name.upper()</code>, <code>@num.abs()</code></li>
+</ul>
+<p>Full expr syntax documentation is available at <a href="https://wang-q.github.io/tva/expr.html">here</a>.</p>
 <h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
 <p>All commands follow the same error output format:</p>
 <pre><code>tva &lt;command&gt;: &lt;error message&gt;

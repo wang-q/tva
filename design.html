@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f8040cb9.js";
+            window.path_to_searchindex_js = "searchindex-9be99569.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-96593fed.js"></script>
@@ -551,6 +551,19 @@ for streaming.</p>
 </tbody>
 </table>
 </div>
+<p><strong>Details</strong>:</p>
+<ul>
+<li><strong>Parse caching</strong>: Expressions are parsed once and cached for all rows. Identical expressions
+reuse the cached AST.</li>
+<li><strong>Column name resolution</strong>: When headers are available, <code>@name</code> references are resolved to
+<code>@index</code> at parse time for O(1) access.</li>
+<li><strong>Constant folding</strong>: Constant sub-expressions (e.g., <code>2 + 3 * 4</code>) are pre-computed during
+parsing.</li>
+<li><strong>Function registry</strong>: Built-in functions are looked up once and cached, avoiding repeated hash
+map lookups.</li>
+<li><strong>Hash algorithm</strong>: Uses <code>ahash</code> for faster hash map operations.</li>
+</ul>
+<p>For best performance, use column indices (<code>@1</code>, <code>@2</code>) instead of names.</p>
 
                     </main>
 
