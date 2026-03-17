@@ -60,15 +60,14 @@ fn main() -> anyhow::Result<()> {
         .after_help(
             r###"Subcommands groups:
 
-* Selection & Sampling: select, filter, slice, sample
-* Ordering: sort, reverse, transpose
-* Statistics & Summary: stats, bin, uniq
-* Reshaping: longer, wider, fill, blank
-* Combining & Splitting: join, append, split
+* Subset Selection: select, filter, slice, sample
+* Data Transformation: longer, wider, fill, blank, transpose
 * Expr Language: expr, extend, mutate
+* Data Organization: sort, reverse, join, append, split
+* Statistics & Summary: stats, bin, uniq
+* Visualization: plot (point, box, bin2d)
 * Formatting & Utilities: check, nl, keep-header
-* Plotting: plot (point, box, bin2d)
-* Import & Export: from, to (csv, xlsx, md)
+* Import & Export: from (csv, xlsx, html), to (csv, xlsx, md)
 "###,
         );
 

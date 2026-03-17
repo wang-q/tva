@@ -77,58 +77,71 @@ the [docs/data](https://github.com/wang-q/tva/tree/master/docs/data) directory o
 
 ## Commands
 
-### [Selection & Filtering](docs/selection.md)
+### [Subset Selection](docs/selection.md)
+
+Select specific rows or columns from your data.
 
 - **`select`**: Select and reorder columns.
-- **`filter`**: Filter rows based on numeric, string, or regex.
+- **`filter`**: Filter rows based on numeric, string, or regex conditions.
 - **`slice`**: Slice rows by index (keep or drop). Supports multiple ranges and header preservation.
 - **`sample`**: Randomly sample rows (Bernoulli, reservoir, weighted).
 
-### [Ordering](docs/ordering.md)
+### [Data Transformation](docs/transformation.md)
 
-- **`sort`**: Sorts rows based on one or more key fields.
-- **`reverse`**: Reverses the order of lines (like `tac`), optionally keeping the header at the top.
-- **`transpose`**: Swaps rows and columns (matrix transposition).
-
-### [Statistics & Summary](docs/statistics.md)
-
-- **`stats`**: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.
-- **`bin`**: Discretize numeric values into bins (useful for histograms).
-- **`uniq`**: Deduplicate rows or count unique occurrences (supports equivalence classes).
-
-### [Reshaping](docs/reshape.md)
+Transform the structure or values of your data.
 
 - **`longer`**: Reshape wide to long (unpivot). Requires a header row.
 - **`wider`**: Reshape long to wide (pivot). Supports aggregation via `--op` (sum, count, etc.).
 - **`fill`**: Fill missing values in selected columns (down/LOCF, const).
 - **`blank`**: Replace consecutive identical values in selected columns with empty strings (
   sparsify).
-
-### [Combining & Splitting](docs/combining.md)
-
-- **`join`**: Join two files based on common keys.
-- **`append`**: Concatenate multiple TSV files, handling headers correctly.
-- **`split`**: Split a file into multiple files (by size, key, or random).
+- **`transpose`**: Swaps rows and columns (matrix transposition).
 
 ### [Expr Language](docs/expr.md)
+
+Expression-based transformations for complex data manipulation.
 
 - **`expr`**: Evaluate expressions and output results.
 - **`extend`**: Add new columns to each row (alias for `expr -m extend`).
 - **`mutate`**: Modify existing column values (alias for `expr -m mutate`).
 
-### [Formatting & Utilities](docs/utilities.md)
+### [Data Organization](docs/organization.md)
 
-- **`check`**: Validate TSV file structure (column counts, encoding).
-- **`nl`**: Add line numbers to rows.
-- **`keep-header`**: Run a shell command on the body of a TSV file, preserving the header.
+Organize and combine multiple datasets.
 
-### [Plotting](docs/plot.md)
+- **`sort`**: Sorts rows based on one or more key fields.
+- **`reverse`**: Reverses the order of lines (like `tac`), optionally keeping the header at the top.
+- **`join`**: Join two files based on common keys.
+- **`append`**: Concatenate multiple TSV files, handling headers correctly.
+- **`split`**: Split a file into multiple files (by size, key, or random).
+
+### [Statistics & Summary](docs/statistics.md)
+
+Calculate statistics and summarize your data.
+
+- **`stats`**: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.
+- **`bin`**: Discretize numeric values into bins (useful for histograms).
+- **`uniq`**: Deduplicate rows or count unique occurrences (supports equivalence classes).
+
+### [Visualization](docs/plot.md)
+
+Visualize your data in the terminal.
 
 - **`plot point`**: Draw scatter plots or line charts in the terminal.
 - **`plot box`**: Draw box plots (box-and-whisker plots) in the terminal.
 - **`plot bin2d`**: Draw 2D histograms/heatmaps in the terminal.
 
+### [Formatting & Utilities](docs/utilities.md)
+
+Format and validate your data.
+
+- **`check`**: Validate TSV file structure (column counts, encoding).
+- **`nl`**: Add line numbers to rows.
+- **`keep-header`**: Run a shell command on the body of a TSV file, preserving the header.
+
 ### Import & Export
+
+Convert data to and from TSV format.
 
 - **[`from`](docs/from.md)**: Convert other formats to TSV (`csv`, `xlsx`, `html`).
 - **[`to`](docs/to.md)**: Convert TSV to other formats (`csv`, `xlsx`, `md`).

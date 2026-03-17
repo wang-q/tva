@@ -1,13 +1,13 @@
-# Reshaping Documentation
+# Data Transformation Documentation
 
-This document explains how to use the reshaping commands in `tva`: **`longer`**, **`wider`**, *
-*`fill`**, and **`blank`**. These commands are inspired by the data tidying philosophy of the R
-package `tidyr`.
+This document explains how to use the data transformation commands in `tva`: **`longer`**, *
+*`wider`**, **`fill`**, **`blank`**, and **`transpose`**. These commands allow you to reshape and
+restructure your data.
 
 ## Introduction
 
-Data reshaping involves changing the structure of a dataset without necessarily changing the
-information it contains. `tva` provides a suite of tools for these tasks:
+Data transformation involves changing the structure or values of a dataset. `tva` provides tools
+for:
 
 * **Pivoting**:
     * **`longer`**: Reshapes "wide" data (many columns) into "long" data (many rows).
@@ -15,6 +15,8 @@ information it contains. `tva` provides a suite of tools for these tasks:
 * **Completion**:
     * **`fill`**: Fills missing values with previous non-missing values (LOCF) or constants.
     * **`blank`**: The inverse of `fill`; replaces repeated values with empty strings (sparsify).
+* **Transposition**:
+    * **`transpose`**: Swaps rows and columns (matrix transposition).
 
 ![Reshape Diagram](images/reshape_diagram.svg)
 
@@ -337,8 +339,7 @@ tva wider docs/data/warpbreaks.tsv --names-from wool --values-from breaks --op s
 
 Output:
 
-```tsv
-tension	A	B
+```tsv	tension	A	B
 L	110	47
 M	68	62
 H	81	96
@@ -358,8 +359,7 @@ tva wider docs/data/warpbreaks.tsv --names-from wool --op count --id-cols tensio
 
 Output:
 
-```tsv
-tension	A	B
+```tsv	tension	A	B
 L	3	3
 M	3	3
 H	3	3
@@ -504,6 +504,44 @@ A	1
 B	1
 ```
 
+## `transpose` (Matrix Transpose)
+
+The `transpose` command swaps the rows and columns of a TSV file. It reads the entire file into
+memory and performs a matrix transposition.
+
+### Basic Usage
+
+```bash
+tva transpose [input_file] [options]
+```
+
+### Notes
+
+* **Strict Mode**: `transpose` expects a rectangular matrix. All rows must have the same number of
+  columns as the first row. If the file is jagged (rows have different lengths), the command will
+  fail with an error.
+* **Memory Usage**: Since it reads the whole file, be cautious with very large files.
+
+### Examples
+
+#### Transpose a table
+
+Transpose `docs/data/relig_income.tsv`:
+
+```bash
+tva transpose docs/data/relig_income.tsv
+```
+
+Output (first 5 lines):
+
+```tsv
+religion	Agnostic	Atheist	Buddhist
+<$10k	27	12	27
+$10-20k	34	27	21
+$20-30k	60	37	30
+$30-40k	81	25	34
+```
+
 ## Detailed Options
 
 | Option                    | Description                                                                                            |
@@ -547,6 +585,3 @@ B	1
 | Multiple values  | `values_from = c(a, b)`         | Not supported (single column only) |
 | Multiple names   | `names_from = c(a, b)`          | Not supported (single column only) |
 | Implicit missing | `names_expand`, `id_expand`     | Not supported                      |
-
-`tva` brings the power of tidy data reshaping to the command line, allowing for efficient processing
-of large TSV files without loading them entirely into memory.
