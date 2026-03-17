@@ -217,6 +217,16 @@ impl Expr {
         }
     }
 
+    /// Get the target column name for mutate mode.
+    /// Returns Some(column_name) if the last expression is a Bind (as @column),
+    /// Returns None otherwise.
+    pub fn get_mutate_target(&self) -> Option<String> {
+        match self.last_expr() {
+            Expr::Bind { name, .. } => Some(name.clone()),
+            _ => None,
+        }
+    }
+
     /// Format the expression as a string for display (e.g., as column header)
     pub fn format(&self) -> String {
         match self {

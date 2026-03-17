@@ -95,11 +95,12 @@ pub fn make_subcommand() -> Command {
                 .value_parser([
                     PossibleValue::new("eval").alias("e"),
                     PossibleValue::new("add").alias("a"),
+                    PossibleValue::new("mutate").alias("u"),
                     PossibleValue::new("skip-null").alias("s"),
                     PossibleValue::new("filter").alias("f"),
                 ])
                 .default_value("eval")
-                .help("Output mode: eval (default), add, skip-null, or filter"),
+                .help("Output mode: eval (default), add, mutate, skip-null, or filter"),
         )
 }
 
@@ -134,10 +135,24 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let skip_null = mode == "skip-null" || mode == "s";
     let filter_mode = mode == "filter" || mode == "f";
     let add_mode = mode == "add" || mode == "a";
+    let mutate_mode = mode == "mutate" || mode == "u";
 
     // Parse the expression with caching
     let mut parsed_expr = parse_cached(&expr_str)
         .map_err(|e| anyhow::anyhow!("Failed to parse expression: {}", e))?;
+
+    // For mutate mode, validate that expression has 'as @column' binding
+    let mutate_target = if mutate_mode {
+        let target = parsed_expr.get_mutate_target();
+        if target.is_none() {
+            return Err(anyhow::anyhow!(
+                "mutate mode requires 'as @column' binding to specify which column to modify"
+            ));
+        }
+        target
+    } else {
+        None
+    };
 
     // Check if we have inline row data (debug mode)
     let row_values: Vec<String> = match args.get_many::<String>("row") {
@@ -188,6 +203,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
             // In filter mode, output the original row;
             // In add mode, output original row + expression result;
+            // In mutate mode, modify the specified column and output the row;
             // Otherwise output the expression result
             if filter_mode {
                 writeln!(writer, "{}", row.join("\t"))?;
@@ -198,6 +214,30 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     writeln!(writer, "{}", row.join("\t"))?;
                 } else {
                     writeln!(writer, "{}\t{}", row.join("\t"), result_str)?;
+                }
+            } else if mutate_mode {
+                // Mutate mode: modify the specified column
+                if let Some(ref target) = mutate_target {
+                    let target_idx = if let Some(ref h) = headers {
+                        // Find column index by name
+                        h.iter().position(|col| col == target)
+                    } else {
+                        // No headers, try to parse as 1-based index
+                        target.parse::<usize>().ok().map(|i| i - 1)
+                    };
+
+                    if let Some(idx) = target_idx {
+                        let mut new_row = row.clone();
+                        if idx < new_row.len() {
+                            new_row[idx] = value_to_output(&result);
+                        }
+                        writeln!(writer, "{}", new_row.join("\t"))?;
+                    } else {
+                        return Err(anyhow::anyhow!(
+                            "mutate target column '{}' not found",
+                            target
+                        ));
+                    }
                 }
             } else {
                 writeln!(writer, "{}", value_to_output(&result))?;
@@ -281,8 +321,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         .collect();
 
                     // Write header (before resolve_columns to preserve column names)
-                    if filter_mode {
-                        // In filter mode, preserve original header
+                    if filter_mode || mutate_mode {
+                        // In filter and mutate mode, preserve original header
                         writeln!(writer, "{}", headers.join("\t"))?;
                     } else if add_mode {
                         // Add mode: append expression header names to original headers
@@ -323,6 +363,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let skip_null_flag = skip_null;
         let filter_mode_flag = filter_mode;
         let add_mode_flag = add_mode;
+        let mutate_mode_flag = mutate_mode;
+        let mutate_target_ref = mutate_target.as_ref();
         let globals_clone = globals.clone();
         let result: std::io::Result<()> = tsv_reader.for_each_record(|record| {
             // Split record into fields
@@ -371,6 +413,27 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 } else {
                     writeln!(writer, "{}\t{}", row.join("\t"), result_str)
                         .map_err(|e| std::io::Error::other(e.to_string()))?;
+                }
+                return Ok(());
+            }
+
+            // Mutate mode: modify the specified column
+            if mutate_mode_flag {
+                if let Some(target) = mutate_target_ref {
+                    let target_idx = headers.iter().position(|col| col == target);
+                    if let Some(idx) = target_idx {
+                        let mut new_row = row.clone();
+                        if idx < new_row.len() {
+                            new_row[idx] = value_to_output(&result);
+                        }
+                        writeln!(writer, "{}", new_row.join("\t"))
+                            .map_err(|e| std::io::Error::other(e.to_string()))?;
+                    } else {
+                        return Err(std::io::Error::other(format!(
+                            "mutate target column '{}' not found",
+                            target
+                        )));
+                    }
                 }
                 return Ok(());
             }

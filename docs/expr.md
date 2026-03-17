@@ -15,7 +15,7 @@ tva expr -E '"hello" | upper()'
 
 # Using higher-order functions
 tva expr -E "map([1,2,3,4,5], x => x * x)"
-# Output: [1, 4, 9, 16, 25]
+# Output: 1       4       9       16      25
 ```
 
 ## Topics
@@ -90,45 +90,97 @@ Note: Use `tva filter`/`tva select` for simple tasks: they are ~2x faster. Use `
 only when you need advanced features that other commands don't support (functions, complex
 expressions, etc.).
 
-## Basic Usage
+## Output Modes
 
-### `tva expr` - Evaluate Expressions to New Row
+The `expr` command supports five output modes controlled by the `-m` (or `--mode`) flag:
 
-Evaluates expression for each row and outputs the expression result as a new row (original row
-structure is discarded).
+### `eval` mode (default)
+
+Evaluates the expression and outputs only the result. The original row data is discarded.
 
 ```bash
-# Simple arithmetic expression
+# Simple arithmetic expression (no input needed)
 tva expr -E "10 + 20"
 
-# Evaluate expression with row data
+# Evaluate expression with inline row data
 tva expr -n "price,qty" -r "100,2" -E "@price * @qty"
 
-# String manipulation
-tva expr -n "name" -r "  alice  " -E 'upper(trim(@name))'
-tva expr -n "name" -r "  alice  " -E '@name.trim().upper()'
+# String manipulation with inline data
 tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 
-# Header - @price / @carat
-tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r -5
+# Calculate price per carat from file
+tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r 5
 
-# Header - price_per_carat carat
-tva expr -H -E "[@price / @carat as @price_per_carat, @carat]" docs/data/diamonds.tsv | tva slice -r -5
-
-# Add new column
-tva expr -H -m add -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r -5
-
-tva expr -H -m add -E "[@price / @carat as @price_per_carat, @carat]" docs/data/diamonds.tsv | tva slice -r -5
-
-tva expr -H -m add -E "[@price / @carat as @price_per_carat, @carat as @carat_rounded]" docs/data/diamonds.tsv | tva slice -r -5
-
-# Filter rows using -m skip-null
-tva expr -H -m s -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv
-
-# Filter rows using -m filter
-tva expr -H -m f -E '@carat > 1 and @cut eq q(Premium) and @price < 3000' docs/data/diamonds.tsv
-
+# Multiple output columns using list expression
+tva expr -H -E "[@price / @carat as @price_per_carat, @carat]" docs/data/diamonds.tsv | tva slice -r 5
 ```
+
+Use this mode when you want to compute new values without preserving the original columns.
+
+### `add` mode
+
+Evaluates the expression and appends the result as new column(s) to the original row.
+
+```bash
+# Add price_per_carat column to the original data
+tva expr -H -m add -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r 5
+
+# Add multiple columns using list expression
+tva expr -H -m add -E "[@price / @carat as @price_per_carat, @carat as @carat_rounded]" docs/data/diamonds.tsv | tva slice -r 5
+```
+
+Key behaviors:
+- The original row is preserved
+- Expression results are appended as new columns
+- Header names come from `as @name` bindings
+- List expressions create multiple new columns
+
+### `mutate` mode
+
+Modifies an existing column in place. The expression must include an `as @column_name` binding to specify which column to modify.
+
+```bash
+# Modify price column in place
+tva expr -H -m mutate -E "@price / @carat as @price" docs/data/diamonds.tsv | tva slice -r 5
+```
+
+Key behaviors:
+- Only the specified column is modified
+- All other columns and the header remain unchanged
+- The `as @column_name` binding is required
+- Column name must exist in the input (numeric indices like `as @2` are not supported)
+
+### `skip-null` mode
+
+Evaluates the expression and outputs the result, but skips rows where the result is `null`.
+
+```bash
+# Keep rows where carat > 1 and cut is Premium and price < 3000
+tva expr -H -m s -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv | tva slice -r 5
+```
+
+Key behaviors:
+- Rows with null results are excluded from output
+- Useful for filtering based on complex conditions
+- Return `@0` to preserve the original row, or any other value to output that value
+
+### `filter` mode
+
+Evaluates a boolean expression and outputs the original row only when the expression is true.
+
+```bash
+# Filter diamonds with carat > 1, cut is Premium, and price < 3000
+tva expr -H -m f -E '@carat > 1 and @cut eq q(Premium) and @price < 3000' docs/data/diamonds.tsv | tva slice -r 5
+
+# Filter with price > 10000
+tva expr -H -m filter -E "@price > 10000" docs/data/diamonds.tsv | tva slice -r 5
+```
+
+Key behaviors:
+- The original row and header are preserved
+- Row is output only if the expression evaluates to true
+- Expression should return a boolean (non-zero numbers and non-empty strings are truthy)
+- Similar to `tva filter` but allows complex expressions
 
 ## Notes
 

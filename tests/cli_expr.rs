@@ -1188,3 +1188,148 @@ fn expr_add_mode_with_as_binding() {
         header_parts[header_parts.len() - 1]
     );
 }
+
+#[test]
+fn expr_mutate_mode_basic() {
+    // Test mutate mode: modify specified column in place
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "name,age",
+            "-r",
+            "Alice,30",
+            "-r",
+            "Bob,25",
+            "-m",
+            "mutate",
+            "-E",
+            "@age + 1 as @age",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Should have 2 lines with modified age column
+    assert_eq!(lines.len(), 2, "Expected 2 output lines, got: {}", stdout);
+    // Check first line: Alice, 31 (age + 1)
+    let parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(
+        parts.len(),
+        2,
+        "Expected 2 columns in first line, got: {}",
+        lines[0]
+    );
+    assert_eq!(parts[0], "Alice", "Expected 'Alice' in first column");
+    assert_eq!(parts[1], "31", "Expected '31' (age + 1) in second column");
+    // Check second line: Bob, 26
+    let parts: Vec<&str> = lines[1].split('\t').collect();
+    assert_eq!(parts[1], "26", "Expected '26' (age + 1) in second column");
+}
+
+#[test]
+fn expr_mutate_mode_with_header() {
+    // Test mutate mode preserves original header
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-m",
+            "mutate",
+            "-E",
+            "@estimate * 2 as @estimate",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // First line should be original headers (not modified)
+    let header_parts: Vec<&str> = lines[0].split('\t').collect();
+    // Original file has columns: GEOID, NAME, variable, estimate, moe
+    assert!(
+        header_parts.contains(&"estimate"),
+        "Expected 'estimate' in headers, got: {}",
+        lines[0]
+    );
+    // Should not have any new column names
+    assert!(
+        !header_parts.iter().any(|h| h.contains('*')),
+        "Header should not contain expression, got: {}",
+        lines[0]
+    );
+}
+
+#[test]
+fn expr_mutate_mode_short_flag() {
+    // Test -m u short flag for mutate mode
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "price,qty",
+            "-r",
+            "100,2",
+            "-m",
+            "u",
+            "-E",
+            "@price * @qty as @price",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    let parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(
+        parts.len(),
+        2,
+        "Expected 2 columns with -m u, got: {}",
+        lines[0]
+    );
+    // In mutate mode, @price is modified to @price * @qty = 100 * 2 = 200
+    assert_eq!(
+        parts[0], "200",
+        "Expected '200' (price * qty) in first column"
+    );
+    assert_eq!(
+        parts[1], "2",
+        "Expected '2' (qty unchanged) in second column"
+    );
+}
+
+#[test]
+fn expr_mutate_mode_requires_as_binding() {
+    // Test that mutate mode requires 'as @column' binding
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "expr", "-n", "name,age", "-r", "Alice,30", "-m", "mutate", "-E", "@age + 1",
+        ])
+        .run();
+
+    assert!(
+        stderr.contains("mutate mode requires 'as @column' binding"),
+        "Expected error about missing 'as @column' binding, got: {}",
+        stderr
+    );
+}
+
+#[test]
+fn expr_mutate_mode_column_not_found() {
+    // Test error when target column doesn't exist
+    let (_, stderr) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "name,age",
+            "-r",
+            "Alice,30",
+            "-m",
+            "mutate",
+            "-E",
+            "@age + 1 as @nonexistent",
+        ])
+        .run();
+
+    assert!(
+        stderr.contains("mutate target column 'nonexistent' not found"),
+        "Expected error about column not found, got: {}",
+        stderr
+    );
+}
