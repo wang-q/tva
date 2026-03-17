@@ -13,7 +13,7 @@ tva expr -E '42 + 3.14'
 tva expr -E '"hello" | upper()'
 # Output: HELLO
 
-# Using higher-order functions
+# Using higher-order functions (list results expand to multiple columns)
 tva expr -E "map([1,2,3,4,5], x => x * x)"
 # Output: 1       4       9       16      25
 ```
@@ -75,26 +75,23 @@ trim(@name)
 
 Comparing modes and other commands:
 
-| Command              | What it does        | Input row         | Output row        |
-|----------------------|---------------------|-------------------|-------------------|
-| `expr`               | Evaluate to new row | `a, b`            | `c`               |
-| `expr -m add`        | Add new column(s)   | `a, b`            | `a, b, c`         |
-| `expr -m mutate`     | Modify column value | `a, b`            | `a, c`            |
-| `expr -m filter`     | Keep or discard row | `a, b`            | `a, b` or nothing |
-| `filter`             |                     | `a, b`            | `a, b` or nothing |
-| `expr -E '[@b, @c]'` | Select columns      | `a, b, c`         | `b, c`            |
-| `select`             |                     | `a, b, c`         | `b, c`            |
-| `join`               | Join two tables     | `a, b` and `a, c` | `a, b, c`         |
-
-Note: Use `tva filter`/`tva select` for simple tasks: they are ~2x faster. Use `tva expr`
-only when you need advanced features that other commands don't support (functions, complex
-expressions, etc.).
+| Command                 | What it does        | Input row         | Output row        |
+|-------------------------|---------------------|-------------------|-------------------|
+| `expr` / `expr -m eval` | Evaluate to new row | `a, b`            | `c`               |
+| `expr -m add`           | Add new column(s)   | `a, b`            | `a, b, c`         |
+| `expr -m mutate`        | Modify column value | `a, b`            | `a, c`            |
+| `expr -m skip-null`     | Skip null results   | `a, b`            | `c` or nothing    |
+| `expr -m filter`        | Keep or discard row | `a, b`            | `a, b` or nothing |
+| `filter`                |                     | `a, b`            | `a, b` or nothing |
+| `expr -E '[@b, @c]'`    | Select columns      | `a, b, c`         | `b, c`            |
+| `select`                |                     | `a, b, c`         | `b, c`            |
+| `join`                  | Join two tables     | `a, b` and `a, c` | `a, b, c`         |
 
 ## Output Modes
 
 The `expr` command supports five output modes controlled by the `-m` (or `--mode`) flag:
 
-### `eval` mode (default)
+### `eval` mode (default, `-m eval` or `-m e`)
 
 Evaluates the expression and outputs only the result. The original row data is discarded.
 
@@ -108,21 +105,18 @@ tva expr -n "price,qty" -r "100,2" -E "@price * @qty"
 # String manipulation with inline data
 tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 
-# Calculate price per carat from file
+# Calculate from file data
 tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r 5
-
-# Multiple output columns using list expression
-tva expr -H -E "[@price / @carat as @price_per_carat, @carat]" docs/data/diamonds.tsv | tva slice -r 5
 ```
 
 Use this mode when you want to compute new values without preserving the original columns.
 
-### `add` mode
+### `add` mode (`-m add` or `-m a`)
 
 Evaluates the expression and appends the result as new column(s) to the original row.
 
 ```bash
-# Add price_per_carat column to the original data
+# Add a single column
 tva expr -H -m add -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r 5
 
 # Add multiple columns using list expression
@@ -130,14 +124,16 @@ tva expr -H -m add -E "[@price / @carat as @price_per_carat, @carat as @carat_ro
 ```
 
 Key behaviors:
+
 - The original row is preserved
 - Expression results are appended as new columns
 - Header names come from `as @name` bindings
 - List expressions create multiple new columns
 
-### `mutate` mode
+### `mutate` mode (`-m mutate` or `-m u`)
 
-Modifies an existing column in place. The expression must include an `as @column_name` binding to specify which column to modify.
+Modifies an existing column in place. The expression must include an `as @column_name` binding to
+specify which column to modify.
 
 ```bash
 # Modify price column in place
@@ -145,38 +141,41 @@ tva expr -H -m mutate -E "@price / @carat as @price" docs/data/diamonds.tsv | tv
 ```
 
 Key behaviors:
+
 - Only the specified column is modified
 - All other columns and the header remain unchanged
 - The `as @column_name` binding is required
 - Column name must exist in the input (numeric indices like `as @2` are not supported)
 
-### `skip-null` mode
+### `skip-null` mode (`-m skip-null` or `-m s`)
 
 Evaluates the expression and outputs the result, but skips rows where the result is `null`.
 
 ```bash
 # Keep rows where carat > 1 and cut is Premium and price < 3000
-tva expr -H -m s -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv | tva slice -r 5
+tva expr -H -m skip-null -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv | tva slice -r 5
 ```
 
 Key behaviors:
+
 - Rows with null results are excluded from output
 - Useful for filtering based on complex conditions
 - Return `@0` to preserve the original row, or any other value to output that value
 
-### `filter` mode
+### `filter` mode (`-m filter` or `-m f`)
 
 Evaluates a boolean expression and outputs the original row only when the expression is true.
 
 ```bash
-# Filter diamonds with carat > 1, cut is Premium, and price < 3000
-tva expr -H -m f -E '@carat > 1 and @cut eq q(Premium) and @price < 3000' docs/data/diamonds.tsv | tva slice -r 5
-
-# Filter with price > 10000
+# Filter with a simple condition
 tva expr -H -m filter -E "@price > 10000" docs/data/diamonds.tsv | tva slice -r 5
+
+# Filter with multiple conditions
+tva expr -H -m filter -E '@carat > 1 and @cut eq q(Premium) and @price < 3000' docs/data/diamonds.tsv | tva slice -r 5
 ```
 
 Key behaviors:
+
 - The original row and header are preserved
 - Row is output only if the expression evaluates to true
 - Expression should return a boolean (non-zero numbers and non-empty strings are truthy)
@@ -184,7 +183,13 @@ Key behaviors:
 
 ## Notes
 
-- No implicit type conversion - use explicit functions like `int()`, `float()`, `string()`
-- String comparison uses `eq`, `ne`, `lt`, etc. (not `==`, `!=`)
-- Pipe operator `|` passes left value as first argument to right function
-- All expressions are evaluated per row during streaming
+- **Performance**: For simple filtering or column selection, use `tva filter` or `tva select`
+  instead - they are ~2x faster. Use `tva expr` only when you need functions, complex expressions,
+  or calculations.
+- **Type conversion**: No implicit type conversion - use explicit functions like `int()`, `float()`,
+  `string()`
+- **String comparison**: Uses `eq`, `ne`, `lt`, etc. (not `==`, `!=`)
+- **Pipe operator**: `|` passes left value as first argument to right function
+- **Streaming**: All expressions are evaluated per row during streaming
+- **Persistent variables**: Variables starting with `__` (e.g., `@__total`) persist across rows,
+  useful for running totals
