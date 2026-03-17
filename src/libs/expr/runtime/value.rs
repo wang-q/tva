@@ -81,20 +81,6 @@ impl Value {
         }
     }
 
-    /// Convert to string representation
-    pub fn to_string(&self) -> String {
-        match self {
-            Value::Null => "null".to_string(),
-            Value::Bool(b) => b.to_string(),
-            Value::Int(i) => i.to_string(),
-            Value::Float(f) => f.to_string(),
-            Value::String(s) => s.clone(),
-            Value::List(list) => format!("{:?}", list),
-            Value::DateTime(dt) => dt.to_rfc3339(),
-            Value::Lambda(_) => "<lambda>".to_string(),
-        }
-    }
-
     /// Convert to string (for string operations)
     pub fn as_string(&self) -> String {
         match self {
@@ -270,7 +256,16 @@ impl Value {
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        match self {
+            Value::Null => write!(f, "null"),
+            Value::Bool(b) => write!(f, "{b}"),
+            Value::Int(i) => write!(f, "{i}"),
+            Value::Float(fl) => write!(f, "{fl}"),
+            Value::String(s) => write!(f, "{s}"),
+            Value::List(list) => write!(f, "{list:?}"),
+            Value::DateTime(dt) => write!(f, "{}", dt.to_rfc3339()),
+            Value::Lambda(_) => write!(f, "<lambda>"),
+        }
     }
 }
 

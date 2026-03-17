@@ -173,8 +173,7 @@ impl<R: Read> TsvReader<R> {
                     } else {
                         // For HashLines mode, not a valid hash header
                         first_non_hash_line = Some(record.to_vec());
-                        return Err(io::Error::new(
-                            io::ErrorKind::Other,
+                        return Err(io::Error::other(
                             "No hash lines",
                         ));
                     }
