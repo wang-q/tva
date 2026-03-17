@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a5933e36.js";
+            window.path_to_searchindex_js = "searchindex-f8040cb9.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-96593fed.js"></script>
@@ -279,7 +279,7 @@ tva expr -n "score" -r "85" -E 'if(@score &gt;= 60, "pass", "fail")'
 tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r -5
 
 # Filter rows using --skip-null
-tva expr -H --skip-null -E 'if(@carat &gt; 1 and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv
+tva expr -H --skip-null -E 'if(@carat &gt; 1 and @cut eq q(Premium) and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv
 </code></pre>
 <h3 id="tva-map---add-new-column"><a class="header" href="#tva-map---add-new-column"><code>tva map</code> - Add New Column</a></h3>
 <p>Evaluates expression for each row to add a new column to the existing row.</p>
