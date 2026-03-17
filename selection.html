@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Selection &amp; Sampling - tva Documentation</title>
+        <title>Selection &amp; Filtering - tva Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-58c5abea.js";
+            window.path_to_searchindex_js = "searchindex-dca29512.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-eb129ac0.js"></script>
+        <script src="toc-560472fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,14 +180,15 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="selection--sampling-documentation"><a class="header" href="#selection--sampling-documentation">Selection &amp; Sampling Documentation</a></h1>
-<p>This document explains how to use the selection and sampling commands in <code>tva</code>: <strong><code>select</code></strong>, *
-*<code>slice</code>**, and <strong><code>sample</code></strong>. These commands allow you to subset your data based on structure (
-columns) or position (rows).</p>
+                        <h1 id="selection--filtering-documentation"><a class="header" href="#selection--filtering-documentation">Selection &amp; Filtering Documentation</a></h1>
+<p>This document explains how to use the selection, filtering, and sampling commands in <code>tva</code>:
+<strong><code>select</code></strong>, <strong><code>filter</code></strong>, <strong><code>slice</code></strong>, and <strong><code>sample</code></strong>. These commands allow you to subset your
+data based on structure (columns), values (rows), position (index), or randomly.</p>
 <h2 id="introduction"><a class="header" href="#introduction">Introduction</a></h2>
 <p>Data analysis often begins with selecting the relevant subset of data:</p>
 <ul>
 <li><strong><code>select</code></strong>: Selects and reorders columns (e.g., “keep only <code>name</code> and <code>email</code>”).</li>
+<li><strong><code>filter</code></strong>: Selects rows where a condition is true (e.g., “keep rows where <code>age &gt; 30</code>”).</li>
 <li><strong><code>slice</code></strong>: Selects rows by their position (index) in the file (e.g., “keep rows 10-20”).</li>
 <li><strong><code>sample</code></strong>: Randomly selects a subset of rows.</li>
 </ul>
@@ -251,9 +252,114 @@ income	32940	Alaska
 <p>Or using a range (if you know the indices):</p>
 <pre><code class="language-bash">tva select docs/data/billboard.tsv -f 1-2,3-5
 </code></pre>
+<h2 id="filter-row-filtering"><a class="header" href="#filter-row-filtering"><code>filter</code> (Row Filtering)</a></h2>
+<p>The <code>filter</code> command selects rows where a condition is true. It supports field-based tests,
+expressions, empty/blank checks, and field-to-field comparisons.</p>
+<h3 id="basic-usage-1"><a class="header" href="#basic-usage-1">Basic Usage</a></h3>
+<pre><code class="language-bash">tva filter [input_files...] [options]
+</code></pre>
+<p>Filter tests can be combined (default is AND logic, use <code>--or</code> for OR logic).</p>
+<h3 id="filter-types"><a class="header" href="#filter-types">Filter Types</a></h3>
+<h4 id="1-expression-filter"><a class="header" href="#1-expression-filter">1. Expression Filter</a></h4>
+<p>Use the <code>-E</code> option to filter with an expression:</p>
+<pre><code class="language-bash">tva filter docs/data/us_rent_income.tsv -H -E '@estimate &gt; 30000'
+</code></pre>
+<h4 id="2-emptyblank-checks"><a class="header" href="#2-emptyblank-checks">2. Empty/Blank Checks</a></h4>
+<ul>
+<li><code>--empty &lt;field&gt;</code>: True if the field is empty (no characters)</li>
+<li><code>--not-empty &lt;field&gt;</code>: True if the field is not empty</li>
+<li><code>--blank &lt;field&gt;</code>: True if the field is empty or all whitespace</li>
+<li><code>--not-blank &lt;field&gt;</code>: True if the field contains a non-whitespace character</li>
+</ul>
+<pre><code class="language-bash">tva filter docs/data/us_rent_income.tsv --not-empty NAME
+</code></pre>
+<h4 id="3-numeric-comparison"><a class="header" href="#3-numeric-comparison">3. Numeric Comparison</a></h4>
+<p>Format: <code>--&lt;op&gt; &lt;field&gt;:&lt;value&gt;</code></p>
+<ul>
+<li><code>--eq</code>, <code>--ne</code>, <code>--gt</code>, <code>--ge</code>, <code>--lt</code>, <code>--le</code></li>
+</ul>
+<pre><code class="language-bash">tva filter docs/data/us_rent_income.tsv --gt estimate:30000
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+02	Alaska	income	32940	508
+04	Arizona	income	31614	242
+06	California	income	33095	172
+...
+</code></pre>
+<h4 id="4-string-comparison"><a class="header" href="#4-string-comparison">4. String Comparison</a></h4>
+<ul>
+<li><code>--str-eq</code>, <code>--str-ne</code>: String equality/inequality</li>
+<li><code>--str-gt</code>, <code>--str-ge</code>, <code>--str-lt</code>, <code>--str-le</code>: String ordering</li>
+<li><code>--istr-eq</code>, <code>--istr-ne</code>: Case-insensitive string comparison</li>
+<li><code>--str-in-fld</code>, <code>--str-not-in-fld</code>: Substring test</li>
+<li><code>--istr-in-fld</code>, <code>--istr-not-in-fld</code>: Case-insensitive substring test</li>
+</ul>
+<pre><code class="language-bash">tva filter docs/data/us_rent_income.tsv --str-eq variable:rent
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+01	Alabama	rent	747	3
+02	Alaska	rent	1200	13
+04	Arizona	rent	976	4
+...
+</code></pre>
+<h4 id="5-regular-expression"><a class="header" href="#5-regular-expression">5. Regular Expression</a></h4>
+<ul>
+<li><code>--regex &lt;field&gt;:&lt;pattern&gt;</code>: Field matches regex</li>
+<li><code>--iregex &lt;field&gt;:&lt;pattern&gt;</code>: Case-insensitive regex match</li>
+<li><code>--not-regex &lt;field&gt;:&lt;pattern&gt;</code>: Field does not match regex</li>
+<li><code>--not-iregex &lt;field&gt;:&lt;pattern&gt;</code>: Case-insensitive non-match</li>
+</ul>
+<pre><code class="language-bash">tva filter docs/data/billboard.tsv --regex track:"Baby"
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">artist	track	wk1	wk2	wk3
+2 Pac	Baby Don't Cry	87	82	72
+Beenie Man	Girls Dem Sugar	87	70	63
+...
+</code></pre>
+<h4 id="6-length-comparison"><a class="header" href="#6-length-comparison">6. Length Comparison</a></h4>
+<ul>
+<li><code>--char-len-eq</code>, <code>--char-len-ne</code>, <code>--char-len-gt</code>, <code>--char-len-ge</code>, <code>--char-len-lt</code>,
+<code>--char-len-le</code>: Character length</li>
+<li><code>--byte-len-eq</code>, <code>--byte-len-ne</code>, <code>--byte-len-gt</code>, <code>--byte-len-ge</code>, <code>--byte-len-lt</code>,
+<code>--byte-len-le</code>: Byte length</li>
+</ul>
+<pre><code class="language-bash">tva filter docs/data/billboard.tsv --char-len-gt track:10
+</code></pre>
+<h4 id="7-field-type-checks"><a class="header" href="#7-field-type-checks">7. Field Type Checks</a></h4>
+<ul>
+<li><code>--is-numeric &lt;field&gt;</code>: True if field can be parsed as a number</li>
+<li><code>--is-finite &lt;field&gt;</code>: True if field is numeric and finite</li>
+<li><code>--is-nan &lt;field&gt;</code>: True if field is NaN</li>
+<li><code>--is-infinity &lt;field&gt;</code>: True if field is positive or negative infinity</li>
+</ul>
+<pre><code class="language-bash">tva filter docs/data/us_rent_income.tsv --is-numeric estimate
+</code></pre>
+<h4 id="8-field-to-field-comparison"><a class="header" href="#8-field-to-field-comparison">8. Field-to-Field Comparison</a></h4>
+<ul>
+<li><code>--ff-eq</code>, <code>--ff-ne</code>, <code>--ff-lt</code>, <code>--ff-le</code>, <code>--ff-gt</code>, <code>--ff-ge</code>: Numeric field-to-field</li>
+<li><code>--ff-str-eq</code>, <code>--ff-str-ne</code>: String field-to-field</li>
+<li><code>--ff-istr-eq</code>, <code>--ff-istr-ne</code>: Case-insensitive string field-to-field</li>
+<li><code>--ff-absdiff-le &lt;f1&gt;:&lt;f2&gt;:&lt;num&gt;</code>: Absolute difference &lt;= NUM</li>
+<li><code>--ff-absdiff-gt &lt;f1&gt;:&lt;f2&gt;:&lt;num&gt;</code>: Absolute difference &gt; NUM</li>
+<li><code>--ff-reldiff-le &lt;f1&gt;:&lt;f2&gt;:&lt;num&gt;</code>: Relative difference &lt;= NUM</li>
+<li><code>--ff-reldiff-gt &lt;f1&gt;:&lt;f2&gt;:&lt;num&gt;</code>: Relative difference &gt; NUM</li>
+</ul>
+<pre><code class="language-bash">tva filter docs/data/us_rent_income.tsv --ff-gt estimate:moe
+</code></pre>
+<h3 id="common-options"><a class="header" href="#common-options">Common Options</a></h3>
+<ul>
+<li><code>--or</code>: Evaluate tests as OR instead of AND</li>
+<li><code>-v</code>, <code>--invert</code>: Invert the filter, selecting non-matching rows</li>
+<li><code>-c</code>, <code>--count</code>: Print only the count of matching data rows</li>
+<li><code>--label &lt;header&gt;</code>: Label matched records instead of filtering (outputs 1/0)</li>
+<li><code>--label-values &lt;pass:fail&gt;</code>: Custom values for –label (default: 1:0)</li>
+</ul>
 <h2 id="slice-row-selection-by-index"><a class="header" href="#slice-row-selection-by-index"><code>slice</code> (Row Selection by Index)</a></h2>
 <p>The <code>slice</code> command selects rows based on their integer index (position). Indices are 1-based.</p>
-<h3 id="basic-usage-1"><a class="header" href="#basic-usage-1">Basic Usage</a></h3>
+<h3 id="basic-usage-2"><a class="header" href="#basic-usage-2">Basic Usage</a></h3>
 <pre><code class="language-bash">tva slice [input_files...] --rows &lt;range&gt; [options]
 </code></pre>
 <ul>
@@ -289,7 +395,7 @@ multiple times.</li>
 <p>This ensures the first line is always printed, even if it’s not in the range <code>10-15</code>.</p>
 <h2 id="sample-random-sampling"><a class="header" href="#sample-random-sampling"><code>sample</code> (Random Sampling)</a></h2>
 <p>The <code>sample</code> command randomly selects a subset of rows. This is useful for exploring large datasets.</p>
-<h3 id="basic-usage-2"><a class="header" href="#basic-usage-2">Basic Usage</a></h3>
+<h3 id="basic-usage-3"><a class="header" href="#basic-usage-3">Basic Usage</a></h3>
 <pre><code class="language-bash">tva sample [input_files...] [options]
 </code></pre>
 <ul>
@@ -322,7 +428,7 @@ multiple times.</li>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="filtering.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="ordering.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -336,7 +442,7 @@ multiple times.</li>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="filtering.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="ordering.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
