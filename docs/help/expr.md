@@ -1,6 +1,6 @@
 # expr
 
-Evaluates an expression for each row and outputs only the result.
+Evaluates expressions for each row and outputs only the result.
 
 Behavior:
 

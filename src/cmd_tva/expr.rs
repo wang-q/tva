@@ -10,7 +10,7 @@ use ahash::{HashMap, HashMapExt};
 
 pub fn make_subcommand() -> Command {
     Command::new("expr")
-        .about("Evaluates expression for each row to create new row")
+        .about("Evaluates expressions for each row to create new row")
         .after_help(include_str!("../../docs/help/expr.md"))
         .arg(
             Arg::new("infiles")

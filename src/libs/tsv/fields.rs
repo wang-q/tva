@@ -1,7 +1,7 @@
 //! Common field list parsing utilities shared across tva commands.
 //!
 //! Field lists are used to refer to columns by index or by name. The shared
-//! syntax is documented in [`super::FIELD_SYNTAX_HELP`].
+//! syntax is documented in [`crate::libs::cli::FIELD_SYNTAX_HELP`].
 //!
 //! Basic numeric-only parsing:
 //!
