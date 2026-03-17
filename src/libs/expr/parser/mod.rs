@@ -52,12 +52,13 @@ pub enum ParseError {
 pub fn parse(input: &str) -> Result<Expr, ParseError> {
     // Parse the input using the full_expr grammar rule.
     // The ? operator converts pest::Error to ParseError::Pest on failure.
-    let pairs = ExprParser::parse(Rule::full_expr, input)?;
+    let mut pairs = ExprParser::parse(Rule::full_expr, input)?;
     // full_expr is silent (_{...}), so we get expr_list directly.
     // The for loop iterates over the parsed pairs. Since full_expr
     // always contains expr_list, pairs will have at least one element
     // on successful parse.
-    for pair in pairs {
+    // Get the first pair (full_expr always contains expr_list, so pairs has at least one element)
+    if let Some(pair) = pairs.next() {
         return build_full_expr(pair);
     }
     // The Err below is defensive - unreachable in practice.
