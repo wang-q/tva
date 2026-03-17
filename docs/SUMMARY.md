@@ -17,7 +17,7 @@
 - [Formatting & Utilities](utilities.md)
 - [Import (from)](from.md)
 - [Export (to)](to.md)
-- [Expr Language](expr.md)
+- [Expr Language & Utilities](expr.md)
 - [CSS Selectors](selectors.md)
 - [Common Conventions](conventions.md)
 
