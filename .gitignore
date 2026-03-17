@@ -99,8 +99,13 @@ Cargo.lock
 
 # mdBook output directory
 /book/
+
+# Coverage directory
 /coverage-*/
 /coverage_*/
 coverge-*
 coverge_*
 coverage.*
+
+# Temporary markdown files
+*.tmp.md

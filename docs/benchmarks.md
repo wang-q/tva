@@ -1,13 +1,16 @@
 # 性能基准测试计划
 
-我们旨在重现 [tsv-utils](https://github.com/eBay/tsv-utils/blob/master/docs/comparative-benchmarks-2017.md) 使用的严格基准测试策略。
+我们旨在重现 [tsv-utils](https://github.com/eBay/tsv-utils/blob/master/docs/comparative-benchmarks-2017.md)
+使用的严格基准测试策略。
 
 ## 1. 基准工具
-*   [tsv-utils](https://github.com/eBay/tsv-utils) (D): 主要性能对标目标。
-*   [qsv](https://github.com/jqnatividad/qsv) (Rust): xsv 的活跃分支，功能超级强大。
-*   [GNU datamash](https://www.gnu.org/software/datamash/) (C): 统计操作的标准。
-*   [GNU awk](https://www.gnu.org/software/gawk/) / [mawk](https://invisible-island.net/mawk/) (C): 行过滤和基本处理的基准。
-*   [csvtk](https://github.com/shenwei356/csvtk) (Go): 另一个现代跨平台工具包。
+
+* [tsv-utils](https://github.com/eBay/tsv-utils) (D): 主要性能对标目标。
+* [qsv](https://github.com/jqnatividad/qsv) (Rust): xsv 的活跃分支，功能超级强大。
+* [GNU datamash](https://www.gnu.org/software/datamash/) (C): 统计操作的标准。
+* [GNU awk](https://www.gnu.org/software/gawk/) / [mawk](https://invisible-island.net/mawk/) (C):
+  行过滤和基本处理的基准。
+* [csvtk](https://github.com/shenwei356/csvtk) (Go): 另一个现代跨平台工具包。
 
 ## 2. 测试数据集与策略
 
@@ -15,84 +18,89 @@
 
 ### 数据集来源
 
-*   **HEPMASS** (4.8GB): [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/HEPMASS)。
-    *   内容: 约 700万行，29列数值数据。
-    *   用途: 用于**数值行过滤**、**列选择**、**统计摘要**和**文件连接**测试。
-*   **FIA Tree Data** (2.7GB): [USDA Forest Service](https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html)。
-    *   内容: `TREE_GRM_ESTN.csv` 的前 1400 万行，包含混合文本和数值。
-    *   用途: 用于**正则行过滤**和**CSV 转 TSV**测试。
+* **HEPMASS** (
+  4.8GB): [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/HEPMASS)。
+    * 内容: 约 700万行，29列数值数据。
+    * 用途: 用于**数值行过滤**、**列选择**、**统计摘要**和**文件连接**测试。
+* **FIA Tree Data** (
+  2.7GB): [USDA Forest Service](https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html)。
+    * 内容: `TREE_GRM_ESTN.csv` 的前 1400 万行，包含混合文本和数值。
+    * 用途: 用于**正则行过滤**和**CSV 转 TSV**测试。
 
 ### 测试策略
 
-*   **吞吐量与稳定性 (大文件)**:
-    *   使用完整的 GB 级数据集 (HEPMASS, FIA Tree Data)。
-    *   目标: 压力测试流处理能力、内存稳定性以及 I/O 吞吐量。
-*   **启动开销 (小文件)**:
-    *   使用 **HEPMASS_100k** (~70MB, HEPMASS 的前 10万行)。
-    *   目标: 测试工具的启动开销 (Startup Overhead) 和缓冲策略。对于极短的运行时间，Rust/C 的启动时间差异会更明显。
+* **吞吐量与稳定性 (大文件)**:
+    * 使用完整的 GB 级数据集 (HEPMASS, FIA Tree Data)。
+    * 目标: 压力测试流处理能力、内存稳定性以及 I/O 吞吐量。
+* **启动开销 (小文件)**:
+    * 使用 **HEPMASS_100k** (~70MB, HEPMASS 的前 10万行)。
+    * 目标: 测试工具的启动开销 (Startup Overhead) 和缓冲策略。对于极短的运行时间，Rust/C 的启动时间差异会更明显。
 
 ## 3. 详细测试场景
 
 为了确保公平和全面的对比，我们将执行以下具体场景（参考 tsv-utils 2017/2018）：
 
-*   **数值行过滤 (Numeric Filter)**:
-    *   逻辑: 多列数值比较 (例如 `col4 > 0.000025 && col16 > 0.3`)。
-    *   基准: `tva filter` vs `awk` (mawk/gawk) vs `tsv-filter` (D) vs `qsv search` (Rust)。
-    *   目的: 测试数值解析和比较的效率。
-*   **正则行过滤 (Regex Filter)**:
-    *   逻辑: 针对特定文本列的正则匹配 (例如 `[RD].*(ION[0-2])`)。
-    *   基准: `tva filter --regex` vs `grep` / `awk` / `ripgrep` (如果适用) vs `tsv-filter` vs `qsv search`。
-    *   注意: 区分全行匹配与特定字段匹配。
-*   **列选择 (Column Selection)**:
-    *   逻辑: 提取分散的列 (例如 1, 8, 19)。
-    *   基准: `tva select` vs `cut` vs `tsv-select` vs `qsv select` vs `csvtk cut`。
-    *   注意: 测试不同文件大小。GNU `cut` 在小文件上通常非常快，但在大文件上可能不如流式优化工具。
-    *   **短行测试 (Short Lines)**: 针对海量短行数据（如 8600万行，1.7GB）进行测试，主要考察每行处理的固定开销。
-*   **文件连接 (Join)**:
-    *   **数据准备**: 将大文件拆分为两个文件（例如：左文件含列 1-15，右文件含列 1, 16-29），并**随机打乱**行顺序，但保留公共键（列 1）。
-    *   逻辑: 基于公共键将两个乱序文件重新连接。
-    *   基准: `tva join` vs `join` (Unix - 需先 sort) vs `qsv join` vs `tsv-join` vs `csvtk join`。
-    *   目的: 测试哈希表构建和查找的内存与速度平衡。
-*   **统计摘要 (Summary Statistics)**:
-    *   逻辑: 计算多个列的 Count, Sum, Min, Max, Mean, Stdev。
-    *   基准: `tva stats` vs `datamash` vs `tsv-summarize` vs `qsv stats` vs `csvtk summary`。
-*   **CSV 转 TSV (CSV to TSV)**:
-    *   逻辑: 处理包含转义字符和嵌入换行符的复杂 CSV。
-    *   基准: `tva from csv` vs `qsv fmt` vs `csvtk csv2tab` vs `csv2tsv` (tsv-utils)。
-    *   目的: 这是一个高计算密集型任务，测试 CSV 解析器的性能。
-*   **加权随机采样 (Weighted Sampling)**:
-    *   逻辑: 基于权重列进行加权随机采样 (Weighted Reservoir Sampling)。
-    *   基准: `tva sample --weight` vs `tsv-sample` vs `qsv sample` (如果支持)。
-    *   目的: 测试复杂算法与 I/O 的结合效率。
-*   **去重 (Deduplication)**:
-    *   逻辑: 基于特定列进行哈希去重。
-    *   基准: `tva uniq` vs `tsv-uniq` vs `awk` vs `sort | uniq`。
-    *   目的: 测试哈希表性能和内存管理。
-*   **排序 (Sorting)**:
-    *   逻辑: 基于数值列进行排序。
-    *   基准: `tva sort` vs `sort` (GNU) vs `tsv-sort`。
-    *   目的: 测试外部排序算法和内存使用。
-*   **切片 (Slicing)**:
-    *   逻辑: 提取文件中间的大段行 (如第 100万 到 200万 行)。
-    *   基准: `tva slice` vs `sed` vs `tail | head`。
-    *   目的: 测试快速跳过行的能力。
-*   **反转 (Reverse)**:
-    *   逻辑: 反转整个文件的行序。
-    *   基准: `tva reverse` vs `tac`。
-*   **追加 (Append)**:
-    *   逻辑: 连接多个大文件。
-    *   基准: `tva append` vs `cat`。
-*   **导出 CSV (Export to CSV)**:
-    *   逻辑: 将 TSV 转换为标准 CSV (处理转义)。
-    *   基准: `tva to csv` vs `qsv fmt`。
+* **数值行过滤 (Numeric Filter)**:
+    * 逻辑: 多列数值比较 (例如 `col4 > 0.000025 && col16 > 0.3`)。
+    * 基准: `tva filter` vs `awk` (mawk/gawk) vs `tsv-filter` (D) vs `qsv search` (Rust)。
+    * 目的: 测试数值解析和比较的效率。
+* **正则行过滤 (Regex Filter)**:
+    * 逻辑: 针对特定文本列的正则匹配 (例如 `[RD].*(ION[0-2])`)。
+    * 基准: `tva filter --regex` vs `grep` / `awk` / `ripgrep` (如果适用) vs `tsv-filter` vs
+      `qsv search`。
+    * 注意: 区分全行匹配与特定字段匹配。
+* **列选择 (Column Selection)**:
+    * 逻辑: 提取分散的列 (例如 1, 8, 19)。
+    * 基准: `tva select` vs `cut` vs `tsv-select` vs `qsv select` vs `csvtk cut`。
+    * 注意: 测试不同文件大小。GNU `cut` 在小文件上通常非常快，但在大文件上可能不如流式优化工具。
+    * **短行测试 (Short Lines)**: 针对海量短行数据（如 8600万行，1.7GB）进行测试，主要考察每行处理的固定开销。
+* **文件连接 (Join)**:
+    * **数据准备**: 将大文件拆分为两个文件（例如：左文件含列 1-15，右文件含列 1, 16-29），并**随机打乱**
+      行顺序，但保留公共键（列 1）。
+    * 逻辑: 基于公共键将两个乱序文件重新连接。
+    * 基准: `tva join` vs `join` (Unix - 需先 sort) vs `qsv join` vs `tsv-join` vs `csvtk join`。
+    * 目的: 测试哈希表构建和查找的内存与速度平衡。
+* **统计摘要 (Summary Statistics)**:
+    * 逻辑: 计算多个列的 Count, Sum, Min, Max, Mean, Stdev。
+    * 基准: `tva stats` vs `datamash` vs `tsv-summarize` vs `qsv stats` vs `csvtk summary`。
+* **CSV 转 TSV (CSV to TSV)**:
+    * 逻辑: 处理包含转义字符和嵌入换行符的复杂 CSV。
+    * 基准: `tva from csv` vs `qsv fmt` vs `csvtk csv2tab` vs `csv2tsv` (tsv-utils)。
+    * 目的: 这是一个高计算密集型任务，测试 CSV 解析器的性能。
+* **加权随机采样 (Weighted Sampling)**:
+    * 逻辑: 基于权重列进行加权随机采样 (Weighted Reservoir Sampling)。
+    * 基准: `tva sample --weight` vs `tsv-sample` vs `qsv sample` (如果支持)。
+    * 目的: 测试复杂算法与 I/O 的结合效率。
+* **去重 (Deduplication)**:
+    * 逻辑: 基于特定列进行哈希去重。
+    * 基准: `tva uniq` vs `tsv-uniq` vs `awk` vs `sort | uniq`。
+    * 目的: 测试哈希表性能和内存管理。
+* **排序 (Sorting)**:
+    * 逻辑: 基于数值列进行排序。
+    * 基准: `tva sort` vs `sort` (GNU) vs `tsv-sort`。
+    * 目的: 测试外部排序算法和内存使用。
+* **切片 (Slicing)**:
+    * 逻辑: 提取文件中间的大段行 (如第 100万 到 200万 行)。
+    * 基准: `tva slice` vs `sed` vs `tail | head`。
+    * 目的: 测试快速跳过行的能力。
+* **反转 (Reverse)**:
+    * 逻辑: 反转整个文件的行序。
+    * 基准: `tva reverse` vs `tac`。
+* **追加 (Append)**:
+    * 逻辑: 连接多个大文件。
+    * 基准: `tva append` vs `cat`。
+* **导出 CSV (Export to CSV)**:
+    * 逻辑: 将 TSV 转换为标准 CSV (处理转义)。
+    * 基准: `tva to csv` vs `qsv fmt`。
 
 ## 4. 执行环境与记录
 
-*   **硬件记录**: 必须记录 CPU 型号、核心数、RAM 大小以及**磁盘类型** (NVMe SSD 对 I/O 密集型测试影响巨大)。
-*   **软件版本**:
-    *   Rust 编译器版本 (`rustc --version`)。
-    *   所有对比工具的版本 (`qsv --version`, `awk --version` 等)。
-*   **预热 (Warmup)**: 使用 `hyperfine --warmup` 确保文件系统缓存处于一致状态（通常是热缓存状态）。
+* **硬件记录**: 必须记录 CPU 型号、核心数、RAM 大小以及**磁盘类型** (NVMe SSD 对 I/O
+  密集型测试影响巨大)。
+* **软件版本**:
+    * Rust 编译器版本 (`rustc --version`)。
+    * 所有对比工具的版本 (`qsv --version`, `awk --version` 等)。
+* **预热 (Warmup)**: 使用 `hyperfine --warmup` 确保文件系统缓存处于一致状态（通常是热缓存状态）。
 
 ## 5. 执行工作流示例
 
@@ -211,38 +219,7 @@ hyperfine \
     -n "tva append" "tva append hepmass.tsv hepmass.tsv > /dev/null" \
     -n "cat" "cat hepmass.tsv hepmass.tsv > /dev/null"
 
-# 3. 结果处理与可视化 (Process & Visualize)
-# ------------------------------
-
-# 使用 Python 绘图 (内联脚本)
-# uv pip install --system pandas seaborn matplotlib
-python3 -c "
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-# 读取 hyperfine 的 CSV 数据
-df = pd.read_csv('benchmark_filter.csv')
-
-# 简单的条形图
-plt.figure(figsize=(10, 6))
-sns.barplot(x='mean', y='command', data=df)
-plt.title('Benchmark Results (Filter): Execution Time (s)')
-plt.xlabel('Time (seconds)')
-plt.tight_layout()
-plt.savefig('benchmark_plot.png')
-print('Plot saved to benchmark_plot.png')
-"
 ```
-
-## 6. 优化目标
-
-*   **内存使用**: 确保流式命令（filter, select, from-csv）保持 O(1) 内存使用。
-*   **零拷贝**: 尽可能使用零拷贝解析技术（类似 `csv` crate 的 `ByteRecord`）。
-*   **I/O 效率**: 确保所有读写操作都经过 `BufReader`/`BufWriter` 缓冲。
-*   **构建优化**:
-    *   **LTO (Link Time Optimization)**: `Cargo.toml` 中已启用 `lto = true`，这对减少二进制大小和提高运行时性能至关重要。
-    *   **PGO (Profile Guided Optimization)**: 未来探索方向。使用真实工作负载数据来指导编译器优化，进一步压榨性能。
 
 ## 7. expr 对比 专用命令
 
@@ -253,37 +230,37 @@ print('Plot saved to benchmark_plot.png')
 ```bash
 hyperfine \
     --warmup 3 \
-    --min-runs 10 \
-    --export-csv expr_filter.csv \
+    --min-runs 50 \
+    --export-markdown expr_filter.tmp.md \
     -n "xan filter" "xan filter 'carat > 1 and cut eq \"Premium\" and price < 3000' docs/data/diamonds.tsv > /dev/null" \
     -n "tva expr -m skip-null" "tva expr -H -m skip-null -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv > /dev/null" \
     -n "tva expr -m filter" "tva expr -H -m filter -E '@carat > 1 and @cut eq q(Premium) and @price < 3000' docs/data/diamonds.tsv > /dev/null" \
     -n "tva filter" "tva filter -H --gt carat:1 --str-eq cut:Premium --lt price:3000 docs/data/diamonds.tsv > /dev/null"
 ```
 
-```
-  tva filter ran
-    2.31 ± 0.09 times faster than tva expr -m filter
-    2.83 ± 0.14 times faster than tva expr -m skip-null
-    3.46 ± 0.11 times faster than xan filter
-```
+| Command                 |  Mean [ms] | Min [ms] | Max [ms] |    Relative |
+|:------------------------|-----------:|---------:|---------:|------------:|
+| `xan filter`            | 52.4 ± 0.7 |     50.9 |     54.7 | 3.37 ± 0.21 |
+| `tva expr -m skip-null` | 43.7 ± 1.7 |     41.7 |     50.8 | 2.81 ± 0.20 |
+| `tva expr -m filter`    | 35.4 ± 0.9 |     34.3 |     38.4 | 2.27 ± 0.15 |
+| `tva filter`            | 15.6 ± 1.0 |     14.5 |     20.1 |        1.00 |
 
 * select
 
 ```bash
 hyperfine \
     --warmup 3 \
-    --min-runs 10 \
-    --export-csv expr_select.csv \
+    --min-runs 50 \
+    --export-markdown expr_select.tmp.md \
     -n "xan select" "xan select 'carat,cut,price' docs/data/diamonds.tsv > /dev/null" \
     -n "xan select -e" "xan select -e '[carat, cut, price]' docs/data/diamonds.tsv > /dev/null" \
     -n "tva expr -m eval" "tva expr -H -m eval -E '[@carat, @cut, @price]' docs/data/diamonds.tsv > /dev/null" \
     -n "tva select" "tva select -H -f carat,cut,price docs/data/diamonds.tsv > /dev/null"
 ```
 
-```
-  tva select ran
-    3.22 ± 0.10 times faster than tva expr -m eval
-    3.23 ± 0.10 times faster than xan select
-    3.76 ± 0.09 times faster than xan select -e
-```
+| Command            |  Mean [ms] | Min [ms] | Max [ms] |    Relative |
+|:-------------------|-----------:|---------:|---------:|------------:|
+| `xan select`       | 47.1 ± 1.8 |     45.5 |     54.7 | 3.26 ± 0.16 |
+| `xan select -e`    | 54.8 ± 0.7 |     53.3 |     57.2 | 3.79 ± 0.13 |
+| `tva expr -m eval` | 46.8 ± 1.1 |     44.6 |     51.3 | 3.24 ± 0.12 |
+| `tva select`       | 14.5 ± 0.4 |     13.6 |     16.0 |        1.00 |
