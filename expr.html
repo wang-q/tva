@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Expr Language - tva Documentation</title>
+        <title>Expr Language &amp; Utilities - tva Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-93cc15a8.js";
+            window.path_to_searchindex_js = "searchindex-2faba0e3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-96593fed.js"></script>
+        <script src="toc-eb129ac0.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -235,9 +235,9 @@ tva expr -E "map([1,2,3,4,5], x =&gt; x * x)"
 <tr><th>Command</th><th>What it does</th><th>Input row</th><th>Output row</th></tr>
 </thead>
 <tbody>
-<tr><td><code>expr</code> / <code>expr -m eval</code></td><td>Evaluate to new row</td><td><code>a, b</code></td><td><code>c</code></td></tr>
-<tr><td><code>expr -m add</code></td><td>Add new column(s)</td><td><code>a, b</code></td><td><code>a, b, c</code></td></tr>
-<tr><td><code>expr -m mutate</code></td><td>Modify column value</td><td><code>a, b</code></td><td><code>a, c</code></td></tr>
+<tr><td><code>expr</code>/<code>expr -m eval</code></td><td>Evaluate to new row</td><td><code>a, b</code></td><td><code>c</code></td></tr>
+<tr><td><code>extend</code>/<code>expr -m extend</code></td><td>Add new column(s)</td><td><code>a, b</code></td><td><code>a, b, c</code></td></tr>
+<tr><td><code>mutate</code>/<code>expr -m mutate</code></td><td>Modify column value</td><td><code>a, b</code></td><td><code>a, c</code></td></tr>
 <tr><td><code>expr -m skip-null</code></td><td>Skip null results</td><td><code>a, b</code></td><td><code>c</code> or nothing</td></tr>
 <tr><td><code>expr -m filter</code></td><td>Keep or discard row</td><td><code>a, b</code></td><td><code>a, b</code> or nothing</td></tr>
 <tr><td><code>filter</code></td><td></td><td><code>a, b</code></td><td><code>a, b</code> or nothing</td></tr>
@@ -264,13 +264,13 @@ tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r 5
 </code></pre>
 <p>Use this mode when you want to compute new values without preserving the original columns.</p>
-<h3 id="add-mode--m-add-or--m-a"><a class="header" href="#add-mode--m-add-or--m-a"><code>add</code> mode (<code>-m add</code> or <code>-m a</code>)</a></h3>
+<h3 id="extend-mode--m-extend-or--m-a"><a class="header" href="#extend-mode--m-extend-or--m-a"><code>extend</code> mode (<code>-m extend</code> or <code>-m a</code>)</a></h3>
 <p>Evaluates the expression and appends the result as new column(s) to the original row.</p>
 <pre><code class="language-bash"># Add a single column
-tva expr -H -m add -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r 5
+tva expr -H -m extend -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r 5
 
 # Add multiple columns using list expression
-tva expr -H -m add -E "[@price / @carat as @price_per_carat, @carat as @carat_rounded]" docs/data/diamonds.tsv | tva slice -r 5
+tva expr -H -m extend -E "[@price / @carat as @price_per_carat, @carat as @carat_rounded]" docs/data/diamonds.tsv | tva slice -r 5
 </code></pre>
 <p>Key behaviors:</p>
 <ul>
