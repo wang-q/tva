@@ -413,7 +413,7 @@ pub fn parse_field_list_with_header_preserve_order(
                 // split_name_range_token("-2") -> start="", end="2". Returns None.
                 // So we fall here.
                 // Check if it is a number.
-                if let Ok(_) = token.parse::<isize>() {
+                if token.parse::<isize>().is_ok() {
                     return Err(format!("field index must be >= 1 in `{}`", spec));
                 }
                 return Err(format!(
@@ -512,7 +512,7 @@ pub fn parse_field_list_with_header_preserve_order(
                         }
                     } else {
                         // Check if it looks like a number <= 0
-                        if let Ok(_) = token.parse::<isize>() {
+                        if token.parse::<isize>().is_ok() {
                             return Err(format!(
                                 "field name `{}` requires header in `{}`",
                                 token, spec

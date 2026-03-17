@@ -20,7 +20,7 @@ pub fn build_lambda(pair: Pair<Rule>) -> Result<Expr, ParseError> {
         }
     }
 
-    let body = body.ok_or_else(|| ParseError::EmptyExpression)?;
+    let body = body.ok_or(ParseError::EmptyExpression)?;
     let body = transform_lambda_params(body, &params);
 
     Ok(Expr::Lambda {

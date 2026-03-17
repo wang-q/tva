@@ -26,7 +26,7 @@ pub fn build_expr(pair: Pair<super::Rule>) -> Result<Expr, ParseError> {
         super::Rule::expr_list => build_full_expr(pair),
         super::Rule::expr => {
             let mut inner = pair.into_inner();
-            let bind_pair = inner.next().ok_or_else(|| ParseError::EmptyExpression)?;
+            let bind_pair = inner.next().ok_or(ParseError::EmptyExpression)?;
             build_expr(bind_pair)
         }
         super::Rule::bind => build_bind(pair),
@@ -46,7 +46,7 @@ pub fn build_expr(pair: Pair<super::Rule>) -> Result<Expr, ParseError> {
             let inner = pair
                 .into_inner()
                 .next()
-                .ok_or_else(|| ParseError::EmptyExpression)?;
+                .ok_or(ParseError::EmptyExpression)?;
             build_expr(inner)
         }
         super::Rule::lambda_single_param => build_lambda(pair),

@@ -2,7 +2,7 @@ use super::{Expr, ParseError};
 use pest::iterators::Pair;
 
 pub fn build_primary(pair: Pair<super::super::Rule>) -> Result<Expr, ParseError> {
-    for inner in pair.into_inner() {
+    if let Some(inner) = pair.into_inner().next() {
         return super::build_expr(inner);
     }
     Err(ParseError::EmptyExpression)

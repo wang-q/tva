@@ -7,7 +7,7 @@ pub fn build_postfix(pair: Pair<Rule>) -> Result<Expr, ParseError> {
     let mut inner = pair.into_inner();
 
     // First element can be func_call or primary
-    let first_pair = inner.next().ok_or_else(|| ParseError::EmptyExpression)?;
+    let first_pair = inner.next().ok_or(ParseError::EmptyExpression)?;
 
     // If it's a func_call, return it directly (no method chain after standalone func_call)
     if first_pair.as_rule() == Rule::func_call {
