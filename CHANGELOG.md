@@ -2,6 +2,26 @@
 
 ## Unreleased - ReleaseDate
 
+### Added
+
+#### New Commands
+- **`extend`**: New command as an alias for `expr -m extend`. Appends new columns to each row based on expressions.
+- **`mutate`**: New command as an alias for `expr -m mutate`. Modifies existing column values in place.
+
+#### Expr Language (`expr` command)
+- **New output modes** (unified under `--mode` / `-m` flag):
+    - `eval` (default): Evaluate expression and output only the result
+    - `extend` (alias: `a`): Append expression results as new columns to original rows
+    - `mutate` (alias: `u`): Modify existing columns using expressions with `as @column` binding
+    - `skip-null` (alias: `s`): Skip rows where expression evaluates to null
+    - `filter` (alias: `f`): Keep only rows where expression evaluates to true
+- **List expression expansion**: Support for expanding list expressions into multiple columns
+- **`execute_with_mode` API**: Added public function to allow command aliases to execute expr with specific modes
+
+#### Documentation
+- **Benchmarks**: Added comprehensive benchmark comparisons between `expr` modes and dedicated commands (`filter`, `select`)
+- **Updated command references**: README.md and `tva --help` now include `extend` and `mutate` commands
+
 ## 0.3.0 - 2026-03-16
 
 ### Added

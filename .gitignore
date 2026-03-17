@@ -109,3 +109,6 @@ coverage.*
 
 # Temporary markdown files
 *.tmp.md
+
+# Temporary git log and diff files
+git*.txt
