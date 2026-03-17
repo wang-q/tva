@@ -42,14 +42,6 @@ cargo build
 
 `datamash` 是命令行统计分析的标杆工具。`tva` 可以借鉴其在数据验证和交叉制表方面的设计。
 
-#### 2. 交叉制表 (Crosstab / Pivot Table)
-
-* **功能**: `crosstab` 命令。
-* **特性**:
-    * 计算两个分类变量之间的关系矩阵。
-    * 支持 `count` (默认), `sum`, `unique` 等聚合操作。
-* **借鉴**: `tva` 目前通过 `wider` 实现类似功能，但 `crosstab` 作为一种专门的统计视图，其简洁性（自动处理行列标签）值得参考。
-
 #### 5. 逐行转换操作 (Per-Line Operations)
 
 * **特性**: datamash 提供大量逐行转换操作，无需分组即可使用：

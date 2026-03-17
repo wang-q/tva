@@ -33,8 +33,6 @@ Fast, reliable TSV processing toolkit in Rust.
 *   **TSV-first**: Prioritizes the reliability and simplicity of tab-separated values.
 *   **Performance**: Single-pass execution with minimal memory overhead.
 
-See [Design Documentation](docs/design.md) for details.
-
 **[Read the documentation online](https://wang-q.github.io/tva/)**
 
 ## Installation

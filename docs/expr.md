@@ -117,7 +117,7 @@ tva expr -n "score" -r "85" -E 'if(@score >= 60, "pass", "fail")'
 tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r -5
 
 # Filter rows using --skip-null
-tva expr -H --skip-null -E 'if(@carat > 1 and @price < 3000, @0, null)' docs/data/diamonds.tsv
+tva expr -H --skip-null -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv
 ```
 
 ### `tva map` - Add New Column
