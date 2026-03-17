@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2faba0e3.js";
+            window.path_to_searchindex_js = "searchindex-c10033f8.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-eb129ac0.js"></script>
@@ -181,26 +181,30 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="性能基准测试计划"><a class="header" href="#性能基准测试计划">性能基准测试计划</a></h1>
-<p>我们旨在重现 <a href="https://github.com/eBay/tsv-utils/blob/master/docs/comparative-benchmarks-2017.md">tsv-utils</a> 使用的严格基准测试策略。</p>
+<p>我们旨在重现 <a href="https://github.com/eBay/tsv-utils/blob/master/docs/comparative-benchmarks-2017.md">tsv-utils</a>
+使用的严格基准测试策略。</p>
 <h2 id="1-基准工具"><a class="header" href="#1-基准工具">1. 基准工具</a></h2>
 <ul>
 <li><a href="https://github.com/eBay/tsv-utils">tsv-utils</a> (D): 主要性能对标目标。</li>
 <li><a href="https://github.com/jqnatividad/qsv">qsv</a> (Rust): xsv 的活跃分支，功能超级强大。</li>
 <li><a href="https://www.gnu.org/software/datamash/">GNU datamash</a> (C): 统计操作的标准。</li>
-<li><a href="https://www.gnu.org/software/gawk/">GNU awk</a> / <a href="https://invisible-island.net/mawk/">mawk</a> (C): 行过滤和基本处理的基准。</li>
+<li><a href="https://www.gnu.org/software/gawk/">GNU awk</a> / <a href="https://invisible-island.net/mawk/">mawk</a> (C):
+行过滤和基本处理的基准。</li>
 <li><a href="https://github.com/shenwei356/csvtk">csvtk</a> (Go): 另一个现代跨平台工具包。</li>
 </ul>
 <h2 id="2-测试数据集与策略"><a class="header" href="#2-测试数据集与策略">2. 测试数据集与策略</a></h2>
 <p>我们将使用不同规模的数据集来全面评估性能。</p>
 <h3 id="数据集来源"><a class="header" href="#数据集来源">数据集来源</a></h3>
 <ul>
-<li><strong>HEPMASS</strong> (4.8GB): <a href="https://archive.ics.uci.edu/ml/datasets/HEPMASS">UCI Machine Learning Repository</a>。
+<li><strong>HEPMASS</strong> (
+4.8GB): <a href="https://archive.ics.uci.edu/ml/datasets/HEPMASS">UCI Machine Learning Repository</a>。
 <ul>
 <li>内容: 约 700万行，29列数值数据。</li>
 <li>用途: 用于<strong>数值行过滤</strong>、<strong>列选择</strong>、<strong>统计摘要</strong>和<strong>文件连接</strong>测试。</li>
 </ul>
 </li>
-<li><strong>FIA Tree Data</strong> (2.7GB): <a href="https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html">USDA Forest Service</a>。
+<li><strong>FIA Tree Data</strong> (
+2.7GB): <a href="https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html">USDA Forest Service</a>。
 <ul>
 <li>内容: <code>TREE_GRM_ESTN.csv</code> 的前 1400 万行，包含混合文本和数值。</li>
 <li>用途: 用于<strong>正则行过滤</strong>和<strong>CSV 转 TSV</strong>测试。</li>
@@ -235,7 +239,8 @@
 <li><strong>正则行过滤 (Regex Filter)</strong>:
 <ul>
 <li>逻辑: 针对特定文本列的正则匹配 (例如 <code>[RD].*(ION[0-2])</code>)。</li>
-<li>基准: <code>tva filter --regex</code> vs <code>grep</code> / <code>awk</code> / <code>ripgrep</code> (如果适用) vs <code>tsv-filter</code> vs <code>qsv search</code>。</li>
+<li>基准: <code>tva filter --regex</code> vs <code>grep</code> / <code>awk</code> / <code>ripgrep</code> (如果适用) vs <code>tsv-filter</code> vs
+<code>qsv search</code>。</li>
 <li>注意: 区分全行匹配与特定字段匹配。</li>
 </ul>
 </li>
@@ -249,7 +254,8 @@
 </li>
 <li><strong>文件连接 (Join)</strong>:
 <ul>
-<li><strong>数据准备</strong>: 将大文件拆分为两个文件（例如：左文件含列 1-15，右文件含列 1, 16-29），并<strong>随机打乱</strong>行顺序，但保留公共键（列 1）。</li>
+<li><strong>数据准备</strong>: 将大文件拆分为两个文件（例如：左文件含列 1-15，右文件含列 1, 16-29），并<strong>随机打乱</strong>
+行顺序，但保留公共键（列 1）。</li>
 <li>逻辑: 基于公共键将两个乱序文件重新连接。</li>
 <li>基准: <code>tva join</code> vs <code>join</code> (Unix - 需先 sort) vs <code>qsv join</code> vs <code>tsv-join</code> vs <code>csvtk join</code>。</li>
 <li>目的: 测试哈希表构建和查找的内存与速度平衡。</li>
@@ -317,7 +323,8 @@
 </ul>
 <h2 id="4-执行环境与记录"><a class="header" href="#4-执行环境与记录">4. 执行环境与记录</a></h2>
 <ul>
-<li><strong>硬件记录</strong>: 必须记录 CPU 型号、核心数、RAM 大小以及<strong>磁盘类型</strong> (NVMe SSD 对 I/O 密集型测试影响巨大)。</li>
+<li><strong>硬件记录</strong>: 必须记录 CPU 型号、核心数、RAM 大小以及<strong>磁盘类型</strong> (NVMe SSD 对 I/O
+密集型测试影响巨大)。</li>
 <li><strong>软件版本</strong>:
 <ul>
 <li>Rust 编译器版本 (<code>rustc --version</code>)。</li>
@@ -440,41 +447,7 @@ hyperfine \
     -n "tva append" "tva append hepmass.tsv hepmass.tsv &gt; /dev/null" \
     -n "cat" "cat hepmass.tsv hepmass.tsv &gt; /dev/null"
 
-# 3. 结果处理与可视化 (Process &amp; Visualize)
-# ------------------------------
-
-# 使用 Python 绘图 (内联脚本)
-# uv pip install --system pandas seaborn matplotlib
-python3 -c "
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-# 读取 hyperfine 的 CSV 数据
-df = pd.read_csv('benchmark_filter.csv')
-
-# 简单的条形图
-plt.figure(figsize=(10, 6))
-sns.barplot(x='mean', y='command', data=df)
-plt.title('Benchmark Results (Filter): Execution Time (s)')
-plt.xlabel('Time (seconds)')
-plt.tight_layout()
-plt.savefig('benchmark_plot.png')
-print('Plot saved to benchmark_plot.png')
-"
 </code></pre>
-<h2 id="6-优化目标"><a class="header" href="#6-优化目标">6. 优化目标</a></h2>
-<ul>
-<li><strong>内存使用</strong>: 确保流式命令（filter, select, from-csv）保持 O(1) 内存使用。</li>
-<li><strong>零拷贝</strong>: 尽可能使用零拷贝解析技术（类似 <code>csv</code> crate 的 <code>ByteRecord</code>）。</li>
-<li><strong>I/O 效率</strong>: 确保所有读写操作都经过 <code>BufReader</code>/<code>BufWriter</code> 缓冲。</li>
-<li><strong>构建优化</strong>:
-<ul>
-<li><strong>LTO (Link Time Optimization)</strong>: <code>Cargo.toml</code> 中已启用 <code>lto = true</code>，这对减少二进制大小和提高运行时性能至关重要。</li>
-<li><strong>PGO (Profile Guided Optimization)</strong>: 未来探索方向。使用真实工作负载数据来指导编译器优化，进一步压榨性能。</li>
-</ul>
-</li>
-</ul>
 <h2 id="7-expr-对比-专用命令"><a class="header" href="#7-expr-对比-专用命令">7. expr 对比 专用命令</a></h2>
 <p>使用 <code>docs/data/diamonds.tsv</code></p>
 <ul>
@@ -482,35 +455,51 @@ print('Plot saved to benchmark_plot.png')
 </ul>
 <pre><code class="language-bash">hyperfine \
     --warmup 3 \
-    --min-runs 10 \
-    --export-csv expr_filter.csv \
+    --min-runs 50 \
+    --export-markdown expr_filter.tmp.md \
     -n "xan filter" "xan filter 'carat &gt; 1 and cut eq \"Premium\" and price &lt; 3000' docs/data/diamonds.tsv &gt; /dev/null" \
     -n "tva expr -m skip-null" "tva expr -H -m skip-null -E 'if(@carat &gt; 1 and @cut eq q(Premium) and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv &gt; /dev/null" \
     -n "tva expr -m filter" "tva expr -H -m filter -E '@carat &gt; 1 and @cut eq q(Premium) and @price &lt; 3000' docs/data/diamonds.tsv &gt; /dev/null" \
     -n "tva filter" "tva filter -H --gt carat:1 --str-eq cut:Premium --lt price:3000 docs/data/diamonds.tsv &gt; /dev/null"
 </code></pre>
-<pre><code>  tva filter ran
-    2.31 ± 0.09 times faster than tva expr -m filter
-    2.83 ± 0.14 times faster than tva expr -m skip-null
-    3.46 ± 0.11 times faster than xan filter
-</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Command</th><th style="text-align: right">Mean [ms]</th><th style="text-align: right">Min [ms]</th><th style="text-align: right">Max [ms]</th><th style="text-align: right">Relative</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>xan filter</code></td><td style="text-align: right">52.4 ± 0.7</td><td style="text-align: right">50.9</td><td style="text-align: right">54.7</td><td style="text-align: right">3.37 ± 0.21</td></tr>
+<tr><td style="text-align: left"><code>tva expr -m skip-null</code></td><td style="text-align: right">43.7 ± 1.7</td><td style="text-align: right">41.7</td><td style="text-align: right">50.8</td><td style="text-align: right">2.81 ± 0.20</td></tr>
+<tr><td style="text-align: left"><code>tva expr -m filter</code></td><td style="text-align: right">35.4 ± 0.9</td><td style="text-align: right">34.3</td><td style="text-align: right">38.4</td><td style="text-align: right">2.27 ± 0.15</td></tr>
+<tr><td style="text-align: left"><code>tva filter</code></td><td style="text-align: right">15.6 ± 1.0</td><td style="text-align: right">14.5</td><td style="text-align: right">20.1</td><td style="text-align: right">1.00</td></tr>
+</tbody>
+</table>
+</div>
 <ul>
 <li>select</li>
 </ul>
 <pre><code class="language-bash">hyperfine \
     --warmup 3 \
-    --min-runs 10 \
-    --export-csv expr_select.csv \
+    --min-runs 50 \
+    --export-markdown expr_select.tmp.md \
     -n "xan select" "xan select 'carat,cut,price' docs/data/diamonds.tsv &gt; /dev/null" \
     -n "xan select -e" "xan select -e '[carat, cut, price]' docs/data/diamonds.tsv &gt; /dev/null" \
     -n "tva expr -m eval" "tva expr -H -m eval -E '[@carat, @cut, @price]' docs/data/diamonds.tsv &gt; /dev/null" \
     -n "tva select" "tva select -H -f carat,cut,price docs/data/diamonds.tsv &gt; /dev/null"
 </code></pre>
-<pre><code>  tva select ran
-    3.22 ± 0.10 times faster than tva expr -m eval
-    3.23 ± 0.10 times faster than xan select
-    3.76 ± 0.09 times faster than xan select -e
-</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Command</th><th style="text-align: right">Mean [ms]</th><th style="text-align: right">Min [ms]</th><th style="text-align: right">Max [ms]</th><th style="text-align: right">Relative</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>xan select</code></td><td style="text-align: right">47.1 ± 1.8</td><td style="text-align: right">45.5</td><td style="text-align: right">54.7</td><td style="text-align: right">3.26 ± 0.16</td></tr>
+<tr><td style="text-align: left"><code>xan select -e</code></td><td style="text-align: right">54.8 ± 0.7</td><td style="text-align: right">53.3</td><td style="text-align: right">57.2</td><td style="text-align: right">3.79 ± 0.13</td></tr>
+<tr><td style="text-align: left"><code>tva expr -m eval</code></td><td style="text-align: right">46.8 ± 1.1</td><td style="text-align: right">44.6</td><td style="text-align: right">51.3</td><td style="text-align: right">3.24 ± 0.12</td></tr>
+<tr><td style="text-align: left"><code>tva select</code></td><td style="text-align: right">14.5 ± 0.4</td><td style="text-align: right">13.6</td><td style="text-align: right">16.0</td><td style="text-align: right">1.00</td></tr>
+</tbody>
+</table>
+</div>
 
                     </main>
 
