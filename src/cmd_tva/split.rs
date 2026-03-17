@@ -20,7 +20,7 @@ pub fn make_subcommand() -> Command {
                 .visible_alias("header")
                 .short('H')
                 .action(ArgAction::SetTrue)
-                .help("Treat first non-empty line as header and write it to every output file"),
+                .help("Treat first line as header and write it to every output file"),
         )
         .arg(
             Arg::new("header-in-only")
@@ -28,7 +28,7 @@ pub fn make_subcommand() -> Command {
                 .short('I')
                 .action(ArgAction::SetTrue)
                 .conflicts_with("header-in-out")
-                .help("Treat first non-empty line as header and do NOT write it to output files"),
+                .help("Treat first line as header and do NOT write it to output files"),
         )
         .arg(
             Arg::new("lines-per-file")

@@ -20,7 +20,7 @@ pub fn make_subcommand() -> Command {
                 .long("header")
                 .short('H')
                 .action(ArgAction::SetTrue)
-                .help("Treat the first non-empty line as header and always keep it"),
+                .help("Treat the first line as header and always keep it"),
         )
         .arg(
             Arg::new("num")

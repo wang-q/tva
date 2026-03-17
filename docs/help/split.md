@@ -27,7 +27,7 @@ Field syntax:
 Header behavior:
 
 * --header-in-out / -H
-  Treats the first non-empty line of the input as a header. The header is not
+  Treats the first line of the input as a header. The header is not
   counted against --lines-per-file and is written to every output file.
 
 Output:

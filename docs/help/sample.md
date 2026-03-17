@@ -13,7 +13,7 @@ Modes:
     Row order is preserved.
 
 Header behavior:
-*   `--header` / `-H`: Treats the first non-empty line of the input as a header.
+*   `--header` / `-H`: Treats the first line of the input as a header.
     The header is always written once at the top of the output. Sampling and
     shuffling are applied only to the remaining data rows.
 

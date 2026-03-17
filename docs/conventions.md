@@ -68,7 +68,7 @@ requirements, but parameter naming should remain consistent.
   `--header-in-only` (input has header, output does not write header). `--header` is an alias for
   `--header-in-out`.
 * `keep-header`: Uses `--lines N` / `-n` to specify number of header lines (default: 1)
-* `sample`: Uses simple `--header` / `-H` flag (treats first non-empty line as header)
+* `sample`: Uses simple `--header` / `-H` flag (treats first line as header)
 * `transpose`: Does not support header modes (processes all lines as data)
 
 **Multi-file Header Behavior:**
@@ -147,6 +147,30 @@ Boolean flags use `--flag` to enable, without a value:
 
 - `--header` not `--header true`
 - `--append` / `-a` not `--append true`
+
+## Expr Syntax
+
+The `expr` command supports a rich expression language for data transformation.
+
+* **Column references**: `@1`, `@2` (1-based) or `@name` (when headers provided)
+* **Whole row reference**: `@0` (original row data)
+* **Variables**: `@var_name` (bound by `as`, persists across rows)
+* **Global variables**: `@__index`, `@__file`, `@__row` (built-in)
+* **Arithmetic**: `+`, `-`, `*`, `/`, `%`, `**`
+* **Comparison**: `==`, `!=`, `<`, `<=`, `>`, `>=`
+* **String comparison**: `eq`, `ne`, `lt`, `le`, `gt`, `ge`
+* **Logical**: `and`, `or`, `not`
+* **String concatenation**: `++`
+* **Functions**: `trim()`, `upper()`, `lower()`, `len()`, `abs()`, `round()`, `min()`, `max()`, `if()`,
+  `default()`, `substr()`, `replace()`, `split()`, `join()`, `range()`, `map()`, `filter()`, `reduce()`
+* **Pipe operator**: `|` for chaining functions (e.g., `@name | trim() | upper()`)
+* **Underscore placeholder**: `_` for piped values in multi-argument functions (e.g., `@name | substr(_, 0, 3)`)
+* **Lambda expressions**: `x => x + 1` or `(x, y) => x + y`
+* **List literals**: `[1, 2, 3]` or `[@a, @b, @c]`
+* **Variable binding**: `as` for intermediate results (e.g., `@price * @qty as @total; @total * 0.9`)
+* **Method call syntax**: `@name.upper()`, `@num.abs()`
+
+Full expr syntax documentation is available at [here](https://wang-q.github.io/tva/expr.html).
 
 ## Error Handling
 

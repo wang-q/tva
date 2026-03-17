@@ -17,6 +17,12 @@ pub static HEADER_HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|
     extract_markdown_section(CONVENTIONS_FULL, "Header Handling")
 });
 
+/// Help text for expression syntax, extracted from docs/conventions.md.
+pub static EXPR_SYNTAX_HELP: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| {
+        extract_markdown_section(CONVENTIONS_FULL, "Expr Syntax")
+    });
+
 /// Extracts a section from a markdown document by its header.
 ///
 /// Finds the section starting with `## {section_name}` and returns everything
@@ -51,12 +57,12 @@ pub fn header_args() -> Vec<Arg> {
             .long("header")
             .short('H')
             .action(ArgAction::SetTrue)
-            .help("Treat the first non-empty line as header (FirstLine mode)"),
+            .help("Treat the first line as header (FirstLine mode)"),
         Arg::new("header-lines")
             .long("header-lines")
             .num_args(1)
             .value_parser(clap::value_parser!(usize))
-            .help("Treat exactly N non-empty lines as header (LinesN mode)"),
+            .help("Treat exactly N lines as header (LinesN mode, including empty lines)"),
         Arg::new("header-hash")
             .long("header-hash")
             .action(ArgAction::SetTrue)
@@ -79,11 +85,11 @@ pub fn header_args_with_columns() -> Vec<Arg> {
             .long("header")
             .short('H')
             .action(ArgAction::SetTrue)
-            .help("Treat the first non-empty line as header (contains column names)"),
+            .help("Treat the first line as header (FirstLine mode)"),
         Arg::new("header-hash1")
             .long("header-hash1")
             .action(ArgAction::SetTrue)
-            .help("Treat '#' lines plus next line as header (for column names)"),
+            .help("Treat '#' lines plus next line as header (HashLines1 mode)"),
     ]
 }
 
@@ -95,7 +101,7 @@ pub fn header_arg_basic() -> Arg {
         .long("header")
         .short('H')
         .action(ArgAction::SetTrue)
-        .help("Treat the first non-empty line as header")
+        .help("Treat the first line as header (FirstLine mode)")
 }
 
 /// Builds a `HeaderConfig` from parsed command-line arguments.

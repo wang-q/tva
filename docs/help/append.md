@@ -6,7 +6,7 @@ header awareness and optional source tracking.
 Header behavior:
 
 * Supports `--header` / `-H` and `--header-hash1` modes.
-* `--header` / `-H`: Treats the first non-empty line of each input as a header.
+* `--header` / `-H`: Treats the first line of each input as a header.
   Only the header from the first input is written; later headers are skipped.
 * `--header-hash1`: Treats consecutive '#' lines plus the next line as header.
   Only the header from the first input is written; later headers are skipped.

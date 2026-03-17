@@ -1,6 +1,6 @@
 use clap::*;
 
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{build_header_config, header_arg_basic};
 use crate::libs::expr::runtime;
 use crate::libs::expr::{fold_constants, parse_cached, resolve_columns};
 use crate::libs::io::map_io_err;
@@ -40,7 +40,7 @@ pub fn make_subcommand() -> Command {
                 .default_value("stdout")
                 .help("Output filename. [stdout] for screen"),
         )
-        .args(header_args_with_columns())
+        .arg(header_arg_basic())
         .arg(
             Arg::new("delimiter")
                 .long("delimiter")

@@ -24,6 +24,12 @@ fn main() -> anyhow::Result<()> {
                 .action(ArgAction::SetTrue)
                 .help("Print help on header handling and exit"),
         )
+        .arg(
+            Arg::new("help-expr")
+                .long("help-expr")
+                .action(ArgAction::SetTrue)
+                .help("Print help on expr syntax and exit"),
+        )
         .subcommand(cmd_tva::append::make_subcommand())
         .subcommand(cmd_tva::bin::make_subcommand())
         .subcommand(cmd_tva::blank::make_subcommand())
@@ -75,6 +81,12 @@ fn main() -> anyhow::Result<()> {
     if matches.get_flag("help-headers") {
         use tva::libs::cli::HEADER_HELP;
         println!("{}", *HEADER_HELP);
+        return Ok(());
+    }
+
+    if matches.get_flag("help-expr") {
+        use tva::libs::cli::EXPR_SYNTAX_HELP;
+        println!("{}", *EXPR_SYNTAX_HELP);
         return Ok(());
     }
 
