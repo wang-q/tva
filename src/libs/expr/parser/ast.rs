@@ -183,6 +183,24 @@ impl Expr {
         }
     }
 
+    /// Generate a header name for the expression.
+    /// Priority:
+    /// 1. as @name -> use name
+    /// 2. @column_name -> use column_name
+    /// 3. @1 with headers -> use headers[0]
+    /// 4. others -> use format()
+    pub fn header_name(&self, headers: &[String]) -> String {
+        match self.last_expr() {
+            Expr::Bind { name, .. } => name.clone(),
+            Expr::ColumnRef(ColumnRef::Name(name)) => name.clone(),
+            Expr::ColumnRef(ColumnRef::Index(idx)) if !headers.is_empty() => headers
+                .get(idx - 1)
+                .cloned()
+                .unwrap_or_else(|| self.format()),
+            _ => self.format(),
+        }
+    }
+
     /// Format the expression as a string for display (e.g., as column header)
     pub fn format(&self) -> String {
         match self {
@@ -1138,5 +1156,77 @@ mod tests {
         // it just wraps them in double quotes
         let string = Expr::string("hello \"world\"");
         assert_eq!(string.format(), "\"hello \"world\"\"");
+    }
+
+    #[test]
+    fn test_header_name_with_bind() {
+        // 1. as @name -> use name
+        let bind = Expr::Bind {
+            expr: Box::new(Expr::binary(
+                BinaryOp::Mul,
+                Expr::col_name("price"),
+                Expr::int(2),
+            )),
+            name: "total".to_string(),
+        };
+        assert_eq!(bind.header_name(&[]), "total");
+    }
+
+    #[test]
+    fn test_header_name_with_column_name() {
+        // 2. @column_name -> use column_name
+        let col_name = Expr::col_name("price");
+        assert_eq!(col_name.header_name(&[]), "price");
+    }
+
+    #[test]
+    fn test_header_name_with_column_index_and_headers() {
+        // 3. @1 with headers -> use headers[0]
+        let col_idx = Expr::col_idx(1);
+        let headers = vec!["name".to_string(), "age".to_string()];
+        assert_eq!(col_idx.header_name(&headers), "name");
+
+        let col_idx2 = Expr::col_idx(2);
+        assert_eq!(col_idx2.header_name(&headers), "age");
+    }
+
+    #[test]
+    fn test_header_name_with_column_index_out_of_bounds() {
+        // 3b. @3 with only 2 headers -> use format()
+        let col_idx = Expr::col_idx(3);
+        let headers = vec!["name".to_string(), "age".to_string()];
+        assert_eq!(col_idx.header_name(&headers), "@3");
+    }
+
+    #[test]
+    fn test_header_name_with_column_index_no_headers() {
+        // 4. @1 without headers -> use format()
+        let col_idx = Expr::col_idx(1);
+        assert_eq!(col_idx.header_name(&[]), "@1");
+    }
+
+    #[test]
+    fn test_header_name_with_other_exprs() {
+        // 4. others -> use format()
+        let binary =
+            Expr::binary(BinaryOp::Add, Expr::col_name("a"), Expr::col_name("b"));
+        assert_eq!(binary.header_name(&[]), "@a + @b");
+
+        let call = Expr::call("upper", vec![Expr::col_name("name")]);
+        assert_eq!(call.header_name(&[]), "upper(@name)");
+    }
+
+    #[test]
+    fn test_header_name_with_block() {
+        // Block's last expression is used
+        let exprs = vec![
+            Expr::col_name("price"),
+            Expr::Bind {
+                expr: Box::new(Expr::col_name("qty")),
+                name: "quantity".to_string(),
+            },
+        ];
+        let block = Expr::Block(exprs);
+        assert_eq!(block.header_name(&[]), "quantity");
     }
 }

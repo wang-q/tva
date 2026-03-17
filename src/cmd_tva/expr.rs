@@ -215,15 +215,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         .map(|s| s.to_string())
                         .collect();
 
-                    // Save original header name before optimization
-                    let header_name = parsed_expr.last_expr().format();
+                    // Generate header name using the new header_name() method
+                    // This handles as @name, @column_name, @1 with headers, etc.
+                    let header_name = parsed_expr.header_name(&headers);
 
                     // Optimize expression: resolve column names to indices
                     resolve_columns(&mut parsed_expr, &headers);
                     // Fold constant expressions for better performance
                     fold_constants(&mut parsed_expr);
 
-                    // Write header from the original formatted representation
+                    // Write header
                     writeln!(writer, "{}", header_name)?;
                     header_written = true;
                 }
