@@ -115,6 +115,12 @@ tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r -5
 # Header - price_per_carat carat
 tva expr -H -E "[@price / @carat as @price_per_carat, @carat]" docs/data/diamonds.tsv | tva slice -r -5
 
+cargo run --bin tva expr -H -m add -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r -5
+
+cargo run --bin tva expr -H -m add -E "[@price / @carat as @price_per_carat, @carat]" docs/data/diamonds.tsv | tva slice -r -5
+
+cargo run --bin tva expr -H -m add -E "[@price / @carat as @price_per_carat, @carat as @carat_rounded]" docs/data/diamonds.tsv | tva slice -r -5
+
 # Filter rows using -m skip-null
 tva expr -H -m s -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv
 

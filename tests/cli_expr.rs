@@ -1025,3 +1025,166 @@ fn expr_underscore_placeholder_with_file() {
         stdout
     );
 }
+
+#[test]
+fn expr_add_mode_basic() {
+    // Test add mode: append expression result to original row
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr", "-n", "name,age", "-r", "Alice,30", "-r", "Bob,25", "-m", "add",
+            "-E", "@age * 2",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Should have 2 lines (Alice and Bob) with original data + expression result
+    assert_eq!(lines.len(), 2, "Expected 2 output lines, got: {}", stdout);
+    // Check first line: Alice, 30, 60
+    let parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(
+        parts.len(),
+        3,
+        "Expected 3 columns in first line, got: {}",
+        lines[0]
+    );
+    assert_eq!(parts[0], "Alice", "Expected 'Alice' in first column");
+    assert_eq!(parts[1], "30", "Expected '30' in second column");
+    assert_eq!(parts[2], "60", "Expected '60' in third column");
+    // Check second line: Bob, 25, 50
+    let parts: Vec<&str> = lines[1].split('\t').collect();
+    assert_eq!(
+        parts.len(),
+        3,
+        "Expected 3 columns in second line, got: {}",
+        lines[1]
+    );
+    assert_eq!(parts[2], "50", "Expected '50' in third column");
+}
+
+#[test]
+fn expr_add_mode_with_header() {
+    // Test add mode with header: original headers + expression header
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-m",
+            "add",
+            "-E",
+            "@estimate * 2",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // First line should be original headers + expression header
+    let header_parts: Vec<&str> = lines[0].split('\t').collect();
+    // Original file has 5 columns (GEOID, NAME, variable, estimate, moe)
+    // Plus 1 expression column = 6 columns
+    assert!(
+        header_parts.len() >= 5,
+        "Expected at least 5 header columns, got: {}",
+        lines[0]
+    );
+    // Last header should be the expression
+    assert_eq!(
+        header_parts[header_parts.len() - 1],
+        "@estimate * 2",
+        "Expected '@estimate * 2' as last header, got: {}",
+        header_parts[header_parts.len() - 1]
+    );
+    // Check data line has same number of columns
+    let data_parts: Vec<&str> = lines[1].split('\t').collect();
+    assert_eq!(
+        data_parts.len(),
+        header_parts.len(),
+        "Data columns should match header columns"
+    );
+}
+
+#[test]
+fn expr_add_mode_list_expansion() {
+    // Test add mode with list expansion: multiple columns appended
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "name,age",
+            "-r",
+            "Alice,30",
+            "-m",
+            "add",
+            "-E",
+            "[@age, @age * 2, @age + 10]",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Should have 1 line with original 2 columns + 3 expression columns = 5 columns
+    let parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(
+        parts.len(),
+        5,
+        "Expected 5 columns (2 original + 3 list items), got: {}",
+        lines[0]
+    );
+    assert_eq!(parts[0], "Alice", "Expected 'Alice' in first column");
+    assert_eq!(parts[1], "30", "Expected '30' in second column");
+    assert_eq!(parts[2], "30", "Expected '30' (@age) in third column");
+    assert_eq!(parts[3], "60", "Expected '60' (@age * 2) in fourth column");
+    assert_eq!(parts[4], "40", "Expected '40' (@age + 10) in fifth column");
+}
+
+#[test]
+fn expr_add_mode_short_flag() {
+    // Test -m a short flag for add mode
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "price,qty",
+            "-r",
+            "100,2",
+            "-m",
+            "a",
+            "-E",
+            "@price * @qty",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    let parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(
+        parts.len(),
+        3,
+        "Expected 3 columns with -m a, got: {}",
+        lines[0]
+    );
+    assert_eq!(parts[2], "200", "Expected '200' in third column");
+}
+
+#[test]
+fn expr_add_mode_with_as_binding() {
+    // Test add mode with 'as' binding for custom header
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-m",
+            "add",
+            "-E",
+            "@estimate / @moe as @ratio",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // First line should be original headers + 'ratio'
+    let header_parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(
+        header_parts[header_parts.len() - 1],
+        "ratio",
+        "Expected 'ratio' as last header from 'as @ratio', got: {}",
+        header_parts[header_parts.len() - 1]
+    );
+}

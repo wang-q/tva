@@ -93,12 +93,13 @@ pub fn make_subcommand() -> Command {
                 .short('m')
                 .num_args(1)
                 .value_parser([
-                    PossibleValue::new("normal").alias("n"),
+                    PossibleValue::new("eval").alias("e"),
+                    PossibleValue::new("add").alias("a"),
                     PossibleValue::new("skip-null").alias("s"),
                     PossibleValue::new("filter").alias("f"),
                 ])
-                .default_value("normal")
-                .help("Output mode: normal (default), skip-null, or filter"),
+                .default_value("eval")
+                .help("Output mode: eval (default), add, skip-null, or filter"),
         )
 }
 
@@ -129,9 +130,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mode = args
         .get_one::<String>("mode")
         .map(|s| s.as_str())
-        .unwrap_or("normal");
+        .unwrap_or("eval");
     let skip_null = mode == "skip-null" || mode == "s";
     let filter_mode = mode == "filter" || mode == "f";
+    let add_mode = mode == "add" || mode == "a";
 
     // Parse the expression with caching
     let mut parsed_expr = parse_cached(&expr_str)
@@ -184,9 +186,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if filter_mode && !result.as_bool() {
                 continue;
             }
-            // In filter mode, output the original row; otherwise output the expression result
+            // In filter mode, output the original row;
+            // In add mode, output original row + expression result;
+            // Otherwise output the expression result
             if filter_mode {
                 writeln!(writer, "{}", row.join("\t"))?;
+            } else if add_mode {
+                // Add mode: append expression result columns to original row
+                let result_str = value_to_output(&result);
+                if result_str.is_empty() {
+                    writeln!(writer, "{}", row.join("\t"))?;
+                } else {
+                    writeln!(writer, "{}\t{}", row.join("\t"), result_str)?;
+                }
             } else {
                 writeln!(writer, "{}", value_to_output(&result))?;
             }
@@ -272,6 +284,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     if filter_mode {
                         // In filter mode, preserve original header
                         writeln!(writer, "{}", headers.join("\t"))?;
+                    } else if add_mode {
+                        // Add mode: append expression header names to original headers
+                        let header_names = parsed_expr.header_names(&headers);
+                        if header_names.is_empty() {
+                            writeln!(writer, "{}", headers.join("\t"))?;
+                        } else {
+                            writeln!(
+                                writer,
+                                "{}\t{}",
+                                headers.join("\t"),
+                                header_names.join("\t")
+                            )?;
+                        }
                     } else {
                         // Generate header names using the new header_names() method
                         // This handles as @name, @column_name, @1 with headers, etc.
@@ -297,6 +322,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // Process data rows
         let skip_null_flag = skip_null;
         let filter_mode_flag = filter_mode;
+        let add_mode_flag = add_mode;
         let globals_clone = globals.clone();
         let result: std::io::Result<()> = tsv_reader.for_each_record(|record| {
             // Split record into fields
@@ -331,6 +357,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if result.as_bool() {
                     // Output original row
                     writeln!(writer, "{}", row.join("\t"))
+                        .map_err(|e| std::io::Error::other(e.to_string()))?;
+                }
+                return Ok(());
+            }
+
+            // Add mode: append expression result to original row
+            if add_mode_flag {
+                let result_str = value_to_output(&result);
+                if result_str.is_empty() {
+                    writeln!(writer, "{}", row.join("\t"))
+                        .map_err(|e| std::io::Error::other(e.to_string()))?;
+                } else {
+                    writeln!(writer, "{}\t{}", row.join("\t"), result_str)
                         .map_err(|e| std::io::Error::other(e.to_string()))?;
                 }
                 return Ok(());
