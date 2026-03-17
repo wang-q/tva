@@ -60,8 +60,7 @@ fn main() -> anyhow::Result<()> {
         .after_help(
             r###"Subcommands groups:
 
-* Selection & Sampling: select, slice, sample
-* Filtering: filter
+* Selection & Sampling: select, filter, slice, sample
 * Ordering: sort, reverse, transpose
 * Statistics & Summary: stats, bin, uniq
 * Reshaping: longer, wider, fill, blank

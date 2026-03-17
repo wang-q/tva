@@ -7,17 +7,16 @@
 - [Benchmark Plan](benchmarks.md)
 
 # User Guide
-- [Selection & Sampling](selection.md)
-- [Filtering](filtering.md)
+- [Selection & Filtering](selection.md)
 - [Ordering](ordering.md)
 - [Statistics & Summary](statistics.md)
 - [Reshaping](reshape.md)
-- [Plotting](plot.md)
 - [Combining & Splitting](combining.md)
+- [Expr Language](expr.md)
 - [Formatting & Utilities](utilities.md)
+- [Plotting](plot.md)
 - [Import (from)](from.md)
 - [Export (to)](to.md)
-- [Expr Language & Utilities](expr.md)
 - [CSS Selectors](selectors.md)
 - [Common Conventions](conventions.md)
 

@@ -77,15 +77,12 @@ the [docs/data](https://github.com/wang-q/tva/tree/master/docs/data) directory o
 
 ## Commands
 
-### [Selection & Sampling](docs/selection.md)
+### [Selection & Filtering](docs/selection.md)
 
 - **`select`**: Select and reorder columns.
+- **`filter`**: Filter rows based on numeric, string, or regex.
 - **`slice`**: Slice rows by index (keep or drop). Supports multiple ranges and header preservation.
 - **`sample`**: Randomly sample rows (Bernoulli, reservoir, weighted).
-
-### [Filtering](docs/filtering.md)
-
-- **`filter`**: Filter rows based on numeric, string, regex, or date criteria.
 
 ### [Ordering](docs/ordering.md)
 
