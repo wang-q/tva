@@ -81,12 +81,12 @@ trim(@name)
 | `tva map`    | Add new column(s) to existing row       |
 | `tva mutate` | Modify existing column value            |
 
-| Command  | What it does        | Input row    | Output row              | Columns changed |
-|----------|---------------------|--------------|-------------------------|-----------------|
-| `expr`   | Evaluate to new row | `@a, @b, @c` | `@result`               | All (replaced)  |
-| `map`    | Add new column(s)   | `@a, @b`     | `@a, @b, @c`            | Added           |
-| `mutate` | Modify column value | `@a, @b, @c` | `@a, @b', @c`           | One updated     |
-| `filter` | Keep or discard row | `@a, @b, @c` | `@a, @b, @c` or nothing | None            |
+| Command  | What it does        | Input row | Output row          | Columns changed |
+|----------|---------------------|-----------|---------------------|-----------------|
+| `expr`   | Evaluate to new row | `@a, @b`  | `@c`                | All (replaced)  |
+| `map`    | Add new column(s)   | `@a, @b`  | `@a, @b, @c`        | Added           |
+| `mutate` | Modify column value | `@a, @b`  | `@a, @c`            | One updated     |
+| `filter` | Keep or discard row | `@a, @b`  | `@a, @b` or nothing | None            |
 
 Note: Use `tva filter` for simple filtering—it's ~2x faster. Use `tva expr --skip-null`
 only when you need features `tva filter` doesn't support (functions, complex expressions, etc.).
@@ -149,18 +149,6 @@ tva mutate -E '@cut | upper()' -c cut docs/data/diamonds.tsv
 # Replace with conditional value
 tva mutate -E 'if(@price >= 350, "expensive", "cheap")' -c price docs/data/diamonds.tsv
 ```
-
-## Performance Notes
-
-The expression engine includes several optimizations for better performance:
-
-* **Parse caching**: Expressions are parsed once and cached for all rows. Identical expressions reuse the cached AST.
-* **Column name resolution**: When headers are available, `@name` references are resolved to `@index` at parse time for O(1) access.
-* **Constant folding**: Constant sub-expressions (e.g., `2 + 3 * 4`) are pre-computed during parsing.
-* **Function registry**: Built-in functions are looked up once and cached, avoiding repeated hash map lookups.
-* **Hash algorithm**: Uses `ahash` for faster hash map operations.
-
-For best performance, use column indices (`@1`, `@2`) instead of names.
 
 ## Notes
 

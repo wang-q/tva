@@ -360,3 +360,17 @@ Source → Pest Parser → AST (Expr) → Direct Interpretation (eval)
 | Column Name Resolution | Compile-time name→index conversion | 3x |
 | Constant Folding | Compile-time constant evaluation | 10x |
 | HashMap (ahash) | Faster HashMap implementation | 6% |
+
+**Details**:
+
+* **Parse caching**: Expressions are parsed once and cached for all rows. Identical expressions
+  reuse the cached AST.
+* **Column name resolution**: When headers are available, `@name` references are resolved to
+  `@index` at parse time for O(1) access.
+* **Constant folding**: Constant sub-expressions (e.g., `2 + 3 * 4`) are pre-computed during
+  parsing.
+* **Function registry**: Built-in functions are looked up once and cached, avoiding repeated hash
+  map lookups.
+* **Hash algorithm**: Uses `ahash` for faster hash map operations.
+
+For best performance, use column indices (`@1`, `@2`) instead of names.

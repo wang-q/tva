@@ -523,7 +523,7 @@ pub fn range(args: &[Value]) -> Result<Value, EvalError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ahash::HashMapExt;
+    use ahash::{HashMap, HashMapExt};
 
     #[test]
     fn test_replace_nth_basic() {
@@ -638,7 +638,6 @@ mod tests {
     fn test_map() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Test map with lambda: map([1, 2, 3], |x| x * 2) -> [2, 4, 6]
         let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
@@ -682,7 +681,6 @@ mod tests {
     fn test_filter() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Test filter with lambda: filter([1, 2, 3, 4], |x| x > 2) -> [3, 4]
         let list = Value::List(vec![
@@ -730,7 +728,6 @@ mod tests {
     fn test_reduce() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Sum: |acc, x| acc + x
         let sum_lambda = Value::Lambda(LambdaValue {
@@ -784,7 +781,6 @@ mod tests {
     fn test_sort_by() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Test sort_by with string length: sort_by(["cherry", "apple", "pear"], s => len(s))
         let len_lambda = Value::Lambda(LambdaValue {
@@ -1399,7 +1395,6 @@ mod tests {
     fn test_reduce_lambda_insufficient_params() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Lambda with only 1 parameter should error
         let lambda = Value::Lambda(LambdaValue {
@@ -1421,7 +1416,6 @@ mod tests {
     fn test_sort_by_null() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let identity_lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1438,7 +1432,6 @@ mod tests {
     fn test_sort_by_non_list() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let identity_lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1454,7 +1447,6 @@ mod tests {
     fn test_map_with_empty_params_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Lambda with no parameters should trigger error in apply_lambda
         let empty_params_lambda = Value::Lambda(LambdaValue {
@@ -1475,7 +1467,6 @@ mod tests {
     fn test_filter_with_empty_params_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Lambda with no parameters should trigger error in apply_lambda
         let empty_params_lambda = Value::Lambda(LambdaValue {
@@ -1496,7 +1487,6 @@ mod tests {
     fn test_reduce_with_empty_params_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Lambda with no parameters - reduce checks for at least 2 params
         let empty_params_lambda = Value::Lambda(LambdaValue {
@@ -1517,7 +1507,6 @@ mod tests {
     fn test_sort_by_with_empty_params_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Lambda with no parameters should trigger error in apply_lambda
         let empty_params_lambda = Value::Lambda(LambdaValue {
@@ -1551,7 +1540,6 @@ mod tests {
     fn test_join_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1582,7 +1570,6 @@ mod tests {
     fn test_first_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1613,7 +1600,6 @@ mod tests {
     fn test_last_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1644,7 +1630,6 @@ mod tests {
     fn test_reverse_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1675,7 +1660,6 @@ mod tests {
     fn test_sort_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1706,7 +1690,6 @@ mod tests {
     fn test_unique_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1737,7 +1720,6 @@ mod tests {
     fn test_nth_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1768,7 +1750,6 @@ mod tests {
     fn test_slice_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1799,7 +1780,6 @@ mod tests {
     fn test_replace_nth_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1818,7 +1798,7 @@ mod tests {
     fn test_map_with_datetime() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
+
         use chrono::Utc;
 
         let dt = Value::DateTime(Utc::now());
@@ -1839,7 +1819,7 @@ mod tests {
     fn test_filter_with_datetime() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
+
         use chrono::Utc;
 
         let dt = Value::DateTime(Utc::now());
@@ -1860,7 +1840,7 @@ mod tests {
     fn test_reduce_with_datetime() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
+
         use chrono::Utc;
 
         let dt = Value::DateTime(Utc::now());
@@ -1885,7 +1865,7 @@ mod tests {
     fn test_sort_by_with_datetime() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
+
         use chrono::Utc;
 
         let dt = Value::DateTime(Utc::now());
@@ -1918,7 +1898,6 @@ mod tests {
     fn test_range_with_lambda() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1937,7 +1916,6 @@ mod tests {
     fn test_take_while_basic() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Create lambda: x => x < 4
         let lambda = Value::Lambda(LambdaValue {
@@ -1969,7 +1947,6 @@ mod tests {
     fn test_take_while_empty_list() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -1986,7 +1963,6 @@ mod tests {
     fn test_take_while_all_match() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Lambda always returns true
         let lambda = Value::Lambda(LambdaValue {
@@ -2004,7 +1980,6 @@ mod tests {
     fn test_take_while_no_match() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Lambda always returns false
         let lambda = Value::Lambda(LambdaValue {
@@ -2022,7 +1997,6 @@ mod tests {
     fn test_take_while_stops_at_first_false() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         // Lambda: x => x < 3 (stops at first element >= 3)
         let lambda = Value::Lambda(LambdaValue {
@@ -2052,7 +2026,6 @@ mod tests {
     fn test_take_while_with_null() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
@@ -2068,7 +2041,6 @@ mod tests {
     fn test_take_while_with_non_list() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-        use ahash::HashMap;
 
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
