@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-dca29512.js";
+            window.path_to_searchindex_js = "searchindex-c51875c0.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-560472fe.js"></script>
+        <script src="toc-2faa0315.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -236,58 +236,63 @@ cd tva
 <p>Alternatively, you can download individual files from
 the <a href="https://github.com/wang-q/tva/tree/master/docs/data">docs/data</a> directory on GitHub.</p>
 <h2 id="commands"><a class="header" href="#commands">Commands</a></h2>
-<h3 id="selection--filtering"><a class="header" href="#selection--filtering"><a href="#selection--filtering-documentation">Selection &amp; Filtering</a></a></h3>
+<h3 id="subset-selection"><a class="header" href="#subset-selection"><a href="#selection--filtering-documentation">Subset Selection</a></a></h3>
+<p>Select specific rows or columns from your data.</p>
 <ul>
 <li><strong><code>select</code></strong>: Select and reorder columns.</li>
-<li><strong><code>filter</code></strong>: Filter rows based on numeric, string, or regex.</li>
+<li><strong><code>filter</code></strong>: Filter rows based on numeric, string, or regex conditions.</li>
 <li><strong><code>slice</code></strong>: Slice rows by index (keep or drop). Supports multiple ranges and header preservation.</li>
 <li><strong><code>sample</code></strong>: Randomly sample rows (Bernoulli, reservoir, weighted).</li>
 </ul>
-<h3 id="ordering"><a class="header" href="#ordering"><a href="#ordering-documentation">Ordering</a></a></h3>
-<ul>
-<li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
-<li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
-<li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
-</ul>
-<h3 id="statistics--summary"><a class="header" href="#statistics--summary"><a href="#statistics-documentation">Statistics &amp; Summary</a></a></h3>
-<ul>
-<li><strong><code>stats</code></strong>: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.</li>
-<li><strong><code>bin</code></strong>: Discretize numeric values into bins (useful for histograms).</li>
-<li><strong><code>uniq</code></strong>: Deduplicate rows or count unique occurrences (supports equivalence classes).</li>
-</ul>
-<h3 id="reshaping"><a class="header" href="#reshaping"><a href="#reshaping-documentation">Reshaping</a></a></h3>
+<h3 id="data-transformation"><a class="header" href="#data-transformation"><a href="#data-transformation-documentation">Data Transformation</a></a></h3>
+<p>Transform the structure or values of your data.</p>
 <ul>
 <li><strong><code>longer</code></strong>: Reshape wide to long (unpivot). Requires a header row.</li>
 <li><strong><code>wider</code></strong>: Reshape long to wide (pivot). Supports aggregation via <code>--op</code> (sum, count, etc.).</li>
 <li><strong><code>fill</code></strong>: Fill missing values in selected columns (down/LOCF, const).</li>
 <li><strong><code>blank</code></strong>: Replace consecutive identical values in selected columns with empty strings (
 sparsify).</li>
-</ul>
-<h3 id="combining--splitting"><a class="header" href="#combining--splitting"><a href="#combining--splitting-documentation">Combining &amp; Splitting</a></a></h3>
-<ul>
-<li><strong><code>join</code></strong>: Join two files based on common keys.</li>
-<li><strong><code>append</code></strong>: Concatenate multiple TSV files, handling headers correctly.</li>
-<li><strong><code>split</code></strong>: Split a file into multiple files (by size, key, or random).</li>
+<li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
 </ul>
 <h3 id="expr-language"><a class="header" href="#expr-language"><a href="#tvas-expr-language">Expr Language</a></a></h3>
+<p>Expression-based transformations for complex data manipulation.</p>
 <ul>
 <li><strong><code>expr</code></strong>: Evaluate expressions and output results.</li>
 <li><strong><code>extend</code></strong>: Add new columns to each row (alias for <code>expr -m extend</code>).</li>
 <li><strong><code>mutate</code></strong>: Modify existing column values (alias for <code>expr -m mutate</code>).</li>
 </ul>
-<h3 id="formatting--utilities"><a class="header" href="#formatting--utilities"><a href="#formatting--utilities-documentation">Formatting &amp; Utilities</a></a></h3>
+<h3 id="data-organization"><a class="header" href="#data-organization"><a href="#data-organization-documentation">Data Organization</a></a></h3>
+<p>Organize and combine multiple datasets.</p>
 <ul>
-<li><strong><code>check</code></strong>: Validate TSV file structure (column counts, encoding).</li>
-<li><strong><code>nl</code></strong>: Add line numbers to rows.</li>
-<li><strong><code>keep-header</code></strong>: Run a shell command on the body of a TSV file, preserving the header.</li>
+<li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
+<li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
+<li><strong><code>join</code></strong>: Join two files based on common keys.</li>
+<li><strong><code>append</code></strong>: Concatenate multiple TSV files, handling headers correctly.</li>
+<li><strong><code>split</code></strong>: Split a file into multiple files (by size, key, or random).</li>
 </ul>
-<h3 id="plotting"><a class="header" href="#plotting"><a href="#plotting-documentation">Plotting</a></a></h3>
+<h3 id="statistics--summary"><a class="header" href="#statistics--summary"><a href="#statistics-documentation">Statistics &amp; Summary</a></a></h3>
+<p>Calculate statistics and summarize your data.</p>
+<ul>
+<li><strong><code>stats</code></strong>: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.</li>
+<li><strong><code>bin</code></strong>: Discretize numeric values into bins (useful for histograms).</li>
+<li><strong><code>uniq</code></strong>: Deduplicate rows or count unique occurrences (supports equivalence classes).</li>
+</ul>
+<h3 id="visualization"><a class="header" href="#visualization"><a href="#plotting-documentation">Visualization</a></a></h3>
+<p>Visualize your data in the terminal.</p>
 <ul>
 <li><strong><code>plot point</code></strong>: Draw scatter plots or line charts in the terminal.</li>
 <li><strong><code>plot box</code></strong>: Draw box plots (box-and-whisker plots) in the terminal.</li>
 <li><strong><code>plot bin2d</code></strong>: Draw 2D histograms/heatmaps in the terminal.</li>
 </ul>
+<h3 id="formatting--utilities"><a class="header" href="#formatting--utilities"><a href="#formatting--utilities-documentation">Formatting &amp; Utilities</a></a></h3>
+<p>Format and validate your data.</p>
+<ul>
+<li><strong><code>check</code></strong>: Validate TSV file structure (column counts, encoding).</li>
+<li><strong><code>nl</code></strong>: Add line numbers to rows.</li>
+<li><strong><code>keep-header</code></strong>: Run a shell command on the body of a TSV file, preserving the header.</li>
+</ul>
 <h3 id="import--export"><a class="header" href="#import--export">Import &amp; Export</a></h3>
+<p>Convert data to and from TSV format.</p>
 <ul>
 <li><strong><a href="#from-command-documentation"><code>from</code></a></strong>: Convert other formats to TSV (<code>csv</code>, <code>xlsx</code>, <code>html</code>).</li>
 <li><strong><a href="#to-command-documentation"><code>to</code></a></strong>: Convert TSV to other formats (<code>csv</code>, <code>xlsx</code>, <code>md</code>).</li>
@@ -1244,281 +1249,13 @@ multiple times.</li>
 ...
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="ordering-documentation"><a class="header" href="#ordering-documentation">Ordering Documentation</a></h1>
-<p>This document explains how to use the ordering commands in <code>tva</code>: <strong><code>sort</code></strong>, <strong><code>reverse</code></strong>, and *
-*<code>transpose</code>**. These commands allow you to rearrange the rows and columns of your data.</p>
+<h1 id="data-transformation-documentation"><a class="header" href="#data-transformation-documentation">Data Transformation Documentation</a></h1>
+<p>This document explains how to use the data transformation commands in <code>tva</code>: <strong><code>longer</code></strong>, *
+*<code>wider</code>**, <strong><code>fill</code></strong>, <strong><code>blank</code></strong>, and <strong><code>transpose</code></strong>. These commands allow you to reshape and
+restructure your data.</p>
 <h2 id="introduction-1"><a class="header" href="#introduction-1">Introduction</a></h2>
-<p>Ordering is a crucial step in data preparation and analysis. You might need to sort data to find the
-top items, reverse the order to see the most recent entries first, or transpose a matrix to swap
-rows and columns.</p>
-<ul>
-<li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
-<li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
-<li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
-</ul>
-<h2 id="sort-external-sort"><a class="header" href="#sort-external-sort"><code>sort</code> (External Sort)</a></h2>
-<p>The <code>sort</code> command sorts the lines of a TSV file based on the values in specified columns. It
-supports both lexicographic (string) and numeric sorting.</p>
-<h3 id="basic-usage-4"><a class="header" href="#basic-usage-4">Basic Usage</a></h3>
-<pre><code class="language-bash">tva sort [input_files...] [options]
-</code></pre>
-<ul>
-<li><strong><code>--key</code> / <code>-k</code></strong>: Specify the field(s) to use as the sort key. You can use 1-based indices (
-e.g., <code>1</code>, <code>2</code>) or ranges (e.g., <code>2,4-5</code>).</li>
-<li><strong><code>--numeric</code> / <code>-n</code></strong>: Compare the key fields numerically instead of lexicographically.</li>
-<li><strong><code>--reverse</code> / <code>-r</code></strong>: Reverse the sort result (descending order).</li>
-</ul>
-<h3 id="examples-3"><a class="header" href="#examples-3">Examples</a></h3>
-<h4 id="1-sort-by-a-single-column-lexicographic"><a class="header" href="#1-sort-by-a-single-column-lexicographic">1. Sort by a single column (Lexicographic)</a></h4>
-<p>Sort <code>docs/data/us_rent_income.tsv</code> by the <code>NAME</code> column (column 2):</p>
-<pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 2
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">01	Alabama	income	24476	136
-01	Alabama	rent	747	3
-02	Alaska	income	32940	508
-02	Alaska	rent	1200	13
-04	Arizona	income	27517	148
-</code></pre>
-<h4 id="2-sort-numerically"><a class="header" href="#2-sort-numerically">2. Sort numerically</a></h4>
-<p>Sort <code>docs/data/us_rent_income.tsv</code> by the <code>estimate</code> column (column 4) numerically:</p>
-<pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 4 -n
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
-05	Arkansas	rent	709	5
-01	Alabama	rent	747	3
-04	Arizona	rent	972	4
-02	Alaska	rent	1200	13
-</code></pre>
-<h4 id="3-sort-by-multiple-columns"><a class="header" href="#3-sort-by-multiple-columns">3. Sort by multiple columns</a></h4>
-<p>Sort first by <code>GEOID</code> (column 1), then by <code>NAME</code> (column 2):</p>
-<pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 1,2
-</code></pre>
-<h2 id="reverse-reverse-lines"><a class="header" href="#reverse-reverse-lines"><code>reverse</code> (Reverse Lines)</a></h2>
-<p>The <code>reverse</code> command reverses the order of lines in the input. This is similar to the Unix <code>tac</code>
-command but includes features specifically for tabular data, such as header preservation.</p>
-<h3 id="basic-usage-1-1"><a class="header" href="#basic-usage-1-1">Basic Usage</a></h3>
-<pre><code class="language-bash">tva reverse [input_files...] [options]
-</code></pre>
-<ul>
-<li><strong><code>--header</code> / <code>-H</code></strong>: Treat the first line as a header and keep it at the top of the output.</li>
-</ul>
-<h3 id="examples-1-1"><a class="header" href="#examples-1-1">Examples</a></h3>
-<h4 id="1-reverse-a-file-keeping-the-header"><a class="header" href="#1-reverse-a-file-keeping-the-header">1. Reverse a file keeping the header</a></h4>
-<p>Reverse <code>docs/data/us_rent_income.tsv</code> but keep the header line at the top:</p>
-<pre><code class="language-bash">tva reverse docs/data/us_rent_income.tsv --header
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
-06	California	rent	1358	3
-06	California	income	29454	109
-05	Arkansas	rent	709	5
-05	Arkansas	income	23789	165
-</code></pre>
-<h2 id="transpose-matrix-transpose"><a class="header" href="#transpose-matrix-transpose"><code>transpose</code> (Matrix Transpose)</a></h2>
-<p>The <code>transpose</code> command swaps the rows and columns of a TSV file. It reads the entire file into
-memory and performs a matrix transposition.</p>
-<h3 id="basic-usage-2-1"><a class="header" href="#basic-usage-2-1">Basic Usage</a></h3>
-<pre><code class="language-bash">tva transpose [input_file] [options]
-</code></pre>
-<h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
-<ul>
-<li><strong>Strict Mode</strong>: <code>transpose</code> expects a rectangular matrix. All rows must have the same number of
-columns as the first row. If the file is jagged (rows have different lengths), the command will
-fail with an error.</li>
-<li><strong>Memory Usage</strong>: Since it reads the whole file, be cautious with very large files.</li>
-</ul>
-<h3 id="examples-2-1"><a class="header" href="#examples-2-1">Examples</a></h3>
-<h4 id="1-transpose-a-table"><a class="header" href="#1-transpose-a-table">1. Transpose a table</a></h4>
-<p>Transpose <code>docs/data/relig_income.tsv</code>:</p>
-<pre><code class="language-bash">tva transpose docs/data/relig_income.tsv
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">religion	Agnostic	Atheist	Buddhist
-&lt;$10k	27	12	27
-$10-20k	34	27	21
-$20-30k	60	37	30
-$30-40k	81	25	34
-</code></pre>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="statistics-documentation"><a class="header" href="#statistics-documentation">Statistics Documentation</a></h1>
-<p>This document explains how to use the statistics and summary commands in <code>tva</code>: <strong><code>stats</code></strong>, **<code>bin</code>
-**, and <strong><code>uniq</code></strong>. These commands allow you to summarize data, discretize values, and deduplicate
-rows.</p>
-<h2 id="introduction-2"><a class="header" href="#introduction-2">Introduction</a></h2>
-<ul>
-<li><strong><code>stats</code></strong>: Calculates summary statistics (like sum, mean, max) for fields, optionally grouping
-by key fields.</li>
-<li><strong><code>bin</code></strong>: Discretizes numeric values into bins (useful for histograms).</li>
-<li><strong><code>uniq</code></strong>: Deduplicates rows based on a key, with options for equivalence classes and occurrence
-numbering.</li>
-</ul>
-<h2 id="stats-summary-statistics"><a class="header" href="#stats-summary-statistics"><code>stats</code> (Summary Statistics)</a></h2>
-<p>The <code>stats</code> command calculates summary statistics for specified fields. It mimics the functionality
-of <code>tsv-summarize</code>.</p>
-<h3 id="basic-usage-5"><a class="header" href="#basic-usage-5">Basic Usage</a></h3>
-<pre><code class="language-bash">tva stats [input_files...] [options]
-</code></pre>
-<h3 id="options"><a class="header" href="#options">Options</a></h3>
-<ul>
-<li><strong><code>--header</code> / <code>-H</code></strong>: Treat the first line of each file as a header.</li>
-<li><strong><code>--group-by</code> / <code>-g</code></strong>: Fields to group by (e.g., <code>1</code>, <code>1,2</code>).</li>
-<li><strong><code>--count</code> / <code>-c</code></strong>: Count the number of rows.</li>
-<li><strong><code>--sum</code></strong>: Calculate sum of fields.</li>
-<li><strong><code>--mean</code></strong>: Calculate mean of fields.</li>
-<li><strong><code>--min</code></strong>: Calculate min of fields.</li>
-<li><strong><code>--max</code></strong>: Calculate max of fields.</li>
-<li><strong><code>--median</code></strong>: Calculate median of fields.</li>
-<li><strong><code>--stdev</code></strong>: Calculate standard deviation of fields.</li>
-<li><strong><code>--variance</code></strong>: Calculate variance of fields.</li>
-<li><strong><code>--mad</code></strong>: Calculate median absolute deviation of fields.</li>
-<li><strong><code>--first</code></strong>: Get the first value of fields.</li>
-<li><strong><code>--last</code></strong>: Get the last value of fields.</li>
-<li><strong><code>--unique</code></strong>: List unique values of fields (comma separated).</li>
-<li><strong><code>--collapse</code></strong>: List all values of fields (comma separated).</li>
-<li><strong><code>--rand</code></strong>: Pick a random value from fields.</li>
-</ul>
-<h3 id="examples-4"><a class="header" href="#examples-4">Examples</a></h3>
-<h4 id="1-calculate-basic-stats-for-a-column"><a class="header" href="#1-calculate-basic-stats-for-a-column">1. Calculate basic stats for a column</a></h4>
-<p>Calculate the mean and max of the <code>estimate</code> column in <code>docs/data/us_rent_income.tsv</code>:</p>
-<pre><code class="language-bash">tva stats docs/data/us_rent_income.tsv --header --mean estimate --max estimate
-</code></pre>
-<p>Output:</p>
-<pre><code class="language-tsv">estimate_mean	estimate_max
-14316.2	32940
-</code></pre>
-<h4 id="2-group-by-a-column"><a class="header" href="#2-group-by-a-column">2. Group by a column</a></h4>
-<p>Group by <code>variable</code> and calculate the mean of <code>estimate</code>:</p>
-<pre><code class="language-bash">tva stats docs/data/us_rent_income.tsv --header --group-by variable --mean estimate
-</code></pre>
-<p>Output:</p>
-<pre><code class="language-tsv">variable	estimate_mean
-income	27635.2
-rent	997.2
-</code></pre>
-<h4 id="3-count-rows-per-group"><a class="header" href="#3-count-rows-per-group">3. Count rows per group</a></h4>
-<p>Count the number of rows for each unique value in <code>NAME</code>:</p>
-<pre><code class="language-bash">tva stats docs/data/us_rent_income.tsv --header --group-by NAME --count
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">NAME	count
-Alabama	2
-Alaska	2
-Arizona	2
-Arkansas	2
-</code></pre>
-<h2 id="bin-discretize-values"><a class="header" href="#bin-discretize-values"><code>bin</code> (Discretize Values)</a></h2>
-<p>The <code>bin</code> command discretizes numeric values into bins. This is useful for creating histograms or
-grouping continuous data.</p>
-<h3 id="basic-usage-1-2"><a class="header" href="#basic-usage-1-2">Basic Usage</a></h3>
-<pre><code class="language-bash">tva bin [input_files...] --width &lt;width&gt; --field &lt;field&gt; [options]
-</code></pre>
-<h3 id="options-1"><a class="header" href="#options-1">Options</a></h3>
-<ul>
-<li><strong><code>--width</code> / <code>-w</code></strong>: Bin width (bucket size). Required.</li>
-<li><strong><code>--field</code> / <code>-f</code></strong>: Field to bin (1-based index or name). Required.</li>
-<li><strong><code>--min</code> / <code>-m</code></strong>: Alignment/Offset (bin start). Default: 0.0.</li>
-<li><strong><code>--new-name</code></strong>: Append as new column with this name (instead of replacing).</li>
-<li><strong><code>--header</code> / <code>-H</code></strong>: Input has header.</li>
-</ul>
-<h3 id="notes-1"><a class="header" href="#notes-1">Notes</a></h3>
-<ul>
-<li>Formula: <code>floor((value - min) / width) * width + min</code></li>
-<li>Replaces the value in the target field with the bin start (lower bound) unless <code>--new-name</code> is
-used.</li>
-</ul>
-<h3 id="examples-1-2"><a class="header" href="#examples-1-2">Examples</a></h3>
-<h4 id="1-bin-a-numeric-column"><a class="header" href="#1-bin-a-numeric-column">1. Bin a numeric column</a></h4>
-<p>Bin the <code>breaks</code> column in <code>docs/data/warpbreaks.tsv</code> with a width of 10:</p>
-<pre><code class="language-bash">tva bin docs/data/warpbreaks.tsv --header --width 10 --field breaks
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">wool	tension	breaks
-A	L	20
-A	L	30
-A	L	50
-A	M	10
-</code></pre>
-<h4 id="2-bin-with-alignment"><a class="header" href="#2-bin-with-alignment">2. Bin with alignment</a></h4>
-<p>Bin the <code>breaks</code> column, aligning bins to start at 5:</p>
-<pre><code class="language-bash">tva bin docs/data/warpbreaks.tsv --header --width 10 --min 5 --field breaks
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">wool	tension	breaks
-A	L	25
-A	L	25
-A	L	45
-A	M	15
-</code></pre>
-<h4 id="3-append-bin-as-a-new-column"><a class="header" href="#3-append-bin-as-a-new-column">3. Append bin as a new column</a></h4>
-<p>Bin the <code>breaks</code> column and append the result as <code>breaks_bin</code>:</p>
-<pre><code class="language-bash">tva bin docs/data/warpbreaks.tsv --header --width 10 --field breaks --new-name breaks_bin
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">wool	tension	breaks	breaks_bin
-A	L	26	20
-A	L	30	30
-A	L	54	50
-A	M	18	10
-</code></pre>
-<h2 id="uniq-deduplicate-rows"><a class="header" href="#uniq-deduplicate-rows"><code>uniq</code> (Deduplicate Rows)</a></h2>
-<p>The <code>uniq</code> command deduplicates rows of one or more TSV files without sorting. It uses a hash set to
-track unique keys.</p>
-<h3 id="basic-usage-2-2"><a class="header" href="#basic-usage-2-2">Basic Usage</a></h3>
-<pre><code class="language-bash">tva uniq [input_files...] [options]
-</code></pre>
-<h3 id="options-2"><a class="header" href="#options-2">Options</a></h3>
-<ul>
-<li><strong><code>--fields</code> / <code>-f</code></strong>: TSV fields (1-based) to use as dedup key.</li>
-<li><strong><code>--header</code> / <code>-H</code></strong>: Treat the first line of each input as a header.</li>
-<li><strong><code>--ignore-case</code> / <code>-i</code></strong>: Ignore case when comparing keys.</li>
-<li><strong><code>--repeated</code> / <code>-r</code></strong>: Output only lines that are repeated based on the key.</li>
-<li><strong><code>--at-least</code> / <code>-a</code></strong>: Output only lines that are repeated at least INT times.</li>
-<li><strong><code>--max</code> / <code>-m</code></strong>: Max number of each unique key to output (zero is ignored).</li>
-<li><strong><code>--equiv</code> / <code>-e</code></strong>: Append equivalence class IDs rather than only uniq entries.</li>
-<li><strong><code>--number</code> / <code>-z</code></strong>: Append occurrence numbers for each key.</li>
-</ul>
-<h3 id="examples-2-2"><a class="header" href="#examples-2-2">Examples</a></h3>
-<h4 id="1-deduplicate-whole-rows"><a class="header" href="#1-deduplicate-whole-rows">1. Deduplicate whole rows</a></h4>
-<pre><code class="language-bash">tva uniq docs/data/us_rent_income.tsv --header
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
-01	Alabama	income	24476	136
-01	Alabama	rent	747	3
-02	Alaska	income	32940	508
-</code></pre>
-<h4 id="2-deduplicate-by-a-specific-column"><a class="header" href="#2-deduplicate-by-a-specific-column">2. Deduplicate by a specific column</a></h4>
-<p>Deduplicate based on the <code>NAME</code> column:</p>
-<pre><code class="language-bash">tva uniq docs/data/us_rent_income.tsv --header -f NAME
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
-01	Alabama	income	24476	136
-02	Alaska	income	32940	508
-04	Arizona	income	27517	148
-05	Arkansas	income	23789	165
-</code></pre>
-<h4 id="3-output-repeated-lines-only"><a class="header" href="#3-output-repeated-lines-only">3. Output repeated lines only</a></h4>
-<p>Output lines where the <code>NAME</code> column appears more than once:</p>
-<pre><code class="language-bash">tva uniq docs/data/us_rent_income.tsv --header -f NAME --repeated
-</code></pre>
-<p>Output (first 5 lines):</p>
-<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
-01	Alabama	rent	747	3
-02	Alaska	rent	1200	13
-04	Arizona	rent	972	4
-05	Arkansas	rent	709	5
-</code></pre>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="reshaping-documentation"><a class="header" href="#reshaping-documentation">Reshaping Documentation</a></h1>
-<p>This document explains how to use the reshaping commands in <code>tva</code>: <strong><code>longer</code></strong>, <strong><code>wider</code></strong>, *
-*<code>fill</code>**, and <strong><code>blank</code></strong>. These commands are inspired by the data tidying philosophy of the R
-package <code>tidyr</code>.</p>
-<h2 id="introduction-3"><a class="header" href="#introduction-3">Introduction</a></h2>
-<p>Data reshaping involves changing the structure of a dataset without necessarily changing the
-information it contains. <code>tva</code> provides a suite of tools for these tasks:</p>
+<p>Data transformation involves changing the structure or values of a dataset. <code>tva</code> provides tools
+for:</p>
 <ul>
 <li><strong>Pivoting</strong>:
 <ul>
@@ -1532,6 +1269,11 @@ information it contains. <code>tva</code> provides a suite of tools for these ta
 <li><strong><code>blank</code></strong>: The inverse of <code>fill</code>; replaces repeated values with empty strings (sparsify).</li>
 </ul>
 </li>
+<li><strong>Transposition</strong>:
+<ul>
+<li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
+</ul>
+</li>
 </ul>
 <p><img src="images/reshape_diagram.svg" alt="Reshape Diagram"></p>
 <h2 id="longer-wide-to-long"><a class="header" href="#longer-wide-to-long"><code>longer</code> (Wide to Long)</a></h2>
@@ -1540,7 +1282,7 @@ column names that are actually values of a variable. For example, a table might 
 <code>2020</code>, <code>2021</code>, <code>2022</code> representing years. <code>longer</code> gathers these columns into a pair of key-value
 columns (e.g., <code>year</code> and <code>population</code>), making the data “longer” (more rows, fewer columns) and
 easier to analyze.</p>
-<h3 id="basic-usage-6"><a class="header" href="#basic-usage-6">Basic Usage</a></h3>
+<h3 id="basic-usage-4"><a class="header" href="#basic-usage-4">Basic Usage</a></h3>
 <pre><code class="language-bash">tva longer [input_files...] --cols &lt;columns&gt; [options]
 </code></pre>
 <ul>
@@ -1550,7 +1292,7 @@ easier to analyze.</p>
 default: “name”).</li>
 <li><strong><code>--values-to</code></strong>: The name of the new column that will store the data values (default: “value”).</li>
 </ul>
-<h2 id="examples-5"><a class="header" href="#examples-5">Examples</a></h2>
+<h2 id="examples-3"><a class="header" href="#examples-3">Examples</a></h2>
 <h3 id="1-string-data-in-column-names"><a class="header" href="#1-string-data-in-column-names">1. String Data in Column Names</a></h3>
 <p>Consider a dataset <code>docs/data/relig_income.tsv</code> where income brackets are spread across column
 names:</p>
@@ -1642,7 +1384,7 @@ Bob	2021	1	80
 <p>The <code>wider</code> command is the inverse of <code>longer</code>. It spreads a key-value pair across multiple columns,
 increasing the number of columns and decreasing the number of rows. This is useful for creating
 summary tables or reshaping data for tools that expect a matrix-like format.</p>
-<h3 id="basic-usage-1-3"><a class="header" href="#basic-usage-1-3">Basic Usage</a></h3>
+<h3 id="basic-usage-1-1"><a class="header" href="#basic-usage-1-1">Basic Usage</a></h3>
 <pre><code class="language-bash">tva wider [input_files...] --names-from &lt;column&gt; --values-from &lt;column&gt; [options]
 </code></pre>
 <ul>
@@ -1767,8 +1509,7 @@ A	L	54
 <pre><code class="language-bash">tva wider docs/data/warpbreaks.tsv --names-from wool --values-from breaks --op sum
 </code></pre>
 <p>Output:</p>
-<pre><code class="language-tsv">tension	A	B
-L	110	47
+<pre><code class="language-tsv tension A B">L	110	47
 M	68	62
 H	81	96
 </code></pre>
@@ -1780,8 +1521,7 @@ factor (here, <code>tension</code>), so you should specify it as the ID column.<
 <pre><code class="language-bash">tva wider docs/data/warpbreaks.tsv --names-from wool --op count --id-cols tension
 </code></pre>
 <p>Output:</p>
-<pre><code class="language-tsv">tension	A	B
-L	3	3
+<pre><code class="language-tsv tension A B">L	3	3
 M	3	3
 H	3	3
 </code></pre>
@@ -1826,7 +1566,7 @@ B       30  40
 <p>The <code>fill</code> command fills missing values in selected columns using the previous non-missing value (
 Last Observation Carried Forward, or LOCF) or a constant. This is common in time-series data or
 reports where values are only listed when they change.</p>
-<h3 id="basic-usage-2-3"><a class="header" href="#basic-usage-2-3">Basic Usage</a></h3>
+<h3 id="basic-usage-2-1"><a class="header" href="#basic-usage-2-1">Basic Usage</a></h3>
 <pre><code class="language-bash">tva fill [options]
 </code></pre>
 <ul>
@@ -1883,6 +1623,31 @@ B	1
 A	1
 	2
 B	1
+</code></pre>
+<h2 id="transpose-matrix-transpose"><a class="header" href="#transpose-matrix-transpose"><code>transpose</code> (Matrix Transpose)</a></h2>
+<p>The <code>transpose</code> command swaps the rows and columns of a TSV file. It reads the entire file into
+memory and performs a matrix transposition.</p>
+<h3 id="basic-usage-4-1"><a class="header" href="#basic-usage-4-1">Basic Usage</a></h3>
+<pre><code class="language-bash">tva transpose [input_file] [options]
+</code></pre>
+<h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
+<ul>
+<li><strong>Strict Mode</strong>: <code>transpose</code> expects a rectangular matrix. All rows must have the same number of
+columns as the first row. If the file is jagged (rows have different lengths), the command will
+fail with an error.</li>
+<li><strong>Memory Usage</strong>: Since it reads the whole file, be cautious with very large files.</li>
+</ul>
+<h3 id="examples-1-1"><a class="header" href="#examples-1-1">Examples</a></h3>
+<h4 id="transpose-a-table"><a class="header" href="#transpose-a-table">Transpose a table</a></h4>
+<p>Transpose <code>docs/data/relig_income.tsv</code>:</p>
+<pre><code class="language-bash">tva transpose docs/data/relig_income.tsv
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">religion	Agnostic	Atheist	Buddhist
+&lt;$10k	27	12	27
+$10-20k	34	27	21
+$20-30k	60	37	30
+$30-40k	81	25	34
 </code></pre>
 <h2 id="detailed-options"><a class="header" href="#detailed-options">Detailed Options</a></h2>
 <div class="table-wrapper">
@@ -1944,74 +1709,6 @@ B	1
 </tbody>
 </table>
 </div>
-<p><code>tva</code> brings the power of tidy data reshaping to the command line, allowing for efficient processing
-of large TSV files without loading them entirely into memory.</p>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="combining--splitting-documentation"><a class="header" href="#combining--splitting-documentation">Combining &amp; Splitting Documentation</a></h1>
-<p>This document explains how to use the combining and splitting commands in <code>tva</code>: <strong><code>join</code></strong>, *
-*<code>append</code>**, and <strong><code>split</code></strong>.</p>
-<h2 id="join"><a class="header" href="#join"><code>join</code></a></h2>
-<p>Joins lines from a TSV data stream against a filter file using one or more key fields.</p>
-<h3 id="examples-6"><a class="header" href="#examples-6">Examples</a></h3>
-<h4 id="1-join-two-files-by-a-common-key"><a class="header" href="#1-join-two-files-by-a-common-key">1. Join two files by a common key</a></h4>
-<p>Using <code>docs/data/who.tsv</code> (contains <code>iso3</code>) and <code>docs/data/world_bank_pop.tsv</code> (contains <code>country</code>
-with ISO3 codes):</p>
-<pre><code class="language-bash">tva join -H --filter-file docs/data/who.tsv --key-fields iso3 --data-fields country docs/data/world_bank_pop.tsv
-</code></pre>
-<p>Output:</p>
-<pre><code class="language-tsv">country	indicator	2000	2001
-AFG	SP.URB.TOTL	4436311	4648139
-AFG	SP.URB.GROW	3.91	4.66
-</code></pre>
-<h4 id="2-append-fields-from-the-filter-file"><a class="header" href="#2-append-fields-from-the-filter-file">2. Append fields from the filter file</a></h4>
-<p>To add the <code>year</code> column from <code>who.tsv</code> to the output:</p>
-<pre><code class="language-bash">tva join -H --filter-file docs/data/who.tsv -k iso3 -d country --append-fields year docs/data/world_bank_pop.tsv
-</code></pre>
-<p>Output:</p>
-<pre><code class="language-tsv">country	indicator	2000	2001	year
-AFG	SP.URB.TOTL	4436311	4648139	1980
-AFG	SP.URB.GROW	3.91	4.66	1980
-</code></pre>
-<h2 id="append"><a class="header" href="#append"><code>append</code></a></h2>
-<p>Concatenates TSV files with optional header awareness and source tracking.</p>
-<h3 id="examples-1-3"><a class="header" href="#examples-1-3">Examples</a></h3>
-<h4 id="1-concatenate-files-with-headers"><a class="header" href="#1-concatenate-files-with-headers">1. Concatenate files with headers</a></h4>
-<p>When appending multiple files with headers, use <code>-H</code> to keep only the header from the first file:</p>
-<pre><code class="language-bash">tva append -H docs/data/world_bank_pop.tsv docs/data/world_bank_pop.tsv
-</code></pre>
-<p>Output:</p>
-<pre><code class="language-tsv">country	indicator	2000	2001
-ABW	SP.URB.TOTL	42444	43048
-ABW	SP.URB.GROW	1.18	1.41
-AFG	SP.URB.TOTL	4436311	4648139
-AFG	SP.URB.GROW	3.91	4.66
-ABW	SP.URB.TOTL	42444	43048
-ABW	SP.URB.GROW	1.18	1.41
-AFG	SP.URB.TOTL	4436311	4648139
-AFG	SP.URB.GROW	3.91	4.66
-</code></pre>
-<h4 id="2-track-source-file"><a class="header" href="#2-track-source-file">2. Track source file</a></h4>
-<p>Add a column indicating the source file:</p>
-<pre><code class="language-bash">tva append -H --track-source docs/data/world_bank_pop.tsv
-</code></pre>
-<p>Output:</p>
-<pre><code class="language-tsv">file	country	indicator	2000	2001
-world_bank_pop	ABW	SP.URB.TOTL	42444	43048
-world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
-...
-</code></pre>
-<h2 id="split"><a class="header" href="#split"><code>split</code></a></h2>
-<p>Splits TSV rows into multiple output files.</p>
-<h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
-<p>Split <code>file.tsv</code> into multiple files with 1000 lines each:</p>
-<pre><code class="language-bash">tva split --lines-per-file 1000 --header-in-out file.tsv
-</code></pre>
-<p>Split <code>file.tsv</code> into 5 files randomly:</p>
-<pre><code class="language-bash">tva split --num-files 5 --header-in-out file.tsv
-</code></pre>
-<p>Split by key (rows with same key go to same file):</p>
-<pre><code class="language-bash">tva split --num-files 5 --key-fields 1 --header-in-out file.tsv
-</code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="tvas-expr-language"><a class="header" href="#tvas-expr-language">TVA’s expr language</a></h1>
 <p>The <code>expr</code> language evaluates expressions (like spreadsheet formulas) to transform TSV data.</p>
@@ -2151,7 +1848,7 @@ tva expr -H -m filter -E '@carat &gt; 1 and @cut eq q(Premium) and @price &lt; 3
 <li>Expression should return a boolean (non-zero numbers and non-empty strings are truthy)</li>
 <li>Similar to <code>tva filter</code> but allows complex expressions</li>
 </ul>
-<h2 id="notes-2"><a class="header" href="#notes-2">Notes</a></h2>
+<h2 id="notes-1"><a class="header" href="#notes-1">Notes</a></h2>
 <ul>
 <li><strong>Performance</strong>: For simple filtering or column selection, use <code>tva filter</code> or <code>tva select</code>
 instead - they are ~2x faster. Use <code>tva expr</code> only when you need functions, complex expressions,
@@ -2165,73 +1862,319 @@ or calculations.</li>
 useful for running totals</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="formatting--utilities-documentation"><a class="header" href="#formatting--utilities-documentation">Formatting &amp; Utilities Documentation</a></h1>
+<h1 id="data-organization-documentation"><a class="header" href="#data-organization-documentation">Data Organization Documentation</a></h1>
+<p>This document explains how to use the data organization commands in <code>tva</code>: <strong><code>sort</code></strong>, <strong><code>reverse</code></strong>,
+<strong><code>join</code></strong>, <strong><code>append</code></strong>, and <strong><code>split</code></strong>. These commands allow you to rearrange, combine, and split
+your data.</p>
+<h2 id="introduction-2"><a class="header" href="#introduction-2">Introduction</a></h2>
+<p>Data organization involves sorting rows, combining multiple datasets, or splitting data into
+multiple files. These operations are essential for data preparation and pipeline construction.</p>
 <ul>
-<li><strong><code>check</code></strong>: Validate TSV file structure.</li>
-<li><strong><code>nl</code></strong>: Add line numbers.</li>
-<li><strong><code>keep-header</code></strong>: Run a shell command on the body, preserving the header.</li>
-</ul>
-<h2 id="check"><a class="header" href="#check"><code>check</code></a></h2>
-<p>Checks TSV file structure for consistent field counts.</p>
-<h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
-<pre><code class="language-bash">tva check [files...]
-</code></pre>
-<p>It validates that every line in the file has the same number of fields as the first line. If a
-mismatch is found, it reports the error line and exits with a non-zero status.</p>
-<h3 id="examples-7"><a class="header" href="#examples-7">Examples</a></h3>
-<p>Check a single file:</p>
-<pre><code class="language-bash">tva check docs/data/household.tsv
-</code></pre>
-<p>Output:</p>
-<pre><code>2 lines, 5 fields
-</code></pre>
-<h2 id="nl"><a class="header" href="#nl"><code>nl</code></a></h2>
-<p>Adds line numbers to TSV rows.</p>
-<h3 id="usage-1-1"><a class="header" href="#usage-1-1">Usage</a></h3>
-<pre><code class="language-bash">tva nl [files...] [options]
-</code></pre>
-<p>Options:</p>
+<li><strong>Sorting &amp; Reversing</strong>:
 <ul>
-<li><code>-H</code> / <code>--header</code>: Treat the first line as a header. The header line is not numbered, and a “line”
-column is added to the header.</li>
-<li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies
-<code>-H</code>).</li>
-<li><code>-n &lt;N&gt;</code> / <code>--start-number &lt;N&gt;</code>: Start numbering from N (default: 1).</li>
+<li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
+<li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
 </ul>
-<h3 id="examples-1-4"><a class="header" href="#examples-1-4">Examples</a></h3>
-<p>Add line numbers (no header logic):</p>
-<pre><code class="language-bash">tva nl docs/data/household.tsv
+</li>
+<li><strong>Combining</strong>:
+<ul>
+<li><strong><code>join</code></strong>: Joins two files based on common keys.</li>
+<li><strong><code>append</code></strong>: Concatenates multiple TSV files, handling headers correctly.</li>
+</ul>
+</li>
+<li><strong>Splitting</strong>:
+<ul>
+<li><strong><code>split</code></strong>: Splits a file into multiple files (by size, key, or random).</li>
+</ul>
+</li>
+</ul>
+<h2 id="sort-external-sort"><a class="header" href="#sort-external-sort"><code>sort</code> (External Sort)</a></h2>
+<p>The <code>sort</code> command sorts the lines of a TSV file based on the values in specified columns. It
+supports both lexicographic (string) and numeric sorting.</p>
+<h3 id="basic-usage-5"><a class="header" href="#basic-usage-5">Basic Usage</a></h3>
+<pre><code class="language-bash">tva sort [input_files...] [options]
 </code></pre>
-<p>Output:</p>
-<pre><code class="language-tsv">1	family	dob_child1	dob_child2	name_child1	name_child2
-2	1	1998-11-26	2000-01-29	J	K
+<ul>
+<li><strong><code>--key</code> / <code>-k</code></strong>: Specify the field(s) to use as the sort key. You can use 1-based indices (
+e.g., <code>1</code>, <code>2</code>) or ranges (e.g., <code>2,4-5</code>).</li>
+<li><strong><code>--numeric</code> / <code>-n</code></strong>: Compare the key fields numerically instead of lexicographically.</li>
+<li><strong><code>--reverse</code> / <code>-r</code></strong>: Reverse the sort result (descending order).</li>
+</ul>
+<h3 id="examples-4"><a class="header" href="#examples-4">Examples</a></h3>
+<h4 id="1-sort-by-a-single-column-lexicographic"><a class="header" href="#1-sort-by-a-single-column-lexicographic">1. Sort by a single column (Lexicographic)</a></h4>
+<p>Sort <code>docs/data/us_rent_income.tsv</code> by the <code>NAME</code> column (column 2):</p>
+<pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 2
 </code></pre>
-<p>Add line numbers with header awareness:</p>
-<pre><code class="language-bash">tva nl -H docs/data/household.tsv
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">01	Alabama	income	24476	136
+01	Alabama	rent	747	3
+02	Alaska	income	32940	508
+02	Alaska	rent	1200	13
+04	Arizona	income	27517	148
 </code></pre>
-<p>Output:</p>
-<pre><code class="language-tsv">line	family	dob_child1	dob_child2	name_child1	name_child2
-1	1	1998-11-26	2000-01-29	J	K
+<h4 id="2-sort-numerically"><a class="header" href="#2-sort-numerically">2. Sort numerically</a></h4>
+<p>Sort <code>docs/data/us_rent_income.tsv</code> by the <code>estimate</code> column (column 4) numerically:</p>
+<pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 4 -n
 </code></pre>
-<h2 id="keep-header"><a class="header" href="#keep-header"><code>keep-header</code></a></h2>
-<p>Executes a shell command on the body of a TSV file, preserving the header.</p>
-<h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
-<pre><code class="language-bash">tva keep-header [files...] -- &lt;command&gt; [args...]
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+05	Arkansas	rent	709	5
+01	Alabama	rent	747	3
+04	Arizona	rent	972	4
+02	Alaska	rent	1200	13
 </code></pre>
-<p>The first line of the first input file is printed immediately. The remaining lines (and all lines
-from subsequent files) are piped to the specified command. The output of the command is then
-printed.</p>
-<h3 id="examples-2-3"><a class="header" href="#examples-2-3">Examples</a></h3>
-<p>Sort a file while keeping the header at the top:</p>
-<pre><code class="language-bash">tva keep-header data.tsv -- sort
+<h4 id="3-sort-by-multiple-columns"><a class="header" href="#3-sort-by-multiple-columns">3. Sort by multiple columns</a></h4>
+<p>Sort first by <code>GEOID</code> (column 1), then by <code>NAME</code> (column 2):</p>
+<pre><code class="language-bash">tva sort docs/data/us_rent_income.tsv -k 1,2
 </code></pre>
-<p>Grep for a pattern but keep the header:</p>
-<pre><code class="language-bash">tva keep-header docs/data/world_bank_pop.tsv -- grep "AFG"
+<h2 id="reverse-reverse-lines"><a class="header" href="#reverse-reverse-lines"><code>reverse</code> (Reverse Lines)</a></h2>
+<p>The <code>reverse</code> command reverses the order of lines in the input. This is similar to the Unix <code>tac</code>
+command but includes features specifically for tabular data, such as header preservation.</p>
+<h3 id="basic-usage-1-2"><a class="header" href="#basic-usage-1-2">Basic Usage</a></h3>
+<pre><code class="language-bash">tva reverse [input_files...] [options]
+</code></pre>
+<ul>
+<li><strong><code>--header</code> / <code>-H</code></strong>: Treat the first line as a header and keep it at the top of the output.</li>
+</ul>
+<h3 id="examples-1-2"><a class="header" href="#examples-1-2">Examples</a></h3>
+<h4 id="reverse-a-file-keeping-the-header"><a class="header" href="#reverse-a-file-keeping-the-header">Reverse a file keeping the header</a></h4>
+<p>Reverse <code>docs/data/us_rent_income.tsv</code> but keep the header line at the top:</p>
+<pre><code class="language-bash">tva reverse docs/data/us_rent_income.tsv --header
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+06	California	rent	1358	3
+06	California	income	29454	109
+05	Arkansas	rent	709	5
+05	Arkansas	income	23789	165
+</code></pre>
+<h2 id="join"><a class="header" href="#join"><code>join</code></a></h2>
+<p>Joins lines from a TSV data stream against a filter file using one or more key fields.</p>
+<h3 id="examples-2-1"><a class="header" href="#examples-2-1">Examples</a></h3>
+<h4 id="1-join-two-files-by-a-common-key"><a class="header" href="#1-join-two-files-by-a-common-key">1. Join two files by a common key</a></h4>
+<p>Using <code>docs/data/who.tsv</code> (contains <code>iso3</code>) and <code>docs/data/world_bank_pop.tsv</code> (contains <code>country</code>
+with ISO3 codes):</p>
+<pre><code class="language-bash">tva join -H --filter-file docs/data/who.tsv --key-fields iso3 --data-fields country docs/data/world_bank_pop.tsv
 </code></pre>
 <p>Output:</p>
 <pre><code class="language-tsv">country	indicator	2000	2001
 AFG	SP.URB.TOTL	4436311	4648139
 AFG	SP.URB.GROW	3.91	4.66
+</code></pre>
+<h4 id="2-append-fields-from-the-filter-file"><a class="header" href="#2-append-fields-from-the-filter-file">2. Append fields from the filter file</a></h4>
+<p>To add the <code>year</code> column from <code>who.tsv</code> to the output:</p>
+<pre><code class="language-bash">tva join -H --filter-file docs/data/who.tsv -k iso3 -d country --append-fields year docs/data/world_bank_pop.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">country	indicator	2000	2001	year
+AFG	SP.URB.TOTL	4436311	4648139	1980
+AFG	SP.URB.GROW	3.91	4.66	1980
+</code></pre>
+<h2 id="append"><a class="header" href="#append"><code>append</code></a></h2>
+<p>Concatenates TSV files with optional header awareness and source tracking.</p>
+<h3 id="examples-3-1"><a class="header" href="#examples-3-1">Examples</a></h3>
+<h4 id="1-concatenate-files-with-headers"><a class="header" href="#1-concatenate-files-with-headers">1. Concatenate files with headers</a></h4>
+<p>When appending multiple files with headers, use <code>-H</code> to keep only the header from the first file:</p>
+<pre><code class="language-bash">tva append -H docs/data/world_bank_pop.tsv docs/data/world_bank_pop.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">country	indicator	2000	2001
+ABW	SP.URB.TOTL	42444	43048
+ABW	SP.URB.GROW	1.18	1.41
+AFG	SP.URB.TOTL	4436311	4648139
+AFG	SP.URB.GROW	3.91	4.66
+ABW	SP.URB.TOTL	42444	43048
+ABW	SP.URB.GROW	1.18	1.41
+AFG	SP.URB.TOTL	4436311	4648139
+AFG	SP.URB.GROW	3.91	4.66
+</code></pre>
+<h4 id="2-track-source-file"><a class="header" href="#2-track-source-file">2. Track source file</a></h4>
+<p>Add a column indicating the source file:</p>
+<pre><code class="language-bash">tva append -H --track-source docs/data/world_bank_pop.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">file	country	indicator	2000	2001
+world_bank_pop	ABW	SP.URB.TOTL	42444	43048
+world_bank_pop	ABW	SP.URB.GROW	1.18	1.41
+...
+</code></pre>
+<h2 id="split"><a class="header" href="#split"><code>split</code></a></h2>
+<p>Splits TSV rows into multiple output files.</p>
+<h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
+<p>Split <code>file.tsv</code> into multiple files with 1000 lines each:</p>
+<pre><code class="language-bash">tva split --lines-per-file 1000 --header-in-out file.tsv
+</code></pre>
+<p>This will create files like <code>file_0001.tsv</code>, <code>file_0002.tsv</code>, etc., each containing up to 1000 data
+rows (plus the header in each file if <code>--header-in-out</code> is used).</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="statistics-documentation"><a class="header" href="#statistics-documentation">Statistics Documentation</a></h1>
+<p>This document explains how to use the statistics and summary commands in <code>tva</code>: <strong><code>stats</code></strong>, **<code>bin</code>
+**, and <strong><code>uniq</code></strong>. These commands allow you to summarize data, discretize values, and deduplicate
+rows.</p>
+<h2 id="introduction-3"><a class="header" href="#introduction-3">Introduction</a></h2>
+<ul>
+<li><strong><code>stats</code></strong>: Calculates summary statistics (like sum, mean, max) for fields, optionally grouping
+by key fields.</li>
+<li><strong><code>bin</code></strong>: Discretizes numeric values into bins (useful for histograms).</li>
+<li><strong><code>uniq</code></strong>: Deduplicates rows based on a key, with options for equivalence classes and occurrence
+numbering.</li>
+</ul>
+<h2 id="stats-summary-statistics"><a class="header" href="#stats-summary-statistics"><code>stats</code> (Summary Statistics)</a></h2>
+<p>The <code>stats</code> command calculates summary statistics for specified fields. It mimics the functionality
+of <code>tsv-summarize</code>.</p>
+<h3 id="basic-usage-6"><a class="header" href="#basic-usage-6">Basic Usage</a></h3>
+<pre><code class="language-bash">tva stats [input_files...] [options]
+</code></pre>
+<h3 id="options"><a class="header" href="#options">Options</a></h3>
+<ul>
+<li><strong><code>--header</code> / <code>-H</code></strong>: Treat the first line of each file as a header.</li>
+<li><strong><code>--group-by</code> / <code>-g</code></strong>: Fields to group by (e.g., <code>1</code>, <code>1,2</code>).</li>
+<li><strong><code>--count</code> / <code>-c</code></strong>: Count the number of rows.</li>
+<li><strong><code>--sum</code></strong>: Calculate sum of fields.</li>
+<li><strong><code>--mean</code></strong>: Calculate mean of fields.</li>
+<li><strong><code>--min</code></strong>: Calculate min of fields.</li>
+<li><strong><code>--max</code></strong>: Calculate max of fields.</li>
+<li><strong><code>--median</code></strong>: Calculate median of fields.</li>
+<li><strong><code>--stdev</code></strong>: Calculate standard deviation of fields.</li>
+<li><strong><code>--variance</code></strong>: Calculate variance of fields.</li>
+<li><strong><code>--mad</code></strong>: Calculate median absolute deviation of fields.</li>
+<li><strong><code>--first</code></strong>: Get the first value of fields.</li>
+<li><strong><code>--last</code></strong>: Get the last value of fields.</li>
+<li><strong><code>--unique</code></strong>: List unique values of fields (comma separated).</li>
+<li><strong><code>--collapse</code></strong>: List all values of fields (comma separated).</li>
+<li><strong><code>--rand</code></strong>: Pick a random value from fields.</li>
+</ul>
+<h3 id="examples-5"><a class="header" href="#examples-5">Examples</a></h3>
+<h4 id="1-calculate-basic-stats-for-a-column"><a class="header" href="#1-calculate-basic-stats-for-a-column">1. Calculate basic stats for a column</a></h4>
+<p>Calculate the mean and max of the <code>estimate</code> column in <code>docs/data/us_rent_income.tsv</code>:</p>
+<pre><code class="language-bash">tva stats docs/data/us_rent_income.tsv --header --mean estimate --max estimate
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">estimate_mean	estimate_max
+14316.2	32940
+</code></pre>
+<h4 id="2-group-by-a-column"><a class="header" href="#2-group-by-a-column">2. Group by a column</a></h4>
+<p>Group by <code>variable</code> and calculate the mean of <code>estimate</code>:</p>
+<pre><code class="language-bash">tva stats docs/data/us_rent_income.tsv --header --group-by variable --mean estimate
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">variable	estimate_mean
+income	27635.2
+rent	997.2
+</code></pre>
+<h4 id="3-count-rows-per-group"><a class="header" href="#3-count-rows-per-group">3. Count rows per group</a></h4>
+<p>Count the number of rows for each unique value in <code>NAME</code>:</p>
+<pre><code class="language-bash">tva stats docs/data/us_rent_income.tsv --header --group-by NAME --count
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">NAME	count
+Alabama	2
+Alaska	2
+Arizona	2
+Arkansas	2
+</code></pre>
+<h2 id="bin-discretize-values"><a class="header" href="#bin-discretize-values"><code>bin</code> (Discretize Values)</a></h2>
+<p>The <code>bin</code> command discretizes numeric values into bins. This is useful for creating histograms or
+grouping continuous data.</p>
+<h3 id="basic-usage-1-3"><a class="header" href="#basic-usage-1-3">Basic Usage</a></h3>
+<pre><code class="language-bash">tva bin [input_files...] --width &lt;width&gt; --field &lt;field&gt; [options]
+</code></pre>
+<h3 id="options-1"><a class="header" href="#options-1">Options</a></h3>
+<ul>
+<li><strong><code>--width</code> / <code>-w</code></strong>: Bin width (bucket size). Required.</li>
+<li><strong><code>--field</code> / <code>-f</code></strong>: Field to bin (1-based index or name). Required.</li>
+<li><strong><code>--min</code> / <code>-m</code></strong>: Alignment/Offset (bin start). Default: 0.0.</li>
+<li><strong><code>--new-name</code></strong>: Append as new column with this name (instead of replacing).</li>
+<li><strong><code>--header</code> / <code>-H</code></strong>: Input has header.</li>
+</ul>
+<h3 id="notes-2"><a class="header" href="#notes-2">Notes</a></h3>
+<ul>
+<li>Formula: <code>floor((value - min) / width) * width + min</code></li>
+<li>Replaces the value in the target field with the bin start (lower bound) unless <code>--new-name</code> is
+used.</li>
+</ul>
+<h3 id="examples-1-3"><a class="header" href="#examples-1-3">Examples</a></h3>
+<h4 id="1-bin-a-numeric-column"><a class="header" href="#1-bin-a-numeric-column">1. Bin a numeric column</a></h4>
+<p>Bin the <code>breaks</code> column in <code>docs/data/warpbreaks.tsv</code> with a width of 10:</p>
+<pre><code class="language-bash">tva bin docs/data/warpbreaks.tsv --header --width 10 --field breaks
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">wool	tension	breaks
+A	L	20
+A	L	30
+A	L	50
+A	M	10
+</code></pre>
+<h4 id="2-bin-with-alignment"><a class="header" href="#2-bin-with-alignment">2. Bin with alignment</a></h4>
+<p>Bin the <code>breaks</code> column, aligning bins to start at 5:</p>
+<pre><code class="language-bash">tva bin docs/data/warpbreaks.tsv --header --width 10 --min 5 --field breaks
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">wool	tension	breaks
+A	L	25
+A	L	25
+A	L	45
+A	M	15
+</code></pre>
+<h4 id="3-append-bin-as-a-new-column"><a class="header" href="#3-append-bin-as-a-new-column">3. Append bin as a new column</a></h4>
+<p>Bin the <code>breaks</code> column and append the result as <code>breaks_bin</code>:</p>
+<pre><code class="language-bash">tva bin docs/data/warpbreaks.tsv --header --width 10 --field breaks --new-name breaks_bin
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">wool	tension	breaks	breaks_bin
+A	L	26	20
+A	L	30	30
+A	L	54	50
+A	M	18	10
+</code></pre>
+<h2 id="uniq-deduplicate-rows"><a class="header" href="#uniq-deduplicate-rows"><code>uniq</code> (Deduplicate Rows)</a></h2>
+<p>The <code>uniq</code> command deduplicates rows of one or more TSV files without sorting. It uses a hash set to
+track unique keys.</p>
+<h3 id="basic-usage-2-2"><a class="header" href="#basic-usage-2-2">Basic Usage</a></h3>
+<pre><code class="language-bash">tva uniq [input_files...] [options]
+</code></pre>
+<h3 id="options-2"><a class="header" href="#options-2">Options</a></h3>
+<ul>
+<li><strong><code>--fields</code> / <code>-f</code></strong>: TSV fields (1-based) to use as dedup key.</li>
+<li><strong><code>--header</code> / <code>-H</code></strong>: Treat the first line of each input as a header.</li>
+<li><strong><code>--ignore-case</code> / <code>-i</code></strong>: Ignore case when comparing keys.</li>
+<li><strong><code>--repeated</code> / <code>-r</code></strong>: Output only lines that are repeated based on the key.</li>
+<li><strong><code>--at-least</code> / <code>-a</code></strong>: Output only lines that are repeated at least INT times.</li>
+<li><strong><code>--max</code> / <code>-m</code></strong>: Max number of each unique key to output (zero is ignored).</li>
+<li><strong><code>--equiv</code> / <code>-e</code></strong>: Append equivalence class IDs rather than only uniq entries.</li>
+<li><strong><code>--number</code> / <code>-z</code></strong>: Append occurrence numbers for each key.</li>
+</ul>
+<h3 id="examples-2-2"><a class="header" href="#examples-2-2">Examples</a></h3>
+<h4 id="1-deduplicate-whole-rows"><a class="header" href="#1-deduplicate-whole-rows">1. Deduplicate whole rows</a></h4>
+<pre><code class="language-bash">tva uniq docs/data/us_rent_income.tsv --header
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+01	Alabama	income	24476	136
+01	Alabama	rent	747	3
+02	Alaska	income	32940	508
+</code></pre>
+<h4 id="2-deduplicate-by-a-specific-column"><a class="header" href="#2-deduplicate-by-a-specific-column">2. Deduplicate by a specific column</a></h4>
+<p>Deduplicate based on the <code>NAME</code> column:</p>
+<pre><code class="language-bash">tva uniq docs/data/us_rent_income.tsv --header -f NAME
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+01	Alabama	income	24476	136
+02	Alaska	income	32940	508
+04	Arizona	income	27517	148
+05	Arkansas	income	23789	165
+</code></pre>
+<h4 id="3-output-repeated-lines-only"><a class="header" href="#3-output-repeated-lines-only">3. Output repeated lines only</a></h4>
+<p>Output lines where the <code>NAME</code> column appears more than once:</p>
+<pre><code class="language-bash">tva uniq docs/data/us_rent_income.tsv --header -f NAME --repeated
+</code></pre>
+<p>Output (first 5 lines):</p>
+<pre><code class="language-tsv">GEOID	NAME	variable	estimate	moe
+01	Alabama	rent	747	3
+02	Alaska	rent	1200	13
+04	Arizona	rent	972	4
+05	Arkansas	rent	709	5
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="plotting-documentation"><a class="header" href="#plotting-documentation">Plotting Documentation</a></h1>
@@ -2263,7 +2206,7 @@ columns to visual aesthetics (position, color) and renders the chart using ASCII
 <li><strong>Header name</strong>: e.g., <code>-x age</code>, <code>-y income</code></li>
 <li><strong>1-based index</strong>: e.g., <code>-x 1</code>, <code>-y 3</code></li>
 </ul>
-<h2 id="examples-8"><a class="header" href="#examples-8">Examples</a></h2>
+<h2 id="examples-6"><a class="header" href="#examples-6">Examples</a></h2>
 <h3 id="1-basic-scatter-plot"><a class="header" href="#1-basic-scatter-plot">1. Basic Scatter Plot</a></h3>
 <p>The simplest use case is plotting two numeric columns against each other.</p>
 <p>Using the <code>tests/data/plot/iris.tsv</code> dataset (Fisher’s Iris dataset):</p>
@@ -2406,7 +2349,7 @@ commas.</li>
 <li><strong><code>--color</code></strong>: Column for grouping/coloring boxes by category (optional).</li>
 <li><strong><code>--outliers</code></strong>: Show outlier points beyond the whiskers.</li>
 </ul>
-<h3 id="examples-1-5"><a class="header" href="#examples-1-5">Examples</a></h3>
+<h3 id="examples-1-4"><a class="header" href="#examples-1-4">Examples</a></h3>
 <h4 id="1-basic-box-plot"><a class="header" href="#1-basic-box-plot">1. Basic Box Plot</a></h4>
 <p>The simplest use case is plotting a single numeric column.</p>
 <p>Using the <code>tests/data/plot/iris.tsv</code> dataset:</p>
@@ -2511,7 +2454,7 @@ into rectangles, counts the number of cases in each rectangle, and visualizes th
 character intensity. This is a useful alternative to <code>plot point</code> in the presence of overplotting.</p>
 <p><strong>Workflow</strong>: Use <code>plot bin2d</code> for quick exploration with automatic binning, then use <code>bin</code> with
 manually determined parameters for precise processing.</p>
-<h3 id="basic-usage-2-4"><a class="header" href="#basic-usage-2-4">Basic Usage</a></h3>
+<h3 id="basic-usage-2-3"><a class="header" href="#basic-usage-2-3">Basic Usage</a></h3>
 <pre><code class="language-bash">tva plot bin2d [input_file] --x &lt;column&gt; --y &lt;column&gt; [options]
 </code></pre>
 <ul>
@@ -2522,7 +2465,7 @@ counts).</li>
 <li><strong><code>-S</code> / <code>--strategy</code></strong>: Automatic bin count strategy: <code>freedman-diaconis</code>, <code>sqrt</code>, <code>sturges</code>.</li>
 <li><strong><code>--binwidth</code></strong>: Width of bins (or <code>x,y</code> for different widths).</li>
 </ul>
-<h3 id="examples-2-4"><a class="header" href="#examples-2-4">Examples</a></h3>
+<h3 id="examples-2-3"><a class="header" href="#examples-2-3">Examples</a></h3>
 <h4 id="1-basic-2d-binning"><a class="header" href="#1-basic-2d-binning">1. Basic 2D Binning</a></h4>
 <p>Using the <code>docs/data/diamonds.tsv</code> dataset (diamond physical dimensions):</p>
 <p>This creates a heatmap showing the density distribution of diamond length (x) vs width (y). The
@@ -2648,6 +2591,75 @@ support for best results with Braille markers.</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="formatting--utilities-documentation"><a class="header" href="#formatting--utilities-documentation">Formatting &amp; Utilities Documentation</a></h1>
+<ul>
+<li><strong><code>check</code></strong>: Validate TSV file structure.</li>
+<li><strong><code>nl</code></strong>: Add line numbers.</li>
+<li><strong><code>keep-header</code></strong>: Run a shell command on the body, preserving the header.</li>
+</ul>
+<h2 id="check"><a class="header" href="#check"><code>check</code></a></h2>
+<p>Checks TSV file structure for consistent field counts.</p>
+<h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
+<pre><code class="language-bash">tva check [files...]
+</code></pre>
+<p>It validates that every line in the file has the same number of fields as the first line. If a
+mismatch is found, it reports the error line and exits with a non-zero status.</p>
+<h3 id="examples-7"><a class="header" href="#examples-7">Examples</a></h3>
+<p>Check a single file:</p>
+<pre><code class="language-bash">tva check docs/data/household.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code>2 lines, 5 fields
+</code></pre>
+<h2 id="nl"><a class="header" href="#nl"><code>nl</code></a></h2>
+<p>Adds line numbers to TSV rows.</p>
+<h3 id="usage-1-1"><a class="header" href="#usage-1-1">Usage</a></h3>
+<pre><code class="language-bash">tva nl [files...] [options]
+</code></pre>
+<p>Options:</p>
+<ul>
+<li><code>-H</code> / <code>--header</code>: Treat the first line as a header. The header line is not numbered, and a “line”
+column is added to the header.</li>
+<li><code>-s &lt;STR&gt;</code> / <code>--header-string &lt;STR&gt;</code>: Set the header name for the line number column (implies
+<code>-H</code>).</li>
+<li><code>-n &lt;N&gt;</code> / <code>--start-number &lt;N&gt;</code>: Start numbering from N (default: 1).</li>
+</ul>
+<h3 id="examples-1-5"><a class="header" href="#examples-1-5">Examples</a></h3>
+<p>Add line numbers (no header logic):</p>
+<pre><code class="language-bash">tva nl docs/data/household.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">1	family	dob_child1	dob_child2	name_child1	name_child2
+2	1	1998-11-26	2000-01-29	J	K
+</code></pre>
+<p>Add line numbers with header awareness:</p>
+<pre><code class="language-bash">tva nl -H docs/data/household.tsv
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">line	family	dob_child1	dob_child2	name_child1	name_child2
+1	1	1998-11-26	2000-01-29	J	K
+</code></pre>
+<h2 id="keep-header"><a class="header" href="#keep-header"><code>keep-header</code></a></h2>
+<p>Executes a shell command on the body of a TSV file, preserving the header.</p>
+<h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
+<pre><code class="language-bash">tva keep-header [files...] -- &lt;command&gt; [args...]
+</code></pre>
+<p>The first line of the first input file is printed immediately. The remaining lines (and all lines
+from subsequent files) are piped to the specified command. The output of the command is then
+printed.</p>
+<h3 id="examples-2-4"><a class="header" href="#examples-2-4">Examples</a></h3>
+<p>Sort a file while keeping the header at the top:</p>
+<pre><code class="language-bash">tva keep-header data.tsv -- sort
+</code></pre>
+<p>Grep for a pattern but keep the header:</p>
+<pre><code class="language-bash">tva keep-header docs/data/world_bank_pop.tsv -- grep "AFG"
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-tsv">country	indicator	2000	2001
+AFG	SP.URB.TOTL	4436311	4648139
+AFG	SP.URB.GROW	3.91	4.66
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="from-command-documentation"><a class="header" href="#from-command-documentation"><code>from</code> Command Documentation</a></h1>
 <p>The <code>from</code> command converts other file formats (CSV, XLSX, HTML) into TSV (Tab-Separated Values).</p>
 <h2 id="usage-3"><a class="header" href="#usage-3">Usage</a></h2>
@@ -2671,7 +2683,7 @@ different delimiters.</p>
 <li><code>-o &lt;file&gt;</code> / <code>--outfile &lt;file&gt;</code>: Output filename (default: stdout).</li>
 <li><code>-d &lt;char&gt;</code> / <code>--delimiter &lt;char&gt;</code>: Specify the input delimiter (default: <code>,</code>).</li>
 </ul>
-<h3 id="examples-9"><a class="header" href="#examples-9">Examples</a></h3>
+<h3 id="examples-8"><a class="header" href="#examples-8">Examples</a></h3>
 <p><strong>Convert a standard CSV file:</strong></p>
 <pre><code class="language-bash">tva from csv docs/data/input.csv
 </code></pre>
@@ -2787,7 +2799,7 @@ Mega Gadget     $29.99  /buy/gadget
 <li><code>-o &lt;file&gt;</code> / <code>--outfile &lt;file&gt;</code>: Output filename (default: stdout).</li>
 <li><code>-d &lt;char&gt;</code> / <code>--delimiter &lt;char&gt;</code>: Specify the output delimiter (default: <code>,</code>).</li>
 </ul>
-<h3 id="examples-10"><a class="header" href="#examples-10">Examples</a></h3>
+<h3 id="examples-9"><a class="header" href="#examples-9">Examples</a></h3>
 <p><strong>Convert TSV to CSV:</strong></p>
 <pre><code class="language-bash">tva to csv docs/data/household.tsv
 </code></pre>
@@ -2982,7 +2994,7 @@ the full HTML of selected elements is printed.</p>
 <li><code>pup</code>-specific pseudo-classes (e.g., <code>:parent-of</code>).</li>
 <li><code>:contains()</code> selector (not supported by the underlying <code>scraper</code> engine).</li>
 </ul>
-<h2 id="examples-11"><a class="header" href="#examples-11">Examples</a></h2>
+<h2 id="examples-10"><a class="header" href="#examples-10">Examples</a></h2>
 <h3 id="basic-filtering"><a class="header" href="#basic-filtering">Basic Filtering</a></h3>
 <p>Extract page title:</p>
 <pre><code class="language-bash">tva from html -q "title text{}" index.html
@@ -4200,7 +4212,7 @@ tva expr -E '"hello" | replace(_, "l", "x")'    # Returns: "hexxo"
 </div>
 <p><strong>Note</strong>: Lambda parameters are <strong>lexically scoped</strong> and do not use the <code>@</code> prefix. This
 distinguishes them from column references (<code>@col</code>) and variables (<code>@var</code>).</p>
-<h3 id="examples-12"><a class="header" href="#examples-12">Examples</a></h3>
+<h3 id="examples-11"><a class="header" href="#examples-11">Examples</a></h3>
 <pre><code class="language-bash"># Single-parameter lambda
 tva expr -E 'map([1, 2, 3], x =&gt; x * 2)'
 # Returns: [2, 4, 6]

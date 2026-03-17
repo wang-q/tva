@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-dca29512.js";
+            window.path_to_searchindex_js = "searchindex-c51875c0.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-560472fe.js"></script>
+        <script src="toc-2faa0315.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -238,58 +238,63 @@ cd tva
 <p>Alternatively, you can download individual files from
 the <a href="https://github.com/wang-q/tva/tree/master/docs/data">docs/data</a> directory on GitHub.</p>
 <h2 id="commands"><a class="header" href="#commands">Commands</a></h2>
-<h3 id="selection--filtering"><a class="header" href="#selection--filtering"><a href="selection.html">Selection &amp; Filtering</a></a></h3>
+<h3 id="subset-selection"><a class="header" href="#subset-selection"><a href="selection.html">Subset Selection</a></a></h3>
+<p>Select specific rows or columns from your data.</p>
 <ul>
 <li><strong><code>select</code></strong>: Select and reorder columns.</li>
-<li><strong><code>filter</code></strong>: Filter rows based on numeric, string, or regex.</li>
+<li><strong><code>filter</code></strong>: Filter rows based on numeric, string, or regex conditions.</li>
 <li><strong><code>slice</code></strong>: Slice rows by index (keep or drop). Supports multiple ranges and header preservation.</li>
 <li><strong><code>sample</code></strong>: Randomly sample rows (Bernoulli, reservoir, weighted).</li>
 </ul>
-<h3 id="ordering"><a class="header" href="#ordering"><a href="ordering.html">Ordering</a></a></h3>
-<ul>
-<li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
-<li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
-<li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
-</ul>
-<h3 id="statistics--summary"><a class="header" href="#statistics--summary"><a href="statistics.html">Statistics &amp; Summary</a></a></h3>
-<ul>
-<li><strong><code>stats</code></strong>: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.</li>
-<li><strong><code>bin</code></strong>: Discretize numeric values into bins (useful for histograms).</li>
-<li><strong><code>uniq</code></strong>: Deduplicate rows or count unique occurrences (supports equivalence classes).</li>
-</ul>
-<h3 id="reshaping"><a class="header" href="#reshaping"><a href="reshape.html">Reshaping</a></a></h3>
+<h3 id="data-transformation"><a class="header" href="#data-transformation"><a href="transformation.html">Data Transformation</a></a></h3>
+<p>Transform the structure or values of your data.</p>
 <ul>
 <li><strong><code>longer</code></strong>: Reshape wide to long (unpivot). Requires a header row.</li>
 <li><strong><code>wider</code></strong>: Reshape long to wide (pivot). Supports aggregation via <code>--op</code> (sum, count, etc.).</li>
 <li><strong><code>fill</code></strong>: Fill missing values in selected columns (down/LOCF, const).</li>
 <li><strong><code>blank</code></strong>: Replace consecutive identical values in selected columns with empty strings (
 sparsify).</li>
-</ul>
-<h3 id="combining--splitting"><a class="header" href="#combining--splitting"><a href="combining.html">Combining &amp; Splitting</a></a></h3>
-<ul>
-<li><strong><code>join</code></strong>: Join two files based on common keys.</li>
-<li><strong><code>append</code></strong>: Concatenate multiple TSV files, handling headers correctly.</li>
-<li><strong><code>split</code></strong>: Split a file into multiple files (by size, key, or random).</li>
+<li><strong><code>transpose</code></strong>: Swaps rows and columns (matrix transposition).</li>
 </ul>
 <h3 id="expr-language"><a class="header" href="#expr-language"><a href="expr.html">Expr Language</a></a></h3>
+<p>Expression-based transformations for complex data manipulation.</p>
 <ul>
 <li><strong><code>expr</code></strong>: Evaluate expressions and output results.</li>
 <li><strong><code>extend</code></strong>: Add new columns to each row (alias for <code>expr -m extend</code>).</li>
 <li><strong><code>mutate</code></strong>: Modify existing column values (alias for <code>expr -m mutate</code>).</li>
 </ul>
-<h3 id="formatting--utilities"><a class="header" href="#formatting--utilities"><a href="utilities.html">Formatting &amp; Utilities</a></a></h3>
+<h3 id="data-organization"><a class="header" href="#data-organization"><a href="organization.html">Data Organization</a></a></h3>
+<p>Organize and combine multiple datasets.</p>
 <ul>
-<li><strong><code>check</code></strong>: Validate TSV file structure (column counts, encoding).</li>
-<li><strong><code>nl</code></strong>: Add line numbers to rows.</li>
-<li><strong><code>keep-header</code></strong>: Run a shell command on the body of a TSV file, preserving the header.</li>
+<li><strong><code>sort</code></strong>: Sorts rows based on one or more key fields.</li>
+<li><strong><code>reverse</code></strong>: Reverses the order of lines (like <code>tac</code>), optionally keeping the header at the top.</li>
+<li><strong><code>join</code></strong>: Join two files based on common keys.</li>
+<li><strong><code>append</code></strong>: Concatenate multiple TSV files, handling headers correctly.</li>
+<li><strong><code>split</code></strong>: Split a file into multiple files (by size, key, or random).</li>
 </ul>
-<h3 id="plotting"><a class="header" href="#plotting"><a href="plot.html">Plotting</a></a></h3>
+<h3 id="statistics--summary"><a class="header" href="#statistics--summary"><a href="statistics.html">Statistics &amp; Summary</a></a></h3>
+<p>Calculate statistics and summarize your data.</p>
+<ul>
+<li><strong><code>stats</code></strong>: Calculate summary statistics (sum, mean, median, min, max, etc.) with grouping.</li>
+<li><strong><code>bin</code></strong>: Discretize numeric values into bins (useful for histograms).</li>
+<li><strong><code>uniq</code></strong>: Deduplicate rows or count unique occurrences (supports equivalence classes).</li>
+</ul>
+<h3 id="visualization"><a class="header" href="#visualization"><a href="plot.html">Visualization</a></a></h3>
+<p>Visualize your data in the terminal.</p>
 <ul>
 <li><strong><code>plot point</code></strong>: Draw scatter plots or line charts in the terminal.</li>
 <li><strong><code>plot box</code></strong>: Draw box plots (box-and-whisker plots) in the terminal.</li>
 <li><strong><code>plot bin2d</code></strong>: Draw 2D histograms/heatmaps in the terminal.</li>
 </ul>
+<h3 id="formatting--utilities"><a class="header" href="#formatting--utilities"><a href="utilities.html">Formatting &amp; Utilities</a></a></h3>
+<p>Format and validate your data.</p>
+<ul>
+<li><strong><code>check</code></strong>: Validate TSV file structure (column counts, encoding).</li>
+<li><strong><code>nl</code></strong>: Add line numbers to rows.</li>
+<li><strong><code>keep-header</code></strong>: Run a shell command on the body of a TSV file, preserving the header.</li>
+</ul>
 <h3 id="import--export"><a class="header" href="#import--export">Import &amp; Export</a></h3>
+<p>Convert data to and from TSV format.</p>
 <ul>
 <li><strong><a href="from.html"><code>from</code></a></strong>: Convert other formats to TSV (<code>csv</code>, <code>xlsx</code>, <code>html</code>).</li>
 <li><strong><a href="to.html"><code>to</code></a></strong>: Convert TSV to other formats (<code>csv</code>, <code>xlsx</code>, <code>md</code>).</li>
