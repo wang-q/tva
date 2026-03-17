@@ -81,12 +81,14 @@ trim(@name)
 | `tva map`    | Add new column(s) to existing row       |
 | `tva mutate` | Modify existing column value            |
 
-| Command  | What it does        | Input row | Output row          | Columns changed |
-|----------|---------------------|-----------|---------------------|-----------------|
-| `expr`   | Evaluate to new row | `@a, @b`  | `@c`                | All (replaced)  |
-| `map`    | Add new column(s)   | `@a, @b`  | `@a, @b, @c`        | Added           |
-| `mutate` | Modify column value | `@a, @b`  | `@a, @c`            | One updated     |
-| `filter` | Keep or discard row | `@a, @b`  | `@a, @b` or nothing | None            |
+| Command  | What it does        | Input row         | Output row        | Columns changed |
+|----------|---------------------|-------------------|-------------------|-----------------|
+| `expr`   | Evaluate to new row | `a, b`            | `c`               | All (replaced)  |
+| `map`    | Add new column(s)   | `a, b`            | `a, b, c`         | Added           |
+| `mutate` | Modify column value | `a, b`            | `a, c`            | One updated     |
+| `filter` | Keep or discard row | `a, b`            | `a, b` or nothing | None            |
+| `select` | Select columns      | `a, b, c`         | `b, c`            | Selected        |
+| `join`   | Join two tables     | `a, b` and `a, c` | `a, b, c`         | Merged          |
 
 Note: Use `tva filter` for simple filtering—it's ~2x faster. Use `tva expr --skip-null`
 only when you need features `tva filter` doesn't support (functions, complex expressions, etc.).
