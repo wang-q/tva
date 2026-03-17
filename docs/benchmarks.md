@@ -255,6 +255,35 @@ hyperfine \
     --warmup 3 \
     --min-runs 10 \
     --export-csv expr_filter.csv \
-    -n "tva expr" "tva expr -H -s -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv > /dev/null" \
+    -n "xan filter" "xan filter 'carat > 1 and cut eq \"Premium\" and price < 3000' docs/data/diamonds.tsv > /dev/null" \
+    -n "tva expr -m skip-null" "tva expr -H -m skip-null -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv > /dev/null" \
+    -n "tva expr -m filter" "tva expr -H -m filter -E '@carat > 1 and @cut eq q(Premium) and @price < 3000' docs/data/diamonds.tsv > /dev/null" \
     -n "tva filter" "tva filter -H --gt carat:1 --str-eq cut:Premium --lt price:3000 docs/data/diamonds.tsv > /dev/null"
+```
+
+```
+  tva filter ran
+    2.31 ± 0.09 times faster than tva expr -m filter
+    2.83 ± 0.14 times faster than tva expr -m skip-null
+    3.46 ± 0.11 times faster than xan filter
+```
+
+* select
+
+```bash
+hyperfine \
+    --warmup 3 \
+    --min-runs 10 \
+    --export-csv expr_select.csv \
+    -n "xan select" "xan select 'carat,cut,price' docs/data/diamonds.tsv > /dev/null" \
+    -n "xan select -e" "xan select -e '[carat, cut, price]' docs/data/diamonds.tsv > /dev/null" \
+    -n "tva expr -m eval" "tva expr -H -m eval -E '[@carat, @cut, @price]' docs/data/diamonds.tsv > /dev/null" \
+    -n "tva select" "tva select -H -f carat,cut,price docs/data/diamonds.tsv > /dev/null"
+```
+
+```
+  tva select ran
+    3.22 ± 0.10 times faster than tva expr -m eval
+    3.23 ± 0.10 times faster than xan select
+    3.76 ± 0.09 times faster than xan select -e
 ```
