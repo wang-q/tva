@@ -344,6 +344,175 @@ fn expr_with_real_file_pipe_operator() {
 }
 
 #[test]
+fn expr_list_expansion_basic() {
+    // Test basic list expansion - returns multiple columns
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "price,carat",
+            "-r",
+            "326,0.23",
+            "-E",
+            "[@price, @carat]",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Should have 2 columns separated by tab
+    assert_eq!(lines.len(), 1, "Expected 1 output line, got: {}", stdout);
+    let parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(parts.len(), 2, "Expected 2 columns, got: {}", lines[0]);
+    assert_eq!(
+        parts[0], "326",
+        "Expected '326' in first column, got: {}",
+        parts[0]
+    );
+    assert_eq!(
+        parts[1], "0.23",
+        "Expected '0.23' in second column, got: {}",
+        parts[1]
+    );
+}
+
+#[test]
+fn expr_list_expansion_with_header() {
+    // Test list expansion with header - header should also expand
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "[@estimate, @variable]",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // First line should be the expanded header
+    let header_parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(
+        header_parts.len(),
+        2,
+        "Expected 2 header columns, got: {}",
+        lines[0]
+    );
+    assert_eq!(
+        header_parts[0], "estimate",
+        "Expected 'estimate' in first header, got: {}",
+        header_parts[0]
+    );
+    assert_eq!(
+        header_parts[1], "variable",
+        "Expected 'variable' in second header, got: {}",
+        header_parts[1]
+    );
+
+    // Data should also have 2 columns
+    let data_parts: Vec<&str> = lines[1].split('\t').collect();
+    assert_eq!(
+        data_parts.len(),
+        2,
+        "Expected 2 data columns, got: {}",
+        lines[1]
+    );
+}
+
+#[test]
+fn expr_list_expansion_with_as_binding() {
+    // Test list expansion with 'as' binding for custom headers
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "price,carat",
+            "-r",
+            "326,0.23",
+            "-E",
+            "[@price as @p, @carat as @c]",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    let parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(parts.len(), 2, "Expected 2 columns, got: {}", lines[0]);
+    assert_eq!(
+        parts[0], "326",
+        "Expected '326' in first column, got: {}",
+        parts[0]
+    );
+    assert_eq!(
+        parts[1], "0.23",
+        "Expected '0.23' in second column, got: {}",
+        parts[1]
+    );
+}
+
+#[test]
+fn expr_list_expansion_with_expressions() {
+    // Test list expansion with computed expressions
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-n",
+            "price,carat",
+            "-r",
+            "100,2",
+            "-E",
+            "[@price * 2, @carat + 1]",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    let parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(parts.len(), 2, "Expected 2 columns, got: {}", lines[0]);
+    assert_eq!(
+        parts[0], "200",
+        "Expected '200' (100*2) in first column, got: {}",
+        parts[0]
+    );
+    assert_eq!(
+        parts[1], "3",
+        "Expected '3' (2+1) in second column, got: {}",
+        parts[1]
+    );
+}
+
+#[test]
+fn expr_list_expansion_header_with_as() {
+    // Test that list expansion with 'as' binding generates correct headers
+    let (stdout, _) = TvaCmd::new()
+        .args(&[
+            "expr",
+            "-H",
+            "-E",
+            "[@estimate as @e, @variable as @v]",
+            "tests/data/expr/us_rent_income.tsv",
+        ])
+        .run();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    // Header should use the 'as' binding names
+    let header_parts: Vec<&str> = lines[0].split('\t').collect();
+    assert_eq!(
+        header_parts.len(),
+        2,
+        "Expected 2 header columns, got: {}",
+        lines[0]
+    );
+    assert_eq!(
+        header_parts[0], "e",
+        "Expected 'e' in first header (from as @e), got: {}",
+        header_parts[0]
+    );
+    assert_eq!(
+        header_parts[1], "v",
+        "Expected 'v' in second header (from as @v), got: {}",
+        header_parts[1]
+    );
+}
+
+#[test]
 fn expr_multiple_underscore_placeholders() {
     // Multiple _ in same call should all get the piped value
     // "hello" | replace(replace(_, "l", "L"), "o", "O")

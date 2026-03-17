@@ -3,11 +3,34 @@ use clap::*;
 
 use crate::libs::cli::{build_header_config, header_arg_basic};
 use crate::libs::expr::runtime;
+use crate::libs::expr::runtime::value::Value;
 use crate::libs::expr::{fold_constants, parse_cached, resolve_columns};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::header::HeaderMode;
 use crate::libs::tsv::reader::TsvReader;
 use ahash::{HashMap, HashMapExt};
+
+/// Convert a Value to output string.
+/// If the value is a List, it will be expanded to multiple columns (tab-separated).
+/// Empty list returns "[]" to distinguish from no output.
+/// Otherwise, returns the string representation of the value.
+fn value_to_output(value: &Value) -> String {
+    match value {
+        Value::List(list) => {
+            if list.is_empty() {
+                // Empty list should output "[]"
+                "[]".to_string()
+            } else {
+                // Expand list to multiple columns (tab-separated)
+                list.iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\t")
+            }
+        }
+        _ => value.to_string(),
+    }
+}
 
 pub fn make_subcommand() -> Command {
     Command::new("expr")
@@ -165,7 +188,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if filter_mode {
                 writeln!(writer, "{}", row.join("\t"))?;
             } else {
-                writeln!(writer, "{}", result.to_string())?;
+                writeln!(writer, "{}", value_to_output(&result))?;
             }
         }
 
@@ -190,7 +213,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
             return Ok(());
         }
-        writeln!(writer, "{}", result.to_string())?;
+        writeln!(writer, "{}", value_to_output(&result))?;
         return Ok(());
     }
 
@@ -250,10 +273,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         // In filter mode, preserve original header
                         writeln!(writer, "{}", headers.join("\t"))?;
                     } else {
-                        // Generate header name using the new header_name() method
+                        // Generate header names using the new header_names() method
                         // This handles as @name, @column_name, @1 with headers, etc.
-                        let header_name = parsed_expr.header_name(&headers);
-                        writeln!(writer, "{}", header_name)?;
+                        // For list expressions like [@a, @b], returns ["a", "b"]
+                        let header_names = parsed_expr.header_names(&headers);
+                        writeln!(writer, "{}", header_names.join("\t"))?;
                     }
                     header_written = true;
 
@@ -313,7 +337,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             // Output result
-            writeln!(writer, "{}", result.to_string())
+            writeln!(writer, "{}", value_to_output(&result))
                 .map_err(|e| std::io::Error::other(e.to_string()))?;
 
             Ok(())

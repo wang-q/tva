@@ -109,20 +109,18 @@ tva expr -n "name" -r "  alice  " -E 'upper(trim(@name))'
 tva expr -n "name" -r "  alice  " -E '@name.trim().upper()'
 tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 
-# Conditional expression
-tva expr -n "score" -r "85" -E 'if(@score >= 60, "pass", "fail")'
-
-# Filter rows using --skip-null
-tva expr -H --skip-null -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv
-
 # Header - @price / @carat
 tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r -5
 
-# Header - price_per_carat
-tva expr -H -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r -5
+# Header - price_per_carat carat
+tva expr -H -E "[@price / @carat as @price_per_carat, @carat]" docs/data/diamonds.tsv | tva slice -r -5
 
-# Header - [@price / @carat as @price_per_carat]
-tva expr -H -E "[@price / @carat as @price_per_carat]" docs/data/diamonds.tsv | tva slice -r -5
+# Filter rows using -m skip-null
+tva expr -H -m s -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv
+
+# Filter rows using -m filter
+tva expr -H -m f -E '@carat > 1 and @cut eq q(Premium) and @price < 3000' docs/data/diamonds.tsv
+
 ```
 
 ## Notes

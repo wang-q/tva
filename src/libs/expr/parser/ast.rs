@@ -201,6 +201,22 @@ impl Expr {
         }
     }
 
+    /// Generate header names for the expression, supporting list expansion.
+    /// Returns a vector of header names. For list expressions like [@a, @b],
+    /// returns ["a", "b"]. For other expressions, returns a single-element vector.
+    pub fn header_names(&self, headers: &[String]) -> Vec<String> {
+        match self.last_expr() {
+            Expr::List(items) => {
+                // For list expressions, generate header for each item
+                items.iter().map(|item| item.header_name(headers)).collect()
+            }
+            _ => {
+                // For non-list expressions, use the original header_name logic
+                vec![self.header_name(headers)]
+            }
+        }
+    }
+
     /// Format the expression as a string for display (e.g., as column header)
     pub fn format(&self) -> String {
         match self {
