@@ -1,7 +1,7 @@
 use super::math;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Aggregator {
     pub count: usize,
     pub sums: Vec<f64>,
@@ -16,29 +16,6 @@ pub struct Aggregator {
     pub lasts: Vec<String>,
     pub value_counts: Vec<HashMap<String, usize>>, // For mode/nunique/unique
     pub string_values: Vec<Vec<String>>,           // For collapse/rand
-}
-
-impl Default for Aggregator {
-    fn default() -> Self {
-        // This Default impl is a bit meaningless without the schema (StatsProcessor),
-        // but it satisfies the compiler if needed for placeholders.
-        // Real usage should use StatsProcessor::create_aggregator().
-        Self {
-            count: 0,
-            sums: Vec::new(),
-            sum_sqs: Vec::new(),
-            sum_logs: Vec::new(),
-            sum_invs: Vec::new(),
-            mins: Vec::new(),
-            maxs: Vec::new(),
-            field_counts: Vec::new(),
-            values: Vec::new(),
-            firsts: Vec::new(),
-            lasts: Vec::new(),
-            value_counts: Vec::new(),
-            string_values: Vec::new(),
-        }
-    }
 }
 
 impl Aggregator {

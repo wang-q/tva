@@ -491,7 +491,7 @@ fn split_randomly(
                     suffix,
                     if header_in_out { header_line.as_deref() } else { None },
                 )
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                .map_err(|e| std::io::Error::other(e))?;
 
             writer.write_all(record)?;
             writer.write_all(b"\n")?;

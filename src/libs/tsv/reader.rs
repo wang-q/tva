@@ -182,7 +182,7 @@ impl<R: Read> TsvReader<R> {
                 // Hash lines ended - remember this line and stop
                 // Don't use Interrupted here because for_each_record will skip the line
                 first_non_hash_line = Some(record.to_vec());
-                return Err(io::Error::new(io::ErrorKind::Other, "Hash lines ended"));
+                return Err(io::Error::other("Hash lines ended"));
             }
             // Empty lines are skipped
             Ok(())

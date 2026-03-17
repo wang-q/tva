@@ -686,7 +686,7 @@ fn run_standard_sampling<W: Write>(
 
             sampler
                 .process(record, writer, &mut rng)
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                .map_err(|e| std::io::Error::other(e))?;
 
             Ok(())
         })?;

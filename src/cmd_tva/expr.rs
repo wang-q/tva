@@ -259,9 +259,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             ctx.set_builtin_globals(current_row, &filename);
             row_num.set(current_row + 1);
 
-            let result = runtime::eval(&parsed_expr, &mut ctx).map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
-            })?;
+            let result = runtime::eval(&parsed_expr, &mut ctx)
+                .map_err(|e| std::io::Error::other(e.to_string()))?;
 
             // Skip null results if --skip-null is enabled
             if skip_null_flag && result.is_null() {
@@ -269,9 +268,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
 
             // Output result
-            writeln!(writer, "{}", result.to_string()).map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
-            })?;
+            writeln!(writer, "{}", result.to_string())
+                .map_err(|e| std::io::Error::other(e.to_string()))?;
 
             Ok(())
         });
