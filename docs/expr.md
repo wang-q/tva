@@ -1,8 +1,6 @@
-# TVA's expr language and companions
+# TVA's expr language
 
 The `expr` language evaluates expressions (like spreadsheet formulas) to transform TSV data.
-It powers three commands: `tva expr` (create new rows), `tva map` (add columns), and
-`tva mutate` (modify columns).
 
 ## Quick Examples
 
@@ -75,19 +73,22 @@ trim(@name)
 
 ### Expr Commands
 
-Compared to other tools:
+Comparing modes and other commands:
 
-| Command         | What it does        | Input row         | Output row        | Columns changed |
-|-----------------|---------------------|-------------------|-------------------|-----------------|
-| `expr`          | Evaluate to new row | `a, b`            | `c`               | All (replaced)  |
-| `expr --add`    | Add new column(s)   | `a, b`            | `a, b, c`         | Added           |
-| `expr --mutate` | Modify column value | `a, b`            | `a, c`            | One updated     |
-| `select`        | Select columns      | `a, b, c`         | `b, c`            | Selected        |
-| `filter`        | Keep or discard row | `a, b`            | `a, b` or nothing | None            |
-| `join`          | Join two tables     | `a, b` and `a, c` | `a, b, c`         | Merged          |
+| Command              | What it does        | Input row         | Output row        |
+|----------------------|---------------------|-------------------|-------------------|
+| `expr`               | Evaluate to new row | `a, b`            | `c`               |
+| `expr -m add`        | Add new column(s)   | `a, b`            | `a, b, c`         |
+| `expr -m mutate`     | Modify column value | `a, b`            | `a, c`            |
+| `expr -m filter`     | Keep or discard row | `a, b`            | `a, b` or nothing |
+| `filter`             |                     | `a, b`            | `a, b` or nothing |
+| `expr -E '[@b, @c]'` | Select columns      | `a, b, c`         | `b, c`            |
+| `select`             |                     | `a, b, c`         | `b, c`            |
+| `join`               | Join two tables     | `a, b` and `a, c` | `a, b, c`         |
 
-Note: Use `tva filter` for simple filtering—it's ~2x faster. Use `tva expr --skip-null`
-only when you need features `tva filter` doesn't support (functions, complex expressions, etc.).
+Note: Use `tva filter`/`tva select` for simple tasks: they are ~2x faster. Use `tva expr`
+only when you need advanced features that other commands don't support (functions, complex
+expressions, etc.).
 
 ## Basic Usage
 

@@ -55,7 +55,10 @@ Examples:
    `tva expr -H -E 'if(@score >= 70, "pass", "fail")' data.tsv`
 
 9. Skip null results (filtering):
-   `tva expr -H --skip-null -E 'if(@score >= 70, @name, null)' data.tsv`
+   `tva expr -H -m skip-null -E 'if(@score >= 70, @name, null)' data.tsv`
 
-10. Running total with persistent variables:
+10. Filter rows by condition (preserves original row and header):
+    `tva expr -H -m filter -E '@age > 25' data.tsv`
+
+11. Running total with persistent variables:
     `tva expr -H -E '@amount + @__total as @__total; @__total' data.tsv`

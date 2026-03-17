@@ -1,3 +1,4 @@
+use clap::builder::PossibleValue;
 use clap::*;
 
 use crate::libs::cli::{build_header_config, header_arg_basic};
@@ -64,11 +65,17 @@ pub fn make_subcommand() -> Command {
                 .help("Comma-separated row values to evaluate against (e.g., 'Alice,30'). Can be specified multiple times for multiple rows."),
         )
         .arg(
-            Arg::new("skip_null")
-                .long("skip-null")
-                .short('s')
-                .action(ArgAction::SetTrue)
-                .help("Skip rows where the expression result is null"),
+            Arg::new("mode")
+                .long("mode")
+                .short('m')
+                .num_args(1)
+                .value_parser([
+                    PossibleValue::new("normal").alias("n"),
+                    PossibleValue::new("skip-null").alias("s"),
+                    PossibleValue::new("filter").alias("f"),
+                ])
+                .default_value("normal")
+                .help("Output mode: normal (default), skip-null, or filter"),
         )
 }
 
@@ -96,7 +103,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         return Err(anyhow::anyhow!("Expression cannot be empty"));
     }
 
-    let skip_null = args.get_flag("skip_null");
+    let mode = args
+        .get_one::<String>("mode")
+        .map(|s| s.as_str())
+        .unwrap_or("normal");
+    let skip_null = mode == "skip-null" || mode == "s";
+    let filter_mode = mode == "filter" || mode == "f";
 
     // Parse the expression with caching
     let mut parsed_expr = parse_cached(&expr_str)
@@ -145,7 +157,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if skip_null && result.is_null() {
                 continue;
             }
-            writeln!(writer, "{}", result.to_string())?;
+            // Filter mode: only output rows where expression evaluates to true
+            if filter_mode && !result.as_bool() {
+                continue;
+            }
+            // In filter mode, output the original row; otherwise output the expression result
+            if filter_mode {
+                writeln!(writer, "{}", row.join("\t"))?;
+            } else {
+                writeln!(writer, "{}", result.to_string())?;
+            }
         }
 
         return Ok(());
@@ -158,9 +179,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let result = runtime::eval(&parsed_expr, &mut ctx)
             .map_err(|e| anyhow::anyhow!("Evaluation error: {}", e))?;
         // Skip null results if --skip-null is enabled
-        if !skip_null || !result.is_null() {
-            writeln!(writer, "{}", result.to_string())?;
+        if skip_null && result.is_null() {
+            return Ok(());
         }
+        // Filter mode with no input: only output if expression evaluates to true
+        if filter_mode {
+            if result.as_bool() {
+                // In filter mode with no input, output empty line (original row is empty)
+                writeln!(writer)?;
+            }
+            return Ok(());
+        }
+        writeln!(writer, "{}", result.to_string())?;
         return Ok(());
     }
 
@@ -215,18 +245,22 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         .map(|s| s.to_string())
                         .collect();
 
-                    // Generate header name using the new header_name() method
-                    // This handles as @name, @column_name, @1 with headers, etc.
-                    let header_name = parsed_expr.header_name(&headers);
+                    // Write header (before resolve_columns to preserve column names)
+                    if filter_mode {
+                        // In filter mode, preserve original header
+                        writeln!(writer, "{}", headers.join("\t"))?;
+                    } else {
+                        // Generate header name using the new header_name() method
+                        // This handles as @name, @column_name, @1 with headers, etc.
+                        let header_name = parsed_expr.header_name(&headers);
+                        writeln!(writer, "{}", header_name)?;
+                    }
+                    header_written = true;
 
                     // Optimize expression: resolve column names to indices
                     resolve_columns(&mut parsed_expr, &headers);
                     // Fold constant expressions for better performance
                     fold_constants(&mut parsed_expr);
-
-                    // Write header
-                    writeln!(writer, "{}", header_name)?;
-                    header_written = true;
                 }
             } else {
                 // Subsequent files: skip header
@@ -238,6 +272,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         // Process data rows
         let skip_null_flag = skip_null;
+        let filter_mode_flag = filter_mode;
         let globals_clone = globals.clone();
         let result: std::io::Result<()> = tsv_reader.for_each_record(|record| {
             // Split record into fields
@@ -264,6 +299,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             // Skip null results if --skip-null is enabled
             if skip_null_flag && result.is_null() {
+                return Ok(());
+            }
+
+            // Filter mode: only output rows where expression evaluates to true
+            if filter_mode_flag {
+                if result.as_bool() {
+                    // Output original row
+                    writeln!(writer, "{}", row.join("\t"))
+                        .map_err(|e| std::io::Error::other(e.to_string()))?;
+                }
                 return Ok(());
             }
 

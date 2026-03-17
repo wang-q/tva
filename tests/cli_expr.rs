@@ -526,7 +526,8 @@ fn expr_skip_null_with_rows() {
             "90,Charlie",
             "-E",
             "if(@score >= 70, @name, null)",
-            "--skip-null",
+            "--mode",
+            "skip-null",
         ])
         .run();
 
@@ -564,7 +565,8 @@ fn expr_skip_null_short_flag() {
             "65,Bob",
             "-r",
             "90,Charlie",
-            "-s",
+            "-m",
+            "skip-null",
             "-E",
             "if(@score >= 70, @name, null)",
         ])
