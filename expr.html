@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-67a7f093.js";
+            window.path_to_searchindex_js = "searchindex-4a78dc98.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-96593fed.js"></script>
@@ -180,10 +180,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="tvas-expr-language-and-companions"><a class="header" href="#tvas-expr-language-and-companions">TVA’s expr language and companions</a></h1>
-<p>The <code>expr</code> language evaluates expressions (like spreadsheet formulas) to transform TSV data.
-It powers three commands: <code>tva expr</code> (create new rows), <code>tva map</code> (add columns), and
-<code>tva mutate</code> (modify columns).</p>
+                        <h1 id="tvas-expr-language"><a class="header" href="#tvas-expr-language">TVA’s expr language</a></h1>
+<p>The <code>expr</code> language evaluates expressions (like spreadsheet formulas) to transform TSV data.</p>
 <h2 id="quick-examples"><a class="header" href="#quick-examples">Quick Examples</a></h2>
 <pre><code class="language-bash"># Basic arithmetic
 tva expr -E '42 + 3.14'
@@ -195,7 +193,7 @@ tva expr -E '"hello" | upper()'
 
 # Using higher-order functions
 tva expr -E "map([1,2,3,4,5], x =&gt; x * x)"
-# Output: [1, 4, 9, 16, 25]
+# Output: 1       4       9       16      25
 </code></pre>
 <h2 id="topics"><a class="header" href="#topics">Topics</a></h2>
 <h3 id="literals"><a class="header" href="#literals"><a href="literals.html">Literals</a></a></h3>
@@ -230,82 +228,100 @@ tva expr -E "map([1,2,3,4,5], x =&gt; x * x)"
 <li><a href="expr/rosetta.html">Rosetta Code</a> - Fun programs</li>
 </ul>
 <h3 id="expr-commands"><a class="header" href="#expr-commands">Expr Commands</a></h3>
+<p>Comparing modes and other commands:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Command</th><th>Description</th></tr>
+<tr><th>Command</th><th>What it does</th><th>Input row</th><th>Output row</th></tr>
 </thead>
 <tbody>
-<tr><td><code>tva expr</code></td><td>Evaluate expression to create a new row</td></tr>
-<tr><td><code>tva map</code></td><td>Add new column(s) to existing row</td></tr>
-<tr><td><code>tva mutate</code></td><td>Modify existing column value</td></tr>
+<tr><td><code>expr</code></td><td>Evaluate to new row</td><td><code>a, b</code></td><td><code>c</code></td></tr>
+<tr><td><code>expr -m add</code></td><td>Add new column(s)</td><td><code>a, b</code></td><td><code>a, b, c</code></td></tr>
+<tr><td><code>expr -m mutate</code></td><td>Modify column value</td><td><code>a, b</code></td><td><code>a, c</code></td></tr>
+<tr><td><code>expr -m filter</code></td><td>Keep or discard row</td><td><code>a, b</code></td><td><code>a, b</code> or nothing</td></tr>
+<tr><td><code>filter</code></td><td></td><td><code>a, b</code></td><td><code>a, b</code> or nothing</td></tr>
+<tr><td><code>expr -E '[@b, @c]'</code></td><td>Select columns</td><td><code>a, b, c</code></td><td><code>b, c</code></td></tr>
+<tr><td><code>select</code></td><td></td><td><code>a, b, c</code></td><td><code>b, c</code></td></tr>
+<tr><td><code>join</code></td><td>Join two tables</td><td><code>a, b</code> and <code>a, c</code></td><td><code>a, b, c</code></td></tr>
 </tbody>
 </table>
 </div>
-<p>Compared to other tools:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Command</th><th>What it does</th><th>Input row</th><th>Output row</th><th>Columns changed</th></tr>
-</thead>
-<tbody>
-<tr><td><code>expr</code></td><td>Evaluate to new row</td><td><code>a, b</code></td><td><code>c</code></td><td>All (replaced)</td></tr>
-<tr><td><code>map</code></td><td>Add new column(s)</td><td><code>a, b</code></td><td><code>a, b, c</code></td><td>Added</td></tr>
-<tr><td><code>mutate</code></td><td>Modify column value</td><td><code>a, b</code></td><td><code>a, c</code></td><td>One updated</td></tr>
-<tr><td><code>select</code></td><td>Select columns</td><td><code>a, b, c</code></td><td><code>b, c</code></td><td>Selected</td></tr>
-<tr><td><code>filter</code></td><td>Keep or discard row</td><td><code>a, b</code></td><td><code>a, b</code> or nothing</td><td>None</td></tr>
-<tr><td><code>join</code></td><td>Join two tables</td><td><code>a, b</code> and <code>a, c</code></td><td><code>a, b, c</code></td><td>Merged</td></tr>
-</tbody>
-</table>
-</div>
-<p>Note: Use <code>tva filter</code> for simple filtering—it’s ~2x faster. Use <code>tva expr --skip-null</code>
-only when you need features <code>tva filter</code> doesn’t support (functions, complex expressions, etc.).</p>
-<h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
-<h3 id="tva-expr---evaluate-expressions-to-new-row"><a class="header" href="#tva-expr---evaluate-expressions-to-new-row"><code>tva expr</code> - Evaluate Expressions to New Row</a></h3>
-<p>Evaluates expression for each row and outputs the expression result as a new row (original row
-structure is discarded).</p>
-<pre><code class="language-bash"># Simple arithmetic expression
+<p>Note: Use <code>tva filter</code>/<code>tva select</code> for simple tasks: they are ~2x faster. Use <code>tva expr</code>
+only when you need advanced features that other commands don’t support (functions, complex
+expressions, etc.).</p>
+<h2 id="output-modes"><a class="header" href="#output-modes">Output Modes</a></h2>
+<p>The <code>expr</code> command supports five output modes controlled by the <code>-m</code> (or <code>--mode</code>) flag:</p>
+<h3 id="eval-mode-default"><a class="header" href="#eval-mode-default"><code>eval</code> mode (default)</a></h3>
+<p>Evaluates the expression and outputs only the result. The original row data is discarded.</p>
+<pre><code class="language-bash"># Simple arithmetic expression (no input needed)
 tva expr -E "10 + 20"
 
-# Evaluate expression with row data
+# Evaluate expression with inline row data
 tva expr -n "price,qty" -r "100,2" -E "@price * @qty"
 
-# String manipulation
-tva expr -n "name" -r "  alice  " -E 'upper(trim(@name))'
-tva expr -n "name" -r "  alice  " -E '@name.trim().upper()'
+# String manipulation with inline data
 tva expr -n "name" -r "  alice  " -E '@name | trim() | upper()'
 
-# Conditional expression
-tva expr -n "score" -r "85" -E 'if(@score &gt;= 60, "pass", "fail")'
+# Calculate price per carat from file
+tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r 5
 
-# Process TSV file - calculate price per carat
-tva expr -H -E "@price / @carat" docs/data/diamonds.tsv | tva slice -r -5
-
-# Filter rows using --skip-null
-tva expr -H --skip-null -E 'if(@carat &gt; 1 and @cut eq q(Premium) and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv
+# Multiple output columns using list expression
+tva expr -H -E "[@price / @carat as @price_per_carat, @carat]" docs/data/diamonds.tsv | tva slice -r 5
 </code></pre>
-<h3 id="tva-map---add-new-column"><a class="header" href="#tva-map---add-new-column"><code>tva map</code> - Add New Column</a></h3>
-<p>Evaluates expression for each row to add a new column to the existing row.</p>
-<pre><code class="language-bash"># Add a new column with calculated value
-tva map -E "@price * 1.1 as @price_with_tax" docs/data/diamonds.tsv
+<p>Use this mode when you want to compute new values without preserving the original columns.</p>
+<h3 id="add-mode"><a class="header" href="#add-mode"><code>add</code> mode</a></h3>
+<p>Evaluates the expression and appends the result as new column(s) to the original row.</p>
+<pre><code class="language-bash"># Add price_per_carat column to the original data
+tva expr -H -m add -E "@price / @carat as @price_per_carat" docs/data/diamonds.tsv | tva slice -r 5
 
-# Add multiple columns
-tva map -E '@price * 1.1 as @price_with_tax, @carat * 2 as @double_carat' docs/data/diamonds.tsv
-
-# Add column with transformed value
-tva map -E '@cut | lower() as @cut_lower' docs/data/diamonds.tsv
+# Add multiple columns using list expression
+tva expr -H -m add -E "[@price / @carat as @price_per_carat, @carat as @carat_rounded]" docs/data/diamonds.tsv | tva slice -r 5
 </code></pre>
-<h3 id="tva-mutate---modify-column"><a class="header" href="#tva-mutate---modify-column"><code>tva mutate</code> - Modify Column</a></h3>
-<p>Evaluates expression for each row to modify an existing column value.</p>
-<pre><code class="language-bash"># Modify existing column
-tva mutate -E '@price * 1.1' -c price docs/data/diamonds.tsv
-
-# Transform column value
-tva mutate -E '@cut | upper()' -c cut docs/data/diamonds.tsv
-
-# Replace with conditional value
-tva mutate -E 'if(@price &gt;= 350, "expensive", "cheap")' -c price docs/data/diamonds.tsv
+<p>Key behaviors:</p>
+<ul>
+<li>The original row is preserved</li>
+<li>Expression results are appended as new columns</li>
+<li>Header names come from <code>as @name</code> bindings</li>
+<li>List expressions create multiple new columns</li>
+</ul>
+<h3 id="mutate-mode"><a class="header" href="#mutate-mode"><code>mutate</code> mode</a></h3>
+<p>Modifies an existing column in place. The expression must include an <code>as @column_name</code> binding to specify which column to modify.</p>
+<pre><code class="language-bash"># Modify price column in place
+tva expr -H -m mutate -E "@price / @carat as @price" docs/data/diamonds.tsv | tva slice -r 5
 </code></pre>
+<p>Key behaviors:</p>
+<ul>
+<li>Only the specified column is modified</li>
+<li>All other columns and the header remain unchanged</li>
+<li>The <code>as @column_name</code> binding is required</li>
+<li>Column name must exist in the input (numeric indices like <code>as @2</code> are not supported)</li>
+</ul>
+<h3 id="skip-null-mode"><a class="header" href="#skip-null-mode"><code>skip-null</code> mode</a></h3>
+<p>Evaluates the expression and outputs the result, but skips rows where the result is <code>null</code>.</p>
+<pre><code class="language-bash"># Keep rows where carat &gt; 1 and cut is Premium and price &lt; 3000
+tva expr -H -m s -E 'if(@carat &gt; 1 and @cut eq q(Premium) and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv | tva slice -r 5
+</code></pre>
+<p>Key behaviors:</p>
+<ul>
+<li>Rows with null results are excluded from output</li>
+<li>Useful for filtering based on complex conditions</li>
+<li>Return <code>@0</code> to preserve the original row, or any other value to output that value</li>
+</ul>
+<h3 id="filter-mode"><a class="header" href="#filter-mode"><code>filter</code> mode</a></h3>
+<p>Evaluates a boolean expression and outputs the original row only when the expression is true.</p>
+<pre><code class="language-bash"># Filter diamonds with carat &gt; 1, cut is Premium, and price &lt; 3000
+tva expr -H -m f -E '@carat &gt; 1 and @cut eq q(Premium) and @price &lt; 3000' docs/data/diamonds.tsv | tva slice -r 5
+
+# Filter with price &gt; 10000
+tva expr -H -m filter -E "@price &gt; 10000" docs/data/diamonds.tsv | tva slice -r 5
+</code></pre>
+<p>Key behaviors:</p>
+<ul>
+<li>The original row and header are preserved</li>
+<li>Row is output only if the expression evaluates to true</li>
+<li>Expression should return a boolean (non-zero numbers and non-empty strings are truthy)</li>
+<li>Similar to <code>tva filter</code> but allows complex expressions</li>
+</ul>
 <h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
 <ul>
 <li>No implicit type conversion - use explicit functions like <code>int()</code>, <code>float()</code>, <code>string()</code></li>
