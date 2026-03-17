@@ -2,6 +2,8 @@
 
 ## Unreleased - ReleaseDate
 
+## 0.3.1 - 2026-03-17
+
 ### Added
 
 #### New Commands
