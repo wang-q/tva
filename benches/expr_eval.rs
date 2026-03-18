@@ -361,7 +361,7 @@ fn benchmark_column_resolution(c: &mut Criterion) {
     group.bench_function("by_name_resolved", |b| {
         // Parse and resolve once outside the loop
         let mut expr = tva::libs::expr::parser::parse("@id").unwrap();
-        tva::libs::expr::resolve_columns(&mut expr, &headers);
+        let _ = tva::libs::expr::resolve_columns(&mut expr, &headers);
 
         b.iter(|| {
             for _ in 0..iterations {
