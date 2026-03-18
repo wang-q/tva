@@ -11,7 +11,7 @@ mod logical;
 mod meta;
 mod numeric;
 mod regex;
-mod string;
+pub mod string;
 
 /// Global static function registry
 /// Initialized once on first access, then reused for all evaluations

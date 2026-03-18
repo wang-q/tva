@@ -191,6 +191,10 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
                     ctx.get_by_name(name)
                 }
             }
+            ColumnRef::Bare(name) => Err(EvalError::ColumnNotFound(format!(
+                "Bare identifier '{}' is not allowed; use '@{}' for column references",
+                name, name
+            ))),
             ColumnRef::WholeRow => {
                 // Join all columns with tabs
                 let row_str = ctx.row.join("\t");
@@ -315,11 +319,26 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
             }
         }
         Expr::Call { name, args } => {
-            let arg_values: Vec<Value> = args
-                .iter()
-                .map(|arg| eval(arg, ctx))
-                .collect::<Result<Vec<_>, _>>()?;
-            crate::libs::expr::functions::global_registry().call(name, &arg_values)
+            // Special handling for fmt function to support %(@n) and %(var) placeholders
+            if name == "fmt" {
+                let arg_values: Vec<Value> = args
+                    .iter()
+                    .map(|arg| eval(arg, ctx))
+                    .collect::<Result<Vec<_>, _>>()?;
+                crate::libs::expr::functions::string::fmt_with_context(
+                    &arg_values,
+                    Some(ctx.row),
+                    Some(&ctx.variables),
+                    Some(&ctx.lambda_params),
+                    Some(ctx.globals.borrow()),
+                )
+            } else {
+                let arg_values: Vec<Value> = args
+                    .iter()
+                    .map(|arg| eval(arg, ctx))
+                    .collect::<Result<Vec<_>, _>>()?;
+                crate::libs::expr::functions::global_registry().call(name, &arg_values)
+            }
         }
         Expr::MethodCall { object, name, args } => {
             // Evaluate the object first
@@ -464,11 +483,30 @@ fn eval_with_placeholder(
     match expr {
         Expr::Underscore => Ok(placeholder_value),
         Expr::Call { name, args } => {
-            let arg_values: Vec<Value> = args
-                .iter()
-                .map(|arg| eval_with_placeholder(arg, placeholder_value.clone(), ctx))
-                .collect::<Result<Vec<_>, _>>()?;
-            crate::libs::expr::functions::global_registry().call(name, &arg_values)
+            // Special handling for fmt function to support %(@n) and %(var) placeholders
+            if name == "fmt" {
+                let arg_values: Vec<Value> = args
+                    .iter()
+                    .map(|arg| {
+                        eval_with_placeholder(arg, placeholder_value.clone(), ctx)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                crate::libs::expr::functions::string::fmt_with_context(
+                    &arg_values,
+                    Some(ctx.row),
+                    Some(&ctx.variables),
+                    Some(&ctx.lambda_params),
+                    Some(ctx.globals.borrow()),
+                )
+            } else {
+                let arg_values: Vec<Value> = args
+                    .iter()
+                    .map(|arg| {
+                        eval_with_placeholder(arg, placeholder_value.clone(), ctx)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                crate::libs::expr::functions::global_registry().call(name, &arg_values)
+            }
         }
         Expr::MethodCall { object, name, args } => {
             let obj_val = eval_with_placeholder(object, placeholder_value.clone(), ctx)?;

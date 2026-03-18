@@ -119,7 +119,7 @@ pub fn execute_with_mode(args: &ArgMatches, mode: &str) -> anyhow::Result<()> {
     // Get input files
     let infiles: Vec<String> = match args.get_many::<String>("infiles") {
         Some(values) => values.cloned().collect(),
-        None => Vec::new(),
+        None => Vec::new(), // Empty means no input files provided
     };
 
     // If we have inline row data, use debug mode (no input file needed)
@@ -303,7 +303,9 @@ pub fn execute_with_mode(args: &ArgMatches, mode: &str) -> anyhow::Result<()> {
                     header_written = true;
 
                     // Optimize expression: resolve column names to indices
-                    resolve_columns(&mut parsed_expr, &headers);
+                    resolve_columns(&mut parsed_expr, &headers).map_err(|e| {
+                        anyhow::anyhow!("Failed to resolve columns: {}", e)
+                    })?;
                     // Fold constant expressions for better performance
                     fold_constants(&mut parsed_expr);
                 }

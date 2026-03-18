@@ -31,7 +31,11 @@ pub fn build_lambda(pair: Pair<Rule>) -> Result<Expr, ParseError> {
 
 fn transform_lambda_params(expr: Expr, params: &[String]) -> Expr {
     match expr {
+        // Handle both explicit @name and bare identifiers that match lambda params
         Expr::ColumnRef(ColumnRef::Name(name)) if params.contains(&name) => {
+            Expr::LambdaParam(name)
+        }
+        Expr::ColumnRef(ColumnRef::Bare(name)) if params.contains(&name) => {
             Expr::LambdaParam(name)
         }
         Expr::Binary { op, left, right } => Expr::Binary {

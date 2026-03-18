@@ -24,6 +24,8 @@ pub enum ParseError {
     UnexpectedRule(Rule),
     #[error("Empty expression")]
     EmptyExpression,
+    #[error("Bare identifier '{0}' is not allowed; use '@{0}' for column references or define it as a variable")]
+    BareIdentifier(String),
 }
 
 /// Parses an expression string into an AST.

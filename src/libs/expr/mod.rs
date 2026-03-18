@@ -64,10 +64,18 @@ pub fn cache_size() -> usize {
 
 /// Resolve column names to indices in an expression
 /// This transforms @name -> @index for faster runtime access
-pub fn resolve_columns(expr: &mut Expr, headers: &[String]) {
+/// Returns error for bare identifiers (ColumnRef::Bare) that are not lambda params
+pub fn resolve_columns(expr: &mut Expr, headers: &[String]) -> Result<(), ExprError> {
     use parser::ast::ColumnRef;
 
     match expr {
+        Expr::ColumnRef(ColumnRef::Bare(name)) => {
+            // Bare identifiers are not allowed - user should use @ prefix
+            return Err(ExprError::Eval(EvalError::ColumnNotFound(format!(
+                "Bare identifier '{}' is not allowed; use '@{}' for column references",
+                name, name
+            ))));
+        }
         Expr::ColumnRef(ColumnRef::Name(name)) => {
             // Find index (1-based) for the column name
             if let Some(idx) = headers.iter().position(|h| h == name) {
@@ -76,64 +84,69 @@ pub fn resolve_columns(expr: &mut Expr, headers: &[String]) {
             // If not found, keep as Name (will error at runtime)
         }
         Expr::Unary { expr: inner, .. } => {
-            resolve_columns(inner, headers);
+            resolve_columns(inner, headers)?;
         }
         Expr::Binary { left, right, .. } => {
-            resolve_columns(left, headers);
-            resolve_columns(right, headers);
+            resolve_columns(left, headers)?;
+            resolve_columns(right, headers)?;
         }
         Expr::Call { args, .. } => {
             for arg in args {
-                resolve_columns(arg, headers);
+                resolve_columns(arg, headers)?;
             }
         }
         Expr::MethodCall { object, args, .. } => {
-            resolve_columns(object, headers);
+            resolve_columns(object, headers)?;
             for arg in args {
-                resolve_columns(arg, headers);
+                resolve_columns(arg, headers)?;
             }
         }
         Expr::Pipe { left, right } => {
-            resolve_columns(left, headers);
-            resolve_pipe_right(right, headers);
+            resolve_columns(left, headers)?;
+            resolve_pipe_right(right, headers)?;
         }
         Expr::Bind { expr: inner, .. } => {
-            resolve_columns(inner, headers);
+            resolve_columns(inner, headers)?;
         }
         Expr::Block(exprs) => {
             for e in exprs {
-                resolve_columns(e, headers);
+                resolve_columns(e, headers)?;
             }
         }
         Expr::List(items) => {
             for item in items {
-                resolve_columns(item, headers);
+                resolve_columns(item, headers)?;
             }
         }
         Expr::Lambda { body, .. } => {
-            resolve_columns(body, headers);
+            resolve_columns(body, headers)?;
         }
         // ColumnRef::Index, Variable, LambdaParam, literals - no resolution needed
         _ => {}
     }
+    Ok(())
 }
 
 /// Resolve columns in pipe right-hand side
-fn resolve_pipe_right(expr: &mut parser::ast::PipeRight, headers: &[String]) {
+fn resolve_pipe_right(
+    expr: &mut parser::ast::PipeRight,
+    headers: &[String],
+) -> Result<(), ExprError> {
     use parser::ast::PipeRight;
 
     match expr {
         PipeRight::Call { args, .. } => {
             for arg in args {
-                resolve_columns(arg, headers);
+                resolve_columns(arg, headers)?;
             }
         }
         PipeRight::CallWithPlaceholder { args, .. } => {
             for arg in args {
-                resolve_columns(arg, headers);
+                resolve_columns(arg, headers)?;
             }
         }
     }
+    Ok(())
 }
 
 /// Fold constant expressions
@@ -372,7 +385,7 @@ pub fn eval_expr_cached_resolved(
     let mut expr = parse_cached(expr_str.as_ref())?;
 
     // Resolve column names to indices (modifies the cloned AST)
-    resolve_columns(&mut expr, headers);
+    resolve_columns(&mut expr, headers)?;
 
     // Evaluate with resolved indices
     let mut ctx = runtime::EvalContext::with_headers(row, headers);
@@ -432,7 +445,7 @@ mod tests {
         let mut expr = Expr::ColumnRef(ColumnRef::Name("price".to_string()));
         let headers = vec!["name".to_string(), "price".to_string(), "qty".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         // Should be resolved to index 2 (1-based)
         match expr {
@@ -449,7 +462,7 @@ mod tests {
         let mut expr = Expr::ColumnRef(ColumnRef::Name("unknown".to_string()));
         let headers = vec!["name".to_string(), "price".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::ColumnRef(ColumnRef::Name(name)) => {
@@ -465,7 +478,7 @@ mod tests {
         let mut expr = Expr::ColumnRef(ColumnRef::Index(1));
         let headers = vec!["name".to_string(), "price".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::ColumnRef(ColumnRef::Index(idx)) => {
@@ -484,7 +497,7 @@ mod tests {
         };
         let headers = vec!["name".to_string(), "price".to_string(), "qty".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::Binary { left, right, .. } => {
@@ -511,7 +524,7 @@ mod tests {
         };
         let headers = vec!["value".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::Unary { expr, .. } => match *expr {
@@ -535,7 +548,7 @@ mod tests {
         };
         let headers = vec!["a".to_string(), "b".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::Call { args, .. } => {
@@ -561,7 +574,7 @@ mod tests {
         };
         let headers = vec!["name".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::MethodCall { object, .. } => match *object {
@@ -580,7 +593,7 @@ mod tests {
         ]);
         let headers = vec!["a".to_string(), "b".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::List(items) => {
@@ -609,7 +622,7 @@ mod tests {
         };
         let headers = vec!["offset".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::Lambda { body, .. } => match *body {
@@ -631,7 +644,7 @@ mod tests {
         ]);
         let headers = vec!["a".to_string(), "b".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::Block(exprs) => {
@@ -656,7 +669,7 @@ mod tests {
         };
         let headers = vec!["price".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::Bind { expr, .. } => match *expr {
@@ -1338,7 +1351,7 @@ mod tests {
         };
         let headers = vec!["value".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::Pipe { left, right } => {
@@ -1371,7 +1384,7 @@ mod tests {
         };
         let headers = vec!["name".to_string(), "desc".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::Pipe { left, right } => {
@@ -1407,7 +1420,7 @@ mod tests {
         };
         let headers = vec!["name".to_string(), "old".to_string(), "new".to_string()];
 
-        resolve_columns(&mut expr, &headers);
+        resolve_columns(&mut expr, &headers).unwrap();
 
         match expr {
             Expr::Pipe { left, right } => {
@@ -1642,6 +1655,96 @@ mod tests {
                 );
             }
             _ => panic!("Expected MethodCall expression"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_columns_bare_identifier_rejected() {
+        // Bare identifiers should be rejected during column resolution
+        let mut expr = Expr::ColumnRef(ColumnRef::Bare("price".to_string()));
+        let headers = vec!["name".to_string(), "price".to_string()];
+
+        let result = resolve_columns(&mut expr, &headers);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("Bare identifier 'price' is not allowed"));
+        assert!(err_msg.contains("use '@price'"));
+    }
+
+    #[test]
+    fn test_resolve_columns_bare_in_binary_rejected() {
+        // Bare identifiers in binary expressions should be rejected
+        let mut expr = Expr::Binary {
+            op: BinaryOp::Add,
+            left: Box::new(Expr::ColumnRef(ColumnRef::Bare("a".to_string()))),
+            right: Box::new(Expr::Int(1)),
+        };
+        let headers = vec!["a".to_string(), "b".to_string()];
+
+        let result = resolve_columns(&mut expr, &headers);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("Bare identifier 'a' is not allowed"));
+    }
+
+    #[test]
+    fn test_resolve_columns_bare_in_call_rejected() {
+        // Bare identifiers in function calls should be rejected
+        let mut expr = Expr::Call {
+            name: "fmt".to_string(),
+            args: vec![
+                Expr::String("%()".to_string()),
+                Expr::ColumnRef(ColumnRef::Bare("value".to_string())),
+            ],
+        };
+        let headers = vec!["value".to_string()];
+
+        let result = resolve_columns(&mut expr, &headers);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("Bare identifier 'value' is not allowed"));
+    }
+
+    #[test]
+    fn test_parse_bare_identifier_becomes_bare() {
+        // Parsing a bare identifier should create ColumnRef::Bare
+        let expr = parser::parse("price").unwrap();
+        match expr {
+            Expr::ColumnRef(ColumnRef::Bare(name)) => {
+                assert_eq!(name, "price");
+            }
+            _ => panic!("Expected ColumnRef::Bare, got {:?}", expr),
+        }
+    }
+
+    #[test]
+    fn test_parse_at_identifier_becomes_name() {
+        // Parsing @identifier should create ColumnRef::Name
+        let expr = parser::parse("@price").unwrap();
+        match expr {
+            Expr::ColumnRef(ColumnRef::Name(name)) => {
+                assert_eq!(name, "price");
+            }
+            _ => panic!("Expected ColumnRef::Name, got {:?}", expr),
+        }
+    }
+
+    #[test]
+    fn test_lambda_param_not_bare() {
+        // Lambda parameters should be converted to LambdaParam, not Bare
+        let expr = parser::parse("x => x + 1").unwrap();
+        match expr {
+            Expr::Lambda { params, body } => {
+                assert_eq!(params, vec!["x"]);
+                match *body {
+                    Expr::Binary { left, .. } => match *left {
+                        Expr::LambdaParam(name) => assert_eq!(name, "x"),
+                        _ => panic!("Expected LambdaParam, got {:?}", left),
+                    },
+                    _ => panic!("Expected Binary in lambda body"),
+                }
+            }
+            _ => panic!("Expected Lambda expression"),
         }
     }
 }

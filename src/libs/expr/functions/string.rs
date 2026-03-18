@@ -135,15 +135,56 @@ pub fn fmt(args: &[Value]) -> Result<Value, EvalError> {
     let template = args[0].as_string();
     let format_args = &args[1..];
 
-    // Parse and format the template
-    match format_template(&template, format_args) {
+    // Parse and format the template (no context for basic fmt)
+    match format_template(&template, format_args, None, None, None, None) {
+        Ok(result) => Ok(Value::String(result)),
+        Err(e) => Err(EvalError::TypeError(format!("fmt: {}", e))),
+    }
+}
+
+/// Format with context support (for %(@n) and %(var) placeholders).
+/// This version is called from eval() when fmt is invoked with context.
+pub fn fmt_with_context(
+    args: &[Value],
+    row: Option<&[String]>,
+    variables: Option<&ahash::HashMap<String, Value>>,
+    lambda_params: Option<&ahash::HashMap<String, Value>>,
+    globals: Option<std::cell::Ref<'_, ahash::HashMap<String, Value>>>,
+) -> Result<Value, EvalError> {
+    if args.is_empty() {
+        return Err(EvalError::WrongArity {
+            name: "fmt".to_string(),
+            expected: 1,
+            got: 0,
+        });
+    }
+
+    let template = args[0].as_string();
+    let format_args = &args[1..];
+
+    // Parse and format the template with context
+    match format_template(
+        &template,
+        format_args,
+        row,
+        variables,
+        lambda_params,
+        globals,
+    ) {
         Ok(result) => Ok(Value::String(result)),
         Err(e) => Err(EvalError::TypeError(format!("fmt: {}", e))),
     }
 }
 
 /// Format a template string with the given arguments.
-fn format_template(template: &str, args: &[Value]) -> Result<String, String> {
+fn format_template(
+    template: &str,
+    args: &[Value],
+    row: Option<&[String]>,
+    variables: Option<&ahash::HashMap<String, Value>>,
+    lambda_params: Option<&ahash::HashMap<String, Value>>,
+    globals: Option<std::cell::Ref<'_, ahash::HashMap<String, Value>>>,
+) -> Result<String, String> {
     let mut result = String::new();
     let mut chars = template.chars().peekable();
     let mut arg_index = 0;
@@ -158,7 +199,13 @@ fn format_template(template: &str, args: &[Value]) -> Result<String, String> {
             }
 
             // Parse the placeholder
-            match parse_placeholder(&mut chars, args, &mut arg_index)? {
+            match parse_placeholder(
+                &mut chars,
+                args,
+                &mut arg_index,
+                row,
+                lambda_params,
+            )? {
                 Placeholder::NextArg => {
                     if arg_index >= args.len() {
                         return Err(format!(
@@ -203,6 +250,55 @@ fn format_template(template: &str, args: &[Value]) -> Result<String, String> {
                     }
                     result.push_str(&format_value(&args[idx], &spec)?);
                 }
+                Placeholder::ColumnRef(idx) => {
+                    let idx = idx.saturating_sub(1); // Convert 1-based to 0-based
+                    match row {
+                        Some(r) if idx < r.len() => {
+                            result.push_str(&r[idx]);
+                        }
+                        _ => {
+                            return Err(format!(
+                                "column index {} out of range",
+                                idx + 1
+                            ));
+                        }
+                    }
+                }
+                Placeholder::VarRef(name) => {
+                    // First check lambda_params, then variables, then globals
+                    let value = lambda_params
+                        .and_then(|params| params.get(&name))
+                        .cloned()
+                        .or_else(|| variables.and_then(|vars| vars.get(&name)).cloned())
+                        .or_else(|| globals.as_ref().and_then(|g| g.get(&name)).cloned())
+                        .unwrap_or_else(|| Value::Null);
+                    result.push_str(&value_to_string(&value));
+                }
+                Placeholder::FormattedColumnRef(idx, spec) => {
+                    let idx = idx.saturating_sub(1); // Convert 1-based to 0-based
+                    match row {
+                        Some(r) if idx < r.len() => {
+                            let val = parse_value(&r[idx]);
+                            result.push_str(&format_value(&val, &spec)?);
+                        }
+                        _ => {
+                            return Err(format!(
+                                "column index {} out of range",
+                                idx + 1
+                            ));
+                        }
+                    }
+                }
+                Placeholder::FormattedVarRef(name, spec) => {
+                    // First check lambda_params, then variables, then globals
+                    let value = lambda_params
+                        .and_then(|params| params.get(&name))
+                        .cloned()
+                        .or_else(|| variables.and_then(|vars| vars.get(&name)).cloned())
+                        .or_else(|| globals.as_ref().and_then(|g| g.get(&name)).cloned())
+                        .unwrap_or_else(|| Value::Null);
+                    result.push_str(&format_value(&value, &spec)?);
+                }
             }
         } else {
             result.push(ch);
@@ -212,12 +308,36 @@ fn format_template(template: &str, args: &[Value]) -> Result<String, String> {
     Ok(result)
 }
 
+/// Parse a string value into Value (try int, then float, then string)
+fn parse_value(s: &str) -> Value {
+    if s.is_empty() {
+        return Value::Null;
+    }
+
+    // Try integer first
+    if let Ok(i) = s.parse::<i64>() {
+        return Value::Int(i);
+    }
+
+    // Then float
+    if let Ok(f) = s.parse::<f64>() {
+        return Value::Float(f);
+    }
+
+    // Fall back to string
+    Value::String(s.to_string())
+}
+
 /// Represents a parsed placeholder.
 enum Placeholder {
     NextArg,                            // %() or %[] or %{}
     IndexedArg(usize),                  // %(n) or %[n] or %{n}
     FormattedNextArg(String),           // %(:spec) or %[:spec] or %{:spec}
     FormattedIndexedArg(usize, String), // %(n:spec) or %[n:spec] or %{n:spec}
+    ColumnRef(usize),                   // %(@n) - column by index
+    VarRef(String),                     // %(var) or %(@var) - variable reference
+    FormattedColumnRef(usize, String),  // %(@n:spec) - column with format
+    FormattedVarRef(String, String), // %(var:spec) or %(@var:spec) - variable with format
 }
 
 /// Parse a placeholder starting after the '%' character.
@@ -225,6 +345,8 @@ fn parse_placeholder(
     chars: &mut std::iter::Peekable<std::str::Chars>,
     _args: &[Value],
     _current_index: &mut usize,
+    _row: Option<&[String]>,
+    _lambda_params: Option<&ahash::HashMap<String, Value>>,
 ) -> Result<Placeholder, String> {
     // Determine the delimiter type
     let (open_delim, close_delim) = match chars.peek() {
@@ -267,7 +389,7 @@ fn parse_placeholder(
         return Err(format!("unclosed delimiter '{}'", open_delim));
     }
 
-    // Parse the content: could be empty, a number, or number:format_spec
+    // Parse the content: could be empty, a number, @n, var, or with format_spec
     if content.is_empty() {
         // %() - next argument
         Ok(Placeholder::NextArg)
@@ -279,17 +401,41 @@ fn parse_placeholder(
         if index_part.is_empty() {
             // %(:spec) - next argument with format
             Ok(Placeholder::FormattedNextArg(spec.to_string()))
+        } else if index_part.starts_with('@') {
+            // %(@n:spec) or %(@var:spec)
+            let name = &index_part[1..];
+            if let Ok(idx) = name.parse::<usize>() {
+                Ok(Placeholder::FormattedColumnRef(idx, spec.to_string()))
+            } else {
+                Ok(Placeholder::FormattedVarRef(
+                    name.to_string(),
+                    spec.to_string(),
+                ))
+            }
         } else if let Ok(idx) = index_part.parse::<usize>() {
             // %(n:spec) - indexed argument with format
             Ok(Placeholder::FormattedIndexedArg(idx, spec.to_string()))
         } else {
-            Err(format!("invalid placeholder content: '{}'", content))
+            // %(var:spec) - variable reference with format
+            Ok(Placeholder::FormattedVarRef(
+                index_part.to_string(),
+                spec.to_string(),
+            ))
+        }
+    } else if content.starts_with('@') {
+        // %(@n) or %(@var) - column or variable reference
+        let name = &content[1..];
+        if let Ok(idx) = name.parse::<usize>() {
+            Ok(Placeholder::ColumnRef(idx))
+        } else {
+            Ok(Placeholder::VarRef(name.to_string()))
         }
     } else if let Ok(idx) = content.parse::<usize>() {
         // %(n) - indexed argument
         Ok(Placeholder::IndexedArg(idx))
     } else {
-        Err(format!("invalid placeholder content: '{}'", content))
+        // %(var) - variable reference
+        Ok(Placeholder::VarRef(content.to_string()))
     }
 }
 
@@ -316,7 +462,7 @@ fn format_value(value: &Value, spec: &str) -> Result<String, String> {
     let mut precision = None::<usize>;
     let mut sign = '-';
     let mut alternate = false;
-    let mut ty = "";
+    let ty;
 
     let mut chars = spec.chars().peekable();
 
@@ -493,7 +639,7 @@ fn format_float(
     f: f64,
     sign: char,
     _alternate: bool,
-    width: Option<usize>,
+    _width: Option<usize>,
     precision: Option<usize>,
     ty: &str,
 ) -> Result<String, String> {

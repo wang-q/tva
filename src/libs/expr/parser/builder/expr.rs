@@ -137,3 +137,61 @@ pub fn build_pipe_right(pair: Pair<Rule>) -> Result<PipeRight, ParseError> {
         Ok(PipeRight::Call { name, args })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libs::expr::parser::parse;
+
+    #[test]
+    fn test_build_full_expr_single() {
+        let expr = parse("1 + 2").unwrap();
+        match expr {
+            Expr::Binary { .. } => {}
+            _ => panic!("Expected binary expression"),
+        }
+    }
+
+    #[test]
+    fn test_build_full_expr_block() {
+        let expr = parse("1 + 2; 3 + 4").unwrap();
+        match expr {
+            Expr::Block(exprs) => {
+                assert_eq!(exprs.len(), 2);
+            }
+            _ => panic!("Expected block expression"),
+        }
+    }
+
+    #[test]
+    fn test_build_bind_with_as() {
+        let expr = parse("1 + 2 as @result").unwrap();
+        match expr {
+            Expr::Bind { name, .. } => {
+                assert_eq!(name, "result");
+            }
+            _ => panic!("Expected bind expression"),
+        }
+    }
+
+    #[test]
+    fn test_build_pipe_simple() {
+        let expr = parse("[1,2,3] | len()").unwrap();
+        match expr {
+            Expr::Pipe { .. } => {}
+            _ => panic!("Expected pipe expression"),
+        }
+    }
+
+    #[test]
+    fn test_build_pipe_with_placeholder() {
+        let expr = parse("[1,2,3] | map(_, x => x * 2)").unwrap();
+        match expr {
+            Expr::Pipe { right, .. } => match *right {
+                PipeRight::CallWithPlaceholder { .. } => {}
+                _ => panic!("Expected CallWithPlaceholder"),
+            },
+            _ => panic!("Expected pipe expression"),
+        }
+    }
+}

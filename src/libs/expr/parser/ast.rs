@@ -72,8 +72,11 @@ pub enum PipeRight {
 pub enum ColumnRef {
     /// Index-based: @1, @2
     Index(usize),
-    /// Name-based: @col_name
+    /// Name-based: @col_name (explicit with @ prefix)
     Name(String),
+    /// Bare identifier that should be rejected (not allowed)
+    /// This is created during parsing but should be rejected during resolution
+    Bare(String),
     /// Whole row: @0
     WholeRow,
 }
@@ -232,6 +235,7 @@ impl Expr {
         match self {
             Expr::ColumnRef(ColumnRef::Index(idx)) => format!("@{}", idx),
             Expr::ColumnRef(ColumnRef::Name(name)) => format!("@{}", name),
+            Expr::ColumnRef(ColumnRef::Bare(name)) => name.clone(), // Should not appear in formatted output
             Expr::ColumnRef(ColumnRef::WholeRow) => "@0".to_string(),
             Expr::Variable(name) => format!("@{}", name),
             Expr::GlobalVar(name) => format!("@{}", name),

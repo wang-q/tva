@@ -86,7 +86,8 @@ pub fn build_expr(pair: Pair<super::Rule>) -> Result<Expr, ParseError> {
             if name == "_" {
                 Ok(Expr::Underscore)
             } else {
-                Ok(Expr::ColumnRef(ColumnRef::Name(name.to_string())))
+                // Bare identifier - will be rejected during column resolution
+                Ok(Expr::ColumnRef(ColumnRef::Bare(name.to_string())))
             }
         }
         _ => Err(ParseError::UnexpectedRule(pair.as_rule())),
