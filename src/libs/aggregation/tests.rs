@@ -478,3 +478,77 @@ fn test_single_value_stats() {
     assert_eq!(results[1], "nan"); // Variance (needs count > 1)
     assert_eq!(results[2], "0"); // MAD (deviation is 0)
 }
+
+#[test]
+fn test_sum_multiple_values() {
+    let ops = vec![Operation {
+        kind: OpKind::Sum,
+        field_idx: Some(0),
+    }];
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
+    let mut agg = processor.create_aggregator();
+
+    // Data: 1, 2, 3, 4, 5
+    for i in 1..=5 {
+        let row = TestRow {
+            fields: vec![i.to_string()],
+        };
+        processor.update(&mut agg, &row);
+    }
+
+    let results = processor.format_results(&agg);
+    assert_eq!(results[0], "15");
+}
+
+#[test]
+fn test_count_no_field() {
+    let ops = vec![Operation {
+        kind: OpKind::Count,
+        field_idx: None,
+    }];
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
+    let mut agg = processor.create_aggregator();
+
+    // Count rows regardless of field values
+    for _ in 0..10 {
+        let row = TestRow {
+            fields: vec!["any".to_string()],
+        };
+        processor.update(&mut agg, &row);
+    }
+
+    let results = processor.format_results(&agg);
+    assert_eq!(results[0], "10");
+}
+
+#[test]
+fn test_quantile_custom() {
+    let ops = vec![
+        Operation {
+            kind: OpKind::Quantile(0.9),
+            field_idx: Some(0),
+        },
+        Operation {
+            kind: OpKind::Quantile(0.1),
+            field_idx: Some(0),
+        },
+    ];
+    let processor = StatsProcessor::new(ops, StatsConfig::default());
+    let mut agg = processor.create_aggregator();
+
+    // Data: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+    for i in 1..=10 {
+        let row = TestRow {
+            fields: vec![i.to_string()],
+        };
+        processor.update(&mut agg, &row);
+    }
+
+    let results = processor.format_results(&agg);
+    // 90th percentile should be around 9
+    let p90: f64 = results[0].parse().unwrap();
+    assert!(p90 >= 8.0 && p90 <= 10.0);
+    // 10th percentile should be around 1-2
+    let p10: f64 = results[1].parse().unwrap();
+    assert!(p10 >= 1.0 && p10 <= 2.0);
+}
