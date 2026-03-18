@@ -13,6 +13,8 @@ Input:
 
 * Reads from files or standard input.
 * Files ending in `.gz` are transparently decompressed.
+* Use `stdin` to explicitly read from stdin, this is different behavior from other commands.
+* Use `-r` for inline row data without file input.
 
 Output:
 
