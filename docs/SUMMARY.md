@@ -24,6 +24,7 @@
 - [Variables](expr/variables.md)
 - [Operators](expr/operators.md)
 - [Functions](expr/functions.md)
+- [String Formatting (fmt)](expr/fmt.md)
 - [Syntax Guide](expr/syntax.md)
 - [Rosetta Code](expr/rosetta.md)
 
