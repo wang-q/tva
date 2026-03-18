@@ -143,25 +143,12 @@ cargo build
 
 `xan` 的 `moonblade` 表达式引擎设计精良，以下是值得 `tva` 借鉴的关键特性：
 
-**3.1 管道操作符 (`|`)**
-
-* **功能**: 使用 `_` 引用左侧表达式的结果，避免重复书写。
-  ```python
-  split(date, '/') | fmt('{}-{}-{}', _[2], _[0], _[1])
-  ```
-* **价值**: 提高表达式可读性，支持链式操作。
-* **建议**: 在 `tva expr` 中实现管道操作符，需要扩展 AST 和求值器。
-
 **3.2 待添加的函数**
 
 以下函数尚未实现，可参考 `xan` 添加：
 
 | 函数类别 | 函数名 | 功能 | 优先级 |
 |:--------|:------|:-----|:------|
-| **字符串** | `pad`/`lpad`/`rpad` | 字符串填充 | 中 |
-| **列表** | `flatten` | 扁平化嵌套列表 | 中 |
-| | `zip` | 合并多个列表 | 中 |
-| | `take`/`drop` | 取/舍前 N 个元素 | 中 |
 | **文件路径** | `abspath`/`dirname`/`basename` | 路径处理 | 低 |
 
 #### 4. 类型系统设计 (Type System)
@@ -227,25 +214,132 @@ Bar Charts）。
     * **特色功能**: 支持日期补全 (`--dates`)，自动填充缺失的日期并设为 0；支持间隙压缩 (
   `--compress-gaps`)，隐藏连续的 0 值。
 
-### 4. 列表/数组操作扩展
-
-**建议添加**：
-- `flatten([[1,2], [3,4]])` → `[1,2,3,4]`
-- `zip([1,2], ["a","b"])` → `[[1,"a"], [2,"b"]]`
-- `group_by([...], x => x.type)` - 按条件分组
-- `take([1,2,3,4], 2)` / `drop([1,2,3,4], 2)`
-
 ### 优先级建议
 
 | 优先级 | 改进项 | 原因 |
 |:------|:------|:-----|
 | 🔴 高 | 管道操作符 (`\|`) | 显著提升表达式可读性 |
 | 🟡 中 | 方法调用语法 (`.`) | 提升用户体验 |
-| 🟡 中 | 更多列表函数 (`flatten`, `zip`, `take`, `drop`) | 函数式编程核心 |
 | 🟢 低 | 字符串填充 (`pad`) | 格式化输出 |
 | 🟢 低 | 路径处理函数 | 特定场景 |
 | 🔵 未来 | 类型系统重构 (`Arc`, `DateTime`) | 需要大量测试 |
 
-## 参考项目: stringr (R 语言字符串处理)
+## 扩展 List 相关函数
 
-`stringr` 是 R 语言中最流行的字符串处理包，提供了系统化、一致性的字符串操作接口。通过分析其功能设计，可以为 `tva expr` 的字符串函数提供补充建议。
+参考 Scala List、Haskell Data.List、F# List 与 Kotlin Collections API 设计，针对 TVA expr 的 TSV 行数据处理场景，筛选出**真正需要实现**的列表操作函数。
+
+### 核心原则
+
+TVA expr 用于处理 TSV 中的单行数据，典型场景：
+- `split()` 字符串得到列表 → 处理 → `join()` 输出
+- 构造列表进行数据转换
+- 简单的列表查询和过滤
+
+**实现标准**：
+- ✅ **需要实现**：无法通过现有函数简单组合，或组合后性能/可读性极差
+- ❌ **不需要实现**：可用现有函数一行组合实现，或场景不符
+
+### 需要实现的函数（核心）
+
+以下函数**无法**用现有函数简单高效地组合实现：
+
+#### Generic Functions（同时支持 String 和 List）
+
+| 优先级 | 函数 | 示例 | 说明 |
+|--------|------|------|------|
+| **P1** | `is_empty` | `is_empty([])` → `true` / `is_empty("")` → `true` | 判断是否为空 |
+| **P1** | `take` | `take([1,2,3,4], 2)` → `[1,2]` / `take("hello", 2)` → `"he"` | 取前 n 个元素 |
+| **P1** | `drop` | `drop([1,2,3,4], 2)` → `[3,4]` / `drop("hello", 2)` → `"llo"` | 删除前 n 个元素 |
+| **P1** | `contains` | `contains([1,2,3], 2)` → `true` / `contains("hello", "ll")` → `true` | 判断是否包含 |
+
+#### List-only Functions（仅列表操作）
+
+| 优先级 | 函数 | 示例 | 说明 |
+|--------|------|------|------|
+| **P1** | `flatten` | `flatten([[1,2], [3,4]])` → `[1,2,3,4]` | 扁平化嵌套列表 |
+| **P1** | `zip` | `zip([1,2], ["a","b"])` → `[[1,"a"], [2,"b"]]` | 多列表拉链组合 |
+| **P2** | `partition` | `partition([1,2,3,4], x -> x % 2 == 0)` → `[[2,4], [1,3]]` | 按条件分区为两个列表 |
+| **P2** | `flat_map` | `flat_map([1,2], x -> [x, x*2])` → `[1,2,2,4]` | 映射并扁平化 |
+| **P2** | `grouped` | `grouped([1,2,3,4,5], 2)` → `[[1,2], [3,4], [5]]` | 按大小分块 |
+| **P2** | `sliding` | `sliding([1,2,3,4], 2)` → `[[1,2], [2,3], [3,4]]` | 滑动窗口 |
+
+### 可用现有函数组合实现（不需要单独实现）
+
+以下函数**可以**用现有函数组合实现，提供文档示例即可：
+
+#### Generic Functions（同时支持 String 和 List）
+
+| 函数 | 组合方案 |
+|------|----------|
+| `if_empty(value, default)` | 已有 `default(val, fallback)` 函数 |
+
+#### List-only Functions（仅列表操作）
+
+| 函数 | 组合方案 |
+|------|----------|
+| `take_last(list, n)` | `reverse(list) \|> take(n) \|> reverse()` |
+| `drop_last(list, n)` | `reverse(list) \|> drop(n) \|> reverse()` |
+| `find(list, pred)` | `filter(list, pred) \|> first()` |
+| `find_back(list, pred)` | `filter(list, pred) \|> last()` |
+| `find_index(list, pred)` | `zip(range(len(list)), list) \|> filter((i, x) -> pred(x)) \|> first() \|> first()` |
+| `exists(list, pred)` | `len(filter(list, pred)) > 0` |
+| `forall(list, pred)` | `len(filter(list, pred)) == len(list)` |
+| `count(list, pred)` | `len(filter(list, pred))` |
+| `index_of(list, val)` | `find_index(list, x -> x == val)` |
+| `last_index_of(list, val)` | `find_index(reverse(list), x -> x == val)` |
+| `sum(list)` | `reduce(list, 0, (a, b) -> a + b)` |
+| `sum_of(list, f)` | `sum(map(list, f))` |
+| `avg(list)` | `sum(list) / len(list)` |
+| `avg_of(list, f)` | `avg(map(list, f))` |
+| `min(list)` / `max(list)` | `reduce(list, first(list), (a, b) -> if(a < b, a, b))` |
+| `min_of(list, f)` / `max_of(list, f)` | `min(map(list, f))` / `max(map(list, f))` |
+| `min_by(list, f)` / `max_by(list, f)` | `sort_by(list, f) \|> first()` / `last()` |
+| `filter_not(list, pred)` | `filter(list, x -> !pred(x))` |
+| `distinct_by(list, f)` | 复杂组合，但使用频率低 |
+| `indexed(list)` | `zip(range(len(list)), list)` |
+| `pairwise(list)` | `sliding(list, 2)` |
+| `union(a, b)` | `unique(concat(a, b))` |
+| `intersect(a, b)` | `filter(a, x -> contains(b, x)) \|> unique()` |
+| `difference(a, b)` | `filter(a, x -> !contains(b, x))` |
+
+### 不需要实现的函数（场景不符）
+
+以下函数在 TVA expr 的 TSV 行数据处理场景中**不适用**：
+
+| 函数 | 原因 |
+|------|------|
+| `zip_with` | 可用 `zip` + `map` 组合 |
+| `truncate` | TSV 行数据通常不需要安全 take |
+| `drop_while` | 与 `take_while` 对称，但使用频率低 |
+| `length` | 已有 `len()` 泛型函数 |
+| `none` | 可用 `!exists(...)` 实现 |
+| `span` | 可用 `take_while` + `drop_while` 组合 |
+| `group_by` | 返回对象结构，与 TVA 表达式简化原则冲突 |
+| `product` | 纯数学函数，TSV 数据处理极少用到 |
+| `count_by` | 返回对象结构，TSV 行处理不需要 |
+| `scan` | 保留中间结果的 reduce，数学/算法场景使用 |
+| `choose` | 可用 `filter` + `map` 组合实现 |
+| `split_into` | 可用 `grouped` 或数学计算实现 |
+| `intersperse` / `intercalate` | 可用 `join` 配合分隔符实现 |
+| `transpose` | 矩阵操作，TSV 行数据处理不需要 |
+| `sort_on` | 已有 `sort_by`，功能重复 |
+| `inits` / `tails` | 生成所有前缀/后缀，惰性序列场景 |
+| `zip_with_next` | 可用 `sliding(2)` 替代 |
+| `is_prefix` / `is_suffix` / `is_infix` | 子序列匹配，字符串处理场景 |
+| `slice` | 已有 `slice` 函数 |
+| `insert_at` / `remove_at` / `update_at` | 原地修改操作，不符合函数式风格 |
+| `split_at` | 可用 `take` + `drop` 组合实现 |
+| `init` | 可用 `range` + `map` 组合实现 |
+| `replicate` | 可用 `range` + `map` 或字面量构造 |
+| `singleton` | 可用 `[x]` 字面量直接构造 |
+| `unfold` | 无限序列生成，TSV 行处理不需要 |
+| `shuffled` / `random` / `random_sample` | 随机操作，需要引入随机状态 |
+| `binary_search` | 有序列表查找，TSV 行处理极少需要 |
+
+### 设计参考
+
+- **Scala List**: 面向对象的函数式集合，方法调用风格 `list.map(f)`，惰性求值
+- **Haskell Data.List**: 纯函数式，函数作为参数 `map f list`，惰性求值，数学严谨
+- **F# List**: .NET 平台上的函数式列表，强调实用性和安全性（`tryXxx` 函数）
+- **Kotlin Collections**: JVM 平台上的实用主义设计，丰富的扩展函数，运算符重载
+- **TVA 风格**: 保持函数式风格，列表作为第一个参数 `map(list, f)`，与管道操作符配合

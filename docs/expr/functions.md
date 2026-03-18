@@ -21,6 +21,12 @@ TVA expr engine provides a rich set of built-in functions for data processing.
 - sqrt(x) -> float: Square root
 - tan(x) -> float: Tangent (radians)
 
+## Logic & Control
+
+- if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (
+  or null)
+- default(val, fallback) -> T: Returns fallback if val is null or empty
+
 ## Generic Functions
 
 - len(value) -> int: Returns length of string (bytes) or list (element count)
@@ -140,12 +146,6 @@ The range function produces a list of numbers. Similar to jq's range:
 
 Note: If step direction doesn't match the range direction (e.g., positive step with from > upto),
 returns empty list.
-
-## Logic & Control
-
-- if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (
-  or null)
-- default(val, fallback) -> T: Returns fallback if val is null or empty
 
 ## Higher-Order Functions
 
