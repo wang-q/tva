@@ -41,6 +41,8 @@ TVA expr engine provides a rich set of built-in functions for data processing.
 - wordcount(string) -> int: Word count
 - fmt(template, ...args) -> string: Format string with placeholders
 
+See [String Formatting (fmt)](fmt.md) for detailed documentation.
+
 ```bash
 # String manipulation examples
 tva expr -E 'upper("hello")'                # Returns: "HELLO"
@@ -61,23 +63,19 @@ tva expr -E 'truncate("hello world", 5)'    # Returns: "he..."
 tva expr -E 'wordcount("hello world")'      # Returns: 2
 tva expr -E 'wordcount("one two three four")'  # Returns: 4
 
-# fmt() - String formatting
+# fmt() - String formatting (see fmt.md for complete documentation)
 tva expr -E 'fmt("Hello %()!", "World")'                    # Returns: "Hello World!"
 tva expr -E 'fmt("%(1) has %(2) points", "Alice", 100)'      # Returns: "Alice has 100 points"
 tva expr -E 'fmt("Hex: %(1:#x)", 255)'                       # Returns: "Hex: 0xff"
-tva expr -E 'fmt("Escaped %% works")'                        # Returns: "Escaped % works"
 
-# fmt() supports three delimiter types: %(), %[], %{}
-tva expr -E 'fmt("%[1] and %[2]", "a", "b")'                 # Returns: "a and b"
-tva expr -E 'fmt("%{1} and %{2}", "a", "b")'                 # Returns: "a and b"
+# Column references with %(@n)
+tva expr -E 'fmt("%(@1) has %(@2) points")' -r "Alice,100"
 
-# Format specifiers (similar to Rust's format!)
-tva expr -E 'fmt("%(1:>10)", "hello")'                       # Right align, width 10
-tva expr -E 'fmt("%(1:<10)", "hello")'                       # Left align, width 10
-tva expr -E 'fmt("%(1:.2)", 3.14159)'                        # 2 decimal places
-tva expr -E 'fmt("%(1:08)", 42)'                             # Zero-pad to 8 digits
-tva expr -E 'fmt("%(1:+)", 42)'                              # Always show sign
-tva expr -E 'fmt("%(1:#x)", 255)'                            # Hex with 0x prefix
+# Lambda variable references
+tva expr -E 'map([1, 2, 3], x => fmt("value: %(x)"))'
+
+# Using different delimiters to avoid conflicts
+tva expr -E 'fmt(q(The "value" is %[1]), 42)'
 ```
 
 ## List Operations
