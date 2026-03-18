@@ -233,6 +233,7 @@ impl FunctionRegistry {
         self.register("partition", FunctionInfo::fixed(list::partition, 2));
         self.register("flat_map", FunctionInfo::fixed(list::flat_map, 2));
         self.register("grouped", FunctionInfo::fixed(list::grouped, 2));
+        self.register("filter_index", FunctionInfo::fixed(list::filter_index, 2));
 
         // Regex functions
         self.register("regex_match", FunctionInfo::fixed(regex::regex_match, 2));

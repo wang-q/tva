@@ -37,7 +37,6 @@ The implementation is selected at runtime based on the first argument type.
 - contains(value, item) -> bool: Check if string contains substring, or list contains element
 - take(value, n) -> T: Take first n elements from string or list
 - drop(value, n) -> T: Drop first n elements from string or list
-
 - concat(value1, value2, ...) -> T: Concatenate strings or lists
 
 ## String Manipulation
@@ -183,6 +182,7 @@ returns empty list.
 
 - map(list, lambda) -> list: Apply lambda to each element
 - filter(list, lambda) -> list: Filter list elements
+- filter_index(list, lambda) -> list: Return indices of elements satisfying the predicate
 - reduce(list, init, lambda) -> value: Reduce list to single value
 - sort_by(list, lambda) -> list: Sort list by lambda expression
 - take_while(list, lambda) -> list: Take elements while lambda is true
@@ -241,6 +241,22 @@ tva expr -E 'take_while([2, 4, 6, 7, 8, 10], x => x % 2 == 0)'
 # Take strings while they start with "a"
 tva expr -E 'take_while(["apple", "apricot", "banana", "avocado"], s => s.starts_with("a"))'
 # Returns: ["apple", "apricot"]
+
+# Find indices of elements satisfying condition
+tva expr -E 'filter_index([10, 15, 20, 25, 30], x => x > 18)'
+# Returns: [2, 3, 4]
+
+# Find indices of even numbers
+tva expr -E 'filter_index([1, 2, 3, 4, 5], x => x % 2 == 0)'
+# Returns: [1, 3]
+
+# Concatenate lists
+tva expr -E 'concat([1, 2], [3, 4])'
+# Returns: [1, 2, 3, 4]
+
+# Concatenate strings (alternative to ++ operator)
+tva expr -E 'concat("hello", " ", "world")'
+# Returns: "hello world"
 ```
 
 ## Regular Expressions

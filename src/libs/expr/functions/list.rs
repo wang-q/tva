@@ -803,6 +803,39 @@ pub fn concat(args: &[Value]) -> Result<Value, EvalError> {
     Ok(Value::List(result))
 }
 
+/// Return indices of elements that satisfy the predicate
+/// filter_index(list, lambda) -> list
+pub fn filter_index(args: &[Value]) -> Result<Value, EvalError> {
+    let list = match &args[0] {
+        Value::List(list) => list,
+        Value::Null => return Ok(Value::Null),
+        _ => {
+            return Err(EvalError::TypeError(
+                "filter_index: first argument must be a list".to_string(),
+            ))
+        }
+    };
+
+    let pred = match &args[1] {
+        Value::Lambda(lambda) => lambda.clone(),
+        _ => {
+            return Err(EvalError::TypeError(
+                "filter_index: second argument must be a lambda".to_string(),
+            ))
+        }
+    };
+
+    let mut result = Vec::new();
+    for (i, item) in list.iter().enumerate() {
+        let condition = apply_lambda(&pred, item)?;
+        if condition.as_bool() {
+            result.push(Value::Int(i as i64));
+        }
+    }
+
+    Ok(Value::List(result))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2905,6 +2938,91 @@ mod tests {
     #[test]
     fn test_concat_type_error() {
         let result = concat(&[Value::Int(123), Value::List(vec![])]);
+        assert!(result.is_err());
+    }
+
+    // Tests for filter_index
+    #[test]
+    fn test_filter_index_basic() {
+        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+            Value::Int(5),
+        ]);
+        // Find indices of even numbers
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Eq,
+                left: Box::new(Expr::Binary {
+                    op: BinaryOp::Mod,
+                    left: Box::new(Expr::LambdaParam("x".to_string())),
+                    right: Box::new(Expr::Int(2)),
+                }),
+                right: Box::new(Expr::Int(0)),
+            },
+        });
+        assert_eq!(
+            filter_index(&[list, lambda]).unwrap(),
+            Value::List(vec![Value::Int(1), Value::Int(3)])
+        );
+    }
+
+    #[test]
+    fn test_filter_index_empty_result() {
+        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let list = Value::List(vec![Value::Int(1), Value::Int(3), Value::Int(5)]);
+        // Find indices of even numbers (none)
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Eq,
+                left: Box::new(Expr::Binary {
+                    op: BinaryOp::Mod,
+                    left: Box::new(Expr::LambdaParam("x".to_string())),
+                    right: Box::new(Expr::Int(2)),
+                }),
+                right: Box::new(Expr::Int(0)),
+            },
+        });
+        assert_eq!(filter_index(&[list, lambda]).unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_filter_index_null() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let lambda = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::Bool(true),
+        });
+        assert_eq!(filter_index(&[Value::Null, lambda]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_filter_index_type_error() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let result = filter_index(&[
+            Value::Int(123),
+            Value::Lambda(LambdaValue {
+                captured_vars: HashMap::new(),
+                params: vec!["x".to_string()],
+                body: Expr::Bool(true),
+            }),
+        ]);
         assert!(result.is_err());
     }
 }
