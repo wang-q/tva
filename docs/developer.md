@@ -357,184 +357,35 @@ stringr 的以下函数支持 locale 参数：
 
 **建议**: tva 目前定位为数据处理工具而非全球化工具，locale 支持优先级较低。如需实现，可考虑通过环境变量而非函数参数控制。
 
-## fmt 格式化函数规划
+## fmt 格式化函数
 
-参考 Rust `format!` 宏和 Perl `q//` 的设计，使用 `%` 作为前缀，并支持多种成对分隔符（`()` `[]` `{}`），以避免与 bash 变量 `$`、字符串转义 `\` 和 GNU parallel 的 `{}` 冲突。
-
-内部基于 Rust 的 `std::fmt` 格式化系统实现，支持其大部分格式功能。
-
-### 函数签名
-
-```rust
-// 主格式化函数
-fmt(template: string, ...args: any) -> string
-```
-
-### 格式说明符语法
-
-支持三种成对分隔符，类似 Perl 的 `q//`：
-
-```
-%(...[:format_spec])     # 圆括号
-%[...[:format_spec]]     # 方括号
-%{...[:format_spec]}     # 花括号
-```
-
-分隔符内部可以包含同类型的单边符号，只要成对即可。
-
-### 参数形式
-
-| 形式 | 说明 | 示例 |
-|:-----|:-----|:-----|
-| `%()` | 按顺序使用下一个位置参数 | `fmt("%() %()", a, b)` |
-| `%(n)` | 第 n 个位置参数（1-based） | `fmt("%(2) %(1)", a, b)` |
-| `%(var)` | 引用 lambda 参数 | `fmt("%(name)")` |
-| `%(@n)` | 第 n 列 | `fmt("%(@1) and %(@2)")` |
-| `%(@var)` | 引用 `@var` | `fmt("%(@name)")` |
-
-**分隔符选择：**
-- 默认使用 `%()`，简洁直观
-- 如果格式字符串包含 `()`，改用 `%[]` 或 `%{}`
-- 内部可以嵌套同类型括号，只要成对：
-  - `%(func(a, b))` → 引用名为 `func(a, b)` 的参数
-  - `%[arr[0]]` → 引用名为 `arr[0]` 的参数
-  - `%{obj{key}}` → 引用名为 `obj{key}` 的参数
-
-**解析优先级：**
-1. `%(@...)` → 列索引或 `@var`
-2. `%(n)` → 位置参数（纯数字）
-3. `%(var)` → lambda 参数
-4. `%()` → 顺序位置参数
-
-### 填充与对齐 (fill & align)
-
-| 对齐 | 说明 | 示例 `%(:*<10)` |
-|:-----|:-----|:----------------|
-| `<` | 左对齐 | `hello*****` |
-| `>` | 右对齐 | `*****hello` |
-| `^` | 居中 | `**hello***` |
-
-填充字符在对齐符号前指定，默认为空格。
-
-### 符号 (sign)
-
-| 符号 | 说明 | 示例 |
-|:-----|:-----|:-----|
-| `-` | 仅负数显示符号 (默认) | `-42` |
-| `+` | 总是显示符号 | `+42`, `-42` |
-
-### 替代形式 ('#')
-
-在进制前缀显示基数标识：
-
-| 类型 | 效果 | 示例 `%(:#x)` |
-|:-----|:-----|:-------------|
-| `x` | 添加 `0x` 前缀 | `0xff` |
-| `X` | 添加 `0X` 前缀 | `0XFF` |
-| `b` | 添加 `0b` 前缀 | `0b1010` |
-| `o` | 添加 `0o` 前缀 | `0o77` |
-
-### 宽度 (width)
-
-最小字段宽度，不足则填充。
-
-### 精度 (precision)
-
-- 整数: 补零到指定宽度
-- 浮点数: 小数位数
-- 字符串: 最大字符数
-
-### 类型说明符 (type)
-
-| 类型 | 说明 | 示例 |
-|:-----|:-----|:-----|
-| 省略 | 默认显示 | 根据类型自动选择 |
-| `b` | 二进制 | `1010` |
-| `o` | 八进制 | `77` |
-| `x` / `X` | 十六进制 | `ff` / `FF` |
-| `e` / `E` | 科学计数法 | `1.23e+04` |
-| `?` | 调试格式 | 带引号字符串 `"hello"` |
-
-### 使用示例
+### 在 expr 中使用列引用
 
 ```bash
-# 基本格式化
-tva expr -E 'fmt("Hello, %()!", "world")'           # "Hello, world!"
-tva expr -E 'fmt("%() + %() = %()", 1, 2, 3)'        # "1 + 2 = 3"
+# 使用 %(@n) 引用第 n 列（1-based）
+echo -e "name\tage\nAlice\t25\nBob\t30" | tva expr -H -E 'fmt("%(@1) is %(@2) years old") as @formatted'
+# Alice is 25 years old
+# Bob is 30 years old
 
-# 位置参数 (1-based，与 parallel 一致)
-tva expr -E 'fmt("%(2) %(1)", "world", "Hello")'    # "Hello world"
+# 使用 %(@name) 引用列名
+echo -e "name\tage\nAlice\t25" | tva expr -H -E 'fmt("%(@name) is %(@age) years old") as @formatted'
+# Alice is 25 years old
 
-# 在 lambda 中使用参数引用
-tva expr -E '
-    map(["Alice", "Bob"], name => fmt("Hello, %(name)!"))
-'
-# ["Hello, Alice!", "Hello, Bob!"]
+# 混合列引用和位置参数
+echo -e "product\tprice\nApple\t1.5" | tva expr -H -E 'fmt("%(@1): $%(:.2)", price)'
+```
 
-# 显式变量引用 %(@var)
-tva expr -E '
-    "Bob" as @name;
-    fmt("Hello, %(@name)!")
-'
-# "Hello, Bob!"
+### 与 GNU parallel 的兼容性
 
-# 变量与格式组合使用
-tva expr -E '
-    3.14159 as @pi;
-    fmt("Pi = %(@pi:.2)")
-'
-# "Pi = 3.14"
+```bash
+# 处理文件列表，生成格式化输出
+parallel 'tva expr -E '"'"'fmt("File: %(1) (%.2 KB)", {}, size({}))'"'"'' ::: *.txt
 
-tva expr -E '
-    42 as @num;
-    fmt("Hex: %(@num:#x), Bin: %(@num:b)")
-'
-# "Hex: 0x2a, Bin: 101010"
+# 结合 tva 其他命令
+seq 1 10 | parallel 'tva expr -E '"'"'fmt("Processing item %(:03) of %()", {}, 10)'"'"'
 
-# 混合使用
-tva expr -E '
-    map([1, 2, 3, 4, 5], x => fmt("%(x) is %(:+)", x))
-'
-# 错误：lambda 参数 x 不在 fmt 的作用域内
-# 正确用法：
-tva expr -E '
-    map([1, 2, 3], x => {
-        x as @val;
-        fmt("Value: %(@val)")
-    })
-'
-# ["Value: 1", "Value: 2", "Value: 3"]
-
-# 对齐与填充
-tva expr -E 'fmt("%(:>10)", "hi")'                  # "        hi"
-tva expr -E 'fmt("%(:*<10)", "hi")'                 # "hi********"
-tva expr -E 'fmt("%(:^10)", "hi")'                  # "    hi    "
-
-# 数字格式
-tva expr -E 'fmt("%(:+)", 42)'                      # "+42"
-tva expr -E 'fmt("%(:08)", 42)'                     # "00000042"
-tva expr -E 'fmt("%(:.2)", 3.14159)'                # "3.14"
-tva expr -E 'fmt("%(:>10.2)", 3.14159)'             # "      3.14"
-
-# 进制转换
-tva expr -E 'fmt("%(:b)", 42)'                      # "101010"
-tva expr -E 'fmt("%(:x)", 255)'                     # "ff"
-tva expr -E 'fmt("%(:#x)", 255)'                    # "0xff"
-tva expr -E 'fmt("%(:08x)", 255)'                   # "000000ff"
-
-# 字符串截断
-tva expr -E 'fmt("%(:.5)", "hello world")'          # "hello"
-
-# 调试格式
-tva expr -E 'fmt("%(:?)", "hello")'                 # "\"hello\""
-
-# 使用不同分隔符避免冲突
-# 当格式字符串包含 () 时，改用 %[] 或 %{}
-tva expr -E 'fmt("%[func(a, b)] = %[:.2]", 3.14159)'  # "func(a, b) = 3.14"
-tva expr -E 'fmt("%{obj{key}}: %(:+)", 42)'           # "obj{key}: +42"
-
-# 在 q() 中使用 %[] 避免转义
-q(fmt(%[name] is %[age] years old))
+# 多列数据处理
+cat data.tsv | parallel --colsep '\t' 'tva expr -E '"'"'fmt("%(1): %(2) -> %(3)", {1}, {2}, {3})'"'"'
 ```
 
 ### 在 expr 中使用列引用
@@ -550,60 +401,5 @@ echo -e "name\tage\nAlice\t25" | tva expr -E 'fmt("%(@name) is %(@age) years old
 # Alice is 25 years old
 
 # 混合列引用和位置参数
-echo -e "product\tprice\nApple\t1.5" | tva expr -E 'fmt("%(@1): $%(:.2)", price)'
+echo -e "product\tprice\nApple\t1.5" | tva expr -H -E 'fmt("%(@1): $%(:.2)", price)'
 ```
-
-### 与 Rust format! 的差异
-
-| 特性 | Rust | tva fmt | 说明 |
-|:-----|:-----|:--------|:-----|
-| 占位符 | `{}` | `%()` / `%[]` / `%{}` | 语法差异，内部转换 |
-| 位置索引 | 0-based | 1-based | 与 GNU parallel 一致 |
-| 命名参数 | `format!("{name}", name="val")` | 不支持 | 使用 `%(var)` 引用 lambda 参数替代 |
-| 动态宽度 | `format!("{:>1$}", x, width)` | 不支持 | Rust 的 `$` 语法 |
-| 动态精度 | `format!("{:.1$}", x, prec)` | 不支持 | Rust 的 `$` 语法 |
-| 参数计数 | 编译期检查 | 运行时检查 | 模板与参数不匹配时返回错误 |
-
-### 与 GNU parallel 的兼容性
-
-GNU parallel 使用 `{}` 作为占位符（如 `{}` `{.}` `{/}` `{1}` 等）。tva 的 `fmt` 与之对比：
-
-| 工具 | 占位符 | 示例 |
-|:-----|:-------|:-----|
-| GNU parallel | `{}` | `parallel echo {} ::: *.txt` |
-| tva fmt | `%()` / `%[]` / `%{}` | `fmt("Hello, %()!", "world")` |
-
-```bash
-# 安全：parallel 的 {} 和 tva 的 %() 不会冲突
-parallel 'tva expr -E "fmt(q(Processing: %[] at %[]), {}, now())"' ::: *.tsv
-
-# 处理文件列表，生成格式化输出
-parallel 'tva expr -E '"'"'fmt("File: %(1) (%.2 KB)", {}, size({}))'"'"'' ::: *.txt
-
-# 结合 tva 其他命令
-seq 1 10 | parallel 'tva expr -E '"'"'fmt("Processing item %(:03) of %()", {}, 10)'"'"'
-
-# 多列数据处理
-cat data.tsv | parallel --colsep '\t' 'tva expr -E '"'"'fmt("%(1): %(2) -> %(3)", {1}, {2}, {3})'"'"'
-```
-
-### 实现建议
-
-基于 Rust `std::fmt` 实现，但替换占位符语法：
-
-```rust
-pub fn fmt(args: &[Value]) -> Result<String> {
-    let template = args[0].as_str()?;
-    // 将 % 语法转换为 Rust format 语法后调用标准库
-    // 1. 解析模板中的 %(n) 和 % 占位符
-    // 2. 映射 1-based 索引到 0-based
-    // 3. 使用 write! 宏生成结果
-}
-```
-
-### 实现优先级
-
-1. **Phase 1**: 基本 `%()` 占位符、1-based 位置参数、默认格式化
-2. **Phase 2**: 对齐 `<`/`>`/`^`、填充、宽度、精度
-3. **Phase 3**: 符号 `+`/`-`、替代形式 `#`、进制 `b`/`o`/`x`/`X`
-4. **Phase 4**: 科学计数法 `e`/`E`、调试格式 `?` 
