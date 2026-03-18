@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c51875c0.js";
+            window.path_to_searchindex_js = "searchindex-c7cea87d.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2faa0315.js"></script>
+        <script src="toc-4c424a3b.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -4656,6 +4656,50 @@ ranges (<code>run-user_time</code>), and wildcards (<code>*_time</code>).</li>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="filter"><a class="header" href="#filter">filter</a></h1>
+<p>Filters TSV rows by field-based tests.</p>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input; multiple files are processed as one stream.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Tests and logic:</p>
+<ul>
+<li>Multiple tests can be specified. By default, all tests must pass (logical AND).</li>
+<li>Use <code>--or</code> to require that at least one test passes (logical OR).</li>
+<li>Use <code>--invert</code> to invert the overall match result (select non-matching rows).</li>
+<li>Use <code>--count</code> to print only the number of matching data rows.</li>
+</ul>
+<p>Labeling:</p>
+<ul>
+<li>Use <code>--label</code> to add a column indicating whether each row passed the filter tests.</li>
+<li>Use <code>--label-values</code> to customize the pass/fail values (format: <code>PASS:FAIL</code>, default: <code>1:0</code>).</li>
+<li>When no tests are specified, all rows are considered passing.</li>
+<li>This is useful for adding a constant column to all rows.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li>All tests that take a <code>&lt;field-list&gt;</code> argument accept the same field list
+syntax as other tva commands: 1-based indices, ranges, header names, name
+ranges, and wildcards.</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Filter rows where column 2 is greater than 100:
+<code>tva filter data.tsv --gt 2:100</code></p>
+</li>
+<li>
+<p>Add a ‘year’ column with value ‘2021’ to all rows:
+<code>tva filter data.tsv -H --label year --label-values 2021:any</code></p>
+</li>
+<li>
+<p>Label rows as ‘pass’/‘fail’ based on filter tests:
+<code>tva filter data.tsv -H --label status --label-values pass:fail --gt score:60</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="slice"><a class="header" href="#slice">slice</a></h1>
 <p>Slice rows by index (1-based). Can be used to select specific rows (Keep Mode)
 or exclude them (Drop Mode).</p>
@@ -4764,47 +4808,302 @@ ranges, and wildcards.</li>
 changing input order.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="filter"><a class="header" href="#filter">filter</a></h1>
-<p>Filters TSV rows by field-based tests.</p>
+<h1 id="longer"><a class="header" href="#longer">longer</a></h1>
+<p>Reshapes a table from wide to long format by gathering multiple columns into
+key-value pairs. This command is useful for “tidying” data where some column
+names are actually values of a variable.</p>
+<p>Input:</p>
+<ul>
+<li>Reads from one or more TSV files or standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>The first line is ALWAYS treated as a header.</li>
+<li>When multiple files are provided, the first file’s header determines the
+schema (columns to reshape). Subsequent files must have the same column
+structure; their headers are skipped.</li>
+</ul>
+<p>Reshaping behavior:</p>
+<ul>
+<li><code>--cols</code> / <code>-c</code>: Specifies which columns to reshape (melt). Can be column
+names, indices (1-based), or ranges (e.g., ‘3-5’).</li>
+<li><code>--names-to</code>: The name of the new column that will contain the original
+column headers.</li>
+<li><code>--values-to</code>: The name of the new column that will contain the data values.</li>
+<li><code>--values-drop-na</code>: If set, rows where the value is empty will be omitted
+from the output.</li>
+<li><code>--names-prefix</code>: A string to remove from the start of each variable name.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Reshape columns 3, 4, and 5 into default “name” and “value” columns:
+<code>tva longer data.tsv --cols 3-5</code></p>
+</li>
+<li>
+<p>Reshape columns starting with “wk”, specifying new column names:
+<code>tva longer data.tsv --cols "wk*" --names-to week --values-to rank</code></p>
+</li>
+<li>
+<p>Reshape all columns except the first two:
+<code>tva longer data.tsv --cols 3-</code></p>
+</li>
+<li>
+<p>Process multiple files and save to output:
+<code>tva longer data1.tsv data2.tsv --cols 2-5 --outfile result.tsv</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="wider"><a class="header" href="#wider">wider</a></h1>
+<p>Reshapes a table from long to wide format by spreading a key-value pair across
+multiple columns. This is the inverse of ‘longer’ and similar to ‘crosstab’.</p>
+<p>Input:</p>
+<ul>
+<li>Reads from one or more TSV files or standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>The first line is ALWAYS treated as a header.</li>
+<li>When multiple files are provided, they must have the SAME column structure.</li>
+</ul>
+<p>Reshaping behavior:</p>
+<ul>
+<li><code>--names-from</code>: Column(s) containing the new column headers.</li>
+<li><code>--values-from</code>: Column(s) containing the data values. Required unless op is
+‘count’.</li>
+<li><code>--id-cols</code>: Columns that identify each row. If omitted, all columns except
+‘names-from’ and ‘values-from’ are used.</li>
+<li><code>--values-fill</code>: Value to use for missing cells (default: empty).</li>
+<li><code>--names-sort</code>: Sort the resulting column headers alphabetically.</li>
+<li><code>--op</code>: Aggregation operation to perform when multiple values fall into the
+same cell. Default is ‘last’ (last value wins).</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Spread ‘key’ and ‘value’ columns back into wide format:
+<code>tva wider --names-from key --values-from value</code></p>
+</li>
+<li>
+<p>Spread ‘measurement’ column, using ‘result’ as values:
+<code>tva wider --names-from measurement --values-from result</code></p>
+</li>
+<li>
+<p>Specify ID columns explicitly (dropping others):
+<code>tva wider --names-from key --values-from val --id-cols id date</code></p>
+</li>
+<li>
+<p>Count occurrences (crosstab):
+<code>tva wider --names-from category --id-cols region --op count</code></p>
+</li>
+<li>
+<p>Calculate sum of values:
+<code>tva wider --names-from category --values-from amount --id-cols region --op sum</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="fill"><a class="header" href="#fill">fill</a></h1>
+<p>Fills missing values in selected columns using the last non-missing value (down/LOCF) or a constant
+value.</p>
 <p>Input:</p>
 <ul>
 <li>Reads from files or standard input; multiple files are processed as one stream.</li>
 <li>Files ending in <code>.gz</code> are transparently decompressed.</li>
 </ul>
-<p>Tests and logic:</p>
+<p>Header behavior:</p>
 <ul>
-<li>Multiple tests can be specified. By default, all tests must pass (logical AND).</li>
-<li>Use <code>--or</code> to require that at least one test passes (logical OR).</li>
-<li>Use <code>--invert</code> to invert the overall match result (select non-matching rows).</li>
-<li>Use <code>--count</code> to print only the number of matching data rows.</li>
+<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header.
+The header is written once at the top of the output. Filling logic starts
+from the first data row.</li>
+<li>If no header is specified, the first line is treated as data.</li>
 </ul>
-<p>Labeling:</p>
+<p>Filling logic:</p>
 <ul>
-<li>Use <code>--label</code> to add a column indicating whether each row passed the filter tests.</li>
-<li>Use <code>--label-values</code> to customize the pass/fail values (format: <code>PASS:FAIL</code>, default: <code>1:0</code>).</li>
-<li>When no tests are specified, all rows are considered passing.</li>
-<li>This is useful for adding a constant column to all rows.</li>
+<li>Down (LOCF): By default, missing values are replaced with the most recent non-missing value in
+the same column.</li>
+<li>Constant: If <code>--value</code> / <code>-v</code> is provided, missing values are replaced with this constant
+string.</li>
+<li>Missing Definition: A value is considered “missing” if it matches the string provided by
+<code>--na</code> (default: empty string).</li>
+<li>Filling is stateful across file boundaries when multiple files are provided.</li>
 </ul>
-<p>Field syntax:</p>
+<p>Field Syntax:</p>
 <ul>
-<li>All tests that take a <code>&lt;field-list&gt;</code> argument accept the same field list
-syntax as other tva commands: 1-based indices, ranges, header names, name
-ranges, and wildcards.</li>
+<li>Use <code>-f</code> / <code>--field</code> to specify columns to fill.</li>
+<li>Columns can be specified by 1-based index or, if <code>-H</code> is used, by header name.</li>
 <li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Writes processed records to standard output or to the file given by <code>--outfile</code>.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Filter rows where column 2 is greater than 100:
-<code>tva filter data.tsv --gt 2:100</code></p>
+<p>Fill missing values in column 1 downwards:
+<code>tva fill -H -f 1 data.tsv</code></p>
 </li>
 <li>
-<p>Add a ‘year’ column with value ‘2021’ to all rows:
-<code>tva filter data.tsv -H --label year --label-values 2021:any</code></p>
+<p>Fill missing values in columns ‘category’ and ‘type’ downwards:
+<code>tva fill -H -f category -f type data.tsv</code></p>
 </li>
 <li>
-<p>Label rows as ‘pass’/‘fail’ based on filter tests:
-<code>tva filter data.tsv -H --label status --label-values pass:fail --gt score:60</code></p>
+<p>Fill missing values in column 2 with “0”:
+<code>tva fill -H -f 2 -v "0" data.tsv</code></p>
+</li>
+<li>
+<p>Treat “NA” as missing and fill downwards:
+<code>tva fill -H -f 1 --na "NA" data.tsv</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="blank"><a class="header" href="#blank">blank</a></h1>
+<p>Replaces consecutive identical values in selected columns with a blank string (or a custom value).</p>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input; multiple files are processed as one stream.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header.
+The header is written once at the top of the output. Blanking logic starts
+from the first data row.</li>
+<li>If no header is specified, the first line is treated as data.</li>
+</ul>
+<p>Blanking logic:</p>
+<ul>
+<li>For each selected column, the current value is compared with the value in the
+previous row.</li>
+<li>If the values are identical, the current cell is replaced with an empty string
+(or the specified replacement value).</li>
+<li>If the values differ, the current value is written, and it becomes the new
+reference for subsequent rows.</li>
+<li>Blanking is stateful across file boundaries when multiple files are provided.</li>
+<li>Use <code>-i</code> / <code>--ignore-case</code> to compare values case-insensitively.</li>
+</ul>
+<p>Field Syntax:</p>
+<ul>
+<li>Use <code>-f</code> / <code>--field</code> to specify columns to blank.</li>
+<li>Format: <code>COL</code> (blank with empty string) or <code>COL:REPLACEMENT</code> (blank with custom string).</li>
+<li>Columns can be specified by 1-based index or, if <code>-H</code> is used, by header name.</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Writes processed records to standard output or to the file given by <code>--outfile</code>.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Blank the first column:
+<code>tva blank -H -f 1 data.tsv</code></p>
+</li>
+<li>
+<p>Blank the ‘category’ column with “—”:
+<code>tva blank -H -f category:--- data.tsv</code></p>
+</li>
+<li>
+<p>Blank multiple columns:
+<code>tva blank -H -f 1 -f 2 data.tsv</code></p>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="transpose"><a class="header" href="#transpose">transpose</a></h1>
+<p>Transposes a tab-separated values (TSV) table by swapping rows and columns.</p>
+<p>Behavior:</p>
+<ul>
+<li>Reads a single TSV input as a whole table and performs a matrix transpose.</li>
+<li>Uses the number of fields in the first line as the expected width.</li>
+<li>All subsequent lines must have the same number of fields.</li>
+<li>On mismatch, an error is printed and the command exits with non-zero status.</li>
+</ul>
+<p>Input:</p>
+<ul>
+<li>If no input file is given, or the input file is ‘stdin’, data is read from
+standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>For an MxN matrix (M lines, N fields), writes an NxM matrix.</li>
+<li>If the input is empty, no output is produced.</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li>This command only operates in strict mode; non-rectangular tables are
+rejected.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="expr"><a class="header" href="#expr">expr</a></h1>
+<p>Evaluates the expr language for each row.</p>
+<p>Behavior:</p>
+<ul>
+<li>Parses and evaluates an expression against each row of input data.</li>
+<li>Default mode outputs only the expression result (original row data is not included).</li>
+<li>Supports arithmetic, string, logical operations, function calls, and lambda expressions.</li>
+<li>See <code>tva --help-expr</code> for a quick reference to the expr language and the detailed CLI instructions.</li>
+</ul>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Default: outputs the evaluated result for each row.</li>
+<li>Use <code>-m</code> flag to change output mode: <code>eval</code> (default), <code>add</code>, <code>mutate</code>, <code>skip-null</code>, <code>filter</code>.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports basic header mode. See <code>tva --help-headers</code> for details.</li>
+<li>When headers are enabled, column names can be referenced with <code>@name</code> syntax.</li>
+<li>The output header is determined by the expression:
+<ul>
+<li><code>as @name</code> binding: uses <code>name</code> as the header</li>
+<li><code>@column_name</code> reference: uses <code>column_name</code> as the header</li>
+<li><code>@1</code> with input headers: uses the first input column name</li>
+<li>Other expressions: uses the formatted last expression string</li>
+</ul>
+</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Simple arithmetic:
+<code>tva expr -E '2 + 3 * 4'</code></p>
+</li>
+<li>
+<p>Calculate total from price and quantity:
+<code>tva expr -H -E '@price * @qty' data.tsv</code></p>
+</li>
+<li>
+<p>Named output column with <code>as</code>:
+<code>tva expr -H -E '@price * @qty as @total' data.tsv</code></p>
+</li>
+<li>
+<p>Chain functions with pipe:
+<code>tva expr -H -E '@name | trim() | upper()' data.tsv</code></p>
+</li>
+<li>
+<p>Conditional expression:
+<code>tva expr -H -E 'if(@score &gt;= 70, "pass", "fail")' data.tsv</code></p>
+</li>
+<li>
+<p>Add new column(s) to original row:
+<code>tva expr -H -m extend -E '@price * @qty as @total' data.tsv</code></p>
+</li>
+<li>
+<p>Mutate (modify) existing column value:
+<code>tva expr -H -m mutate -E '@age + 1 as @age' data.tsv</code></p>
+</li>
+<li>
+<p>Filter rows by condition:
+<code>tva expr -H -m filter -E '@age &gt; 25' data.tsv</code></p>
+</li>
+<li>
+<p>Skip null results:
+<code>tva expr -H -m skip-null -E 'if(@score &gt;= 70, @name, null)' data.tsv</code></p>
+</li>
+<li>
+<p>Test with inline row data:
+<code>tva expr -n 'price,qty' -r '100,2' -E '@price * @qty'</code></p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -4867,30 +5166,120 @@ See <code>tva --help-headers</code> for details.</li>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="transpose"><a class="header" href="#transpose">transpose</a></h1>
-<p>Transposes a tab-separated values (TSV) table by swapping rows and columns.</p>
-<p>Behavior:</p>
-<ul>
-<li>Reads a single TSV input as a whole table and performs a matrix transpose.</li>
-<li>Uses the number of fields in the first line as the expected width.</li>
-<li>All subsequent lines must have the same number of fields.</li>
-<li>On mismatch, an error is printed and the command exits with non-zero status.</li>
-</ul>
+<h1 id="join-1"><a class="header" href="#join-1">join</a></h1>
+<p>Joins lines from a TSV data stream against a filter file using one or more key
+fields.</p>
 <p>Input:</p>
 <ul>
-<li>If no input file is given, or the input file is ‘stdin’, data is read from
-standard input.</li>
-<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+<li>The filter file is specified with –filter-file and is read into memory.</li>
+<li>Data is read from files or standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+</ul>
+<p>Keys:</p>
+<ul>
+<li>–key-fields/-k selects key fields from the filter file.
+<ul>
+<li>Default: 0 (use entire line as the key).</li>
+</ul>
+</li>
+<li>–data-fields/-d selects key fields from the data stream, if different from
+–key-fields.</li>
+<li>Field lists support numeric indices and, with –header, field names and
+ranges.</li>
 </ul>
 <p>Output:</p>
 <ul>
-<li>For an MxN matrix (M lines, N fields), writes an NxM matrix.</li>
-<li>If the input is empty, no output is produced.</li>
+<li>Matching lines from the data stream are written to standard output.</li>
+<li>When –append-fields/-a is given, the selected fields from the filter file
+are appended to each matching data line.</li>
+<li>When –header is set, exactly one header line is written, with any appended
+filter fields added to the data header.</li>
 </ul>
-<p>Notes:</p>
+<p>Field syntax:</p>
 <ul>
-<li>This command only operates in strict mode; non-rectangular tables are
-rejected.</li>
+<li>Field lists support 1-based indices, ranges (1-3,5-7), header names, name
+ranges (run-user_time), and wildcards (*_time).</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="append-1"><a class="header" href="#append-1">append</a></h1>
+<p>Concatenates tab-separated values (TSV) files, similar to Unix <code>cat</code>, but with
+header awareness and optional source tracking.</p>
+<p>Header behavior:</p>
+<ul>
+<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
+<li><code>--header</code> / <code>-H</code>: Treats the first line of each input as a header.
+Only the header from the first input is written; later headers are skipped.</li>
+<li><code>--header-hash1</code>: Treats consecutive ‘#’ lines plus the next line as header.
+Only the header from the first input is written; later headers are skipped.</li>
+<li>When using multiple files with header mode enabled, the header from the first file is
+used, and headers from subsequent files are skipped.</li>
+</ul>
+<p>Source tracking:</p>
+<ul>
+<li>–track-source / -t
+Adds a column containing the source name for each data row. For regular
+files, the source name is the file name without extension. For standard
+input, the source name is <code>stdin</code>.</li>
+<li>–source-header / -s STR
+Sets the header for the source column. Implies –header and –track-source.
+Default header name is <code>file</code>.</li>
+<li>–file / -f LABEL=FILE
+Reads FILE and uses LABEL as the source value. Implies –track-source.</li>
+</ul>
+<p>Delimiter:</p>
+<ul>
+<li>–delimiter / -d CHR
+Field delimiter to use when adding the source column. Default: TAB.</li>
+</ul>
+<p>Input:</p>
+<ul>
+<li>If no input files or –file mappings are given, data is read from stdin.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use –outfile to write to a file instead.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="split-1"><a class="header" href="#split-1">split</a></h1>
+<p>Splits tab-separated values (TSV) rows into multiple output files.</p>
+<p>Modes:</p>
+<ul>
+<li>Line count mode (–lines-per-file/-l): Writes a fixed number of data rows to
+each output file before starting a new one.</li>
+<li>Random assignment (–num-files/-n): Assigns each data row to one of N output
+files using a pseudo-random generator.</li>
+<li>Random assignment by key (–num-files/-n, –key-fields/-k): Uses selected
+fields as a key so that all rows with the same key are written to the same
+output file.</li>
+</ul>
+<p>Key fields:</p>
+<ul>
+<li>–key-fields/-k accepts a numeric field list using 1-based indices and
+ranges (for example 1,3-5). The selected fields are concatenated to form
+the key that controls random assignment.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li>See <code>tva --help-fields</code> for the shared field list syntax used across tva
+commands. Note that tva split currently only accepts numeric indices for
+–key-fields/-k; header names and wildcards are not yet supported here.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>–header-in-out / -H
+Treats the first line of the input as a header. The header is not
+counted against –lines-per-file and is written to every output file.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Files are written to the directory given by –dir (default: current
+directory).</li>
+<li>File names are formed as: <code>&lt;prefix&gt;&lt;index&gt;&lt;suffix&gt;</code>, where <code>&lt;index&gt;</code> is a
+1-based counter optionally zero-padded to –digit-width digits.</li>
+<li>By default, existing files are rejected; use –append/-a to append to them.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="stats"><a class="header" href="#stats">stats</a></h1>
@@ -5012,318 +5401,282 @@ tva uniq tests/genome/ctg.tsv -f 2`</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="longer"><a class="header" href="#longer">longer</a></h1>
-<p>Reshapes a table from wide to long format by gathering multiple columns into
-key-value pairs. This command is useful for “tidying” data where some column
-names are actually values of a variable.</p>
+<h1 id="plot-point"><a class="header" href="#plot-point">plot point</a></h1>
+<p>Draws a scatter plot or line chart in the terminal.</p>
+<p>Behavior:</p>
+<ul>
+<li>Maps TSV columns to visual aesthetics (position, color).</li>
+<li>Supports scatter plots (default), line charts (<code>--line</code>), or path charts (<code>--path</code>).</li>
+<li>Supports overlaying linear regression lines (<code>--regression</code>).</li>
+<li>Automatically calculates axis ranges from data.</li>
+</ul>
 <p>Input:</p>
 <ul>
-<li>Reads from one or more TSV files or standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
-<li>The first line is ALWAYS treated as a header.</li>
-<li>When multiple files are provided, the first file’s header determines the
-schema (columns to reshape). Subsequent files must have the same column
-structure; their headers are skipped.</li>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+<li>Assumes the first line is a header row with column names.</li>
 </ul>
-<p>Reshaping behavior:</p>
+<p>Output:</p>
 <ul>
-<li><code>--cols</code> / <code>-c</code>: Specifies which columns to reshape (melt). Can be column
-names, indices (1-based), or ranges (e.g., ‘3-5’).</li>
-<li><code>--names-to</code>: The name of the new column that will contain the original
-column headers.</li>
-<li><code>--values-to</code>: The name of the new column that will contain the data values.</li>
-<li><code>--values-drop-na</code>: If set, rows where the value is empty will be omitted
-from the output.</li>
-<li><code>--names-prefix</code>: A string to remove from the start of each variable name.</li>
+<li>Renders an ASCII/Unicode chart to standard output.</li>
+<li>Chart dimensions can be controlled with <code>--cols</code> and <code>--rows</code>.</li>
+</ul>
+<p>Aesthetics:</p>
+<ul>
+<li><code>-x</code>, <code>--x</code>: Column for X-axis position (required).</li>
+<li><code>-y</code>, <code>--y</code>: Column for Y-axis position (required).</li>
+<li><code>--color</code>: Column for grouping/coloring points by category.</li>
+</ul>
+<p>Options:</p>
+<ul>
+<li><code>-l</code>, <code>--line</code>: Connect points with lines, sorted by X value (geom_line behavior).</li>
+<li><code>--path</code>: Connect points with lines, preserving original data order (geom_path behavior).</li>
+<li><code>-r</code>, <code>--regression</code>: Overlay linear regression line (least squares fit). Cannot be used with
+<code>--line</code> or <code>--path</code>.</li>
+<li><code>-m</code>, <code>--marker</code>: Marker style - <code>braille</code> (default), <code>dot</code>, or <code>block</code>.</li>
+<li><code>--cols</code>: Chart width in characters (default: 80).</li>
+<li><code>--rows</code>: Chart height in characters (default: 24).</li>
+<li><code>--ignore</code>: Skip rows with non-numeric values in X/Y columns.</li>
+</ul>
+<p>Column specification:</p>
+<ul>
+<li>Columns can be specified by 1-based index or header name.</li>
+<li>Run <code>tva --help-fields</code> for field syntax details.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Reshape columns 3, 4, and 5 into default “name” and “value” columns:
-<code>tva longer data.tsv --cols 3-5</code></p>
+<p>Basic scatter plot:
+<code>tva plot point data.tsv -x age -y income</code></p>
 </li>
 <li>
-<p>Reshape columns starting with “wk”, specifying new column names:
-<code>tva longer data.tsv --cols "wk*" --names-to week --values-to rank</code></p>
+<p>Grouped by category:
+<code>tva plot point iris.tsv -x petal_length -y petal_width --color label</code></p>
 </li>
 <li>
-<p>Reshape all columns except the first two:
-<code>tva longer data.tsv --cols 3-</code></p>
+<p>Line chart (sorted by X, good for trends):
+<code>tva plot point timeseries.tsv -x time -y value --line --cols 100 --rows 30</code></p>
 </li>
 <li>
-<p>Process multiple files and save to output:
-<code>tva longer data1.tsv data2.tsv --cols 2-5 --outfile result.tsv</code></p>
+<p>Path chart (preserves data order, good for trajectories):
+<code>tva plot point trajectory.tsv -x x -y y --path --cols 100 --rows 30</code></p>
+</li>
+<li>
+<p>With regression line (linear fit):
+<code>tva plot point iris.tsv -x sepal_length -y petal_length --regression</code></p>
+</li>
+<li>
+<p>Using column indices:
+<code>tva plot point data.tsv -x 1 -y 3 --color 5</code></p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="wider"><a class="header" href="#wider">wider</a></h1>
-<p>Reshapes a table from long to wide format by spreading a key-value pair across
-multiple columns. This is the inverse of ‘longer’ and similar to ‘crosstab’.</p>
-<p>Input:</p>
+<h1 id="box"><a class="header" href="#box">box</a></h1>
+<p>Draw a box plot (box-and-whisker plot) showing the distribution of a continuous variable.</p>
+<p>A box plot visualizes five summary statistics:</p>
 <ul>
-<li>Reads from one or more TSV files or standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
-<li>The first line is ALWAYS treated as a header.</li>
-<li>When multiple files are provided, they must have the SAME column structure.</li>
+<li><strong>Min</strong>: Lower whisker (smallest non-outlier value)</li>
+<li><strong>Q1</strong>: First quartile (25th percentile) - bottom of the box</li>
+<li><strong>Median</strong>: Second quartile (50th percentile) - line inside the box</li>
+<li><strong>Q3</strong>: Third quartile (75th percentile) - top of the box</li>
+<li><strong>Max</strong>: Upper whisker (largest non-outlier value)</li>
 </ul>
-<p>Reshaping behavior:</p>
+<p>Outliers are values beyond 1.5 * IQR (inter-quartile range) from the quartiles.</p>
 <ul>
-<li><code>--names-from</code>: Column(s) containing the new column headers.</li>
-<li><code>--values-from</code>: Column(s) containing the data values. Required unless op is
-‘count’.</li>
-<li><code>--id-cols</code>: Columns that identify each row. If omitted, all columns except
-‘names-from’ and ‘values-from’ are used.</li>
-<li><code>--values-fill</code>: Value to use for missing cells (default: empty).</li>
-<li><code>--names-sort</code>: Sort the resulting column headers alphabetically.</li>
-<li><code>--op</code>: Aggregation operation to perform when multiple values fall into the
-same cell. Default is ‘last’ (last value wins).</li>
+<li><code>-y, --y &lt;columns&gt;</code>: Y axis column(s) to plot (1-based index or column name). Required.</li>
+<li><code>--color &lt;column&gt;</code>: Color grouping column for categorical box plots.</li>
+<li><code>--outliers</code>: Show outlier points beyond the whiskers.</li>
+<li><code>--cols &lt;width&gt;</code>: Chart width in characters or ratio (default: 1.0).</li>
+<li><code>--rows &lt;height&gt;</code>: Chart height in characters or ratio (default: 1.0).</li>
+<li><code>--ignore</code>: Ignore rows with non-numeric values.</li>
+<li><code>&lt;infile&gt;</code>: Input TSV file (default: stdin).</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Spread ‘key’ and ‘value’ columns back into wide format:
-<code>tva wider --names-from key --values-from value</code></p>
+<p>Draw a simple box plot:
+tva plot box -y age data.tsv</p>
 </li>
 <li>
-<p>Spread ‘measurement’ column, using ‘result’ as values:
-<code>tva wider --names-from measurement --values-from result</code></p>
+<p>Draw box plots by category:
+tva plot box -y age –color species data.tsv</p>
 </li>
 <li>
-<p>Specify ID columns explicitly (dropping others):
-<code>tva wider --names-from key --values-from val --id-cols id date</code></p>
-</li>
-<li>
-<p>Count occurrences (crosstab):
-<code>tva wider --names-from category --id-cols region --op count</code></p>
-</li>
-<li>
-<p>Calculate sum of values:
-<code>tva wider --names-from category --values-from amount --id-cols region --op sum</code></p>
+<p>Show outliers:
+tva plot box -y age –outliers data.tsv</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="blank"><a class="header" href="#blank">blank</a></h1>
-<p>Replaces consecutive identical values in selected columns with a blank string (or a custom value).</p>
+<h1 id="bin2d"><a class="header" href="#bin2d">bin2d</a></h1>
+<p>Creates a 2D binning heatmap (density plot) of two numeric columns.</p>
+<p>Divides the plane into rectangular bins, counts the number of points in
+each bin, and visualizes the density using character intensity.</p>
 <p>Input:</p>
 <ul>
-<li>Reads from files or standard input; multiple files are processed as one stream.</li>
+<li>Reads from files or standard input.</li>
 <li>Files ending in <code>.gz</code> are transparently decompressed.</li>
 </ul>
-<p>Header behavior:</p>
-<ul>
-<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header.
-The header is written once at the top of the output. Blanking logic starts
-from the first data row.</li>
-<li>If no header is specified, the first line is treated as data.</li>
-</ul>
-<p>Blanking logic:</p>
-<ul>
-<li>For each selected column, the current value is compared with the value in the
-previous row.</li>
-<li>If the values are identical, the current cell is replaced with an empty string
-(or the specified replacement value).</li>
-<li>If the values differ, the current value is written, and it becomes the new
-reference for subsequent rows.</li>
-<li>Blanking is stateful across file boundaries when multiple files are provided.</li>
-<li>Use <code>-i</code> / <code>--ignore-case</code> to compare values case-insensitively.</li>
-</ul>
-<p>Field Syntax:</p>
-<ul>
-<li>Use <code>-f</code> / <code>--field</code> to specify columns to blank.</li>
-<li>Format: <code>COL</code> (blank with empty string) or <code>COL:REPLACEMENT</code> (blank with custom string).</li>
-<li>Columns can be specified by 1-based index or, if <code>-H</code> is used, by header name.</li>
-<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
-</ul>
 <p>Output:</p>
 <ul>
-<li>Writes processed records to standard output or to the file given by <code>--outfile</code>.</li>
+<li>Renders a heatmap to the terminal using character density.</li>
+<li>Density scale (low to high):
+<ul>
+<li>· ≥5% (dark grey)</li>
+<li>░ ≥20% (grey)</li>
+<li>▒ ≥40% (white)</li>
+<li>▓ ≥60% (yellow)</li>
+<li>█ ≥80% (red)</li>
+</ul>
+</li>
+<li>Values below 5% are not shown.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Blank the first column:
-<code>tva blank -H -f 1 data.tsv</code></p>
+<p>Basic 2D binning:
+tva plot bin2d data.tsv -x age -y income</p>
 </li>
 <li>
-<p>Blank the ‘category’ column with “—”:
-<code>tva blank -H -f category:--- data.tsv</code></p>
+<p>Specify number of bins:
+tva plot bin2d data.tsv -x age -y income –bins 20</p>
 </li>
 <li>
-<p>Blank multiple columns:
-<code>tva blank -H -f 1 -f 2 data.tsv</code></p>
+<p>Different bins for x and y:
+tva plot bin2d data.tsv -x age -y income –bins 30,10</p>
+</li>
+<li>
+<p>Use automatic bin count strategy:
+tva plot bin2d data.tsv -x age -y income -S freedman-diaconis</p>
+</li>
+<li>
+<p>Specify bin width:
+tva plot bin2d data.tsv -x age -y income –binwidth 5</p>
+</li>
+<li>
+<p>Custom chart size:
+tva plot bin2d data.tsv -x age -y income –cols 100 –rows 30</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="fill"><a class="header" href="#fill">fill</a></h1>
-<p>Fills missing values in selected columns using the last non-missing value (down/LOCF) or a constant
-value.</p>
-<p>Input:</p>
-<ul>
-<li>Reads from files or standard input; multiple files are processed as one stream.</li>
-<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
-</ul>
+<h1 id="check-1"><a class="header" href="#check-1">check</a></h1>
+<p>Validates the structure of TSV input by ensuring that all lines have the
+same number of fields.</p>
 <p>Header behavior:</p>
 <ul>
-<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header.
-The header is written once at the top of the output. Filling logic starts
-from the first data row.</li>
-<li>If no header is specified, the first line is treated as data.</li>
+<li>Supports all four header modes. See <code>tva --help-headers</code> for details.</li>
+<li>When header mode is enabled, the header lines are skipped from structure checking.</li>
+<li>The field count from the header’s column names line is used as the expected count.</li>
 </ul>
-<p>Filling logic:</p>
+<p>Input:</p>
 <ul>
-<li>Down (LOCF): By default, missing values are replaced with the most recent non-missing value in
-the same column.</li>
-<li>Constant: If <code>--value</code> / <code>-v</code> is provided, missing values are replaced with this constant
-string.</li>
-<li>Missing Definition: A value is considered “missing” if it matches the string provided by
-<code>--na</code> (default: empty string).</li>
-<li>Filling is stateful across file boundaries when multiple files are provided.</li>
+<li>If no input files are given, or an input file is ‘stdin’, data is read
+from standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
 </ul>
-<p>Field Syntax:</p>
+<p>Behavior:</p>
 <ul>
-<li>Use <code>-f</code> / <code>--field</code> to specify columns to fill.</li>
-<li>Columns can be specified by 1-based index or, if <code>-H</code> is used, by header name.</li>
-<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+<li>Without header mode: The number of fields on the first line is used as the expected count.</li>
+<li>With header mode: The number of fields in the header’s column names line is used as the expected
+count.</li>
+<li>Each subsequent line must have the same number of fields.</li>
+<li>On mismatch, details about the failing line and expected field count are
+printed to stderr and the command exits with a non-zero status.</li>
 </ul>
 <p>Output:</p>
 <ul>
-<li>Writes processed records to standard output or to the file given by <code>--outfile</code>.</li>
+<li>On success, prints: <code>&lt;N&gt; lines total, &lt;M&gt; data lines, &lt;P&gt; fields</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="nl-1"><a class="header" href="#nl-1">nl</a></h1>
+<p>Reads TSV data from files or standard input and writes each line preceded
+by a line number. This is a simplified, TSV-aware version of the Unix
+<code>nl</code> program and adds support for treating the first input line as a
+header.</p>
+<p>Supports plain text and gzipped (.gz) files. When multiple files are
+given, lines are numbered continuously across files.</p>
+<p>Input:</p>
+<ul>
+<li>If no input files are given, or an input file is ‘stdin’, data is read
+from standard input.</li>
+<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>Completely empty files (only blank lines) are skipped and do not consume
+line numbers.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>–header / -H
+Treats the first line of each file as a header. Only the header from
+the first non-empty file is written; later header lines are skipped
+and not numbered.</li>
+<li>–header-string / -s
+Sets the header text for the line number column (default: ‘line’) and
+implies –header.</li>
+</ul>
+<p>Numbering:</p>
+<ul>
+<li>Line numbers start from –start-number / -n (default: 1, can be negative).</li>
+<li>Numbers increase by 1 for each data line, across all input files.</li>
+<li>Header lines are never numbered.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Fill missing values in column 1 downwards:
-<code>tva fill -H -f 1 data.tsv</code></p>
+<p>Number lines of a TSV file
+tva nl tests/genome/ctg.tsv</p>
 </li>
 <li>
-<p>Fill missing values in columns ‘category’ and ‘type’ downwards:
-<code>tva fill -H -f category -f type data.tsv</code></p>
+<p>Number lines with a header for the line number column
+tva nl –header –header-string LINENUM tests/genome/ctg.tsv</p>
 </li>
 <li>
-<p>Fill missing values in column 2 with “0”:
-<code>tva fill -H -f 2 -v "0" data.tsv</code></p>
+<p>Number lines starting from 100
+tva nl –start-number 100 tests/genome/ctg.tsv</p>
 </li>
 <li>
-<p>Treat “NA” as missing and fill downwards:
-<code>tva fill -H -f 1 --na "NA" data.tsv</code></p>
+<p>Number multiple files, preserving continuous line numbers
+tva nl input1.tsv input2.tsv</p>
+</li>
+<li>
+<p>Read from stdin
+cat input1.tsv | tva nl</p>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="join-1"><a class="header" href="#join-1">join</a></h1>
-<p>Joins lines from a TSV data stream against a filter file using one or more key
-fields.</p>
-<p>Input:</p>
+<h1 id="keep-header-1"><a class="header" href="#keep-header-1">keep-header</a></h1>
+<p>Runs an external command in a header-aware fashion. The first line of each
+input file is treated as a header. The first header line is written to standard
+output unchanged. All remaining lines (from all files) are sent to the given
+command via standard input, excluding header lines from subsequent files. The
+output produced by the command is appended after the initial header line.</p>
+<p>Usage:
+tva keep-header [file…] – program [args…]</p>
+<p>Notes:</p>
 <ul>
-<li>The filter file is specified with –filter-file and is read into memory.</li>
-<li>Data is read from files or standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>If no input files are given, data is read from standard input.</li>
+<li>The number of header lines to preserve from the first non-empty input can be
+configured with –lines / -n (default: 1).</li>
+<li>A double dash (–) separates input files from the command to run, similar
+to how the pipe operator (|) separates commands in a shell pipeline.</li>
+<li>The command is run with its standard input connected to the concatenated
+data lines (all lines after the first header line of each file).</li>
+<li>The command’s standard output and standard error are passed through to
+this process.</li>
 </ul>
-<p>Keys:</p>
-<ul>
-<li>–key-fields/-k selects key fields from the filter file.
-<ul>
-<li>Default: 0 (use entire line as the key).</li>
-</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Sort a file while keeping the header line first
+tva keep-header data.tsv – sort</p>
 </li>
-<li>–data-fields/-d selects key fields from the data stream, if different from
-–key-fields.</li>
-<li>Field lists support numeric indices and, with –header, field names and
-ranges.</li>
-</ul>
-<p>Output:</p>
-<ul>
-<li>Matching lines from the data stream are written to standard output.</li>
-<li>When –append-fields/-a is given, the selected fields from the filter file
-are appended to each matching data line.</li>
-<li>When –header is set, exactly one header line is written, with any appended
-filter fields added to the data header.</li>
-</ul>
-<p>Field syntax:</p>
-<ul>
-<li>Field lists support 1-based indices, ranges (1-3,5-7), header names, name
-ranges (run-user_time), and wildcards (*_time).</li>
-<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
-</ul>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="append-1"><a class="header" href="#append-1">append</a></h1>
-<p>Concatenates tab-separated values (TSV) files, similar to Unix <code>cat</code>, but with
-header awareness and optional source tracking.</p>
-<p>Header behavior:</p>
-<ul>
-<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
-<li><code>--header</code> / <code>-H</code>: Treats the first line of each input as a header.
-Only the header from the first input is written; later headers are skipped.</li>
-<li><code>--header-hash1</code>: Treats consecutive ‘#’ lines plus the next line as header.
-Only the header from the first input is written; later headers are skipped.</li>
-<li>When using multiple files with header mode enabled, the header from the first file is
-used, and headers from subsequent files are skipped.</li>
-</ul>
-<p>Source tracking:</p>
-<ul>
-<li>–track-source / -t
-Adds a column containing the source name for each data row. For regular
-files, the source name is the file name without extension. For standard
-input, the source name is <code>stdin</code>.</li>
-<li>–source-header / -s STR
-Sets the header for the source column. Implies –header and –track-source.
-Default header name is <code>file</code>.</li>
-<li>–file / -f LABEL=FILE
-Reads FILE and uses LABEL as the source value. Implies –track-source.</li>
-</ul>
-<p>Delimiter:</p>
-<ul>
-<li>–delimiter / -d CHR
-Field delimiter to use when adding the source column. Default: TAB.</li>
-</ul>
-<p>Input:</p>
-<ul>
-<li>If no input files or –file mappings are given, data is read from stdin.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
-</ul>
-<p>Output:</p>
-<ul>
-<li>By default, output is written to standard output.</li>
-<li>Use –outfile to write to a file instead.</li>
-</ul>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="split-1"><a class="header" href="#split-1">split</a></h1>
-<p>Splits tab-separated values (TSV) rows into multiple output files.</p>
-<p>Modes:</p>
-<ul>
-<li>Line count mode (–lines-per-file/-l): Writes a fixed number of data rows to
-each output file before starting a new one.</li>
-<li>Random assignment (–num-files/-n): Assigns each data row to one of N output
-files using a pseudo-random generator.</li>
-<li>Random assignment by key (–num-files/-n, –key-fields/-k): Uses selected
-fields as a key so that all rows with the same key are written to the same
-output file.</li>
-</ul>
-<p>Key fields:</p>
-<ul>
-<li>–key-fields/-k accepts a numeric field list using 1-based indices and
-ranges (for example 1,3-5). The selected fields are concatenated to form
-the key that controls random assignment.</li>
-</ul>
-<p>Field syntax:</p>
-<ul>
-<li>See <code>tva --help-fields</code> for the shared field list syntax used across tva
-commands. Note that tva split currently only accepts numeric indices for
-–key-fields/-k; header names and wildcards are not yet supported here.</li>
-</ul>
-<p>Header behavior:</p>
-<ul>
-<li>–header-in-out / -H
-Treats the first line of the input as a header. The header is not
-counted against –lines-per-file and is written to every output file.</li>
-</ul>
-<p>Output:</p>
-<ul>
-<li>Files are written to the directory given by –dir (default: current
-directory).</li>
-<li>File names are formed as: <code>&lt;prefix&gt;&lt;index&gt;&lt;suffix&gt;</code>, where <code>&lt;index&gt;</code> is a
-1-based counter optionally zero-padded to –digit-width digits.</li>
-<li>By default, existing files are rejected; use –append/-a to append to them.</li>
-</ul>
+<li>
+<p>Sort multiple TSV files numerically on field 2, preserving one header
+tva keep-header data1.tsv data2.tsv – sort -t $‘\t’ -k2,2n</p>
+</li>
+<li>
+<p>Read from stdin, filter with grep, and keep the original header
+cat data.tsv | tva keep-header – grep red</p>
+</li>
+</ol>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="from-csv"><a class="header" href="#from-csv">from csv</a></h1>
 <p>Reads CSV data from a file or standard input and writes it as TSV.</p>
@@ -5525,126 +5878,6 @@ tva md tests/genome/ctg.range.tsv –num -c 2</p>
 <li>
 <p>Formatted numeric columns
 tva md tests/genome/ctg.range.tsv –fmt –digits 2</p>
-</li>
-</ol>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="check-1"><a class="header" href="#check-1">check</a></h1>
-<p>Validates the structure of TSV input by ensuring that all lines have the
-same number of fields.</p>
-<p>Header behavior:</p>
-<ul>
-<li>Supports all four header modes. See <code>tva --help-headers</code> for details.</li>
-<li>When header mode is enabled, the header lines are skipped from structure checking.</li>
-<li>The field count from the header’s column names line is used as the expected count.</li>
-</ul>
-<p>Input:</p>
-<ul>
-<li>If no input files are given, or an input file is ‘stdin’, data is read
-from standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
-</ul>
-<p>Behavior:</p>
-<ul>
-<li>Without header mode: The number of fields on the first line is used as the expected count.</li>
-<li>With header mode: The number of fields in the header’s column names line is used as the expected
-count.</li>
-<li>Each subsequent line must have the same number of fields.</li>
-<li>On mismatch, details about the failing line and expected field count are
-printed to stderr and the command exits with a non-zero status.</li>
-</ul>
-<p>Output:</p>
-<ul>
-<li>On success, prints: <code>&lt;N&gt; lines total, &lt;M&gt; data lines, &lt;P&gt; fields</code></li>
-</ul>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="nl-1"><a class="header" href="#nl-1">nl</a></h1>
-<p>Reads TSV data from files or standard input and writes each line preceded
-by a line number. This is a simplified, TSV-aware version of the Unix
-<code>nl</code> program and adds support for treating the first input line as a
-header.</p>
-<p>Supports plain text and gzipped (.gz) files. When multiple files are
-given, lines are numbered continuously across files.</p>
-<p>Input:</p>
-<ul>
-<li>If no input files are given, or an input file is ‘stdin’, data is read
-from standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
-<li>Completely empty files (only blank lines) are skipped and do not consume
-line numbers.</li>
-</ul>
-<p>Header behavior:</p>
-<ul>
-<li>–header / -H
-Treats the first line of each file as a header. Only the header from
-the first non-empty file is written; later header lines are skipped
-and not numbered.</li>
-<li>–header-string / -s
-Sets the header text for the line number column (default: ‘line’) and
-implies –header.</li>
-</ul>
-<p>Numbering:</p>
-<ul>
-<li>Line numbers start from –start-number / -n (default: 1, can be negative).</li>
-<li>Numbers increase by 1 for each data line, across all input files.</li>
-<li>Header lines are never numbered.</li>
-</ul>
-<p>Examples:</p>
-<ol>
-<li>
-<p>Number lines of a TSV file
-tva nl tests/genome/ctg.tsv</p>
-</li>
-<li>
-<p>Number lines with a header for the line number column
-tva nl –header –header-string LINENUM tests/genome/ctg.tsv</p>
-</li>
-<li>
-<p>Number lines starting from 100
-tva nl –start-number 100 tests/genome/ctg.tsv</p>
-</li>
-<li>
-<p>Number multiple files, preserving continuous line numbers
-tva nl input1.tsv input2.tsv</p>
-</li>
-<li>
-<p>Read from stdin
-cat input1.tsv | tva nl</p>
-</li>
-</ol>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="keep-header-1"><a class="header" href="#keep-header-1">keep-header</a></h1>
-<p>Runs an external command in a header-aware fashion. The first line of each
-input file is treated as a header. The first header line is written to standard
-output unchanged. All remaining lines (from all files) are sent to the given
-command via standard input, excluding header lines from subsequent files. The
-output produced by the command is appended after the initial header line.</p>
-<p>Usage:
-tva keep-header [file…] – program [args…]</p>
-<p>Notes:</p>
-<ul>
-<li>If no input files are given, data is read from standard input.</li>
-<li>The number of header lines to preserve from the first non-empty input can be
-configured with –lines / -n (default: 1).</li>
-<li>A double dash (–) separates input files from the command to run, similar
-to how the pipe operator (|) separates commands in a shell pipeline.</li>
-<li>The command is run with its standard input connected to the concatenated
-data lines (all lines after the first header line of each file).</li>
-<li>The command’s standard output and standard error are passed through to
-this process.</li>
-</ul>
-<p>Examples:</p>
-<ol>
-<li>
-<p>Sort a file while keeping the header line first
-tva keep-header data.tsv – sort</p>
-</li>
-<li>
-<p>Sort multiple TSV files numerically on field 2, preserving one header
-tva keep-header data1.tsv data2.tsv – sort -t $‘\t’ -k2,2n</p>
-</li>
-<li>
-<p>Read from stdin, filter with grep, and keep the original header
-cat data.tsv | tva keep-header – grep red</p>
 </li>
 </ol>
 
