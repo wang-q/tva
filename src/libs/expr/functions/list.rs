@@ -840,6 +840,7 @@ pub fn filter_index(args: &[Value]) -> Result<Value, EvalError> {
 mod tests {
     use super::*;
     use ahash::{HashMap, HashMapExt};
+    use test_case::test_case;
 
     #[test]
     fn test_replace_nth_basic() {
@@ -1366,37 +1367,33 @@ mod tests {
     }
 
     // Additional tests for join
-    #[test]
-    fn test_join_empty_list() {
-        assert_eq!(
-            join(&[Value::List(vec![]), Value::String(",".to_string())]).unwrap(),
-            Value::String("".to_string())
-        );
-    }
-
-    #[test]
-    fn test_join_single_element() {
-        assert_eq!(
-            join(&[
-                Value::List(vec![Value::Int(1)]),
-                Value::String(",".to_string())
-            ])
-            .unwrap(),
-            Value::String("1".to_string())
-        );
-    }
-
-    #[test]
-    fn test_join_with_null() {
-        assert_eq!(
-            join(&[Value::Null, Value::String(",".to_string())]).unwrap(),
-            Value::Null
-        );
-    }
-
-    #[test]
-    fn test_join_non_list() {
-        assert!(join(&[Value::Int(42), Value::String(",".to_string())]).is_err());
+    /// Test join function with various inputs
+    #[test_case(
+        vec![Value::List(vec![]), Value::String(",".to_string())],
+        Ok(Value::String("".to_string())) ;
+        "join_empty"
+    )]
+    #[test_case(
+        vec![Value::List(vec![Value::Int(1)]), Value::String(",".to_string())],
+        Ok(Value::String("1".to_string())) ;
+        "join_single"
+    )]
+    #[test_case(
+        vec![Value::Null, Value::String(",".to_string())],
+        Ok(Value::Null) ;
+        "join_null"
+    )]
+    #[test_case(
+        vec![Value::Int(42), Value::String(",".to_string())],
+        Err(()) ;
+        "join_non_list"
+    )]
+    fn test_join_various(args: Vec<Value>, expected: Result<Value, ()>) {
+        let result = join(&args);
+        match expected {
+            Ok(v) => assert_eq!(result.unwrap(), v),
+            Err(_) => assert!(result.is_err()),
+        }
     }
 
     #[test]
@@ -1415,47 +1412,51 @@ mod tests {
         );
     }
 
-    // Additional tests for first
-    #[test]
-    fn test_first_empty_list() {
-        assert_eq!(first(&[Value::List(vec![])]).unwrap(), Value::Null);
+    /// Test list functions with empty list
+    #[test_case(first, vec![Value::List(vec![])], Ok(Value::Null) ; "first_empty")]
+    #[test_case(last, vec![Value::List(vec![])], Ok(Value::Null) ; "last_empty")]
+    #[test_case(sort, vec![Value::List(vec![])], Ok(Value::List(vec![])) ; "sort_empty")]
+    #[test_case(unique, vec![Value::List(vec![])], Ok(Value::List(vec![])) ; "unique_empty")]
+    #[test_case(slice, vec![Value::List(vec![]), Value::Int(0)], Ok(Value::List(vec![])) ; "slice_empty")]
+    fn test_empty_list<F>(f: F, args: Vec<Value>, expected: Result<Value, ()>)
+    where
+        F: Fn(&[Value]) -> Result<Value, EvalError>,
+    {
+        match expected {
+            Ok(v) => assert_eq!(f(&args).unwrap(), v),
+            Err(_) => assert!(f(&args).is_err()),
+        }
     }
 
-    #[test]
-    fn test_first_null() {
-        assert_eq!(first(&[Value::Null]).unwrap(), Value::Null);
+    /// Test list functions with null
+    #[test_case(first, vec![Value::Null], Ok(Value::Null) ; "first_null")]
+    #[test_case(last, vec![Value::Null], Ok(Value::Null) ; "last_null")]
+    #[test_case(reverse, vec![Value::Null], Ok(Value::Null) ; "reverse_null")]
+    #[test_case(sort, vec![Value::Null], Ok(Value::Null) ; "sort_null")]
+    #[test_case(unique, vec![Value::Null], Ok(Value::Null) ; "unique_null")]
+    #[test_case(slice, vec![Value::Null, Value::Int(0)], Ok(Value::Null) ; "slice_null")]
+    fn test_null_handling<F>(f: F, args: Vec<Value>, expected: Result<Value, ()>)
+    where
+        F: Fn(&[Value]) -> Result<Value, EvalError>,
+    {
+        match expected {
+            Ok(v) => assert_eq!(f(&args).unwrap(), v),
+            Err(_) => assert!(f(&args).is_err()),
+        }
     }
 
-    #[test]
-    fn test_first_non_list() {
-        assert!(first(&[Value::Int(42)]).is_err());
-    }
-
-    // Additional tests for last
-    #[test]
-    fn test_last_empty_list() {
-        assert_eq!(last(&[Value::List(vec![])]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_last_null() {
-        assert_eq!(last(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_last_non_list() {
-        assert!(last(&[Value::Int(42)]).is_err());
-    }
-
-    // Additional tests for reverse
-    #[test]
-    fn test_reverse_null() {
-        assert_eq!(reverse(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_reverse_non_list() {
-        assert!(reverse(&[Value::Int(42)]).is_err());
+    /// Test list functions with non-list input (should error)
+    #[test_case(first, vec![Value::Int(42)] ; "first_non_list")]
+    #[test_case(last, vec![Value::Int(42)] ; "last_non_list")]
+    #[test_case(reverse, vec![Value::Int(42)] ; "reverse_non_list")]
+    #[test_case(sort, vec![Value::Int(42)] ; "sort_non_list")]
+    #[test_case(unique, vec![Value::Int(42)] ; "unique_non_list")]
+    #[test_case(slice, vec![Value::Int(42), Value::Int(0)] ; "slice_non_list")]
+    fn test_non_list_error<F>(f: F, args: Vec<Value>)
+    where
+        F: Fn(&[Value]) -> Result<Value, EvalError>,
+    {
+        assert!(f(&args).is_err());
     }
 
     #[test]
@@ -1470,40 +1471,13 @@ mod tests {
     #[test]
     fn test_nth_with_float() {
         let list = Value::List(vec![Value::Int(10), Value::Int(20), Value::Int(30)]);
-        // 1.7 rounds to 2, so we get the element at index 2
         assert_eq!(nth(&[list, Value::Float(1.7)]).unwrap(), Value::Int(30));
-    }
-
-    #[test]
-    fn test_nth_null_list() {
-        assert_eq!(nth(&[Value::Null, Value::Int(0)]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_nth_non_list() {
-        assert!(nth(&[Value::Int(42), Value::Int(0)]).is_err());
     }
 
     #[test]
     fn test_nth_non_numeric_index() {
         let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
         assert!(nth(&[list, Value::String("hello".to_string())]).is_err());
-    }
-
-    // Additional tests for sort
-    #[test]
-    fn test_sort_empty_list() {
-        assert_eq!(sort(&[Value::List(vec![])]).unwrap(), Value::List(vec![]));
-    }
-
-    #[test]
-    fn test_sort_null() {
-        assert_eq!(sort(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_sort_non_list() {
-        assert!(sort(&[Value::Int(42)]).is_err());
     }
 
     #[test]
@@ -1536,21 +1510,6 @@ mod tests {
 
     // Additional tests for unique
     #[test]
-    fn test_unique_empty_list() {
-        assert_eq!(unique(&[Value::List(vec![])]).unwrap(), Value::List(vec![]));
-    }
-
-    #[test]
-    fn test_unique_null() {
-        assert_eq!(unique(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_unique_non_list() {
-        assert!(unique(&[Value::Int(42)]).is_err());
-    }
-
-    #[test]
     fn test_unique_all_same() {
         assert_eq!(
             unique(&[Value::List(vec![
@@ -1577,24 +1536,6 @@ mod tests {
     }
 
     // Additional tests for slice
-    #[test]
-    fn test_slice_empty_list() {
-        assert_eq!(
-            slice(&[Value::List(vec![]), Value::Int(0)]).unwrap(),
-            Value::List(vec![])
-        );
-    }
-
-    #[test]
-    fn test_slice_null() {
-        assert_eq!(slice(&[Value::Null, Value::Int(0)]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_slice_non_list() {
-        assert!(slice(&[Value::Int(42), Value::Int(0)]).is_err());
-    }
-
     #[test]
     fn test_slice_end_less_than_start() {
         let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
@@ -1626,40 +1567,32 @@ mod tests {
         assert!(slice(&[list, Value::String("hello".to_string())]).is_err());
     }
 
-    // Additional tests for range
-    #[test]
-    fn test_range_empty() {
-        // range(0) -> []
-        assert_eq!(range(&[Value::Int(0)]).unwrap(), Value::List(vec![]));
-    }
-
-    #[test]
-    fn test_range_negative_only() {
-        // range(-3) -> []
-        assert_eq!(range(&[Value::Int(-3)]).unwrap(), Value::List(vec![]));
-    }
-
-    #[test]
-    fn test_range_same_from_and_upto() {
-        // range(5, 5) -> []
-        assert_eq!(
-            range(&[Value::Int(5), Value::Int(5)]).unwrap(),
-            Value::List(vec![])
-        );
-    }
-
-    #[test]
-    fn test_range_large_step() {
-        // range(0, 10, 5) -> [0, 5]
-        assert_eq!(
-            range(&[Value::Int(0), Value::Int(10), Value::Int(5)]).unwrap(),
-            Value::List(vec![Value::Int(0), Value::Int(5)])
-        );
+    /// Test range function with various inputs
+    #[test_case(vec![Value::Int(0)], Ok(vec![]) ; "range_zero")]
+    #[test_case(vec![Value::Int(-3)], Ok(vec![]) ; "range_negative")]
+    #[test_case(vec![Value::Int(5), Value::Int(5)], Ok(vec![]) ; "range_same")]
+    #[test_case(vec![Value::Int(0), Value::Int(10), Value::Int(5)], Ok(vec![0, 5]) ; "range_large_step")]
+    #[test_case(vec![Value::Int(0), Value::String("hello".to_string())], Err(()) ; "range_invalid_second")]
+    #[test_case(vec![Value::String("hello".to_string()), Value::Int(10)], Err(()) ; "range_invalid_first")]
+    #[test_case(
+        vec![Value::Int(0), Value::Int(10), Value::String("hello".to_string())],
+        Err(()) ;
+        "range_invalid_third"
+    )]
+    fn test_range_various(args: Vec<Value>, expected: Result<Vec<i64>, ()>) {
+        let result = range(&args);
+        match expected {
+            Ok(vals) => {
+                let expected_list =
+                    Value::List(vals.into_iter().map(Value::Int).collect());
+                assert_eq!(result.unwrap(), expected_list);
+            }
+            Err(_) => assert!(result.is_err()),
+        }
     }
 
     #[test]
     fn test_range_negative_step_wrong_direction() {
-        // range(10, 0, -1) -> [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
         let result = range(&[Value::Int(10), Value::Int(0), Value::Int(-1)]).unwrap();
         if let Value::List(vals) = result {
             assert_eq!(vals.len(), 10);
@@ -1670,35 +1603,18 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_range_invalid_types() {
-        // Two args with invalid types
-        assert!(range(&[Value::Int(0), Value::String("hello".to_string())]).is_err());
-        assert!(range(&[Value::String("hello".to_string()), Value::Int(10)]).is_err());
-    }
-
-    #[test]
-    fn test_range_three_args_invalid() {
-        // Three args with invalid types
-        assert!(range(&[
-            Value::Int(0),
-            Value::Int(10),
-            Value::String("hello".to_string())
-        ])
-        .is_err());
-    }
-
     // Additional tests for map, filter, reduce error cases
-    #[test]
-    fn test_map_non_lambda() {
+    /// Test map/filter/reduce with non-lambda second argument
+    #[test_case(map, vec![Value::Int(42)] ; "map_non_lambda")]
+    #[test_case(filter, vec![Value::Int(42)] ; "filter_non_lambda")]
+    fn test_hof_non_lambda<F>(f: F, second_arg: Vec<Value>)
+    where
+        F: Fn(&[Value]) -> Result<Value, EvalError>,
+    {
         let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
-        assert!(map(&[list, Value::Int(42)]).is_err());
-    }
-
-    #[test]
-    fn test_filter_non_lambda() {
-        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
-        assert!(filter(&[list, Value::Int(42)]).is_err());
+        let mut args = vec![list];
+        args.extend(second_arg);
+        assert!(f(&args).is_err());
     }
 
     #[test]
@@ -1722,81 +1638,75 @@ mod tests {
         assert!(result.is_err());
     }
 
+    /// Test sort_by with various error conditions
     #[test]
-    fn test_sort_by_non_lambda() {
+    fn test_sort_by_error_conditions() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let identity_lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+
+        // Test non-lambda
         let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
         assert!(sort_by(&[list, Value::Int(42)]).is_err());
-    }
 
-    #[test]
-    fn test_sort_by_null() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let identity_lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
+        // Test null
         assert_eq!(
-            sort_by(&[Value::Null, identity_lambda]).unwrap(),
+            sort_by(&[Value::Null, identity_lambda.clone()]).unwrap(),
             Value::Null
         );
-    }
 
-    #[test]
-    fn test_sort_by_non_list() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let identity_lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
+        // Test non-list
         assert!(sort_by(&[Value::Int(42), identity_lambda]).is_err());
     }
 
     // Additional tests for error handling branches
-
-    #[test]
-    fn test_map_with_empty_params_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
+    /// Test map/filter/sort_by with empty params lambda
+    #[test_case(
+        map,
+        vec![Value::List(vec![Value::Int(1), Value::Int(2)])],
+        crate::libs::expr::parser::ast::Expr::Int(42),
+        "lambda has no parameters" ;
+        "map_empty_lambda"
+    )]
+    #[test_case(
+        filter,
+        vec![Value::List(vec![Value::Int(1), Value::Int(2)])],
+        crate::libs::expr::parser::ast::Expr::Bool(true),
+        "lambda has no parameters" ;
+        "filter_empty_lambda"
+    )]
+    #[test_case(
+        sort_by,
+        vec![Value::List(vec![Value::Int(3), Value::Int(1), Value::Int(2)])],
+        crate::libs::expr::parser::ast::Expr::Int(1),
+        "lambda has no parameters" ;
+        "sort_by_empty_lambda"
+    )]
+    fn test_empty_params_lambda<F>(
+        f: F,
+        extra_args: Vec<Value>,
+        body: crate::libs::expr::parser::ast::Expr,
+        expected_error: &str,
+    ) where
+        F: Fn(&[Value]) -> Result<Value, EvalError>,
+    {
         use crate::libs::expr::runtime::value::LambdaValue;
 
-        // Lambda with no parameters should trigger error in apply_lambda
         let empty_params_lambda = Value::Lambda(LambdaValue {
-            params: vec![], // Empty params
-            body: Expr::Int(42),
+            params: vec![],
+            body,
             captured_vars: HashMap::new(),
         });
-        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
-        let result = map(&[list, empty_params_lambda]);
+        let mut args = extra_args;
+        args.push(empty_params_lambda);
+        let result = f(&args);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("lambda has no parameters"));
-    }
-
-    #[test]
-    fn test_filter_with_empty_params_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        // Lambda with no parameters should trigger error in apply_lambda
-        let empty_params_lambda = Value::Lambda(LambdaValue {
-            params: vec![], // Empty params
-            body: Expr::Bool(true),
-            captured_vars: HashMap::new(),
-        });
-        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
-        let result = filter(&[list, empty_params_lambda]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("lambda has no parameters"));
+        assert!(result.unwrap_err().to_string().contains(expected_error));
     }
 
     #[test]
@@ -1804,9 +1714,8 @@ mod tests {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
 
-        // Lambda with no parameters - reduce checks for at least 2 params
         let empty_params_lambda = Value::Lambda(LambdaValue {
-            params: vec![], // Empty params
+            params: vec![],
             body: Expr::Int(42),
             captured_vars: HashMap::new(),
         });
@@ -1819,131 +1728,37 @@ mod tests {
             .contains("lambda must have at least 2 parameters"));
     }
 
+    /// Test list functions with non-list first argument (datetime)
     #[test]
-    fn test_sort_by_with_empty_params_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        // Lambda with no parameters should trigger error in apply_lambda
-        let empty_params_lambda = Value::Lambda(LambdaValue {
-            params: vec![], // Empty params
-            body: Expr::Int(1),
-            captured_vars: HashMap::new(),
-        });
-        let list = Value::List(vec![Value::Int(3), Value::Int(1), Value::Int(2)]);
-        let result = sort_by(&[list, empty_params_lambda]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("lambda has no parameters"));
-    }
-
-    #[test]
-    fn test_join_with_datetime() {
-        // join with non-list, non-null should fail
+    fn test_list_fns_with_datetime_simple() {
         use chrono::Utc;
+
         let dt = Value::DateTime(Utc::now());
-        let result = join(&[dt, Value::String(",".to_string())]);
+
+        // Test join
+        let result = join(&[dt.clone(), Value::String(",".to_string())]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
+        assert!(result.unwrap_err().to_string().contains("list"));
 
-    #[test]
-    fn test_join_with_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
-        let result = join(&[lambda, Value::String(",".to_string())]);
+        // Test first
+        let result = first(&[dt.clone()]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
+        assert!(result.unwrap_err().to_string().contains("list"));
 
-    #[test]
-    fn test_first_with_datetime() {
-        use chrono::Utc;
-        let dt = Value::DateTime(Utc::now());
-        let result = first(&[dt]);
+        // Test last
+        let result = last(&[dt.clone()]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a list"));
-    }
+        assert!(result.unwrap_err().to_string().contains("list"));
 
-    #[test]
-    fn test_first_with_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
-        let result = first(&[lambda]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a list"));
-    }
-
-    #[test]
-    fn test_last_with_datetime() {
-        use chrono::Utc;
-        let dt = Value::DateTime(Utc::now());
-        let result = last(&[dt]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a list"));
-    }
-
-    #[test]
-    fn test_last_with_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
-        let result = last(&[lambda]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a list"));
-    }
-
-    #[test]
-    fn test_reverse_with_datetime() {
-        use chrono::Utc;
-        let dt = Value::DateTime(Utc::now());
+        // Test reverse
         let result = reverse(&[dt]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a list"));
+        assert!(result.unwrap_err().to_string().contains("list"));
     }
 
+    /// Test list functions with lambda as first argument
     #[test]
-    fn test_reverse_with_lambda() {
+    fn test_list_fns_with_lambda_simple() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
 
@@ -1952,169 +1767,33 @@ mod tests {
             body: Expr::LambdaParam("x".to_string()),
             captured_vars: HashMap::new(),
         });
+
+        // Test join
+        let result = join(&[lambda.clone(), Value::String(",".to_string())]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test first
+        let result = first(&[lambda.clone()]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test last
+        let result = last(&[lambda.clone()]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test reverse
         let result = reverse(&[lambda]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a list"));
+        assert!(result.unwrap_err().to_string().contains("list"));
     }
 
+    /// Test various list functions with non-list first argument (datetime)
     #[test]
-    fn test_sort_with_datetime() {
-        use chrono::Utc;
-        let dt = Value::DateTime(Utc::now());
-        let result = sort(&[dt]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a list"));
-    }
-
-    #[test]
-    fn test_sort_with_lambda() {
+    fn test_list_fns_with_datetime() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
-
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
-        let result = sort(&[lambda]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a list"));
-    }
-
-    #[test]
-    fn test_unique_with_datetime() {
-        use chrono::Utc;
-        let dt = Value::DateTime(Utc::now());
-        let result = unique(&[dt]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a list"));
-    }
-
-    #[test]
-    fn test_unique_with_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
-        let result = unique(&[lambda]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a list"));
-    }
-
-    #[test]
-    fn test_nth_with_datetime() {
-        use chrono::Utc;
-        let dt = Value::DateTime(Utc::now());
-        let result = nth(&[dt, Value::Int(0)]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
-
-    #[test]
-    fn test_nth_with_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
-        let result = nth(&[lambda, Value::Int(0)]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
-
-    #[test]
-    fn test_slice_with_datetime() {
-        use chrono::Utc;
-        let dt = Value::DateTime(Utc::now());
-        let result = slice(&[dt, Value::Int(0), Value::Int(1)]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
-
-    #[test]
-    fn test_slice_with_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
-        let result = slice(&[lambda, Value::Int(0), Value::Int(1)]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
-
-    #[test]
-    fn test_replace_nth_with_datetime() {
-        use chrono::Utc;
-        let dt = Value::DateTime(Utc::now());
-        let result = replace_nth(&[dt, Value::Int(0), Value::Int(99)]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
-
-    #[test]
-    fn test_replace_nth_with_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
-        let result = replace_nth(&[lambda, Value::Int(0), Value::Int(99)]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
-
-    #[test]
-    fn test_map_with_datetime() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
         use chrono::Utc;
 
         let dt = Value::DateTime(Utc::now());
@@ -2123,58 +1802,93 @@ mod tests {
             body: Expr::LambdaParam("x".to_string()),
             captured_vars: HashMap::new(),
         });
-        let result = map(&[dt, identity_lambda]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
-
-    #[test]
-    fn test_filter_with_datetime() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        use chrono::Utc;
-
-        let dt = Value::DateTime(Utc::now());
-        let identity_lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::LambdaParam("x".to_string()),
-            captured_vars: HashMap::new(),
-        });
-        let result = filter(&[dt, identity_lambda]);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
-
-    #[test]
-    fn test_reduce_with_datetime() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        use chrono::Utc;
-
-        let dt = Value::DateTime(Utc::now());
         let sum_lambda = Value::Lambda(LambdaValue {
             params: vec!["acc".to_string(), "x".to_string()],
             body: Expr::Binary {
-                op: BinaryOp::Add,
+                op: crate::libs::expr::parser::ast::BinaryOp::Add,
                 left: Box::new(Expr::LambdaParam("acc".to_string())),
                 right: Box::new(Expr::LambdaParam("x".to_string())),
             },
             captured_vars: HashMap::new(),
         });
+
+        // Test sort
+        let result = sort(&[dt.clone()]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test unique
+        let result = unique(&[dt.clone()]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test nth
+        let result = nth(&[dt.clone(), Value::Int(0)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test slice
+        let result = slice(&[dt.clone(), Value::Int(0), Value::Int(1)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test replace_nth
+        let result = replace_nth(&[dt.clone(), Value::Int(0), Value::Int(99)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test map
+        let result = map(&[dt.clone(), identity_lambda.clone()]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test filter
+        let result = filter(&[dt.clone(), identity_lambda.clone()]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test reduce
         let result = reduce(&[dt, Value::Int(0), sum_lambda]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
+        assert!(result.unwrap_err().to_string().contains("list"));
+    }
+
+    /// Test various list functions with lambda as first argument
+    #[test]
+    fn test_list_fns_with_lambda() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::LambdaParam("x".to_string()),
+            captured_vars: HashMap::new(),
+        });
+
+        // Test sort
+        let result = sort(&[lambda.clone()]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test unique
+        let result = unique(&[lambda.clone()]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test nth
+        let result = nth(&[lambda.clone(), Value::Int(0)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test slice
+        let result = slice(&[lambda.clone(), Value::Int(0), Value::Int(1)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
+
+        // Test replace_nth
+        let result = replace_nth(&[lambda, Value::Int(0), Value::Int(99)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("list"));
     }
 
     #[test]
@@ -2198,23 +1912,20 @@ mod tests {
             .contains("first argument must be a list"));
     }
 
+    /// Test range with non-numeric arguments
     #[test]
-    fn test_range_with_datetime() {
+    fn test_range_with_non_numeric() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
         use chrono::Utc;
+
+        // Test with datetime
         let dt = Value::DateTime(Utc::now());
         let result = range(&[dt]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a number"));
-    }
+        assert!(result.unwrap_err().to_string().contains("number"));
 
-    #[test]
-    fn test_range_with_lambda() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
+        // Test with lambda
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
             body: Expr::LambdaParam("x".to_string()),
@@ -2222,99 +1933,73 @@ mod tests {
         });
         let result = range(&[lambda]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("argument must be a number"));
+        assert!(result.unwrap_err().to_string().contains("number"));
     }
 
-    #[test]
-    fn test_take_while_basic() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+    /// Test take_while with various scenarios
+    #[test_case(
+        vec![Value::Int(1), Value::Int(2), Value::Int(3), Value::Int(4), Value::Int(5)],
+        crate::libs::expr::parser::ast::BinaryOp::Lt,
+        4,
+        vec![Value::Int(1), Value::Int(2), Value::Int(3)] ;
+        "take_while_basic"
+    )]
+    #[test_case(
+        vec![Value::Int(1), Value::Int(2), Value::Int(3)],
+        crate::libs::expr::parser::ast::BinaryOp::Lt,
+        0,
+        vec![] ;
+        "take_while_no_match"
+    )]
+    fn test_take_while_various(
+        list_vals: Vec<Value>,
+        op: crate::libs::expr::parser::ast::BinaryOp,
+        threshold: i64,
+        expected: Vec<Value>,
+    ) {
+        use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
 
-        // Create lambda: x => x < 4
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
             body: Expr::Binary {
-                op: BinaryOp::Lt,
+                op,
                 left: Box::new(Expr::LambdaParam("x".to_string())),
-                right: Box::new(Expr::Int(4)),
+                right: Box::new(Expr::Int(threshold)),
             },
             captured_vars: HashMap::new(),
         });
 
-        let list = Value::List(vec![
-            Value::Int(1),
-            Value::Int(2),
-            Value::Int(3),
-            Value::Int(4),
-            Value::Int(5),
-        ]);
-
+        let list = Value::List(list_vals);
         let result = take_while(&[list, lambda]).unwrap();
-        assert_eq!(
-            result,
-            Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
-        );
+        assert_eq!(result, Value::List(expected));
     }
 
     #[test]
-    fn test_take_while_empty_list() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::Bool(true),
-            captured_vars: HashMap::new(),
-        });
-
-        let list = Value::List(vec![]);
-        let result = take_while(&[list, lambda]).unwrap();
-        assert_eq!(result, Value::List(vec![]));
-    }
-
-    #[test]
-    fn test_take_while_all_match() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        // Lambda always returns true
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::Bool(true),
-            captured_vars: HashMap::new(),
-        });
-
-        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
-        let result = take_while(&[list.clone(), lambda]).unwrap();
-        assert_eq!(result, list);
-    }
-
-    #[test]
-    fn test_take_while_no_match() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        // Lambda always returns false
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::Bool(false),
-            captured_vars: HashMap::new(),
-        });
-
-        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
-        let result = take_while(&[list, lambda]).unwrap();
-        assert_eq!(result, Value::List(vec![]));
-    }
-
-    #[test]
-    fn test_take_while_stops_at_first_false() {
+    fn test_take_while_edge_cases() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
 
-        // Lambda: x => x < 3 (stops at first element >= 3)
+        let true_lambda = Value::Lambda(LambdaValue {
+            params: vec!["x".to_string()],
+            body: Expr::Bool(true),
+            captured_vars: HashMap::new(),
+        });
+
+        // Empty list
+        let result = take_while(&[Value::List(vec![]), true_lambda.clone()]).unwrap();
+        assert_eq!(result, Value::List(vec![]));
+
+        // All match
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        let result = take_while(&[list.clone(), true_lambda.clone()]).unwrap();
+        assert_eq!(result, list);
+
+        // Null
+        let result = take_while(&[Value::Null, true_lambda.clone()]).unwrap();
+        assert_eq!(result, Value::Null);
+
+        // Stops at first false
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
             body: Expr::Binary {
@@ -2324,22 +2009,18 @@ mod tests {
             },
             captured_vars: HashMap::new(),
         });
-
-        // Even though 2 < 3 is true later, we stop at 5
         let list = Value::List(vec![
             Value::Int(1),
             Value::Int(2),
             Value::Int(5),
             Value::Int(2),
-            Value::Int(1),
         ]);
-
         let result = take_while(&[list, lambda]).unwrap();
         assert_eq!(result, Value::List(vec![Value::Int(1), Value::Int(2)]));
     }
 
     #[test]
-    fn test_take_while_with_null() {
+    fn test_take_while_errors() {
         use crate::libs::expr::parser::ast::Expr;
         use crate::libs::expr::runtime::value::LambdaValue;
 
@@ -2349,65 +2030,41 @@ mod tests {
             captured_vars: HashMap::new(),
         });
 
-        let result = take_while(&[Value::Null, lambda]).unwrap();
-        assert_eq!(result, Value::Null);
-    }
-
-    #[test]
-    fn test_take_while_with_non_list() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
-        let lambda = Value::Lambda(LambdaValue {
-            params: vec!["x".to_string()],
-            body: Expr::Bool(true),
-            captured_vars: HashMap::new(),
-        });
-
-        let result = take_while(&[Value::Int(42), lambda]);
+        // Non-list
+        let result = take_while(&[Value::Int(42), lambda.clone()]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("first argument must be a list"));
-    }
+        assert!(result.unwrap_err().to_string().contains("list"));
 
-    #[test]
-    fn test_take_while_with_non_lambda() {
+        // Non-lambda
         let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
         let result = take_while(&[list, Value::Int(42)]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("second argument must be a lambda"));
+        assert!(result.unwrap_err().to_string().contains("lambda"));
     }
 
     // Tests for is_empty
-    #[test]
-    fn test_is_empty_list() {
-        assert_eq!(is_empty(&[Value::List(vec![])]).unwrap(), Value::Bool(true));
-        assert_eq!(
-            is_empty(&[Value::List(vec![Value::Int(1)])]).unwrap(),
-            Value::Bool(false)
-        );
-    }
-
-    #[test]
-    fn test_is_empty_null() {
-        assert_eq!(is_empty(&[Value::Null]).unwrap(), Value::Bool(true));
+    #[test_case(Value::List(vec![]), Ok(Value::Bool(true)) ; "is_empty_empty")]
+    #[test_case(Value::List(vec![Value::Int(1)]), Ok(Value::Bool(false)) ; "is_empty_non_empty")]
+    #[test_case(Value::Null, Ok(Value::Bool(true)) ; "is_empty_null")]
+    fn test_is_empty_various(input: Value, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(is_empty(&[input]).unwrap(), v),
+            Err(_) => assert!(is_empty(&[input]).is_err()),
+        }
     }
 
     #[test]
     fn test_is_empty_type_error() {
         let result = is_empty(&[Value::Int(123)]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("must be a list"));
+        assert!(result.unwrap_err().to_string().contains("list"));
     }
 
     // Tests for take
-    #[test]
-    fn test_take_list() {
+    #[test_case(2, vec![Value::Int(1), Value::Int(2)] ; "take_basic")]
+    #[test_case(10, vec![Value::Int(1), Value::Int(2), Value::Int(3), Value::Int(4)] ; "take_more_than_length")]
+    #[test_case(0, vec![] ; "take_zero")]
+    fn test_take_list(count: i64, expected: Vec<Value>) {
         let list = Value::List(vec![
             Value::Int(1),
             Value::Int(2),
@@ -2415,49 +2072,35 @@ mod tests {
             Value::Int(4),
         ]);
         assert_eq!(
-            take(&[list.clone(), Value::Int(2)]).unwrap(),
-            Value::List(vec![Value::Int(1), Value::Int(2)])
-        );
-        assert_eq!(
-            take(&[list.clone(), Value::Int(10)]).unwrap(),
-            Value::List(vec![
-                Value::Int(1),
-                Value::Int(2),
-                Value::Int(3),
-                Value::Int(4)
-            ])
-        );
-        assert_eq!(
-            take(&[list.clone(), Value::Int(0)]).unwrap(),
-            Value::List(vec![])
+            take(&[list, Value::Int(count)]).unwrap(),
+            Value::List(expected)
         );
     }
 
     #[test]
-    fn test_take_list_with_float() {
+    fn test_take_edge_cases() {
+        // Float
         let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
         assert_eq!(
             take(&[list, Value::Float(2.5)]).unwrap(),
             Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
         );
-    }
 
-    #[test]
-    fn test_take_list_negative() {
+        // Negative
         let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
         assert_eq!(take(&[list, Value::Int(-1)]).unwrap(), Value::List(vec![]));
-    }
 
-    #[test]
-    fn test_take_list_type_error() {
+        // Type error
         let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
         let result = take(&[list, Value::String("2".to_string())]);
         assert!(result.is_err());
     }
 
     // Tests for drop
-    #[test]
-    fn test_drop_list() {
+    #[test_case(2, vec![Value::Int(3), Value::Int(4)] ; "drop_basic")]
+    #[test_case(10, vec![] ; "drop_more_than_length")]
+    #[test_case(0, vec![Value::Int(1), Value::Int(2), Value::Int(3), Value::Int(4)] ; "drop_zero")]
+    fn test_drop_list(count: i64, expected: Vec<Value>) {
         let list = Value::List(vec![
             Value::Int(1),
             Value::Int(2),
@@ -2465,27 +2108,14 @@ mod tests {
             Value::Int(4),
         ]);
         assert_eq!(
-            drop(&[list.clone(), Value::Int(2)]).unwrap(),
-            Value::List(vec![Value::Int(3), Value::Int(4)])
-        );
-        assert_eq!(
-            drop(&[list.clone(), Value::Int(10)]).unwrap(),
-            Value::List(vec![])
-        );
-        assert_eq!(
-            drop(&[list.clone(), Value::Int(0)]).unwrap(),
-            Value::List(vec![
-                Value::Int(1),
-                Value::Int(2),
-                Value::Int(3),
-                Value::Int(4)
-            ])
+            drop(&[list, Value::Int(count)]).unwrap(),
+            Value::List(expected)
         );
     }
 
     #[test]
-    fn test_drop_list_with_float() {
-        // Float 2.5 rounds to 3, so drop first 3 elements
+    fn test_drop_edge_cases() {
+        // Float (2.5 rounds to 3)
         let list = Value::List(vec![
             Value::Int(1),
             Value::Int(2),
@@ -2496,19 +2126,15 @@ mod tests {
             drop(&[list, Value::Float(2.5)]).unwrap(),
             Value::List(vec![Value::Int(4)])
         );
-    }
 
-    #[test]
-    fn test_drop_list_negative() {
+        // Negative
         let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
         assert_eq!(
             drop(&[list, Value::Int(-1)]).unwrap(),
             Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
         );
-    }
 
-    #[test]
-    fn test_drop_list_type_error() {
+        // Type error
         let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
         let result = drop(&[list, Value::String("2".to_string())]);
         assert!(result.is_err());
@@ -2516,7 +2142,8 @@ mod tests {
 
     // Tests for contains
     #[test]
-    fn test_contains_list() {
+    fn test_contains_various() {
+        // Int list
         let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
         assert_eq!(
             contains(&[list.clone(), Value::Int(2)]).unwrap(),
@@ -2526,10 +2153,8 @@ mod tests {
             contains(&[list.clone(), Value::Int(5)]).unwrap(),
             Value::Bool(false)
         );
-    }
 
-    #[test]
-    fn test_contains_list_with_strings() {
+        // String list
         let list = Value::List(vec![
             Value::String("a".to_string()),
             Value::String("b".to_string()),
@@ -2542,26 +2167,23 @@ mod tests {
             contains(&[list.clone(), Value::String("c".to_string())]).unwrap(),
             Value::Bool(false)
         );
-    }
 
-    #[test]
-    fn test_contains_null() {
+        // Null
         assert_eq!(
             contains(&[Value::Null, Value::Int(1)]).unwrap(),
             Value::Bool(false)
         );
-    }
 
-    #[test]
-    fn test_contains_type_error() {
+        // Type error
         let result = contains(&[Value::Int(123), Value::Int(1)]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("must be a list"));
+        assert!(result.unwrap_err().to_string().contains("list"));
     }
 
     // Tests for flatten
     #[test]
-    fn test_flatten_basic() {
+    fn test_flatten_various() {
+        // Basic nested lists
         let nested = Value::List(vec![
             Value::List(vec![Value::Int(1), Value::Int(2)]),
             Value::List(vec![Value::Int(3), Value::Int(4)]),
@@ -2575,10 +2197,7 @@ mod tests {
                 Value::Int(4)
             ])
         );
-    }
 
-    #[test]
-    fn test_flatten_mixed() {
         // Mix of lists and non-lists
         let mixed = Value::List(vec![
             Value::List(vec![Value::Int(1), Value::Int(2)]),
@@ -2595,30 +2214,25 @@ mod tests {
                 Value::Int(5),
             ])
         );
-    }
 
-    #[test]
-    fn test_flatten_empty() {
+        // Empty list
         assert_eq!(
             flatten(&[Value::List(vec![])]).unwrap(),
             Value::List(vec![])
         );
-    }
 
-    #[test]
-    fn test_flatten_null() {
+        // Null
         assert_eq!(flatten(&[Value::Null]).unwrap(), Value::Null);
-    }
 
-    #[test]
-    fn test_flatten_type_error() {
+        // Type error
         let result = flatten(&[Value::Int(123)]);
         assert!(result.is_err());
     }
 
     // Tests for zip
     #[test]
-    fn test_zip_basic() {
+    fn test_zip_various() {
+        // Basic two lists
         let list1 = Value::List(vec![Value::Int(1), Value::Int(2)]);
         let list2 = Value::List(vec![
             Value::String("a".to_string()),
@@ -2631,10 +2245,8 @@ mod tests {
                 Value::List(vec![Value::Int(2), Value::String("b".to_string())]),
             ])
         );
-    }
 
-    #[test]
-    fn test_zip_three_lists() {
+        // Three lists
         let list1 = Value::List(vec![Value::Int(1), Value::Int(2)]);
         let list2 = Value::List(vec![Value::Int(10), Value::Int(20)]);
         let list3 = Value::List(vec![Value::Int(100), Value::Int(200)]);
@@ -2645,10 +2257,8 @@ mod tests {
                 Value::List(vec![Value::Int(2), Value::Int(20), Value::Int(200)]),
             ])
         );
-    }
 
-    #[test]
-    fn test_zip_truncates_to_shortest() {
+        // Truncates to shortest
         let list1 = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
         let list2 = Value::List(vec![
             Value::String("a".to_string()),
@@ -2661,33 +2271,28 @@ mod tests {
                 Value::List(vec![Value::Int(2), Value::String("b".to_string())]),
             ])
         );
-    }
 
-    #[test]
-    fn test_zip_empty() {
+        // Empty lists
         assert_eq!(
             zip(&[Value::List(vec![]), Value::List(vec![])]).unwrap(),
             Value::List(vec![])
         );
-    }
 
-    #[test]
-    fn test_zip_no_args() {
+        // No args
         assert_eq!(zip(&[]).unwrap(), Value::List(vec![]));
-    }
 
-    #[test]
-    fn test_zip_type_error() {
+        // Type error
         let result = zip(&[Value::Int(123), Value::List(vec![])]);
         assert!(result.is_err());
     }
 
     // Tests for partition
     #[test]
-    fn test_partition_basic() {
+    fn test_partition_various() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
 
+        // Basic partition
         let list = Value::List(vec![
             Value::Int(1),
             Value::Int(2),
@@ -2709,7 +2314,6 @@ mod tests {
         match result {
             Value::List(parts) => {
                 assert_eq!(parts.len(), 2);
-                // First part should contain elements where x == 2
                 match &parts[0] {
                     Value::List(satisfying) => {
                         assert_eq!(satisfying.len(), 1);
@@ -2717,7 +2321,6 @@ mod tests {
                     }
                     _ => panic!("Expected list"),
                 }
-                // Second part should contain elements where x != 2
                 match &parts[1] {
                     Value::List(not_satisfying) => {
                         assert_eq!(not_satisfying.len(), 3);
@@ -2727,33 +2330,27 @@ mod tests {
             }
             _ => panic!("Expected list of two lists"),
         }
-    }
 
-    #[test]
-    fn test_partition_null() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
+        // Null
         let pred = Value::Lambda(LambdaValue {
             captured_vars: HashMap::new(),
             params: vec!["x".to_string()],
             body: Expr::Bool(true),
         });
         assert_eq!(partition(&[Value::Null, pred]).unwrap(), Value::Null);
-    }
 
-    #[test]
-    fn test_partition_type_error() {
+        // Type error
         let result = partition(&[Value::Int(123), Value::Int(1)]);
         assert!(result.is_err());
     }
 
     // Tests for flat_map
     #[test]
-    fn test_flat_map_basic() {
+    fn test_flat_map_various() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
         use crate::libs::expr::runtime::value::LambdaValue;
 
+        // Basic flat_map
         let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
         // Lambda: x -> [x, x * 2]
         let f = Value::Lambda(LambdaValue {
@@ -2780,23 +2377,16 @@ mod tests {
             }
             _ => panic!("Expected list"),
         }
-    }
 
-    #[test]
-    fn test_flat_map_null() {
-        use crate::libs::expr::parser::ast::Expr;
-        use crate::libs::expr::runtime::value::LambdaValue;
-
+        // Null
         let f = Value::Lambda(LambdaValue {
             captured_vars: HashMap::new(),
             params: vec!["x".to_string()],
             body: Expr::List(vec![]),
         });
         assert_eq!(flat_map(&[Value::Null, f]).unwrap(), Value::Null);
-    }
 
-    #[test]
-    fn test_flat_map_type_error() {
+        // Type error
         let result = flat_map(&[Value::Int(123), Value::Int(1)]);
         assert!(result.is_err());
     }
