@@ -654,4 +654,156 @@ mod tests {
             Value::String("5d41402abc4b2a76b9719d911017c592".to_string())
         );
     }
+
+    // Tests for polymorphic functions
+    #[test]
+    fn test_polymorphic_len_with_list() {
+        let registry = FunctionRegistry::new();
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        let result = registry.call("len", &[list]).unwrap();
+        assert_eq!(result, Value::Int(3));
+    }
+
+    #[test]
+    fn test_polymorphic_is_empty_with_string() {
+        let registry = FunctionRegistry::new();
+        let result = registry
+            .call("is_empty", &[Value::String("".to_string())])
+            .unwrap();
+        assert_eq!(result, Value::Bool(true));
+
+        let result = registry
+            .call("is_empty", &[Value::String("hello".to_string())])
+            .unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_polymorphic_is_empty_with_list() {
+        let registry = FunctionRegistry::new();
+        let empty_list = Value::List(vec![]);
+        let result = registry.call("is_empty", &[empty_list]).unwrap();
+        assert_eq!(result, Value::Bool(true));
+
+        let non_empty_list = Value::List(vec![Value::Int(1)]);
+        let result = registry.call("is_empty", &[non_empty_list]).unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_polymorphic_contains_with_string() {
+        let registry = FunctionRegistry::new();
+        let result = registry
+            .call(
+                "contains",
+                &[
+                    Value::String("hello world".to_string()),
+                    Value::String("world".to_string()),
+                ],
+            )
+            .unwrap();
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn test_polymorphic_contains_with_list() {
+        let registry = FunctionRegistry::new();
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        let result = registry.call("contains", &[list, Value::Int(2)]).unwrap();
+        assert_eq!(result, Value::Bool(true));
+
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        let result = registry.call("contains", &[list, Value::Int(5)]).unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_polymorphic_take_with_string() {
+        let registry = FunctionRegistry::new();
+        let result = registry
+            .call("take", &[Value::String("hello".to_string()), Value::Int(3)])
+            .unwrap();
+        assert_eq!(result, Value::String("hel".to_string()));
+    }
+
+    #[test]
+    fn test_polymorphic_take_with_list() {
+        let registry = FunctionRegistry::new();
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+        ]);
+        let result = registry.call("take", &[list, Value::Int(2)]).unwrap();
+        match result {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 2);
+                assert_eq!(vals[0], Value::Int(1));
+                assert_eq!(vals[1], Value::Int(2));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_polymorphic_drop_with_string() {
+        let registry = FunctionRegistry::new();
+        let result = registry
+            .call("drop", &[Value::String("hello".to_string()), Value::Int(2)])
+            .unwrap();
+        assert_eq!(result, Value::String("llo".to_string()));
+    }
+
+    #[test]
+    fn test_polymorphic_drop_with_list() {
+        let registry = FunctionRegistry::new();
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+        ]);
+        let result = registry.call("drop", &[list, Value::Int(2)]).unwrap();
+        match result {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 2);
+                assert_eq!(vals[0], Value::Int(3));
+                assert_eq!(vals[1], Value::Int(4));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
+
+    #[test]
+    fn test_polymorphic_concat_with_strings() {
+        let registry = FunctionRegistry::new();
+        let result = registry
+            .call(
+                "concat",
+                &[
+                    Value::String("hello".to_string()),
+                    Value::String(" ".to_string()),
+                    Value::String("world".to_string()),
+                ],
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("hello world".to_string()));
+    }
+
+    #[test]
+    fn test_polymorphic_concat_with_lists() {
+        let registry = FunctionRegistry::new();
+        let list1 = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let list2 = Value::List(vec![Value::Int(3), Value::Int(4)]);
+        let result = registry.call("concat", &[list1, list2]).unwrap();
+        match result {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 4);
+                assert_eq!(vals[0], Value::Int(1));
+                assert_eq!(vals[3], Value::Int(4));
+            }
+            _ => panic!("Expected List"),
+        }
+    }
 }

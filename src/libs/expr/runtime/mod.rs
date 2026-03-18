@@ -3416,4 +3416,124 @@ mod tests {
         ctx3.set_global("__sum".to_string(), sum);
         assert_eq!(ctx3.get_global("__sum").unwrap(), Value::Int(60));
     }
+
+    #[test]
+    fn test_set_builtin_globals() {
+        let row = vec!["test".to_string()];
+        let ctx = EvalContext::new(&row);
+        ctx.set_builtin_globals(42, "file.tsv");
+
+        // Verify __index
+        assert_eq!(ctx.get_global("__index").unwrap(), Value::Int(42));
+        // Verify __file
+        assert_eq!(
+            ctx.get_global("__file").unwrap(),
+            Value::String("file.tsv".to_string())
+        );
+    }
+
+    #[test]
+    fn test_get_global_not_found_returns_null() {
+        let row = vec!["test".to_string()];
+        let ctx = EvalContext::new(&row);
+
+        // Non-existent global should return Null, not error
+        assert_eq!(ctx.get_global("__nonexistent").unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_fmt_with_column_ref_placeholder() {
+        use crate::libs::expr::parser;
+
+        let row = vec!["hello".to_string(), "world".to_string()];
+        let headers = vec!["col1".to_string(), "col2".to_string()];
+        let mut ctx = EvalContext::with_headers(&row, &headers);
+
+        // Test fmt with %(@1) placeholder
+        let expr = parser::parse("fmt('value: %(@1)', @1)").unwrap();
+        let result = eval(&expr, &mut ctx).unwrap();
+        assert_eq!(result, Value::String("value: hello".to_string()));
+    }
+
+    #[test]
+    fn test_fmt_with_variable_placeholder() {
+        use crate::libs::expr::functions::string::fmt_with_context;
+        use ahash::HashMap;
+
+        let row: Vec<String> = vec![];
+        let ctx = EvalContext::new(&row);
+
+        // Set up variables
+        let mut variables = HashMap::new();
+        variables.insert("name".to_string(), Value::String("Alice".to_string()));
+
+        // Test fmt with %(name) placeholder directly
+        let args = vec![
+            Value::String("Hello, %(name)!".to_string()),
+            Value::String("placeholder".to_string()),
+        ];
+        let result = fmt_with_context(
+            &args,
+            Some(&row),
+            Some(&variables),
+            Some(&ctx.lambda_params),
+            Some(ctx.globals.borrow()),
+        )
+        .unwrap();
+        assert_eq!(result, Value::String("Hello, Alice!".to_string()));
+    }
+
+    #[test]
+    fn test_fmt_with_lambda_param_placeholder() {
+        use crate::libs::expr::functions::string::fmt_with_context;
+        use ahash::HashMap;
+
+        let row: Vec<String> = vec![];
+        let ctx = EvalContext::new(&row);
+
+        // Set up lambda params
+        let mut lambda_params = HashMap::new();
+        lambda_params.insert("x".to_string(), Value::Int(42));
+
+        // Test fmt with %(x) placeholder
+        let args = vec![
+            Value::String("value: %(x)".to_string()),
+            Value::String("placeholder".to_string()),
+        ];
+        let result = fmt_with_context(
+            &args,
+            Some(&row),
+            Some(&ctx.variables),
+            Some(&lambda_params),
+            Some(ctx.globals.borrow()),
+        )
+        .unwrap();
+        assert_eq!(result, Value::String("value: 42".to_string()));
+    }
+
+    #[test]
+    fn test_fmt_with_global_placeholder() {
+        use crate::libs::expr::functions::string::fmt_with_context;
+
+        let row: Vec<String> = vec![];
+        let ctx = EvalContext::new(&row);
+
+        // Set up globals
+        ctx.set_global("count".to_string(), Value::Int(100));
+
+        // Test fmt with %(count) placeholder
+        let args = vec![
+            Value::String("count: %(count)".to_string()),
+            Value::String("placeholder".to_string()),
+        ];
+        let result = fmt_with_context(
+            &args,
+            Some(&row),
+            Some(&ctx.variables),
+            Some(&ctx.lambda_params),
+            Some(ctx.globals.borrow()),
+        )
+        .unwrap();
+        assert_eq!(result, Value::String("count: 100".to_string()));
+    }
 }

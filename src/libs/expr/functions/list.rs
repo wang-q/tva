@@ -3025,4 +3025,180 @@ mod tests {
         ]);
         assert!(result.is_err());
     }
+
+    // Additional tests to improve coverage
+
+    #[test]
+    fn test_len_with_null() {
+        assert_eq!(len(&[Value::Null]).unwrap(), Value::Int(0));
+    }
+
+    #[test]
+    fn test_len_type_error() {
+        let result = len(&[Value::Int(123)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be a list"));
+    }
+
+    #[test]
+    fn test_take_with_null() {
+        assert_eq!(take(&[Value::Null, Value::Int(2)]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_take_type_error() {
+        let result = take(&[Value::Int(123), Value::Int(2)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be a list"));
+    }
+
+    #[test]
+    fn test_drop_with_null() {
+        assert_eq!(drop(&[Value::Null, Value::Int(2)]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_drop_type_error() {
+        let result = drop(&[Value::Int(123), Value::Int(2)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be a list"));
+    }
+
+    #[test]
+    fn test_slice_non_numeric_end() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        let result = slice(&[list, Value::Int(0), Value::String("hello".to_string())]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_reduce_null_list_returns_initial() {
+        let result = reduce(&[Value::Null, Value::Int(42), Value::Int(1)]);
+        // Should return initial value when list is null
+        assert_eq!(result.unwrap(), Value::Int(42));
+    }
+
+    #[test]
+    fn test_zip_with_null_element() {
+        let list1 = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let list2 = Value::List(vec![Value::Int(10), Value::Int(20)]);
+        // Null should be treated as empty list
+        let result = zip(&[list1, Value::Null, list2]);
+        // Since null is treated as empty, result should be empty
+        assert_eq!(result.unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_partition_non_lambda_error() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let result = partition(&[list, Value::Int(42)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be a lambda"));
+    }
+
+    #[test]
+    fn test_flat_map_non_lambda_error() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let result = flat_map(&[list, Value::Int(42)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be a lambda"));
+    }
+
+    #[test]
+    fn test_flat_map_returns_non_list() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        // Lambda returns non-list value
+        let f = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::Binary {
+                op: crate::libs::expr::parser::ast::BinaryOp::Mul,
+                left: Box::new(Expr::LambdaParam("x".to_string())),
+                right: Box::new(Expr::Int(2)),
+            },
+        });
+        let result = flat_map(&[list, f]).unwrap();
+        // Should flatten by pushing non-list values directly
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 2);
+                assert_eq!(items[0], Value::Int(2));
+                assert_eq!(items[1], Value::Int(4));
+            }
+            _ => panic!("Expected list"),
+        }
+    }
+
+    #[test]
+    fn test_grouped_non_numeric_error() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let result = grouped(&[list, Value::String("hello".to_string())]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be a number"));
+    }
+
+    #[test]
+    fn test_nth_with_float_index() {
+        let list = Value::List(vec![Value::Int(10), Value::Int(20), Value::Int(30)]);
+        // 1.4 rounds to 1
+        assert_eq!(nth(&[list, Value::Float(1.4)]).unwrap(), Value::Int(20));
+    }
+
+    #[test]
+    fn test_range_with_float_single_arg() {
+        // range(3.7) should round to 4
+        let result = range(&[Value::Float(3.7)]).unwrap();
+        match result {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 4);
+                assert_eq!(vals[0], Value::Int(0));
+                assert_eq!(vals[3], Value::Int(3));
+            }
+            _ => panic!("Expected list"),
+        }
+    }
+
+    #[test]
+    fn test_range_with_float_from() {
+        // range(1.2, 4) -> [1, 2, 3]
+        let result = range(&[Value::Float(1.2), Value::Int(4)]).unwrap();
+        match result {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 3);
+                assert_eq!(vals[0], Value::Int(1));
+            }
+            _ => panic!("Expected list"),
+        }
+    }
+
+    #[test]
+    fn test_range_with_float_upto() {
+        // range(0, 3.7) -> [0, 1, 2, 3]
+        let result = range(&[Value::Int(0), Value::Float(3.7)]).unwrap();
+        match result {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 4);
+                assert_eq!(vals[3], Value::Int(3));
+            }
+            _ => panic!("Expected list"),
+        }
+    }
+
+    #[test]
+    fn test_range_with_float_step() {
+        // range(0, 10, 2.5) -> 2.5 rounds to 3, so [0, 3, 6, 9]
+        let result = range(&[Value::Int(0), Value::Int(10), Value::Float(2.5)]).unwrap();
+        match result {
+            Value::List(vals) => {
+                assert_eq!(vals.len(), 4);
+                assert_eq!(vals[0], Value::Int(0));
+                assert_eq!(vals[1], Value::Int(3));
+                assert_eq!(vals[3], Value::Int(9));
+            }
+            _ => panic!("Expected list"),
+        }
+    }
 }

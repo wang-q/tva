@@ -1294,4 +1294,127 @@ mod tests {
             Value::String("hello".to_string())
         );
     }
+
+    // Tests for fmt function
+    #[test]
+    fn test_fmt_basic() {
+        assert_eq!(
+            fmt(&[Value::String("hello".to_string())]).unwrap(),
+            Value::String("hello".to_string())
+        );
+    }
+
+    #[test]
+    fn test_fmt_with_next_arg() {
+        assert_eq!(
+            fmt(&[
+                Value::String("Hello, %()!".to_string()),
+                Value::String("world".to_string()),
+            ])
+            .unwrap(),
+            Value::String("Hello, world!".to_string())
+        );
+    }
+
+    #[test]
+    fn test_fmt_with_indexed_arg() {
+        assert_eq!(
+            fmt(&[
+                Value::String("%(1) + %(2) = %(3)".to_string()),
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+            ])
+            .unwrap(),
+            Value::String("1 + 2 = 3".to_string())
+        );
+    }
+
+    #[test]
+    fn test_fmt_with_bracket_delim() {
+        assert_eq!(
+            fmt(&[
+                Value::String("Hello, %[]!".to_string()),
+                Value::String("world".to_string()),
+            ])
+            .unwrap(),
+            Value::String("Hello, world!".to_string())
+        );
+    }
+
+    #[test]
+    fn test_fmt_with_brace_delim() {
+        assert_eq!(
+            fmt(&[
+                Value::String("Hello, %{}!".to_string()),
+                Value::String("world".to_string()),
+            ])
+            .unwrap(),
+            Value::String("Hello, world!".to_string())
+        );
+    }
+
+    #[test]
+    fn test_fmt_escaped_percent() {
+        assert_eq!(
+            fmt(&[Value::String("100%% complete".to_string())]).unwrap(),
+            Value::String("100% complete".to_string())
+        );
+    }
+
+    #[test]
+    fn test_fmt_with_format_spec() {
+        assert_eq!(
+            fmt(&[Value::String("%(1:08b)".to_string()), Value::Int(42),]).unwrap(),
+            Value::String("00101010".to_string())
+        );
+    }
+
+    #[test]
+    fn test_fmt_not_enough_args() {
+        let result = fmt(&[
+            Value::String("Hello, %()!".to_string()),
+            // Missing argument
+        ]);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("not enough arguments"));
+    }
+
+    #[test]
+    fn test_fmt_index_out_of_range() {
+        let result = fmt(&[Value::String("%(5)".to_string()), Value::Int(1)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("out of range"));
+    }
+
+    #[test]
+    fn test_fmt_empty_args() {
+        let result = fmt(&[]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("expected 1"));
+    }
+
+    #[test]
+    fn test_fmt_with_float_format() {
+        assert_eq!(
+            fmt(&[Value::String("%(1:.2)".to_string()), Value::Float(3.14159),])
+                .unwrap(),
+            Value::String("3.14".to_string())
+        );
+    }
+
+    #[test]
+    fn test_fmt_with_width_align() {
+        assert_eq!(
+            fmt(&[
+                Value::String("%(1:>10)".to_string()),
+                Value::String("hi".to_string()),
+            ])
+            .unwrap(),
+            Value::String("        hi".to_string())
+        );
+    }
 }
