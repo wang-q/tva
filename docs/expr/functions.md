@@ -39,6 +39,7 @@ TVA expr engine provides a rich set of built-in functions for data processing.
 - replace(string, from, to) -> string: Replace substring
 - truncate(string, len, end?) -> string: Truncate string
 - wordcount(string) -> int: Word count
+- fmt(template, ...args) -> string: Format string with placeholders
 
 ```bash
 # String manipulation examples
@@ -59,6 +60,24 @@ tva expr -E 'replace("hello", "l", "x")'    # Returns: "hexxo"
 tva expr -E 'truncate("hello world", 5)'    # Returns: "he..."
 tva expr -E 'wordcount("hello world")'      # Returns: 2
 tva expr -E 'wordcount("one two three four")'  # Returns: 4
+
+# fmt() - String formatting
+tva expr -E 'fmt("Hello %()!", "World")'                    # Returns: "Hello World!"
+tva expr -E 'fmt("%(1) has %(2) points", "Alice", 100)'      # Returns: "Alice has 100 points"
+tva expr -E 'fmt("Hex: %(1:#x)", 255)'                       # Returns: "Hex: 0xff"
+tva expr -E 'fmt("Escaped %% works")'                        # Returns: "Escaped % works"
+
+# fmt() supports three delimiter types: %(), %[], %{}
+tva expr -E 'fmt("%[1] and %[2]", "a", "b")'                 # Returns: "a and b"
+tva expr -E 'fmt("%{1} and %{2}", "a", "b")'                 # Returns: "a and b"
+
+# Format specifiers (similar to Rust's format!)
+tva expr -E 'fmt("%(1:>10)", "hello")'                       # Right align, width 10
+tva expr -E 'fmt("%(1:<10)", "hello")'                       # Left align, width 10
+tva expr -E 'fmt("%(1:.2)", 3.14159)'                        # 2 decimal places
+tva expr -E 'fmt("%(1:08)", 42)'                             # Zero-pad to 8 digits
+tva expr -E 'fmt("%(1:+)", 42)'                              # Always show sign
+tva expr -E 'fmt("%(1:#x)", 255)'                            # Hex with 0x prefix
 ```
 
 ## List Operations

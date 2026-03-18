@@ -120,6 +120,420 @@ pub fn truncate(args: &[Value]) -> Result<Value, EvalError> {
     }
 }
 
+/// Format a string using %() placeholders.
+/// Supports three delimiter types: %(), %[], %{}
+/// Format specifiers follow Rust's format! syntax.
+pub fn fmt(args: &[Value]) -> Result<Value, EvalError> {
+    if args.is_empty() {
+        return Err(EvalError::WrongArity {
+            name: "fmt".to_string(),
+            expected: 1,
+            got: 0,
+        });
+    }
+
+    let template = args[0].as_string();
+    let format_args = &args[1..];
+
+    // Parse and format the template
+    match format_template(&template, format_args) {
+        Ok(result) => Ok(Value::String(result)),
+        Err(e) => Err(EvalError::TypeError(format!("fmt: {}", e))),
+    }
+}
+
+/// Format a template string with the given arguments.
+fn format_template(template: &str, args: &[Value]) -> Result<String, String> {
+    let mut result = String::new();
+    let mut chars = template.chars().peekable();
+    let mut arg_index = 0;
+
+    while let Some(ch) = chars.next() {
+        if ch == '%' {
+            // Check for escaped %%
+            if chars.peek() == Some(&'%') {
+                chars.next();
+                result.push('%');
+                continue;
+            }
+
+            // Parse the placeholder
+            match parse_placeholder(&mut chars, args, &mut arg_index)? {
+                Placeholder::NextArg => {
+                    if arg_index >= args.len() {
+                        return Err(format!(
+                            "not enough arguments: expected at least {}, got {}",
+                            arg_index + 1,
+                            args.len()
+                        ));
+                    }
+                    result.push_str(&value_to_string(&args[arg_index]));
+                    arg_index += 1;
+                }
+                Placeholder::IndexedArg(idx) => {
+                    let idx = idx.saturating_sub(1); // Convert 1-based to 0-based
+                    if idx >= args.len() {
+                        return Err(format!(
+                            "argument index {} out of range (got {} arguments)",
+                            idx + 1,
+                            args.len()
+                        ));
+                    }
+                    result.push_str(&value_to_string(&args[idx]));
+                }
+                Placeholder::FormattedNextArg(spec) => {
+                    if arg_index >= args.len() {
+                        return Err(format!(
+                            "not enough arguments: expected at least {}, got {}",
+                            arg_index + 1,
+                            args.len()
+                        ));
+                    }
+                    result.push_str(&format_value(&args[arg_index], &spec)?);
+                    arg_index += 1;
+                }
+                Placeholder::FormattedIndexedArg(idx, spec) => {
+                    let idx = idx.saturating_sub(1); // Convert 1-based to 0-based
+                    if idx >= args.len() {
+                        return Err(format!(
+                            "argument index {} out of range (got {} arguments)",
+                            idx + 1,
+                            args.len()
+                        ));
+                    }
+                    result.push_str(&format_value(&args[idx], &spec)?);
+                }
+            }
+        } else {
+            result.push(ch);
+        }
+    }
+
+    Ok(result)
+}
+
+/// Represents a parsed placeholder.
+enum Placeholder {
+    NextArg,                            // %() or %[] or %{}
+    IndexedArg(usize),                  // %(n) or %[n] or %{n}
+    FormattedNextArg(String),           // %(:spec) or %[:spec] or %{:spec}
+    FormattedIndexedArg(usize, String), // %(n:spec) or %[n:spec] or %{n:spec}
+}
+
+/// Parse a placeholder starting after the '%' character.
+fn parse_placeholder(
+    chars: &mut std::iter::Peekable<std::str::Chars>,
+    _args: &[Value],
+    _current_index: &mut usize,
+) -> Result<Placeholder, String> {
+    // Determine the delimiter type
+    let (open_delim, close_delim) = match chars.peek() {
+        Some(&'(') => {
+            chars.next();
+            ('(', ')')
+        }
+        Some(&'[') => {
+            chars.next();
+            ('[', ']')
+        }
+        Some(&'{') => {
+            chars.next();
+            ('{', '}')
+        }
+        Some(&ch) => return Err(format!("expected delimiter after %, found '{}'", ch)),
+        None => return Err("unexpected end of template after %".to_string()),
+    };
+
+    // Parse the content inside the delimiters
+    let mut content = String::new();
+    let mut depth = 1;
+
+    while let Some(ch) = chars.next() {
+        if ch == open_delim {
+            depth += 1;
+            content.push(ch);
+        } else if ch == close_delim {
+            depth -= 1;
+            if depth == 0 {
+                break;
+            }
+            content.push(ch);
+        } else {
+            content.push(ch);
+        }
+    }
+
+    if depth != 0 {
+        return Err(format!("unclosed delimiter '{}'", open_delim));
+    }
+
+    // Parse the content: could be empty, a number, or number:format_spec
+    if content.is_empty() {
+        // %() - next argument
+        Ok(Placeholder::NextArg)
+    } else if let Some(colon_pos) = content.find(':') {
+        // Has format specifier
+        let (index_part, spec) = content.split_at(colon_pos);
+        let spec = &spec[1..]; // Remove the leading ':'
+
+        if index_part.is_empty() {
+            // %(:spec) - next argument with format
+            Ok(Placeholder::FormattedNextArg(spec.to_string()))
+        } else if let Ok(idx) = index_part.parse::<usize>() {
+            // %(n:spec) - indexed argument with format
+            Ok(Placeholder::FormattedIndexedArg(idx, spec.to_string()))
+        } else {
+            Err(format!("invalid placeholder content: '{}'", content))
+        }
+    } else if let Ok(idx) = content.parse::<usize>() {
+        // %(n) - indexed argument
+        Ok(Placeholder::IndexedArg(idx))
+    } else {
+        Err(format!("invalid placeholder content: '{}'", content))
+    }
+}
+
+/// Convert a Value to its string representation.
+fn value_to_string(value: &Value) -> String {
+    match value {
+        Value::String(s) => s.clone(),
+        Value::Int(n) => n.to_string(),
+        Value::Float(f) => f.to_string(),
+        Value::Bool(b) => b.to_string(),
+        Value::Null => "null".to_string(),
+        Value::List(_) => "[list]".to_string(),
+        Value::DateTime(dt) => dt.to_rfc3339(),
+        Value::Lambda(_) => "[lambda]".to_string(),
+    }
+}
+
+/// Format a value according to the format specification.
+fn format_value(value: &Value, spec: &str) -> Result<String, String> {
+    // Parse the format spec
+    let mut fill = ' ';
+    let mut align = '<';
+    let mut width = None::<usize>;
+    let mut precision = None::<usize>;
+    let mut sign = '-';
+    let mut alternate = false;
+    let mut ty = "";
+
+    let mut chars = spec.chars().peekable();
+
+    // Parse fill and align
+    if let Some(&ch) = chars.peek() {
+        if let Some(next) = chars.clone().nth(1) {
+            if next == '<' || next == '>' || next == '^' {
+                fill = ch;
+                chars.next();
+                align = chars.next().unwrap();
+            } else if ch == '<' || ch == '>' || ch == '^' {
+                align = ch;
+                chars.next();
+            }
+        } else if ch == '<' || ch == '>' || ch == '^' {
+            align = ch;
+            chars.next();
+        }
+    }
+
+    // Parse sign
+    if let Some(&'+') = chars.peek() {
+        sign = '+';
+        chars.next();
+    } else if let Some(&'-') = chars.peek() {
+        sign = '-';
+        chars.next();
+    }
+
+    // Parse alternate form
+    if let Some(&'#') = chars.peek() {
+        alternate = true;
+        chars.next();
+    }
+
+    // Parse width
+    let mut width_str = String::new();
+    while let Some(&ch) = chars.peek() {
+        if ch.is_ascii_digit() {
+            width_str.push(ch);
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    if !width_str.is_empty() {
+        width = Some(width_str.parse().map_err(|_| "invalid width")?);
+    }
+
+    // Parse precision
+    if let Some(&'.') = chars.peek() {
+        chars.next();
+        let mut prec_str = String::new();
+        while let Some(&ch) = chars.peek() {
+            if ch.is_ascii_digit() {
+                prec_str.push(ch);
+                chars.next();
+            } else {
+                break;
+            }
+        }
+        if !prec_str.is_empty() {
+            precision = Some(prec_str.parse().map_err(|_| "invalid precision")?);
+        }
+    }
+
+    // Parse type
+    let remaining: String = chars.collect();
+    ty = remaining.as_str();
+
+    // Format the value
+    let formatted = match value {
+        Value::Int(n) => format_int(*n, sign, alternate, width, precision, ty)?,
+        Value::Float(f) => format_float(*f, sign, alternate, width, precision, ty)?,
+        Value::String(s) => format_string(s, width, precision)?,
+        v => value_to_string(v),
+    };
+
+    // Apply alignment and fill
+    if let Some(w) = width {
+        let len = formatted.chars().count();
+        if len < w {
+            let pad = w - len;
+            match align {
+                '<' => Ok(format!("{}{}", formatted, fill.to_string().repeat(pad))),
+                '>' => Ok(format!("{}{}", fill.to_string().repeat(pad), formatted)),
+                '^' => {
+                    let left = pad / 2;
+                    let right = pad - left;
+                    Ok(format!(
+                        "{}{}{}",
+                        fill.to_string().repeat(left),
+                        formatted,
+                        fill.to_string().repeat(right)
+                    ))
+                }
+                _ => Ok(formatted),
+            }
+        } else {
+            Ok(formatted)
+        }
+    } else {
+        Ok(formatted)
+    }
+}
+
+/// Format an integer value.
+fn format_int(
+    n: i64,
+    sign: char,
+    alternate: bool,
+    width: Option<usize>,
+    precision: Option<usize>,
+    ty: &str,
+) -> Result<String, String> {
+    let mut result = match ty {
+        "b" => {
+            let prefix = if alternate { "0b" } else { "" };
+            format!("{}{:b}", prefix, n)
+        }
+        "o" => {
+            let prefix = if alternate { "0o" } else { "" };
+            format!("{}{:o}", prefix, n)
+        }
+        "x" => {
+            let prefix = if alternate { "0x" } else { "" };
+            format!("{}{:x}", prefix, n)
+        }
+        "X" => {
+            let prefix = if alternate { "0X" } else { "" };
+            format!("{}{:X}", prefix, n)
+        }
+        "" | "d" | "i" => {
+            if let Some(prec) = precision {
+                format!("{:0>prec$}", n, prec = prec)
+            } else {
+                n.to_string()
+            }
+        }
+        "e" => format!("{:e}", n as f64),
+        "E" => format!("{:E}", n as f64),
+        "?" => format!("{:?}", n),
+        _ => return Err(format!("unknown format type '{}' for integer", ty)),
+    };
+
+    // Apply sign
+    if sign == '+' && n >= 0 && !result.starts_with('+') {
+        result = format!("+{}", result);
+    }
+
+    // Apply zero-padding for width if specified
+    if let Some(w) = width {
+        if result.len() < w && !result.starts_with('-') && !result.starts_with('+') {
+            result = format!("{:0>width$}", result, width = w);
+        } else if result.len() < w {
+            // Handle sign separately
+            let sign_char = if result.starts_with('-') {
+                "-"
+            } else if result.starts_with('+') {
+                "+"
+            } else {
+                ""
+            };
+            let num_part = &result[sign_char.len()..];
+            result = format!("{}{:0>width$}", sign_char, num_part, width = w - 1);
+        }
+    }
+
+    Ok(result)
+}
+
+/// Format a float value.
+fn format_float(
+    f: f64,
+    sign: char,
+    _alternate: bool,
+    width: Option<usize>,
+    precision: Option<usize>,
+    ty: &str,
+) -> Result<String, String> {
+    let prec = precision.unwrap_or(6);
+
+    let mut result = match ty {
+        "e" => format!("{:.*e}", prec, f),
+        "E" => format!("{:.*E}", prec, f),
+        "" | "f" | "g" | "G" => format!("{:.*}", prec, f),
+        "?" => format!("{:?}", f),
+        _ => return Err(format!("unknown format type '{}' for float", ty)),
+    };
+
+    // Apply sign
+    if sign == '+' && f >= 0.0 && !result.starts_with('+') {
+        result = format!("+{}", result);
+    }
+
+    Ok(result)
+}
+
+/// Format a string value.
+fn format_string(
+    s: &str,
+    _width: Option<usize>,
+    precision: Option<usize>,
+) -> Result<String, String> {
+    let mut result = s.to_string();
+
+    // Apply precision (truncate)
+    if let Some(prec) = precision {
+        let chars: Vec<char> = result.chars().collect();
+        if chars.len() > prec {
+            result = chars[..prec].iter().collect();
+        }
+    }
+
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

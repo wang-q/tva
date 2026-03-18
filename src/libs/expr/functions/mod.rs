@@ -118,9 +118,10 @@ impl FunctionRegistry {
         self.register("starts_with", FunctionInfo::fixed(string::starts_with, 2));
         self.register("ends_with", FunctionInfo::fixed(string::ends_with, 2));
         self.register("replace", FunctionInfo::fixed(string::replace, 3));
-        self.register("truncate", FunctionInfo::variadic(string::truncate, 2));
         self.register("wordcount", FunctionInfo::fixed(string::wordcount, 1));
         self.register("char_len", FunctionInfo::fixed(string::char_len, 1));
+        self.register("truncate", FunctionInfo::variadic(string::truncate, 2));
+        self.register("fmt", FunctionInfo::variadic(string::fmt, 1));
 
         // Numeric functions
         self.register("abs", FunctionInfo::fixed(numeric::abs, 1));
