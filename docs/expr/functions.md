@@ -29,7 +29,14 @@ TVA expr engine provides a rich set of built-in functions for data processing.
 
 ## Generic Functions
 
+These functions have different implementations for different argument types.
+The implementation is selected at runtime based on the first argument type.
+
 - len(value) -> int: Returns length of string (bytes) or list (element count)
+- is_empty(value) -> bool: Check if string or list is empty
+- contains(value, item) -> bool: Check if string contains substring, or list contains element
+- take(value, n) -> T: Take first n elements from string or list
+- drop(value, n) -> T: Drop first n elements from string or list
 
 ## String Manipulation
 
@@ -39,7 +46,7 @@ TVA expr engine provides a rich set of built-in functions for data processing.
 - char_len(string) -> int: String character count (UTF-8)
 - substr(string, start, len) -> string: Substring
 - split(string, pat) -> list: Split string by pattern
-- contains(string, substr) -> bool: Check if string contains substring
+- contains(value, item) -> bool: Check if string contains substring, or list contains element
 - starts_with(string, prefix) -> bool: Check if string starts with prefix
 - ends_with(string, suffix) -> bool: Check if string ends with suffix
 - replace(string, from, to) -> string: Replace substring

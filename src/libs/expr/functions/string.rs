@@ -28,10 +28,47 @@ pub fn lower(args: &[Value]) -> Result<Value, EvalError> {
 pub fn len(args: &[Value]) -> Result<Value, EvalError> {
     match &args[0] {
         Value::String(s) => Ok(Value::Int(s.len() as i64)),
-        Value::List(list) => Ok(Value::Int(list.len() as i64)),
         Value::Null => Ok(Value::Int(0)),
         v => Ok(Value::Int(v.to_string().len() as i64)),
     }
+}
+
+pub fn is_empty(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::String(s) => Ok(Value::Bool(s.is_empty())),
+        Value::Null => Ok(Value::Bool(true)),
+        v => Ok(Value::Bool(v.to_string().is_empty())),
+    }
+}
+
+pub fn take(args: &[Value]) -> Result<Value, EvalError> {
+    let s = args[0].as_string();
+    let n = match &args[1] {
+        Value::Int(i) => (*i).max(0) as usize,
+        Value::Float(f) => f.round().max(0.0) as usize,
+        _ => {
+            return Err(EvalError::TypeError(
+                "take: second argument must be a number".to_string(),
+            ))
+        }
+    };
+    let end = n.min(s.len());
+    Ok(Value::String(s[..end].to_string()))
+}
+
+pub fn drop(args: &[Value]) -> Result<Value, EvalError> {
+    let s = args[0].as_string();
+    let n = match &args[1] {
+        Value::Int(i) => (*i).max(0) as usize,
+        Value::Float(f) => f.round().max(0.0) as usize,
+        _ => {
+            return Err(EvalError::TypeError(
+                "drop: second argument must be a number".to_string(),
+            ))
+        }
+    };
+    let start = n.min(s.len());
+    Ok(Value::String(s[start..].to_string()))
 }
 
 pub fn substr(args: &[Value]) -> Result<Value, EvalError> {
@@ -904,12 +941,6 @@ mod tests {
     }
 
     #[test]
-    fn test_len_list() {
-        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
-        assert_eq!(len(&[list]).unwrap(), Value::Int(3));
-    }
-
-    #[test]
     fn test_len_non_string() {
         assert_eq!(len(&[Value::Int(12345)]).unwrap(), Value::Int(5));
         assert_eq!(len(&[Value::Bool(true)]).unwrap(), Value::Int(4));
@@ -1094,5 +1125,115 @@ mod tests {
         use crate::libs::expr::eval_expr;
         let row: Vec<String> = vec!["hello".to_string()];
         assert_eq!(eval_expr("len(@1)", &row, None).unwrap().to_string(), "5");
+    }
+
+    // Tests for is_empty
+    #[test]
+    fn test_is_empty_string() {
+        assert_eq!(
+            is_empty(&[Value::String("".to_string())]).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            is_empty(&[Value::String("hello".to_string())]).unwrap(),
+            Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn test_is_empty_null() {
+        assert_eq!(is_empty(&[Value::Null]).unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_empty_non_string() {
+        assert_eq!(is_empty(&[Value::Int(123)]).unwrap(), Value::Bool(false));
+        assert_eq!(is_empty(&[Value::Bool(true)]).unwrap(), Value::Bool(false));
+    }
+
+    // Tests for take
+    #[test]
+    fn test_take_string() {
+        assert_eq!(
+            take(&[Value::String("hello".to_string()), Value::Int(2)]).unwrap(),
+            Value::String("he".to_string())
+        );
+        assert_eq!(
+            take(&[Value::String("hello".to_string()), Value::Int(10)]).unwrap(),
+            Value::String("hello".to_string())
+        );
+        assert_eq!(
+            take(&[Value::String("hello".to_string()), Value::Int(0)]).unwrap(),
+            Value::String("".to_string())
+        );
+    }
+
+    #[test]
+    fn test_take_string_with_float() {
+        assert_eq!(
+            take(&[Value::String("hello".to_string()), Value::Float(2.5)]).unwrap(),
+            Value::String("hel".to_string())
+        );
+    }
+
+    #[test]
+    fn test_take_string_negative() {
+        // Negative number should be treated as 0
+        assert_eq!(
+            take(&[Value::String("hello".to_string()), Value::Int(-1)]).unwrap(),
+            Value::String("".to_string())
+        );
+    }
+
+    #[test]
+    fn test_take_string_type_error() {
+        let result = take(&[
+            Value::String("hello".to_string()),
+            Value::String("2".to_string()),
+        ]);
+        assert!(result.is_err());
+    }
+
+    // Tests for drop
+    #[test]
+    fn test_drop_string() {
+        assert_eq!(
+            drop(&[Value::String("hello".to_string()), Value::Int(2)]).unwrap(),
+            Value::String("llo".to_string())
+        );
+        assert_eq!(
+            drop(&[Value::String("hello".to_string()), Value::Int(10)]).unwrap(),
+            Value::String("".to_string())
+        );
+        assert_eq!(
+            drop(&[Value::String("hello".to_string()), Value::Int(0)]).unwrap(),
+            Value::String("hello".to_string())
+        );
+    }
+
+    #[test]
+    fn test_drop_string_with_float() {
+        assert_eq!(
+            drop(&[Value::String("hello".to_string()), Value::Float(2.5)]).unwrap(),
+            Value::String("lo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_drop_string_negative() {
+        // Negative number should be treated as 0
+        assert_eq!(
+            drop(&[Value::String("hello".to_string()), Value::Int(-1)]).unwrap(),
+            Value::String("hello".to_string())
+        );
+    }
+
+    #[test]
+    fn test_drop_string_type_error() {
+        let result = drop(&[
+            Value::String("hello".to_string()),
+            Value::String("2".to_string()),
+        ]);
+        assert!(result.is_err());
     }
 }

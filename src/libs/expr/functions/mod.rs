@@ -13,6 +13,51 @@ mod numeric;
 mod regex;
 pub mod string;
 
+/// Polymorphic contains function
+/// Dispatches to string::contains or list::contains based on first argument type
+fn polymorphic_contains(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(_) => list::contains(args),
+        _ => string::contains(args),
+    }
+}
+
+/// Polymorphic len function
+/// Dispatches to string::len or list::len based on first argument type
+fn polymorphic_len(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(_) => list::len(args),
+        _ => string::len(args),
+    }
+}
+
+/// Polymorphic is_empty function
+/// Dispatches to string::is_empty or list::is_empty based on first argument type
+fn polymorphic_is_empty(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(_) => list::is_empty(args),
+        _ => string::is_empty(args),
+    }
+}
+
+/// Polymorphic take function
+/// Dispatches to string::take or list::take based on first argument type
+fn polymorphic_take(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(_) => list::take(args),
+        _ => string::take(args),
+    }
+}
+
+/// Polymorphic drop function
+/// Dispatches to string::drop or list::drop based on first argument type
+fn polymorphic_drop(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(_) => list::drop(args),
+        _ => string::drop(args),
+    }
+}
+
 /// Global static function registry
 /// Initialized once on first access, then reused for all evaluations
 static GLOBAL_REGISTRY: OnceLock<FunctionRegistry> = OnceLock::new();
@@ -107,14 +152,19 @@ impl FunctionRegistry {
 
     /// Register all built-in functions
     fn register_builtins(&mut self) {
+        // Polymorphic functions (dispatch based on argument type)
+        self.register("len", FunctionInfo::fixed(polymorphic_len, 1));
+        self.register("contains", FunctionInfo::fixed(polymorphic_contains, 2));
+        self.register("is_empty", FunctionInfo::fixed(polymorphic_is_empty, 1));
+        self.register("take", FunctionInfo::fixed(polymorphic_take, 2));
+        self.register("drop", FunctionInfo::fixed(polymorphic_drop, 2));
+
         // String functions
         self.register("trim", FunctionInfo::fixed(string::trim, 1));
         self.register("upper", FunctionInfo::fixed(string::upper, 1));
         self.register("lower", FunctionInfo::fixed(string::lower, 1));
-        self.register("len", FunctionInfo::fixed(string::len, 1));
         self.register("substr", FunctionInfo::fixed(string::substr, 3));
         self.register("split", FunctionInfo::fixed(string::split, 2));
-        self.register("contains", FunctionInfo::fixed(string::contains, 2));
         self.register("starts_with", FunctionInfo::fixed(string::starts_with, 2));
         self.register("ends_with", FunctionInfo::fixed(string::ends_with, 2));
         self.register("replace", FunctionInfo::fixed(string::replace, 3));

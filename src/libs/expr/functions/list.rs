@@ -520,6 +520,102 @@ pub fn range(args: &[Value]) -> Result<Value, EvalError> {
     Ok(Value::List(result))
 }
 
+/// Check if a list is empty
+/// is_empty(list) -> bool
+pub fn is_empty(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => Ok(Value::Bool(list.is_empty())),
+        Value::Null => Ok(Value::Bool(true)),
+        _ => Err(EvalError::TypeError(
+            "is_empty: argument must be a list".to_string(),
+        )),
+    }
+}
+
+/// Take the first n elements from a list
+/// take(list, n) -> list
+pub fn take(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => {
+            let n = match &args[1] {
+                Value::Int(i) => (*i).max(0) as usize,
+                Value::Float(f) => f.round().max(0.0) as usize,
+                v => {
+                    return Err(EvalError::TypeError(format!(
+                        "take: second argument must be a number, got {}",
+                        v.type_name()
+                    )))
+                }
+            };
+            let end = n.min(list.len());
+            Ok(Value::List(list[..end].to_vec()))
+        }
+        Value::Null => Ok(Value::Null),
+        _ => Err(EvalError::TypeError(
+            "take: first argument must be a list".to_string(),
+        )),
+    }
+}
+
+/// Drop the first n elements from a list
+/// drop(list, n) -> list
+pub fn drop(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => {
+            let n = match &args[1] {
+                Value::Int(i) => (*i).max(0) as usize,
+                Value::Float(f) => f.round().max(0.0) as usize,
+                v => {
+                    return Err(EvalError::TypeError(format!(
+                        "drop: second argument must be a number, got {}",
+                        v.type_name()
+                    )))
+                }
+            };
+            let start = n.min(list.len());
+            Ok(Value::List(list[start..].to_vec()))
+        }
+        Value::Null => Ok(Value::Null),
+        _ => Err(EvalError::TypeError(
+            "drop: first argument must be a list".to_string(),
+        )),
+    }
+}
+
+/// Check if a list contains an element
+/// contains(list, element) -> bool
+pub fn contains(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => {
+            let target = &args[1];
+            // Use string representation for comparison
+            let target_str = target.to_string();
+            for item in list {
+                if item.to_string() == target_str {
+                    return Ok(Value::Bool(true));
+                }
+            }
+            Ok(Value::Bool(false))
+        }
+        Value::Null => Ok(Value::Bool(false)),
+        _ => Err(EvalError::TypeError(
+            "contains: first argument must be a list".to_string(),
+        )),
+    }
+}
+
+/// Get the length of a list
+/// len(list) -> int
+pub fn len(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => Ok(Value::Int(list.len() as i64)),
+        Value::Null => Ok(Value::Int(0)),
+        _ => Err(EvalError::TypeError(
+            "len: argument must be a list".to_string(),
+        )),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2065,5 +2161,181 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("second argument must be a lambda"));
+    }
+
+    // Tests for is_empty
+    #[test]
+    fn test_is_empty_list() {
+        assert_eq!(is_empty(&[Value::List(vec![])]).unwrap(), Value::Bool(true));
+        assert_eq!(
+            is_empty(&[Value::List(vec![Value::Int(1)])]).unwrap(),
+            Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn test_is_empty_null() {
+        assert_eq!(is_empty(&[Value::Null]).unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_is_empty_type_error() {
+        let result = is_empty(&[Value::Int(123)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be a list"));
+    }
+
+    // Tests for take
+    #[test]
+    fn test_take_list() {
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+        ]);
+        assert_eq!(
+            take(&[list.clone(), Value::Int(2)]).unwrap(),
+            Value::List(vec![Value::Int(1), Value::Int(2)])
+        );
+        assert_eq!(
+            take(&[list.clone(), Value::Int(10)]).unwrap(),
+            Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+                Value::Int(4)
+            ])
+        );
+        assert_eq!(
+            take(&[list.clone(), Value::Int(0)]).unwrap(),
+            Value::List(vec![])
+        );
+    }
+
+    #[test]
+    fn test_take_list_with_float() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        assert_eq!(
+            take(&[list, Value::Float(2.5)]).unwrap(),
+            Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
+        );
+    }
+
+    #[test]
+    fn test_take_list_negative() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        assert_eq!(take(&[list, Value::Int(-1)]).unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_take_list_type_error() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let result = take(&[list, Value::String("2".to_string())]);
+        assert!(result.is_err());
+    }
+
+    // Tests for drop
+    #[test]
+    fn test_drop_list() {
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+        ]);
+        assert_eq!(
+            drop(&[list.clone(), Value::Int(2)]).unwrap(),
+            Value::List(vec![Value::Int(3), Value::Int(4)])
+        );
+        assert_eq!(
+            drop(&[list.clone(), Value::Int(10)]).unwrap(),
+            Value::List(vec![])
+        );
+        assert_eq!(
+            drop(&[list.clone(), Value::Int(0)]).unwrap(),
+            Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+                Value::Int(4)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_drop_list_with_float() {
+        // Float 2.5 rounds to 3, so drop first 3 elements
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+        ]);
+        assert_eq!(
+            drop(&[list, Value::Float(2.5)]).unwrap(),
+            Value::List(vec![Value::Int(4)])
+        );
+    }
+
+    #[test]
+    fn test_drop_list_negative() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        assert_eq!(
+            drop(&[list, Value::Int(-1)]).unwrap(),
+            Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
+        );
+    }
+
+    #[test]
+    fn test_drop_list_type_error() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let result = drop(&[list, Value::String("2".to_string())]);
+        assert!(result.is_err());
+    }
+
+    // Tests for contains
+    #[test]
+    fn test_contains_list() {
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        assert_eq!(
+            contains(&[list.clone(), Value::Int(2)]).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            contains(&[list.clone(), Value::Int(5)]).unwrap(),
+            Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn test_contains_list_with_strings() {
+        let list = Value::List(vec![
+            Value::String("a".to_string()),
+            Value::String("b".to_string()),
+        ]);
+        assert_eq!(
+            contains(&[list.clone(), Value::String("a".to_string())]).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            contains(&[list.clone(), Value::String("c".to_string())]).unwrap(),
+            Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn test_contains_null() {
+        assert_eq!(
+            contains(&[Value::Null, Value::Int(1)]).unwrap(),
+            Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn test_contains_type_error() {
+        let result = contains(&[Value::Int(123), Value::Int(1)]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be a list"));
     }
 }
