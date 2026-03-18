@@ -616,6 +616,193 @@ pub fn len(args: &[Value]) -> Result<Value, EvalError> {
     }
 }
 
+/// Flatten a nested list by one level
+/// flatten(list) -> list
+pub fn flatten(args: &[Value]) -> Result<Value, EvalError> {
+    match &args[0] {
+        Value::List(list) => {
+            let mut result = Vec::new();
+            for item in list {
+                match item {
+                    Value::List(sublist) => result.extend(sublist.clone()),
+                    _ => result.push(item.clone()),
+                }
+            }
+            Ok(Value::List(result))
+        }
+        Value::Null => Ok(Value::Null),
+        _ => Err(EvalError::TypeError(
+            "flatten: argument must be a list".to_string(),
+        )),
+    }
+}
+
+/// Zip multiple lists into a list of tuples (as lists)
+/// zip(list1, list2, ...) -> list
+pub fn zip(args: &[Value]) -> Result<Value, EvalError> {
+    if args.is_empty() {
+        return Ok(Value::List(vec![]));
+    }
+
+    // Collect lists, treating null as empty list
+    let mut lists: Vec<Vec<Value>> = Vec::new();
+    for arg in args {
+        match arg {
+            Value::List(list) => lists.push(list.clone()),
+            Value::Null => lists.push(Vec::new()),
+            _ => {
+                return Err(EvalError::TypeError(
+                    "zip: all arguments must be lists".to_string(),
+                ))
+            }
+        }
+    }
+
+    // Find minimum length
+    let min_len = lists.iter().map(|l| l.len()).min().unwrap_or(0);
+
+    let mut result = Vec::new();
+    for i in 0..min_len {
+        let tuple: Vec<Value> = lists.iter().map(|l| l[i].clone()).collect();
+        result.push(Value::List(tuple));
+    }
+
+    Ok(Value::List(result))
+}
+
+/// Partition a list into two lists based on a predicate
+/// partition(list, pred) -> [satisfying, not_satisfying]
+pub fn partition(args: &[Value]) -> Result<Value, EvalError> {
+    let list = match &args[0] {
+        Value::List(list) => list,
+        Value::Null => return Ok(Value::Null),
+        _ => {
+            return Err(EvalError::TypeError(
+                "partition: first argument must be a list".to_string(),
+            ))
+        }
+    };
+
+    let pred = match &args[1] {
+        Value::Lambda(lambda) => lambda,
+        _ => {
+            return Err(EvalError::TypeError(
+                "partition: second argument must be a lambda".to_string(),
+            ))
+        }
+    };
+
+    let mut satisfying = Vec::new();
+    let mut not_satisfying = Vec::new();
+
+    for item in list {
+        let result = apply_lambda(pred, item)?;
+        match result {
+            Value::Bool(true) => satisfying.push(item.clone()),
+            _ => not_satisfying.push(item.clone()),
+        }
+    }
+
+    Ok(Value::List(vec![
+        Value::List(satisfying),
+        Value::List(not_satisfying),
+    ]))
+}
+
+/// Map a function over a list and flatten the result by one level
+/// flat_map(list, f) -> list
+pub fn flat_map(args: &[Value]) -> Result<Value, EvalError> {
+    let list = match &args[0] {
+        Value::List(list) => list,
+        Value::Null => return Ok(Value::Null),
+        _ => {
+            return Err(EvalError::TypeError(
+                "flat_map: first argument must be a list".to_string(),
+            ))
+        }
+    };
+
+    let f = match &args[1] {
+        Value::Lambda(lambda) => lambda,
+        _ => {
+            return Err(EvalError::TypeError(
+                "flat_map: second argument must be a lambda".to_string(),
+            ))
+        }
+    };
+
+    let mut result = Vec::new();
+    for item in list {
+        let mapped = apply_lambda(f, item)?;
+        match mapped {
+            Value::List(sublist) => result.extend(sublist),
+            _ => result.push(mapped),
+        }
+    }
+
+    Ok(Value::List(result))
+}
+
+/// Group a list into chunks of size n
+/// grouped(list, n) -> list
+pub fn grouped(args: &[Value]) -> Result<Value, EvalError> {
+    let list = match &args[0] {
+        Value::List(list) => list,
+        Value::Null => return Ok(Value::Null),
+        _ => {
+            return Err(EvalError::TypeError(
+                "grouped: first argument must be a list".to_string(),
+            ))
+        }
+    };
+
+    let n = match &args[1] {
+        Value::Int(i) => (*i).max(1) as usize,
+        Value::Float(f) => f.round().max(1.0) as usize,
+        _ => {
+            return Err(EvalError::TypeError(
+                "grouped: second argument must be a number".to_string(),
+            ))
+        }
+    };
+
+    let mut result = Vec::new();
+    let mut chunk = Vec::new();
+
+    for (i, item) in list.iter().enumerate() {
+        chunk.push(item.clone());
+        if chunk.len() == n || i == list.len() - 1 {
+            result.push(Value::List(chunk));
+            chunk = Vec::new();
+        }
+    }
+
+    // Handle remaining elements if any
+    if !chunk.is_empty() {
+        result.push(Value::List(chunk));
+    }
+
+    Ok(Value::List(result))
+}
+
+/// Concatenate multiple lists
+/// concat(list1, list2, ...) -> list
+pub fn concat(args: &[Value]) -> Result<Value, EvalError> {
+    let mut result = Vec::new();
+    for arg in args {
+        match arg {
+            Value::List(list) => result.extend(list.clone()),
+            Value::Null => continue,
+            _ => {
+                return Err(EvalError::TypeError(
+                    "concat: all arguments must be lists".to_string(),
+                ))
+            }
+        }
+    }
+    Ok(Value::List(result))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2337,5 +2524,387 @@ mod tests {
         let result = contains(&[Value::Int(123), Value::Int(1)]);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("must be a list"));
+    }
+
+    // Tests for flatten
+    #[test]
+    fn test_flatten_basic() {
+        let nested = Value::List(vec![
+            Value::List(vec![Value::Int(1), Value::Int(2)]),
+            Value::List(vec![Value::Int(3), Value::Int(4)]),
+        ]);
+        assert_eq!(
+            flatten(&[nested]).unwrap(),
+            Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+                Value::Int(4)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_flatten_mixed() {
+        // Mix of lists and non-lists
+        let mixed = Value::List(vec![
+            Value::List(vec![Value::Int(1), Value::Int(2)]),
+            Value::Int(3),
+            Value::List(vec![Value::Int(4), Value::Int(5)]),
+        ]);
+        assert_eq!(
+            flatten(&[mixed]).unwrap(),
+            Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+                Value::Int(4),
+                Value::Int(5),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_flatten_empty() {
+        assert_eq!(
+            flatten(&[Value::List(vec![])]).unwrap(),
+            Value::List(vec![])
+        );
+    }
+
+    #[test]
+    fn test_flatten_null() {
+        assert_eq!(flatten(&[Value::Null]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_flatten_type_error() {
+        let result = flatten(&[Value::Int(123)]);
+        assert!(result.is_err());
+    }
+
+    // Tests for zip
+    #[test]
+    fn test_zip_basic() {
+        let list1 = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let list2 = Value::List(vec![
+            Value::String("a".to_string()),
+            Value::String("b".to_string()),
+        ]);
+        assert_eq!(
+            zip(&[list1, list2]).unwrap(),
+            Value::List(vec![
+                Value::List(vec![Value::Int(1), Value::String("a".to_string())]),
+                Value::List(vec![Value::Int(2), Value::String("b".to_string())]),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zip_three_lists() {
+        let list1 = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let list2 = Value::List(vec![Value::Int(10), Value::Int(20)]);
+        let list3 = Value::List(vec![Value::Int(100), Value::Int(200)]);
+        assert_eq!(
+            zip(&[list1, list2, list3]).unwrap(),
+            Value::List(vec![
+                Value::List(vec![Value::Int(1), Value::Int(10), Value::Int(100)]),
+                Value::List(vec![Value::Int(2), Value::Int(20), Value::Int(200)]),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zip_truncates_to_shortest() {
+        let list1 = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        let list2 = Value::List(vec![
+            Value::String("a".to_string()),
+            Value::String("b".to_string()),
+        ]);
+        assert_eq!(
+            zip(&[list1, list2]).unwrap(),
+            Value::List(vec![
+                Value::List(vec![Value::Int(1), Value::String("a".to_string())]),
+                Value::List(vec![Value::Int(2), Value::String("b".to_string())]),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zip_empty() {
+        assert_eq!(
+            zip(&[Value::List(vec![]), Value::List(vec![])]).unwrap(),
+            Value::List(vec![])
+        );
+    }
+
+    #[test]
+    fn test_zip_no_args() {
+        assert_eq!(zip(&[]).unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_zip_type_error() {
+        let result = zip(&[Value::Int(123), Value::List(vec![])]);
+        assert!(result.is_err());
+    }
+
+    // Tests for partition
+    #[test]
+    fn test_partition_basic() {
+        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+        ]);
+        // Lambda: x -> x == 2
+        let pred = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::Binary {
+                op: BinaryOp::Eq,
+                left: Box::new(Expr::LambdaParam("x".to_string())),
+                right: Box::new(Expr::Int(2)),
+            },
+        });
+        let result = partition(&[list, pred]).unwrap();
+        // Should be [[2], [1, 3, 4]]
+        match result {
+            Value::List(parts) => {
+                assert_eq!(parts.len(), 2);
+                // First part should contain elements where x == 2
+                match &parts[0] {
+                    Value::List(satisfying) => {
+                        assert_eq!(satisfying.len(), 1);
+                        assert_eq!(satisfying[0], Value::Int(2));
+                    }
+                    _ => panic!("Expected list"),
+                }
+                // Second part should contain elements where x != 2
+                match &parts[1] {
+                    Value::List(not_satisfying) => {
+                        assert_eq!(not_satisfying.len(), 3);
+                    }
+                    _ => panic!("Expected list"),
+                }
+            }
+            _ => panic!("Expected list of two lists"),
+        }
+    }
+
+    #[test]
+    fn test_partition_null() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let pred = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::Bool(true),
+        });
+        assert_eq!(partition(&[Value::Null, pred]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_partition_type_error() {
+        let result = partition(&[Value::Int(123), Value::Int(1)]);
+        assert!(result.is_err());
+    }
+
+    // Tests for flat_map
+    #[test]
+    fn test_flat_map_basic() {
+        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let list = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        // Lambda: x -> [x, x * 2]
+        let f = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::List(vec![
+                Expr::LambdaParam("x".to_string()),
+                Expr::Binary {
+                    op: BinaryOp::Mul,
+                    left: Box::new(Expr::LambdaParam("x".to_string())),
+                    right: Box::new(Expr::Int(2)),
+                },
+            ]),
+        });
+        let result = flat_map(&[list, f]).unwrap();
+        // Should be [1, 2, 2, 4]
+        match result {
+            Value::List(items) => {
+                assert_eq!(items.len(), 4);
+                assert_eq!(items[0], Value::Int(1));
+                assert_eq!(items[1], Value::Int(2));
+                assert_eq!(items[2], Value::Int(2));
+                assert_eq!(items[3], Value::Int(4));
+            }
+            _ => panic!("Expected list"),
+        }
+    }
+
+    #[test]
+    fn test_flat_map_null() {
+        use crate::libs::expr::parser::ast::Expr;
+        use crate::libs::expr::runtime::value::LambdaValue;
+
+        let f = Value::Lambda(LambdaValue {
+            captured_vars: HashMap::new(),
+            params: vec!["x".to_string()],
+            body: Expr::List(vec![]),
+        });
+        assert_eq!(flat_map(&[Value::Null, f]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_flat_map_type_error() {
+        let result = flat_map(&[Value::Int(123), Value::Int(1)]);
+        assert!(result.is_err());
+    }
+
+    // Tests for grouped
+    #[test]
+    fn test_grouped_basic() {
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+        ]);
+        assert_eq!(
+            grouped(&[list, Value::Int(2)]).unwrap(),
+            Value::List(vec![
+                Value::List(vec![Value::Int(1), Value::Int(2)]),
+                Value::List(vec![Value::Int(3), Value::Int(4)]),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_grouped_with_remainder() {
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+            Value::Int(5),
+        ]);
+        assert_eq!(
+            grouped(&[list, Value::Int(2)]).unwrap(),
+            Value::List(vec![
+                Value::List(vec![Value::Int(1), Value::Int(2)]),
+                Value::List(vec![Value::Int(3), Value::Int(4)]),
+                Value::List(vec![Value::Int(5)]),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_grouped_with_float() {
+        let list = Value::List(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(4),
+        ]);
+        assert_eq!(
+            grouped(&[list, Value::Float(2.0)]).unwrap(),
+            Value::List(vec![
+                Value::List(vec![Value::Int(1), Value::Int(2)]),
+                Value::List(vec![Value::Int(3), Value::Int(4)]),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_grouped_zero_becomes_one() {
+        // Zero or negative should become 1
+        let list = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
+        assert_eq!(
+            grouped(&[list.clone(), Value::Int(0)]).unwrap(),
+            Value::List(vec![
+                Value::List(vec![Value::Int(1)]),
+                Value::List(vec![Value::Int(2)]),
+                Value::List(vec![Value::Int(3)]),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_grouped_null() {
+        assert_eq!(grouped(&[Value::Null, Value::Int(2)]).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn test_grouped_type_error() {
+        let result = grouped(&[Value::Int(123), Value::Int(2)]);
+        assert!(result.is_err());
+    }
+
+    // Tests for concat
+    #[test]
+    fn test_concat_lists() {
+        let list1 = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let list2 = Value::List(vec![Value::Int(3), Value::Int(4)]);
+        assert_eq!(
+            concat(&[list1, list2]).unwrap(),
+            Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+                Value::Int(4)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_concat_three_lists() {
+        let list1 = Value::List(vec![Value::Int(1)]);
+        let list2 = Value::List(vec![Value::Int(2)]);
+        let list3 = Value::List(vec![Value::Int(3)]);
+        assert_eq!(
+            concat(&[list1, list2, list3]).unwrap(),
+            Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
+        );
+    }
+
+    #[test]
+    fn test_concat_empty_lists() {
+        assert_eq!(
+            concat(&[Value::List(vec![]), Value::List(vec![])]).unwrap(),
+            Value::List(vec![])
+        );
+    }
+
+    #[test]
+    fn test_concat_with_null() {
+        let list1 = Value::List(vec![Value::Int(1), Value::Int(2)]);
+        let list2 = Value::List(vec![Value::Int(3), Value::Int(4)]);
+        assert_eq!(
+            concat(&[list1, Value::Null, list2]).unwrap(),
+            Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+                Value::Int(4)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_concat_empty() {
+        assert_eq!(concat(&[]).unwrap(), Value::List(vec![]));
+    }
+
+    #[test]
+    fn test_concat_type_error() {
+        let result = concat(&[Value::Int(123), Value::List(vec![])]);
+        assert!(result.is_err());
     }
 }

@@ -157,6 +157,16 @@ pub fn truncate(args: &[Value]) -> Result<Value, EvalError> {
     }
 }
 
+/// Concatenate multiple strings
+/// concat(string1, string2, ...) -> string
+pub fn concat(args: &[Value]) -> Result<Value, EvalError> {
+    let mut result = String::new();
+    for arg in args {
+        result.push_str(&arg.as_string());
+    }
+    Ok(Value::String(result))
+}
+
 /// Format a string using %() placeholders.
 /// Supports three delimiter types: %(), %[], %{}
 /// Format specifiers follow Rust's format! syntax.
@@ -1235,5 +1245,53 @@ mod tests {
             Value::String("2".to_string()),
         ]);
         assert!(result.is_err());
+    }
+
+    // Tests for concat
+    #[test]
+    fn test_concat_strings() {
+        assert_eq!(
+            concat(&[
+                Value::String("hello".to_string()),
+                Value::String("world".to_string())
+            ])
+            .unwrap(),
+            Value::String("helloworld".to_string())
+        );
+        assert_eq!(
+            concat(&[
+                Value::String("a".to_string()),
+                Value::String("b".to_string()),
+                Value::String("c".to_string()),
+            ])
+            .unwrap(),
+            Value::String("abc".to_string())
+        );
+    }
+
+    #[test]
+    fn test_concat_with_numbers() {
+        // Numbers should be converted to strings
+        assert_eq!(
+            concat(&[Value::Int(1), Value::Int(2), Value::Int(3)]).unwrap(),
+            Value::String("123".to_string())
+        );
+        assert_eq!(
+            concat(&[Value::String("count: ".to_string()), Value::Int(42)]).unwrap(),
+            Value::String("count: 42".to_string())
+        );
+    }
+
+    #[test]
+    fn test_concat_empty() {
+        assert_eq!(concat(&[]).unwrap(), Value::String("".to_string()));
+    }
+
+    #[test]
+    fn test_concat_single() {
+        assert_eq!(
+            concat(&[Value::String("hello".to_string())]).unwrap(),
+            Value::String("hello".to_string())
+        );
     }
 }

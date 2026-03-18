@@ -38,6 +38,8 @@ The implementation is selected at runtime based on the first argument type.
 - take(value, n) -> T: Take first n elements from string or list
 - drop(value, n) -> T: Drop first n elements from string or list
 
+- concat(value1, value2, ...) -> T: Concatenate strings or lists
+
 ## String Manipulation
 
 - trim(string) -> string: Remove leading and trailing whitespace
@@ -102,6 +104,9 @@ tva expr -E 'fmt(q(The "value" is %[1]), 42)'
 - slice(list, start, end?) -> list: Slice list
 - sort(list) -> list: Sort list
 - unique(list) -> list: Remove duplicates
+- flatten(list) -> list: Flatten nested list by one level
+- zip(list1, list2, ...) -> list: Zip multiple lists into list of tuples
+- grouped(list, n) -> list: Group list into chunks of size n
 
 *Note: These functions operate on expression `List` type (e.g., returned by `split()`), different
 from column-level aggregation in `stats` command.*
@@ -136,6 +141,26 @@ tva expr -E '
     [@list, @new_list]
 '
 # Returns: [[1, 2, 3], [100, 2, 3]]
+
+# Flatten nested list
+tva expr -E 'flatten([[1, 2], [3, 4]])'        # Returns: [1, 2, 3, 4]
+tva expr -E 'flatten([[1, 2], 3, [4, 5]])'     # Returns: [1, 2, 3, 4, 5]
+
+# Zip multiple lists
+tva expr -E 'zip([1, 2], ["a", "b"])'          # Returns: [[1, "a"], [2, "b"]]
+tva expr -E 'zip([1, 2, 3], ["a", "b"])'       # Returns: [[1, "a"], [2, "b"]] (truncated to shortest)
+
+# Partition list by predicate
+tva expr -E 'partition([1, 2, 3, 4], x -> x % 2 == 0)'   # Returns: [[2, 4], [1, 3]]
+tva expr -E 'partition([1, 2, 3, 4, 5], x -> x > 3)'     # Returns: [[4, 5], [1, 2, 3]]
+
+# Flat map (map then flatten)
+tva expr -E 'flat_map([1, 2], x -> [x, x * 2])'          # Returns: [1, 2, 2, 4]
+tva expr -E 'flat_map(["a", "b"], x -> split(x, ""))'    # Returns: ["a", "b"]
+
+# Group list into chunks
+tva expr -E 'grouped([1, 2, 3, 4, 5], 2)'      # Returns: [[1, 2], [3, 4], [5]]
+tva expr -E 'grouped([1, 2, 3, 4], 2)'         # Returns: [[1, 2], [3, 4]]
 ```
 
 ## Range Generation
@@ -161,6 +186,8 @@ returns empty list.
 - reduce(list, init, lambda) -> value: Reduce list to single value
 - sort_by(list, lambda) -> list: Sort list by lambda expression
 - take_while(list, lambda) -> list: Take elements while lambda is true
+- partition(list, lambda) -> list: Partition list into [satisfying, not_satisfying]
+- flat_map(list, lambda) -> list: Map and flatten result by one level
 
 ```bash
 # Double each number

@@ -58,6 +58,18 @@ fn polymorphic_drop(args: &[Value]) -> Result<Value, EvalError> {
     }
 }
 
+/// Polymorphic concat function
+/// Dispatches to string::concat or list::concat based on first argument type
+fn polymorphic_concat(args: &[Value]) -> Result<Value, EvalError> {
+    if args.is_empty() {
+        return Ok(Value::String("".to_string()));
+    }
+    match &args[0] {
+        Value::List(_) => list::concat(args),
+        _ => string::concat(args),
+    }
+}
+
 /// Global static function registry
 /// Initialized once on first access, then reused for all evaluations
 static GLOBAL_REGISTRY: OnceLock<FunctionRegistry> = OnceLock::new();
@@ -158,6 +170,7 @@ impl FunctionRegistry {
         self.register("is_empty", FunctionInfo::fixed(polymorphic_is_empty, 1));
         self.register("take", FunctionInfo::fixed(polymorphic_take, 2));
         self.register("drop", FunctionInfo::fixed(polymorphic_drop, 2));
+        self.register("concat", FunctionInfo::variadic(polymorphic_concat, 1));
 
         // String functions
         self.register("trim", FunctionInfo::fixed(string::trim, 1));
@@ -215,6 +228,11 @@ impl FunctionRegistry {
         self.register("filter", FunctionInfo::fixed(list::filter, 2));
         self.register("take_while", FunctionInfo::fixed(list::take_while, 2));
         self.register("range", FunctionInfo::variadic(list::range, 1));
+        self.register("flatten", FunctionInfo::fixed(list::flatten, 1));
+        self.register("zip", FunctionInfo::variadic(list::zip, 2));
+        self.register("partition", FunctionInfo::fixed(list::partition, 2));
+        self.register("flat_map", FunctionInfo::fixed(list::flat_map, 2));
+        self.register("grouped", FunctionInfo::fixed(list::grouped, 2));
 
         // Regex functions
         self.register("regex_match", FunctionInfo::fixed(regex::regex_match, 2));
