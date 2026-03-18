@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>from html - tva Documentation</title>
+        <title>String Formatting (fmt) - tva Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -146,7 +146,7 @@
                         <a href="https://github.com/wang-q/tva" title="Git repository" aria-label="Git repository">
                             <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
                         </a>
-                        <a href="https://github.com/wang-q/tva/edit/master/docs/help/from_html.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                        <a href="https://github.com/wang-q/tva/edit/master/docs/expr/fmt.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
                             <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
                         </a>
 
@@ -180,86 +180,236 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="from-html"><a class="header" href="#from-html">from html</a></h1>
-<p>Extracts data from HTML files using CSS selectors.</p>
-<p>This command converts HTML content into TSV format using three different modes:</p>
-<ol>
-<li><strong>Query Mode</strong>: For quick extraction of specific elements.</li>
-<li><strong>Table Mode</strong>: For automatically converting HTML tables (<code>&lt;table&gt;</code>).</li>
-<li><strong>Struct Mode</strong>: For extracting lists of objects into rows and columns.</li>
-</ol>
-<p><strong>Input:</strong></p>
+                        <h1 id="string-formatting-fmt"><a class="header" href="#string-formatting-fmt">String Formatting (fmt)</a></h1>
+<p>The <code>fmt()</code> function provides powerful string formatting capabilities, inspired by Rust’s <code>format!</code> macro and Perl’s <code>q//</code> operator.</p>
+<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
+<pre><code class="language-bash">fmt(template: string, ...args: any) -&gt; string
+</code></pre>
+<p>The <code>fmt</code> function uses <code>%</code> as the prefix for placeholders and supports three types of delimiters to avoid conflicts with different content:</p>
 <ul>
-<li>Reads from standard input if no input file is given or if the input file is ‘stdin’.</li>
-<li>Supports plain text HTML files.</li>
+<li><code>%(...)</code> - Parentheses (default)</li>
+<li><code>%[...]</code> - Square brackets</li>
+<li><code>%{...}</code> - Curly braces</li>
 </ul>
-<p><strong>Output:</strong></p>
+<h2 id="placeholder-forms"><a class="header" href="#placeholder-forms">Placeholder Forms</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Form</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>%()</code></td><td style="text-align: left">Next positional argument</td><td style="text-align: left"><code>fmt("%() %()", a, b)</code></td></tr>
+<tr><td style="text-align: left"><code>%(n)</code></td><td style="text-align: left">nth positional argument (1-based)</td><td style="text-align: left"><code>fmt("%(2) %(1)", a, b)</code></td></tr>
+<tr><td style="text-align: left"><code>%(var)</code></td><td style="text-align: left">Lambda parameter reference</td><td style="text-align: left"><code>fmt("%(name)")</code></td></tr>
+<tr><td style="text-align: left"><code>%(@n)</code></td><td style="text-align: left">Column by index</td><td style="text-align: left"><code>fmt("%(@1) and %(@2)")</code></td></tr>
+<tr><td style="text-align: left"><code>%(@var)</code></td><td style="text-align: left">Variable reference</td><td style="text-align: left"><code>fmt("%(@name)")</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="format-specifiers"><a class="header" href="#format-specifiers">Format Specifiers</a></h2>
+<p>Format specifiers follow the colon <code>:</code> after the placeholder content:</p>
+<pre><code>%(placeholder:format_spec)
+</code></pre>
+<h3 id="fill-and-align"><a class="header" href="#fill-and-align">Fill and Align</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Align</th><th style="text-align: left">Description</th><th style="text-align: left">Example <code>%(:*&lt;10)</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>&lt;</code></td><td style="text-align: left">Left align</td><td style="text-align: left"><code>hello*****</code></td></tr>
+<tr><td style="text-align: left"><code>&gt;</code></td><td style="text-align: left">Right align</td><td style="text-align: left"><code>*****hello</code></td></tr>
+<tr><td style="text-align: left"><code>^</code></td><td style="text-align: left">Center</td><td style="text-align: left"><code>**hello***</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="sign"><a class="header" href="#sign">Sign</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Sign</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>-</code></td><td style="text-align: left">Only negative (default)</td><td style="text-align: left"><code>-42</code></td></tr>
+<tr><td style="text-align: left"><code>+</code></td><td style="text-align: left">Always show sign</td><td style="text-align: left"><code>+42</code>, <code>-42</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="alternative-form-"><a class="header" href="#alternative-form-">Alternative Form (<code>#</code>)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Type</th><th style="text-align: left">Effect</th><th style="text-align: left">Example <code>%(:#x)</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>x</code></td><td style="text-align: left">Add <code>0x</code> prefix</td><td style="text-align: left"><code>0xff</code></td></tr>
+<tr><td style="text-align: left"><code>X</code></td><td style="text-align: left">Add <code>0X</code> prefix</td><td style="text-align: left"><code>0XFF</code></td></tr>
+<tr><td style="text-align: left"><code>b</code></td><td style="text-align: left">Add <code>0b</code> prefix</td><td style="text-align: left"><code>0b1010</code></td></tr>
+<tr><td style="text-align: left"><code>o</code></td><td style="text-align: left">Add <code>0o</code> prefix</td><td style="text-align: left"><code>0o77</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="width-and-precision"><a class="header" href="#width-and-precision">Width and Precision</a></h3>
 <ul>
-<li>Writes to standard output by default.</li>
-<li>Use <code>--outfile</code> / <code>-o</code> to write to a file (<code>[stdout]</code> for screen).</li>
+<li><strong>Width</strong>: Minimum field width</li>
+<li><strong>Precision</strong>: For integers - zero pad; for floats - decimal places; for strings - max length</li>
 </ul>
-<p><strong>Query Mode:</strong></p>
-<ul>
-<li>Activated by the <code>--query</code> / <code>-q</code> flag.</li>
-<li>Syntax: <code>selector [display_function]</code></li>
-<li><strong>Selectors</strong>: Standard CSS selectors (e.g., <code>div.content</code>, <code>#main a</code>).</li>
-<li><strong>Display Functions</strong>:
-<ul>
-<li><code>text{}</code> or <code>text()</code>: Print the text content of the selected elements.</li>
-<li><code>attr{name}</code> or <code>attr("name")</code>: Print the value of the specified attribute.</li>
-<li>If omitted, prints the full HTML of selected elements.</li>
-</ul>
-</li>
-<li>Empty results are kept by default (prints blank lines for empty text or missing attributes).</li>
-<li>For advanced CSS selector reference, see: <code>docs/selectors.md</code>.</li>
-</ul>
-<p><strong>Table Mode:</strong></p>
-<ul>
-<li>Activated by the <code>--table</code> flag.</li>
-<li>Extracts data from HTML <code>&lt;table&gt;</code> elements.</li>
-<li>Use <code>--index N</code> to select the N-th matched table (1-based). Implies <code>--table</code>.</li>
-<li>Use <code>--table=&lt;css&gt;</code> to target specific tables (e.g., <code>div.result table</code>).</li>
-</ul>
-<p><strong>Struct Mode (List Extraction):</strong></p>
-<ul>
-<li>Activated by using <code>--row</code> and <code>--col</code> flags.</li>
-<li>Designed to extract repetitive structures (like cards, list items) into a TSV table.</li>
-<li><strong>–row <selector></selector></strong>: Defines the container for each record (e.g., <code>div.product</code>, <code>li</code>).</li>
-<li><strong>–col “Name:Selector [Function]”</strong>: Defines a column in the output TSV.
-<ul>
-<li><code>Name</code>: The column header name.</li>
-<li><code>Selector</code>: CSS selector relative to the row element.</li>
-<li><code>Function</code>: <code>text{}</code> (default) or <code>attr{name}</code>.</li>
-<li>Example: <code>--col "Link:a.title attr{href}"</code></li>
-<li>Missing elements or attributes result in empty TSV cells.</li>
-</ul>
-</li>
-</ul>
-<p><strong>Examples:</strong></p>
-<ol>
-<li>
-<p>Extract all links (Query Mode)
-tva from html -q “a attr{href}” index.html</p>
-</li>
-<li>
-<p>Extract the first table (Table Mode)
-tva from html –table data.html</p>
-</li>
-<li>
-<p>Extract product list (Struct Mode)
-tva from html –row “div.product-card” <br>–col “Title: h2.title text{}” <br>–col “Price: .price” <br>–col “URL: a.link attr{href}” <br>products.html</p>
-</li>
-</ol>
+<h3 id="type-specifiers"><a class="header" href="#type-specifiers">Type Specifiers</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Type</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">(omit)</td><td style="text-align: left">Default</td><td style="text-align: left">Auto-select by type</td></tr>
+<tr><td style="text-align: left"><code>b</code></td><td style="text-align: left">Binary</td><td style="text-align: left"><code>1010</code></td></tr>
+<tr><td style="text-align: left"><code>o</code></td><td style="text-align: left">Octal</td><td style="text-align: left"><code>77</code></td></tr>
+<tr><td style="text-align: left"><code>x</code> / <code>X</code></td><td style="text-align: left">Hexadecimal</td><td style="text-align: left"><code>ff</code> / <code>FF</code></td></tr>
+<tr><td style="text-align: left"><code>e</code> / <code>E</code></td><td style="text-align: left">Scientific notation</td><td style="text-align: left"><code>1.23e+04</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="basic-examples"><a class="header" href="#basic-examples">Basic Examples</a></h2>
+<pre><code class="language-bash"># Basic formatting
+tva expr -E 'fmt("Hello, %()!", "world")'           # "Hello, world!"
+tva expr -E 'fmt("%() + %() = %()", 1, 2, 3)'        # "1 + 2 = 3"
+
+# Position arguments (1-based)
+tva expr -E 'fmt("%(2) %(1)", "world", "Hello")'    # "Hello world"
+
+# Format specifiers
+tva expr -E 'fmt("%(:&gt;10)", "hi")'                  # "        hi"
+tva expr -E 'fmt("%(:*&lt;10)", "hi")'                 # "hi********"
+tva expr -E 'fmt("%(:^10)", "hi")'                  # "    hi    "
+
+# Number formatting
+tva expr -E 'fmt("%(:+)", 42)'                      # "+42"
+tva expr -E 'fmt("%(:08)", 42)'                     # "00000042"
+tva expr -E 'fmt("%(:.2)", 3.14159)'                # "3.14"
+
+# Number bases
+tva expr -E 'fmt("%(:b)", 42)'                      # "101010"
+tva expr -E 'fmt("%(:x)", 255)'                     # "ff"
+tva expr -E 'fmt("%(:#x)", 255)'                    # "0xff"
+
+# String truncation
+tva expr -E 'fmt("%(:.5)", "hello world")'          # "hello"
+</code></pre>
+<h2 id="column-references"><a class="header" href="#column-references">Column References</a></h2>
+<p>Use <code>%(@n)</code> to reference columns directly without passing them as arguments:</p>
+<pre><code class="language-bash"># Reference columns by index
+tva expr -E 'fmt("%(@1) has %(@2) points")' -r "Alice,100"
+# Output: Alice has 100 points
+
+# With format specifiers (note: column values are treated as strings by default)
+tva expr -E 'fmt("%(@1): %(@2) points")' -r "Alice,100"
+# Output: Alice: 100 points
+
+tva expr -E 'fmt("%(): %(@2) points", @1)' -r "Alice,100"
+
+</code></pre>
+<h2 id="lambda-variables"><a class="header" href="#lambda-variables">Lambda Variables</a></h2>
+<p>Reference lambda parameters within <code>fmt</code>:</p>
+<pre><code class="language-bash"># Using %(var) in lambda
+tva expr -E 'map([1, 2, 3], x =&gt; fmt("value: %(x)"))'
+# Output: value: 1    value: 2    value: 3
+
+# Using %[var] to avoid conflicts
+tva expr -E 'map([1, 2, 3], x =&gt; fmt(q(value: %[x])))'
+# Output: value: 1    value: 2    value: 3
+</code></pre>
+<h2 id="variable-references"><a class="header" href="#variable-references">Variable References</a></h2>
+<p>Use <code>%(@var)</code> to reference variables defined with <code>as @var</code>:</p>
+<pre><code class="language-bash"># Basic variable reference
+tva expr -E '
+    "Bob" as @name;
+    fmt("Hello, %(@name)!")
+'
+# Output: Hello, Bob!
+
+# Variable with format specifier
+tva expr -E '
+    3.14159 as @pi;
+    fmt("Pi = %(@pi:.2)")
+'
+# Output: Pi = 3.14
+
+# Multiple variables
+tva expr -E '
+    42 as @num;
+    fmt("Hex: %(@num:#x), Bin: %(@num:b)")
+'
+# Output: Hex: 0x2a, Bin: 101010
+
+# Using with -r option and global variables
+tva expr -r "Alice,100" -r "Bob,200" -E '
+    fmt("Hello, %(@1)! from line %(@__index)")
+'
+# Output: Hello, Alice! from line 1
+#         Hello, Bob! from line 2
+
+# Accumulating values across rows
+tva expr -r "Alice,100" -r "Bob,200" -E '
+    default(@__sum, 0) + @2 as @__sum;
+    fmt("Hello, %(@1)! sum: %(@__sum)")
+'
+# Output: Hello, Alice! sum: 100
+#         Hello, Bob! sum: 300
+</code></pre>
+<h2 id="delimiter-selection"><a class="header" href="#delimiter-selection">Delimiter Selection</a></h2>
+<p>Choose different delimiters to avoid conflicts with your content:</p>
+<pre><code class="language-bash"># Use %[] when template contains ()
+tva expr -E 'fmt("Result: %[:.2]", 3.14159)'
+# Output: Result: 3.14
+
+# Use %{} when template contains []
+tva expr -E 'fmt("%{1:+}", 42)'
+# Output: +42
+
+# Using q() with %[] to avoid escaping quotes
+tva expr -E 'fmt(q(The "value" is %[1]), 42)'
+# Output: The "value" is 42
+</code></pre>
+<p><strong>Note:</strong> <code>q()</code> strings cannot contain unescaped <code>(</code> or <code>)</code>. Use <code>%[]</code> or <code>%{}</code> instead.</p>
+<h2 id="using-with-gnu-parallel"><a class="header" href="#using-with-gnu-parallel">Using with GNU Parallel</a></h2>
+<p>The <code>%()</code> syntax doesn’t conflict with GNU parallel’s <code>{}</code>:</p>
+<pre><code class="language-bash"># Safe to use together
+parallel 'tva expr -E "fmt(q(Processing: %[] at %[]), {}, now())"' ::: *.tsv
+
+# Format file names
+parallel 'tva expr -E '"'"'fmt("File: %(1)", {})'"'"'' ::: *.txt
+</code></pre>
+<h2 id="comparison-with-rust-format"><a class="header" href="#comparison-with-rust-format">Comparison with Rust format!</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left">Rust</th><th style="text-align: left">tva fmt</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Placeholder</td><td style="text-align: left"><code>{}</code></td><td style="text-align: left"><code>%()</code> / <code>%[]</code> / <code>%{}</code></td></tr>
+<tr><td style="text-align: left">Position index</td><td style="text-align: left">0-based</td><td style="text-align: left">1-based</td></tr>
+<tr><td style="text-align: left">Named parameters</td><td style="text-align: left"><code>format!("{name}", name="val")</code></td><td style="text-align: left">Use <code>%(var)</code> with lambda</td></tr>
+<tr><td style="text-align: left">Dynamic width</td><td style="text-align: left"><code>format!("{:&gt;1$}", x, width)</code></td><td style="text-align: left">Not supported</td></tr>
+<tr><td style="text-align: left">Dynamic precision</td><td style="text-align: left"><code>format!("{:.1$}", x, prec)</code></td><td style="text-align: left">Not supported</td></tr>
+<tr><td style="text-align: left">Debug format (<code>?</code>)</td><td style="text-align: left"><code>{:?}</code></td><td style="text-align: left">Not supported</td></tr>
+<tr><td style="text-align: left">Argument counting</td><td style="text-align: left">Compile-time check</td><td style="text-align: left">Runtime check</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="escape-sequences"><a class="header" href="#escape-sequences">Escape Sequences</a></h2>
+<p>Use <code>%%</code> to output a literal percent sign:</p>
+<pre><code class="language-bash">tva expr -E 'fmt("100%% complete")'   # "100% complete"
+</code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../help/from_xlsx.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../expr/functions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../help/to_csv.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../expr/syntax.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -269,11 +419,11 @@ tva from html –row “div.product-card” <br>–col “Title: h2.title text{}
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../help/from_xlsx.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../expr/functions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../help/to_csv.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../expr/syntax.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

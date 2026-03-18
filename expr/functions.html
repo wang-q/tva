@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7cea87d.js";
+            window.path_to_searchindex_js = "../searchindex-e38afec8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-4c424a3b.js"></script>
+        <script src="../toc-89bb9ebf.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -201,12 +201,15 @@
 <li>sqrt(x) -&gt; float: Square root</li>
 <li>tan(x) -&gt; float: Tangent (radians)</li>
 </ul>
+<h2 id="generic-functions"><a class="header" href="#generic-functions">Generic Functions</a></h2>
+<ul>
+<li>len(value) -&gt; int: Returns length of string (bytes) or list (element count)</li>
+</ul>
 <h2 id="string-manipulation"><a class="header" href="#string-manipulation">String Manipulation</a></h2>
 <ul>
 <li>trim(string) -&gt; string: Remove leading and trailing whitespace</li>
 <li>upper(string) -&gt; string: Convert to uppercase</li>
 <li>lower(string) -&gt; string: Convert to lowercase</li>
-<li>len(string) -&gt; int: String byte length</li>
 <li>char_len(string) -&gt; int: String character count (UTF-8)</li>
 <li>substr(string, start, len) -&gt; string: Substring</li>
 <li>split(string, pat) -&gt; list: Split string by pattern</li>
@@ -216,7 +219,9 @@
 <li>replace(string, from, to) -&gt; string: Replace substring</li>
 <li>truncate(string, len, end?) -&gt; string: Truncate string</li>
 <li>wordcount(string) -&gt; int: Word count</li>
+<li>fmt(template, …args) -&gt; string: Format string with placeholders</li>
 </ul>
+<p>See <a href="fmt.html">String Formatting (fmt)</a> for detailed documentation.</p>
 <pre><code class="language-bash"># String manipulation examples
 tva expr -E 'upper("hello")'                # Returns: "HELLO"
 tva expr -E 'lower("WORLD")'                # Returns: "world"
@@ -235,13 +240,26 @@ tva expr -E 'replace("hello", "l", "x")'    # Returns: "hexxo"
 tva expr -E 'truncate("hello world", 5)'    # Returns: "he..."
 tva expr -E 'wordcount("hello world")'      # Returns: 2
 tva expr -E 'wordcount("one two three four")'  # Returns: 4
+
+# fmt() - String formatting (see fmt.md for complete documentation)
+tva expr -E 'fmt("Hello %()!", "World")'                    # Returns: "Hello World!"
+tva expr -E 'fmt("%(1) has %(2) points", "Alice", 100)'      # Returns: "Alice has 100 points"
+tva expr -E 'fmt("Hex: %(1:#x)", 255)'                       # Returns: "Hex: 0xff"
+
+# Column references with %(@n)
+tva expr -E 'fmt("%(@1) has %(@2) points")' -r "Alice,100"
+
+# Lambda variable references
+tva expr -E 'map([1, 2, 3], x =&gt; fmt("value: %(x)"))'
+
+# Using different delimiters to avoid conflicts
+tva expr -E 'fmt(q(The "value" is %[1]), 42)'
 </code></pre>
 <h2 id="list-operations"><a class="header" href="#list-operations">List Operations</a></h2>
 <ul>
 <li>first(list) -&gt; T: First element</li>
 <li>join(list, sep) -&gt; string: Join list elements</li>
 <li>last(list) -&gt; T: Last element</li>
-<li>len(list) -&gt; int: List length (number of elements)</li>
 <li>nth(list, n) -&gt; T: nth element (0-based, negative indices return null)</li>
 <li>reverse(list) -&gt; list: Reverse list</li>
 <li>replace_nth(list, n, value) -&gt; list: Return new list with nth element replaced by value (original list unchanged)</li>
@@ -476,7 +494,7 @@ tva expr -E 'cwd()'              # Returns: "/path/to/current/dir"
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../expr/syntax.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../expr/fmt.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -490,7 +508,7 @@ tva expr -E 'cwd()'              # Returns: "/path/to/current/dir"
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../expr/syntax.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../expr/fmt.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

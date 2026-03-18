@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c7cea87d.js";
+            window.path_to_searchindex_js = "searchindex-e38afec8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-4c424a3b.js"></script>
+        <script src="toc-89bb9ebf.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -3861,12 +3861,15 @@ tva expr -E '1 + 2 | int()'         # Returns: 3
 <li>sqrt(x) -&gt; float: Square root</li>
 <li>tan(x) -&gt; float: Tangent (radians)</li>
 </ul>
+<h2 id="generic-functions"><a class="header" href="#generic-functions">Generic Functions</a></h2>
+<ul>
+<li>len(value) -&gt; int: Returns length of string (bytes) or list (element count)</li>
+</ul>
 <h2 id="string-manipulation"><a class="header" href="#string-manipulation">String Manipulation</a></h2>
 <ul>
 <li>trim(string) -&gt; string: Remove leading and trailing whitespace</li>
 <li>upper(string) -&gt; string: Convert to uppercase</li>
 <li>lower(string) -&gt; string: Convert to lowercase</li>
-<li>len(string) -&gt; int: String byte length</li>
 <li>char_len(string) -&gt; int: String character count (UTF-8)</li>
 <li>substr(string, start, len) -&gt; string: Substring</li>
 <li>split(string, pat) -&gt; list: Split string by pattern</li>
@@ -3876,7 +3879,9 @@ tva expr -E '1 + 2 | int()'         # Returns: 3
 <li>replace(string, from, to) -&gt; string: Replace substring</li>
 <li>truncate(string, len, end?) -&gt; string: Truncate string</li>
 <li>wordcount(string) -&gt; int: Word count</li>
+<li>fmt(template, …args) -&gt; string: Format string with placeholders</li>
 </ul>
+<p>See <a href="#string-formatting-fmt">String Formatting (fmt)</a> for detailed documentation.</p>
 <pre><code class="language-bash"># String manipulation examples
 tva expr -E 'upper("hello")'                # Returns: "HELLO"
 tva expr -E 'lower("WORLD")'                # Returns: "world"
@@ -3895,13 +3900,26 @@ tva expr -E 'replace("hello", "l", "x")'    # Returns: "hexxo"
 tva expr -E 'truncate("hello world", 5)'    # Returns: "he..."
 tva expr -E 'wordcount("hello world")'      # Returns: 2
 tva expr -E 'wordcount("one two three four")'  # Returns: 4
+
+# fmt() - String formatting (see fmt.md for complete documentation)
+tva expr -E 'fmt("Hello %()!", "World")'                    # Returns: "Hello World!"
+tva expr -E 'fmt("%(1) has %(2) points", "Alice", 100)'      # Returns: "Alice has 100 points"
+tva expr -E 'fmt("Hex: %(1:#x)", 255)'                       # Returns: "Hex: 0xff"
+
+# Column references with %(@n)
+tva expr -E 'fmt("%(@1) has %(@2) points")' -r "Alice,100"
+
+# Lambda variable references
+tva expr -E 'map([1, 2, 3], x =&gt; fmt("value: %(x)"))'
+
+# Using different delimiters to avoid conflicts
+tva expr -E 'fmt(q(The "value" is %[1]), 42)'
 </code></pre>
 <h2 id="list-operations-1"><a class="header" href="#list-operations-1">List Operations</a></h2>
 <ul>
 <li>first(list) -&gt; T: First element</li>
 <li>join(list, sep) -&gt; string: Join list elements</li>
 <li>last(list) -&gt; T: Last element</li>
-<li>len(list) -&gt; int: List length (number of elements)</li>
 <li>nth(list, n) -&gt; T: nth element (0-based, negative indices return null)</li>
 <li>reverse(list) -&gt; list: Reverse list</li>
 <li>replace_nth(list, n, value) -&gt; list: Return new list with nth element replaced by value (original list unchanged)</li>
@@ -4126,6 +4144,227 @@ tva expr -E 'platform()'         # Returns: "windows" / "macos" / "linux"
 # cwd() example
 tva expr -E 'cwd()'              # Returns: "/path/to/current/dir"
 
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="string-formatting-fmt"><a class="header" href="#string-formatting-fmt">String Formatting (fmt)</a></h1>
+<p>The <code>fmt()</code> function provides powerful string formatting capabilities, inspired by Rust’s <code>format!</code> macro and Perl’s <code>q//</code> operator.</p>
+<h2 id="overview-1"><a class="header" href="#overview-1">Overview</a></h2>
+<pre><code class="language-bash">fmt(template: string, ...args: any) -&gt; string
+</code></pre>
+<p>The <code>fmt</code> function uses <code>%</code> as the prefix for placeholders and supports three types of delimiters to avoid conflicts with different content:</p>
+<ul>
+<li><code>%(...)</code> - Parentheses (default)</li>
+<li><code>%[...]</code> - Square brackets</li>
+<li><code>%{...}</code> - Curly braces</li>
+</ul>
+<h2 id="placeholder-forms"><a class="header" href="#placeholder-forms">Placeholder Forms</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Form</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>%()</code></td><td style="text-align: left">Next positional argument</td><td style="text-align: left"><code>fmt("%() %()", a, b)</code></td></tr>
+<tr><td style="text-align: left"><code>%(n)</code></td><td style="text-align: left">nth positional argument (1-based)</td><td style="text-align: left"><code>fmt("%(2) %(1)", a, b)</code></td></tr>
+<tr><td style="text-align: left"><code>%(var)</code></td><td style="text-align: left">Lambda parameter reference</td><td style="text-align: left"><code>fmt("%(name)")</code></td></tr>
+<tr><td style="text-align: left"><code>%(@n)</code></td><td style="text-align: left">Column by index</td><td style="text-align: left"><code>fmt("%(@1) and %(@2)")</code></td></tr>
+<tr><td style="text-align: left"><code>%(@var)</code></td><td style="text-align: left">Variable reference</td><td style="text-align: left"><code>fmt("%(@name)")</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="format-specifiers"><a class="header" href="#format-specifiers">Format Specifiers</a></h2>
+<p>Format specifiers follow the colon <code>:</code> after the placeholder content:</p>
+<pre><code>%(placeholder:format_spec)
+</code></pre>
+<h3 id="fill-and-align"><a class="header" href="#fill-and-align">Fill and Align</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Align</th><th style="text-align: left">Description</th><th style="text-align: left">Example <code>%(:*&lt;10)</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>&lt;</code></td><td style="text-align: left">Left align</td><td style="text-align: left"><code>hello*****</code></td></tr>
+<tr><td style="text-align: left"><code>&gt;</code></td><td style="text-align: left">Right align</td><td style="text-align: left"><code>*****hello</code></td></tr>
+<tr><td style="text-align: left"><code>^</code></td><td style="text-align: left">Center</td><td style="text-align: left"><code>**hello***</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="sign"><a class="header" href="#sign">Sign</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Sign</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>-</code></td><td style="text-align: left">Only negative (default)</td><td style="text-align: left"><code>-42</code></td></tr>
+<tr><td style="text-align: left"><code>+</code></td><td style="text-align: left">Always show sign</td><td style="text-align: left"><code>+42</code>, <code>-42</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="alternative-form-"><a class="header" href="#alternative-form-">Alternative Form (<code>#</code>)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Type</th><th style="text-align: left">Effect</th><th style="text-align: left">Example <code>%(:#x)</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>x</code></td><td style="text-align: left">Add <code>0x</code> prefix</td><td style="text-align: left"><code>0xff</code></td></tr>
+<tr><td style="text-align: left"><code>X</code></td><td style="text-align: left">Add <code>0X</code> prefix</td><td style="text-align: left"><code>0XFF</code></td></tr>
+<tr><td style="text-align: left"><code>b</code></td><td style="text-align: left">Add <code>0b</code> prefix</td><td style="text-align: left"><code>0b1010</code></td></tr>
+<tr><td style="text-align: left"><code>o</code></td><td style="text-align: left">Add <code>0o</code> prefix</td><td style="text-align: left"><code>0o77</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="width-and-precision"><a class="header" href="#width-and-precision">Width and Precision</a></h3>
+<ul>
+<li><strong>Width</strong>: Minimum field width</li>
+<li><strong>Precision</strong>: For integers - zero pad; for floats - decimal places; for strings - max length</li>
+</ul>
+<h3 id="type-specifiers"><a class="header" href="#type-specifiers">Type Specifiers</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Type</th><th style="text-align: left">Description</th><th style="text-align: left">Example</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">(omit)</td><td style="text-align: left">Default</td><td style="text-align: left">Auto-select by type</td></tr>
+<tr><td style="text-align: left"><code>b</code></td><td style="text-align: left">Binary</td><td style="text-align: left"><code>1010</code></td></tr>
+<tr><td style="text-align: left"><code>o</code></td><td style="text-align: left">Octal</td><td style="text-align: left"><code>77</code></td></tr>
+<tr><td style="text-align: left"><code>x</code> / <code>X</code></td><td style="text-align: left">Hexadecimal</td><td style="text-align: left"><code>ff</code> / <code>FF</code></td></tr>
+<tr><td style="text-align: left"><code>e</code> / <code>E</code></td><td style="text-align: left">Scientific notation</td><td style="text-align: left"><code>1.23e+04</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="basic-examples"><a class="header" href="#basic-examples">Basic Examples</a></h2>
+<pre><code class="language-bash"># Basic formatting
+tva expr -E 'fmt("Hello, %()!", "world")'           # "Hello, world!"
+tva expr -E 'fmt("%() + %() = %()", 1, 2, 3)'        # "1 + 2 = 3"
+
+# Position arguments (1-based)
+tva expr -E 'fmt("%(2) %(1)", "world", "Hello")'    # "Hello world"
+
+# Format specifiers
+tva expr -E 'fmt("%(:&gt;10)", "hi")'                  # "        hi"
+tva expr -E 'fmt("%(:*&lt;10)", "hi")'                 # "hi********"
+tva expr -E 'fmt("%(:^10)", "hi")'                  # "    hi    "
+
+# Number formatting
+tva expr -E 'fmt("%(:+)", 42)'                      # "+42"
+tva expr -E 'fmt("%(:08)", 42)'                     # "00000042"
+tva expr -E 'fmt("%(:.2)", 3.14159)'                # "3.14"
+
+# Number bases
+tva expr -E 'fmt("%(:b)", 42)'                      # "101010"
+tva expr -E 'fmt("%(:x)", 255)'                     # "ff"
+tva expr -E 'fmt("%(:#x)", 255)'                    # "0xff"
+
+# String truncation
+tva expr -E 'fmt("%(:.5)", "hello world")'          # "hello"
+</code></pre>
+<h2 id="column-references-2"><a class="header" href="#column-references-2">Column References</a></h2>
+<p>Use <code>%(@n)</code> to reference columns directly without passing them as arguments:</p>
+<pre><code class="language-bash"># Reference columns by index
+tva expr -E 'fmt("%(@1) has %(@2) points")' -r "Alice,100"
+# Output: Alice has 100 points
+
+# With format specifiers (note: column values are treated as strings by default)
+tva expr -E 'fmt("%(@1): %(@2) points")' -r "Alice,100"
+# Output: Alice: 100 points
+
+tva expr -E 'fmt("%(): %(@2) points", @1)' -r "Alice,100"
+
+</code></pre>
+<h2 id="lambda-variables"><a class="header" href="#lambda-variables">Lambda Variables</a></h2>
+<p>Reference lambda parameters within <code>fmt</code>:</p>
+<pre><code class="language-bash"># Using %(var) in lambda
+tva expr -E 'map([1, 2, 3], x =&gt; fmt("value: %(x)"))'
+# Output: value: 1    value: 2    value: 3
+
+# Using %[var] to avoid conflicts
+tva expr -E 'map([1, 2, 3], x =&gt; fmt(q(value: %[x])))'
+# Output: value: 1    value: 2    value: 3
+</code></pre>
+<h2 id="variable-references"><a class="header" href="#variable-references">Variable References</a></h2>
+<p>Use <code>%(@var)</code> to reference variables defined with <code>as @var</code>:</p>
+<pre><code class="language-bash"># Basic variable reference
+tva expr -E '
+    "Bob" as @name;
+    fmt("Hello, %(@name)!")
+'
+# Output: Hello, Bob!
+
+# Variable with format specifier
+tva expr -E '
+    3.14159 as @pi;
+    fmt("Pi = %(@pi:.2)")
+'
+# Output: Pi = 3.14
+
+# Multiple variables
+tva expr -E '
+    42 as @num;
+    fmt("Hex: %(@num:#x), Bin: %(@num:b)")
+'
+# Output: Hex: 0x2a, Bin: 101010
+
+# Using with -r option and global variables
+tva expr -r "Alice,100" -r "Bob,200" -E '
+    fmt("Hello, %(@1)! from line %(@__index)")
+'
+# Output: Hello, Alice! from line 1
+#         Hello, Bob! from line 2
+
+# Accumulating values across rows
+tva expr -r "Alice,100" -r "Bob,200" -E '
+    default(@__sum, 0) + @2 as @__sum;
+    fmt("Hello, %(@1)! sum: %(@__sum)")
+'
+# Output: Hello, Alice! sum: 100
+#         Hello, Bob! sum: 300
+</code></pre>
+<h2 id="delimiter-selection"><a class="header" href="#delimiter-selection">Delimiter Selection</a></h2>
+<p>Choose different delimiters to avoid conflicts with your content:</p>
+<pre><code class="language-bash"># Use %[] when template contains ()
+tva expr -E 'fmt("Result: %[:.2]", 3.14159)'
+# Output: Result: 3.14
+
+# Use %{} when template contains []
+tva expr -E 'fmt("%{1:+}", 42)'
+# Output: +42
+
+# Using q() with %[] to avoid escaping quotes
+tva expr -E 'fmt(q(The "value" is %[1]), 42)'
+# Output: The "value" is 42
+</code></pre>
+<p><strong>Note:</strong> <code>q()</code> strings cannot contain unescaped <code>(</code> or <code>)</code>. Use <code>%[]</code> or <code>%{}</code> instead.</p>
+<h2 id="using-with-gnu-parallel"><a class="header" href="#using-with-gnu-parallel">Using with GNU Parallel</a></h2>
+<p>The <code>%()</code> syntax doesn’t conflict with GNU parallel’s <code>{}</code>:</p>
+<pre><code class="language-bash"># Safe to use together
+parallel 'tva expr -E "fmt(q(Processing: %[] at %[]), {}, now())"' ::: *.tsv
+
+# Format file names
+parallel 'tva expr -E '"'"'fmt("File: %(1)", {})'"'"'' ::: *.txt
+</code></pre>
+<h2 id="comparison-with-rust-format"><a class="header" href="#comparison-with-rust-format">Comparison with Rust format!</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Feature</th><th style="text-align: left">Rust</th><th style="text-align: left">tva fmt</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Placeholder</td><td style="text-align: left"><code>{}</code></td><td style="text-align: left"><code>%()</code> / <code>%[]</code> / <code>%{}</code></td></tr>
+<tr><td style="text-align: left">Position index</td><td style="text-align: left">0-based</td><td style="text-align: left">1-based</td></tr>
+<tr><td style="text-align: left">Named parameters</td><td style="text-align: left"><code>format!("{name}", name="val")</code></td><td style="text-align: left">Use <code>%(var)</code> with lambda</td></tr>
+<tr><td style="text-align: left">Dynamic width</td><td style="text-align: left"><code>format!("{:&gt;1$}", x, width)</code></td><td style="text-align: left">Not supported</td></tr>
+<tr><td style="text-align: left">Dynamic precision</td><td style="text-align: left"><code>format!("{:.1$}", x, prec)</code></td><td style="text-align: left">Not supported</td></tr>
+<tr><td style="text-align: left">Debug format (<code>?</code>)</td><td style="text-align: left"><code>{:?}</code></td><td style="text-align: left">Not supported</td></tr>
+<tr><td style="text-align: left">Argument counting</td><td style="text-align: left">Compile-time check</td><td style="text-align: left">Runtime check</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="escape-sequences"><a class="header" href="#escape-sequences">Escape Sequences</a></h2>
+<p>Use <code>%%</code> to output a literal percent sign:</p>
+<pre><code class="language-bash">tva expr -E 'fmt("100%% complete")'   # "100% complete"
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="expr-syntax-guide"><a class="header" href="#expr-syntax-guide">Expr Syntax Guide</a></h1>
@@ -5044,6 +5283,8 @@ rejected.</li>
 <ul>
 <li>Reads from files or standard input.</li>
 <li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+<li>Use <code>stdin</code> to explicitly read from stdin, this is different behavior from other commands.</li>
+<li>Use <code>-r</code> for inline row data without file input.</li>
 </ul>
 <p>Output:</p>
 <ul>
