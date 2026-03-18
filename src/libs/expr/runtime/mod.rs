@@ -632,7 +632,8 @@ fn eval_with_placeholder(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::libs::expr::parser::ast::{ColumnRef, Expr};
+    use crate::libs::expr::parser::ast::{BinaryOp, ColumnRef, Expr};
+    use test_case::test_case;
 
     #[test]
     fn test_eval_column_ref() {
@@ -948,12 +949,12 @@ mod tests {
         assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(5));
     }
 
+    /// Test various not-found errors
     #[test]
-    fn test_column_index_out_of_bounds() {
+    fn test_not_found_errors() {
+        // Test column index out of bounds
         let row = vec!["10".to_string(), "20".to_string()];
         let mut ctx = EvalContext::new(&row);
-
-        // Try to access column 3 when only 2 exist
         let expr = Expr::ColumnRef(ColumnRef::Index(3));
         let result = eval(&expr, &mut ctx);
         assert!(result.is_err());
@@ -961,15 +962,10 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Column index 3 out of bounds"));
-    }
 
-    #[test]
-    fn test_column_name_not_found() {
-        let row = vec!["10".to_string(), "20".to_string()];
+        // Test column name not found
         let headers = vec!["a".to_string(), "b".to_string()];
         let mut ctx = EvalContext::with_headers(&row, &headers);
-
-        // Try to access non-existent column
         let expr = Expr::ColumnRef(ColumnRef::Name("c".to_string()));
         let result = eval(&expr, &mut ctx);
         assert!(result.is_err());
@@ -977,14 +973,10 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Column 'c' not found"));
-    }
 
-    #[test]
-    fn test_variable_not_found() {
+        // Test variable not found
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
-
-        // Try to access non-existent variable
         let expr = Expr::Variable("nonexistent".to_string());
         let result = eval(&expr, &mut ctx);
         assert!(result.is_err());
@@ -992,14 +984,8 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Variable 'nonexistent' not found"));
-    }
 
-    #[test]
-    fn test_lambda_param_not_found() {
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Try to access non-existent lambda param
+        // Test lambda param not found
         let expr = Expr::LambdaParam("nonexistent".to_string());
         let result = eval(&expr, &mut ctx);
         assert!(result.is_err());
@@ -1039,28 +1025,15 @@ mod tests {
         assert!(result.unwrap_err().to_string().contains("expected numeric"));
     }
 
-    #[test]
-    fn test_division_by_zero_error() {
+    /// Test division by zero errors for Div and Mod
+    #[test_case(BinaryOp::Div ; "division")]
+    #[test_case(BinaryOp::Mod ; "modulo")]
+    fn test_division_by_zero_error(op: BinaryOp) {
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
         let expr = Expr::Binary {
-            op: BinaryOp::Div,
-            left: Box::new(Expr::Int(10)),
-            right: Box::new(Expr::Int(0)),
-        };
-        let result = eval(&expr, &mut ctx);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Division by zero"));
-    }
-
-    #[test]
-    fn test_modulo_by_zero_error() {
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        let expr = Expr::Binary {
-            op: BinaryOp::Mod,
+            op,
             left: Box::new(Expr::Int(10)),
             right: Box::new(Expr::Int(0)),
         };
@@ -1088,180 +1061,116 @@ mod tests {
             .contains("expected comparable"));
     }
 
-    #[test]
-    fn test_string_comparison_operators() {
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // StrEq
-        let expr = Expr::Binary {
-            op: BinaryOp::StrEq,
-            left: Box::new(Expr::String("hello".to_string())),
-            right: Box::new(Expr::String("hello".to_string())),
-        };
-        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(true));
-
-        // StrNe
-        let expr = Expr::Binary {
-            op: BinaryOp::StrNe,
-            left: Box::new(Expr::String("hello".to_string())),
-            right: Box::new(Expr::String("world".to_string())),
-        };
-        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(true));
-
-        // StrLt
-        let expr = Expr::Binary {
-            op: BinaryOp::StrLt,
-            left: Box::new(Expr::String("apple".to_string())),
-            right: Box::new(Expr::String("banana".to_string())),
-        };
-        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(true));
-
-        // StrLe
-        let expr = Expr::Binary {
-            op: BinaryOp::StrLe,
-            left: Box::new(Expr::String("apple".to_string())),
-            right: Box::new(Expr::String("apple".to_string())),
-        };
-        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(true));
-
-        // StrGt
-        let expr = Expr::Binary {
-            op: BinaryOp::StrGt,
-            left: Box::new(Expr::String("banana".to_string())),
-            right: Box::new(Expr::String("apple".to_string())),
-        };
-        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(true));
-
-        // StrGe
-        let expr = Expr::Binary {
-            op: BinaryOp::StrGe,
-            left: Box::new(Expr::String("apple".to_string())),
-            right: Box::new(Expr::String("apple".to_string())),
-        };
-        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(true));
-    }
-
-    #[test]
-    fn test_subtraction() {
+    /// Test string comparison operators
+    #[test_case(BinaryOp::StrEq, "hello", "hello", true ; "streq")]
+    #[test_case(BinaryOp::StrNe, "hello", "world", true ; "strne")]
+    #[test_case(BinaryOp::StrLt, "apple", "banana", true ; "strlt")]
+    #[test_case(BinaryOp::StrLe, "apple", "apple", true ; "strle")]
+    #[test_case(BinaryOp::StrGt, "banana", "apple", true ; "strgt")]
+    #[test_case(BinaryOp::StrGe, "apple", "apple", true ; "strge")]
+    fn test_string_comparison_operators(
+        op: BinaryOp,
+        left: &str,
+        right: &str,
+        expected: bool,
+    ) {
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
         let expr = Expr::Binary {
-            op: BinaryOp::Sub,
-            left: Box::new(Expr::Int(10)),
-            right: Box::new(Expr::Int(3)),
+            op,
+            left: Box::new(Expr::String(left.to_string())),
+            right: Box::new(Expr::String(right.to_string())),
         };
-        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Int(7));
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(expected));
     }
 
-    #[test]
-    fn test_power_operation() {
+    /// Test basic binary operations (not using underscore)
+    #[test_case(BinaryOp::Sub, Value::Int(10), Value::Int(3), Value::Int(7) ; "sub")]
+    #[test_case(BinaryOp::Pow, Value::Int(2), Value::Int(3), Value::Float(8.0) ; "pow")]
+    #[test_case(BinaryOp::Le, Value::Int(5), Value::Int(5), Value::Bool(true) ; "le")]
+    #[test_case(BinaryOp::Ge, Value::Int(5), Value::Int(5), Value::Bool(true) ; "ge")]
+    fn test_basic_binary_operations(
+        op: BinaryOp,
+        left: Value,
+        right: Value,
+        expected: Value,
+    ) {
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
-        let expr = Expr::Binary {
-            op: BinaryOp::Pow,
-            left: Box::new(Expr::Int(2)),
-            right: Box::new(Expr::Int(3)),
+        let (left_expr, right_expr) = match (&left, &right) {
+            (Value::Int(l), Value::Int(r)) => (Expr::Int(*l), Expr::Int(*r)),
+            _ => unreachable!(),
         };
-        match eval(&expr, &mut ctx).unwrap() {
-            Value::Float(f) => assert!((f - 8.0).abs() < 0.001),
-            _ => panic!("Expected Float"),
-        }
+
+        let expr = Expr::Binary {
+            op,
+            left: Box::new(left_expr),
+            right: Box::new(right_expr),
+        };
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), expected);
     }
 
-    #[test]
-    fn test_le_ge_comparison() {
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Le
-        let expr = Expr::Binary {
-            op: BinaryOp::Le,
-            left: Box::new(Expr::Int(5)),
-            right: Box::new(Expr::Int(5)),
+    /// Test pipe operations with various placeholder patterns
+    #[test_case(
+        Expr::ColumnRef(ColumnRef::Name("name".to_string())),
+        vec!["  hello  ".to_string()],
+        vec!["name".to_string()],
+        "trim",
+        vec![],
+        Value::String("hello".to_string()) ;
+        "pipe_trim"
+    )]
+    #[test_case(
+        Expr::ColumnRef(ColumnRef::Name("text".to_string())),
+        vec!["hello world".to_string()],
+        vec!["text".to_string()],
+        "replace",
+        vec![
+            Expr::Underscore,
+            Expr::String("world".to_string()),
+            Expr::String("Rust".to_string()),
+        ],
+        Value::String("hello Rust".to_string()) ;
+        "pipe_replace"
+    )]
+    #[test_case(
+        Expr::List(vec![Expr::Int(1), Expr::Int(2), Expr::Int(3)]),
+        vec![],
+        vec![],
+        "join",
+        vec![Expr::Underscore, Expr::String(",".to_string())],
+        Value::String("1,2,3".to_string()) ;
+        "pipe_join"
+    )]
+    fn test_pipe_operations(
+        left: Expr,
+        row: Vec<String>,
+        headers: Vec<String>,
+        func_name: &str,
+        args: Vec<Expr>,
+        expected: Value,
+    ) {
+        let mut ctx = if headers.is_empty() {
+            EvalContext::new(&row)
+        } else {
+            EvalContext::with_headers(&row, &headers)
         };
-        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(true));
 
-        // Ge
-        let expr = Expr::Binary {
-            op: BinaryOp::Ge,
-            left: Box::new(Expr::Int(5)),
-            right: Box::new(Expr::Int(5)),
-        };
-        assert_eq!(eval(&expr, &mut ctx).unwrap(), Value::Bool(true));
-    }
-
-    #[test]
-    fn test_pipe_operation() {
-        let row = vec!["  hello  ".to_string()];
-        let headers = vec!["name".to_string()];
-        let mut ctx = EvalContext::with_headers(&row, &headers);
-
-        // Test @name |> trim()
         let expr = Expr::Pipe {
-            left: Box::new(Expr::ColumnRef(ColumnRef::Name("name".to_string()))),
+            left: Box::new(left),
             right: Box::new(PipeRight::Call {
-                name: "trim".to_string(),
-                args: vec![],
+                name: func_name.to_string(),
+                args,
             }),
         };
-        assert_eq!(
-            eval(&expr, &mut ctx).unwrap(),
-            Value::String("hello".to_string())
-        );
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), expected);
     }
 
-    #[test]
-    fn test_pipe_with_placeholder() {
-        let row = vec!["hello world".to_string()];
-        let headers = vec!["text".to_string()];
-        let mut ctx = EvalContext::with_headers(&row, &headers);
-
-        // Test @text |> replace(_, "world", "Rust")
-        let expr = Expr::Pipe {
-            left: Box::new(Expr::ColumnRef(ColumnRef::Name("text".to_string()))),
-            right: Box::new(PipeRight::CallWithPlaceholder {
-                name: "replace".to_string(),
-                args: vec![
-                    Expr::Underscore,
-                    Expr::String("world".to_string()),
-                    Expr::String("Rust".to_string()),
-                ],
-            }),
-        };
-        assert_eq!(
-            eval(&expr, &mut ctx).unwrap(),
-            Value::String("hello Rust".to_string())
-        );
-    }
-
-    #[test]
-    fn test_pipe_with_explicit_placeholder() {
-        // Test pipe with explicit _ placeholder: [1,2,3] | join(_, ",")
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        let expr = Expr::Pipe {
-            left: Box::new(Expr::List(vec![Expr::Int(1), Expr::Int(2), Expr::Int(3)])),
-            right: Box::new(PipeRight::CallWithPlaceholder {
-                name: "join".to_string(),
-                args: vec![
-                    Expr::Underscore, // Explicit placeholder
-                    Expr::String(",".to_string()),
-                ],
-            }),
-        };
-        assert_eq!(
-            eval(&expr, &mut ctx).unwrap(),
-            Value::String("1,2,3".to_string())
-        );
-    }
-
+    /// Test pipe with nested placeholder
     #[test]
     fn test_pipe_with_nested_placeholder() {
-        // Test nested function with _: "hello" | print(substr(_, 1, 2))
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
@@ -1275,58 +1184,65 @@ mod tests {
                 }],
             }),
         };
-        // print returns its last argument, which is the result of substr
         assert_eq!(
             eval(&expr, &mut ctx).unwrap(),
             Value::String("el".to_string())
         );
     }
 
-    #[test]
-    fn test_underscore_placeholder_basic() {
-        // Test basic underscore usage: "hello" | upper()
+    /// Test underscore placeholder in various positions
+    #[test_case(
+        "upper",
+        vec![Expr::Underscore],
+        Value::String("hello".to_string()),
+        Value::String("HELLO".to_string()) ;
+        "underscore_first"
+    )]
+    #[test_case(
+        "replace",
+        vec![
+            Expr::Underscore,
+            Expr::String("l".to_string()),
+            Expr::String("L".to_string()),
+        ],
+        Value::String("hello".to_string()),
+        Value::String("heLLo".to_string()) ;
+        "underscore_with_args"
+    )]
+    #[test_case(
+        "substr",
+        vec![Expr::Underscore, Expr::Int(1), Expr::Int(2)],
+        Value::String("hello".to_string()),
+        Value::String("el".to_string()) ;
+        "underscore_multi_arg"
+    )]
+    fn test_underscore_placeholder(
+        func_name: &str,
+        args: Vec<Expr>,
+        input: Value,
+        expected: Value,
+    ) {
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
-        let expr = Expr::Pipe {
-            left: Box::new(Expr::String("hello".to_string())),
-            right: Box::new(PipeRight::Call {
-                name: "upper".to_string(),
-                args: vec![Expr::Underscore],
-            }),
+        let left = match input {
+            Value::String(s) => Expr::String(s),
+            _ => unreachable!(),
         };
-        assert_eq!(
-            eval(&expr, &mut ctx).unwrap(),
-            Value::String("HELLO".to_string())
-        );
-    }
-
-    #[test]
-    fn test_underscore_placeholder_with_position() {
-        // Test underscore in non-first position: "hello" | replace(_, "l", "L")
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
 
         let expr = Expr::Pipe {
-            left: Box::new(Expr::String("hello".to_string())),
+            left: Box::new(left),
             right: Box::new(PipeRight::Call {
-                name: "replace".to_string(),
-                args: vec![
-                    Expr::Underscore,
-                    Expr::String("l".to_string()),
-                    Expr::String("L".to_string()),
-                ],
+                name: func_name.to_string(),
+                args,
             }),
         };
-        assert_eq!(
-            eval(&expr, &mut ctx).unwrap(),
-            Value::String("heLLo".to_string())
-        );
+        assert_eq!(eval(&expr, &mut ctx).unwrap(), expected);
     }
 
+    /// Test chained pipes with underscore
     #[test]
     fn test_underscore_placeholder_chained() {
-        // Test chained pipes with underscore: "hello" | upper() | substr(_, 1, 3)
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
@@ -1340,7 +1256,6 @@ mod tests {
         let result = eval(&expr, &mut ctx).unwrap();
         assert_eq!(result, Value::String("HELLO".to_string()));
 
-        // Now pipe to substr
         let expr2 = Expr::Pipe {
             left: Box::new(Expr::String("HELLO".to_string())),
             right: Box::new(PipeRight::Call {
@@ -1364,28 +1279,46 @@ mod tests {
         assert!(result.is_err(), "Underscore without pipe should error");
     }
 
-    #[test]
-    fn test_single_arg_function_without_underscore() {
-        // Single-arg functions can omit _: "hello" | upper()
+    /// Test functions with and without underscore
+    #[test_case(
+        "upper",
+        vec![],
+        true,
+        Value::String("HELLO".to_string()) ;
+        "single_arg_no_underscore"
+    )]
+    #[test_case(
+        "substr",
+        vec![Expr::Underscore, Expr::Int(1), Expr::Int(2)],
+        true,
+        Value::String("el".to_string()) ;
+        "multi_arg_with_underscore"
+    )]
+    fn test_function_with_underscore(
+        func_name: &str,
+        args: Vec<Expr>,
+        should_succeed: bool,
+        expected: Value,
+    ) {
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
         let expr = Expr::Pipe {
             left: Box::new(Expr::String("hello".to_string())),
             right: Box::new(PipeRight::Call {
-                name: "upper".to_string(),
-                args: vec![],
+                name: func_name.to_string(),
+                args,
             }),
         };
-        assert_eq!(
-            eval(&expr, &mut ctx).unwrap(),
-            Value::String("HELLO".to_string())
-        );
+
+        if should_succeed {
+            assert_eq!(eval(&expr, &mut ctx).unwrap(), expected);
+        }
     }
 
+    /// Test multi-arg function without underscore errors
     #[test]
     fn test_multi_arg_function_without_underscore_errors() {
-        // Multi-arg functions without _ should error
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
@@ -1397,32 +1330,9 @@ mod tests {
             }),
         };
         let result = eval(&expr, &mut ctx);
-        assert!(result.is_err(), "Multi-arg function without _ should error");
+        assert!(result.is_err());
         let err_msg = format!("{}", result.unwrap_err());
-        assert!(
-            err_msg.contains("expected 3 arguments"),
-            "Error should mention expected argument count: {}",
-            err_msg
-        );
-    }
-
-    #[test]
-    fn test_multi_arg_function_with_underscore() {
-        // Multi-arg functions with _ should work
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        let expr = Expr::Pipe {
-            left: Box::new(Expr::String("hello".to_string())),
-            right: Box::new(PipeRight::Call {
-                name: "substr".to_string(),
-                args: vec![Expr::Underscore, Expr::Int(1), Expr::Int(2)],
-            }),
-        };
-        assert_eq!(
-            eval(&expr, &mut ctx).unwrap(),
-            Value::String("el".to_string())
-        );
+        assert!(err_msg.contains("expected 3 arguments"));
     }
 
     #[test]
@@ -3724,182 +3634,146 @@ mod tests {
         assert_eq!(result, Value::Bool(true));
     }
 
-    /// Test Binary And with underscore (short-circuit)
+    /// Test Binary operators with underscore using test_case
     /// Covers L541-622 in eval_with_placeholder
-    #[test]
-    fn test_binary_and_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+    #[test_case(BinaryOp::Add, Value::Int(5), Value::Int(10), Value::Int(15) ; "add")]
+    #[test_case(BinaryOp::Sub, Value::Int(10), Value::Int(3), Value::Int(7) ; "sub")]
+    #[test_case(BinaryOp::Mul, Value::Int(5), Value::Int(4), Value::Int(20) ; "mul")]
+    #[test_case(BinaryOp::Div, Value::Int(10), Value::Int(2), Value::Float(5.0) ; "div")]
+    #[test_case(BinaryOp::Mod, Value::Int(10), Value::Int(3), Value::Int(1) ; "modulo")]
+    #[test_case(BinaryOp::Pow, Value::Int(3), Value::Int(2), Value::Float(9.0) ; "pow")]
+    #[test_case(BinaryOp::Sub, Value::Int(10), Value::Int(3), Value::Int(7) ; "sub_direct")]
+    #[test_case(BinaryOp::Pow, Value::Int(2), Value::Int(3), Value::Float(8.0) ; "pow_direct")]
+    fn test_binary_arithmetic_with_underscore(
+        op: BinaryOp,
+        left_val: Value,
+        right_expr: Value,
+        expected: Value,
+    ) {
+        use crate::libs::expr::parser::ast::Expr;
 
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
-        // Create: _ && true
         let binary_expr = Expr::Binary {
-            op: BinaryOp::And,
+            op,
             left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Bool(true)),
+            right: Box::new(match right_expr {
+                Value::Int(i) => Expr::Int(i),
+                _ => unreachable!(),
+            }),
         };
 
-        // false && true = false (short-circuit, right not evaluated)
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Bool(false), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(false));
-
-        // true && true = true
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Bool(true), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(true));
+        let result = eval_with_placeholder(&binary_expr, left_val, &mut ctx).unwrap();
+        assert_eq!(result, expected);
     }
 
-    /// Test Binary Or with underscore (short-circuit)
-    #[test]
-    fn test_binary_or_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+    /// Test logical operators with underscore (short-circuit)
+    #[test_case(BinaryOp::And, Value::Bool(false), Value::Bool(true), Value::Bool(false) ; "and_false")]
+    #[test_case(BinaryOp::And, Value::Bool(true), Value::Bool(true), Value::Bool(true) ; "and_true")]
+    #[test_case(BinaryOp::Or, Value::Bool(true), Value::Bool(false), Value::Bool(true) ; "or_true")]
+    #[test_case(BinaryOp::Or, Value::Bool(false), Value::Bool(false), Value::Bool(false) ; "or_false")]
+    fn test_binary_logical_with_underscore(
+        op: BinaryOp,
+        left_val: Value,
+        right_val: Value,
+        expected: Value,
+    ) {
+        use crate::libs::expr::parser::ast::Expr;
 
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
-        // Create: _ || false
         let binary_expr = Expr::Binary {
-            op: BinaryOp::Or,
+            op,
             left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Bool(false)),
+            right: Box::new(match right_val {
+                Value::Bool(b) => Expr::Bool(b),
+                _ => unreachable!(),
+            }),
         };
 
-        // true || false = true (short-circuit, right not evaluated)
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Bool(true), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        // false || false = false
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Bool(false), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(false));
+        let result = eval_with_placeholder(&binary_expr, left_val, &mut ctx).unwrap();
+        assert_eq!(result, expected);
     }
 
-    /// Test Binary Add with underscore
-    #[test]
-    fn test_binary_add_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+    /// Test comparison operators with underscore
+    #[test_case(BinaryOp::Eq, Value::Int(5), Value::Int(5), Value::Bool(true) ; "eq_true")]
+    #[test_case(BinaryOp::Eq, Value::Int(3), Value::Int(5), Value::Bool(false) ; "eq_false")]
+    #[test_case(BinaryOp::Ne, Value::Int(3), Value::Int(5), Value::Bool(true) ; "ne_true")]
+    #[test_case(BinaryOp::Ne, Value::Int(5), Value::Int(5), Value::Bool(false) ; "ne_false")]
+    #[test_case(BinaryOp::Lt, Value::Int(5), Value::Int(10), Value::Bool(true) ; "lt_true")]
+    #[test_case(BinaryOp::Lt, Value::Int(15), Value::Int(10), Value::Bool(false) ; "lt_false")]
+    #[test_case(BinaryOp::Le, Value::Int(10), Value::Int(10), Value::Bool(true) ; "le_true")]
+    #[test_case(BinaryOp::Le, Value::Int(15), Value::Int(10), Value::Bool(false) ; "le_false")]
+    #[test_case(BinaryOp::Gt, Value::Int(15), Value::Int(10), Value::Bool(true) ; "gt_true")]
+    #[test_case(BinaryOp::Gt, Value::Int(5), Value::Int(10), Value::Bool(false) ; "gt_false")]
+    #[test_case(BinaryOp::Ge, Value::Int(10), Value::Int(10), Value::Bool(true) ; "ge_true")]
+    #[test_case(BinaryOp::Ge, Value::Int(5), Value::Int(10), Value::Bool(false) ; "ge_false")]
+    fn test_binary_comparison_with_underscore(
+        op: BinaryOp,
+        left_val: Value,
+        right_val: Value,
+        expected: Value,
+    ) {
+        use crate::libs::expr::parser::ast::Expr;
 
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
-        // Create: _ + 10
         let binary_expr = Expr::Binary {
-            op: BinaryOp::Add,
+            op,
             left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(10)),
+            right: Box::new(match right_val {
+                Value::Int(i) => Expr::Int(i),
+                _ => unreachable!(),
+            }),
         };
 
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(5), &mut ctx).unwrap();
-        assert_eq!(result, Value::Int(15));
+        let result = eval_with_placeholder(&binary_expr, left_val, &mut ctx).unwrap();
+        assert_eq!(result, expected);
     }
 
-    /// Test Binary Sub with underscore
-    #[test]
-    fn test_binary_sub_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
+    /// Test string comparison operators with underscore
+    #[test_case(BinaryOp::StrEq, "hello", "hello", true ; "streq_true")]
+    #[test_case(BinaryOp::StrEq, "world", "hello", false ; "streq_false")]
+    #[test_case(BinaryOp::StrNe, "world", "hello", true ; "strne_true")]
+    #[test_case(BinaryOp::StrNe, "hello", "hello", false ; "strne_false")]
+    #[test_case(BinaryOp::StrLt, "a", "b", true ; "strlt_true")]
+    #[test_case(BinaryOp::StrLt, "c", "b", false ; "strlt_false")]
+    #[test_case(BinaryOp::StrLe, "b", "b", true ; "strle_true")]
+    #[test_case(BinaryOp::StrLe, "c", "b", false ; "strle_false")]
+    #[test_case(BinaryOp::StrGt, "c", "b", true ; "strgt_true")]
+    #[test_case(BinaryOp::StrGt, "a", "b", false ; "strgt_false")]
+    #[test_case(BinaryOp::StrGe, "b", "b", true ; "strge_true")]
+    #[test_case(BinaryOp::StrGe, "a", "b", false ; "strge_false")]
+    fn test_binary_str_comparison_with_underscore(
+        op: BinaryOp,
+        left: &str,
+        right: &str,
+        expected: bool,
+    ) {
+        use crate::libs::expr::parser::ast::Expr;
 
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
-        // Create: _ - 3
         let binary_expr = Expr::Binary {
-            op: BinaryOp::Sub,
+            op,
             left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(3)),
+            right: Box::new(Expr::String(right.to_string())),
         };
 
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(10), &mut ctx).unwrap();
-        assert_eq!(result, Value::Int(7));
+        let result = eval_with_placeholder(
+            &binary_expr,
+            Value::String(left.to_string()),
+            &mut ctx,
+        )
+        .unwrap();
+        assert_eq!(result, Value::Bool(expected));
     }
 
-    /// Test Binary Mul with underscore
-    #[test]
-    fn test_binary_mul_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ * 4
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::Mul,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(4)),
-        };
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(5), &mut ctx).unwrap();
-        assert_eq!(result, Value::Int(20));
-    }
-
-    /// Test Binary Div with underscore
-    #[test]
-    fn test_binary_div_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ / 2
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::Div,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(2)),
-        };
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(10), &mut ctx).unwrap();
-        // Div returns Float for Int/Int division
-        assert_eq!(result, Value::Float(5.0));
-    }
-
-    /// Test Binary Mod with underscore
-    #[test]
-    fn test_binary_mod_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ % 3
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::Mod,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(3)),
-        };
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(10), &mut ctx).unwrap();
-        assert_eq!(result, Value::Int(1));
-    }
-
-    /// Test Binary Pow with underscore
-    #[test]
-    fn test_binary_pow_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ ^ 2
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::Pow,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(2)),
-        };
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(3), &mut ctx).unwrap();
-        // Pow returns Float for Int^Int
-        assert_eq!(result, Value::Float(9.0));
-    }
-
-    /// Test Binary Concat with underscore
+    /// Test string concat with underscore
     #[test]
     fn test_binary_concat_with_underscore() {
         use crate::libs::expr::parser::ast::{BinaryOp, Expr};
@@ -3907,7 +3781,6 @@ mod tests {
         let row: Vec<String> = vec![];
         let mut ctx = EvalContext::new(&row);
 
-        // Create: _ ++ "world"
         let binary_expr = Expr::Binary {
             op: BinaryOp::Concat,
             left: Box::new(Expr::Underscore),
@@ -3921,342 +3794,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result, Value::String("helloworld".to_string()));
-    }
-
-    /// Test Binary Eq with underscore
-    #[test]
-    fn test_binary_eq_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ == 5
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::Eq,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(5)),
-        };
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(5), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(3), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary Ne with underscore
-    #[test]
-    fn test_binary_ne_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ != 5
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::Ne,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(5)),
-        };
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(3), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(5), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary Lt with underscore
-    #[test]
-    fn test_binary_lt_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ < 10
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::Lt,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(10)),
-        };
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(5), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(15), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary Le with underscore
-    #[test]
-    fn test_binary_le_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ <= 10
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::Le,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(10)),
-        };
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(10), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(15), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary Gt with underscore
-    #[test]
-    fn test_binary_gt_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ > 10
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::Gt,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(10)),
-        };
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(15), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(5), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary Ge with underscore
-    #[test]
-    fn test_binary_ge_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ >= 10
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::Ge,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::Int(10)),
-        };
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(10), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result =
-            eval_with_placeholder(&binary_expr, Value::Int(5), &mut ctx).unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary StrEq with underscore
-    #[test]
-    fn test_binary_streq_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ ==~ "hello"
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::StrEq,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::String("hello".to_string())),
-        };
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("hello".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("world".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary StrNe with underscore
-    #[test]
-    fn test_binary_strne_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ !=~ "hello"
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::StrNe,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::String("hello".to_string())),
-        };
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("world".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("hello".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary StrLt with underscore
-    #[test]
-    fn test_binary_strlt_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ <~ "b"
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::StrLt,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::String("b".to_string())),
-        };
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("a".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("c".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary StrLe with underscore
-    #[test]
-    fn test_binary_strle_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ <=~ "b"
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::StrLe,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::String("b".to_string())),
-        };
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("b".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("c".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary StrGt with underscore
-    #[test]
-    fn test_binary_strgt_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ >~ "b"
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::StrGt,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::String("b".to_string())),
-        };
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("c".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("a".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(false));
-    }
-
-    /// Test Binary StrGe with underscore
-    #[test]
-    fn test_binary_strge_with_underscore() {
-        use crate::libs::expr::parser::ast::{BinaryOp, Expr};
-
-        let row: Vec<String> = vec![];
-        let mut ctx = EvalContext::new(&row);
-
-        // Create: _ >=~ "b"
-        let binary_expr = Expr::Binary {
-            op: BinaryOp::StrGe,
-            left: Box::new(Expr::Underscore),
-            right: Box::new(Expr::String("b".to_string())),
-        };
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("b".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(true));
-
-        let result = eval_with_placeholder(
-            &binary_expr,
-            Value::String("a".to_string()),
-            &mut ctx,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Bool(false));
     }
 
     /// Test contains_underscore with List expression
