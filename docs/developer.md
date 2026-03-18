@@ -245,3 +245,115 @@ Bar Charts）。
 | 🟢 低 | 字符串填充 (`pad`) | 格式化输出 |
 | 🟢 低 | 路径处理函数 | 特定场景 |
 | 🔵 未来 | 类型系统重构 (`Arc`, `DateTime`) | 需要大量测试 |
+
+## 参考项目: stringr (R 语言字符串处理)
+
+`stringr` 是 R 语言中最流行的字符串处理包，提供了系统化、一致性的字符串操作接口。通过分析其功能设计，可以为 `tva expr` 的字符串函数提供补充建议。
+
+### stringr 功能分类
+
+stringr 将字符串函数分为四大类：
+
+1. **字符操作** (Character manipulation): 操作字符串中的单个字符
+2. **空白字符工具** (Whitespace tools): 添加、删除、操作空白字符
+3. **本地化敏感操作** (Locale sensitive): 不同区域设置下表现不同
+4. **模式匹配** (Pattern matching): 使用正则等引擎进行匹配
+
+### 功能对比与建议
+
+#### 已经有对应功能的 stringr 函数
+
+以下 stringr 函数在 tva 中已有对应实现：
+
+| stringr 函数 | tva 对应 | 说明 |
+|:-------------|:---------|:-----|
+| `str_detect(string, pattern, negate = FALSE)` | `contains()` / `regex_match()` | 检测匹配，`negate` 参数取反 |
+| `str_ends(string, pattern, negate = FALSE)` | `ends_with()` | 检测后缀，`negate` 参数取反 |
+| `str_length(string)` | `char_len()` | 字符数（codepoints） |
+| `str_remove(string, pattern)` | `replace(string, pattern, "")` | 移除第一个匹配 |
+| `str_remove_all(string, pattern)` | `regex_replace()` | 移除所有匹配 |
+| `str_replace(string, pattern, replacement)` | `replace()` / `regex_replace()` | 替换第一个匹配，支持捕获组引用 |
+| `str_replace_all(string, pattern, replacement)` | `regex_replace()` | 替换所有匹配，支持命名向量多模式替换 |
+| `str_replace_na(string, replacement = "NA")` | `default()` | null 替换为默认值，默认替换为 "NA" |
+| `str_split(string, pattern, n = Inf, simplify = FALSE)` | `split()` | 字符串分割，`n` 限制分割次数 |
+| `str_starts(string, pattern, negate = FALSE)` | `starts_with()` | 检测前缀，`negate` 参数取反 |
+| `str_sub(string, start = 1L, end = -1L)` | `substr()` | 提取子串，支持负索引从末尾计数 |
+| `str_subset(string, pattern, negate = FALSE)` | `filter()` | 返回匹配元素，`negate` 返回不匹配 |
+| `str_to_lower(string, locale = "en")` | `lower()` | 转小写 |
+| `str_to_upper(string, locale = "en")` | `upper()` | 转大写 |
+| `str_trim(string, side = c("both", "left", "right"))` | `trim()` | 去除空白，`side` 可选 "both"/"left"/"right" |
+| `str_trunc(string, width, side = c("right", "left", "center"), ellipsis = "...")` | `truncate()` | 截断字符串，支持左/右/居中 |
+| `word(string, start = 1L, end = start, sep = fixed(" "))` | `split()` + `nth()` | 提取第 n 个单词，支持自定义分隔符 |
+
+#### 待实现的 stringr 函数
+
+以下 stringr 函数在 tva 中尚无对应实现，按优先级分类：
+
+**高优先级 (常用且难以用现有函数组合实现)**:
+
+| stringr 函数 | 功能 | 说明 |
+|:-------------|:-----|:-----|
+| `str_pad(string, width, side = c("left", "right", "both"), pad = " ", use_width = TRUE)` | 字符串填充 | 对齐输出、固定宽度格式 |
+| `str_squish(string)` | 压缩空白 | 去首尾 + 内部多空格变单空格，相当于 `str_trim()` + 内部空格压缩 |
+| `str_extract(string, pattern, group = NULL)` | 正则提取匹配 | 从文本中提取结构化数据，支持捕获组 |
+| `str_extract_all(string, pattern, simplify = FALSE)` | 提取所有匹配 | 提取多个匹配项，返回列表或矩阵 |
+
+**中优先级 (可用现有函数组合但较繁琐)**:
+
+| stringr 函数 | 功能 | 替代方案 |
+|:-------------|:-----|:---------|
+| `str_c(..., sep = "", collapse = NULL)` | 连接多个字符串 | `join()` (但 `str_c` 支持多参数和 `collapse`) |
+| `str_glue(..., .sep = "", .envir = parent.frame(), .trim = TRUE)` | 字符串插值 (`{var}` 语法) | 无直接替代 |
+| `str_glue_data(.x, ..., .sep = "", .envir = parent.frame(), .na = "NA")` | 数据框字符串插值 | 无直接替代 |
+| `str_to_title(string, locale = "en")` | 标题格式 | 每个单词首字母大写 |
+| `str_to_sentence(string, locale = "en")` | 句子格式 | 句首字母大写 |
+| `str_word(string, start, end, sep)` | 提取第 n 个单词 | `split()` + `nth()` |
+| `str_count(string, pattern = "")` | 统计匹配次数 | 返回整数向量，统计每行匹配数 |
+| `str_locate(string, pattern)` / `str_locate_all(string, pattern)` | 返回匹配位置 | 返回 start/end 矩阵，可与 `str_sub` 配合使用 |
+| `str_match(string, pattern)` / `str_match_all(string, pattern)` | 提取捕获组 | 返回矩阵或列表，第一列为完整匹配 |
+| `str_which(string, pattern, negate = FALSE)` | 返回匹配索引 | 返回整数向量，相当于 `which(str_detect(...))` |
+| `str_dup(string, times, sep = NULL)` | 重复字符串 | `join()` + `range()` |
+| `str_like(string, pattern, ignore_case = FALSE)` | SQL LIKE 匹配 | `ignore_case` 控制大小写敏感 |
+| `str_escape(string)` | 转义正则元字符 | 无直接替代 |
+
+**低优先级 (特定场景)**:
+
+| stringr 函数 | 功能 | 替代方案 |
+|:-------------|:-----|:---------|
+| `str_conv(string, encoding)` | 编码转换 | TSV 通常为 UTF-8，用于覆盖当前编码 |
+| `str_equal(x, y, locale = "en", ignore_case = FALSE, ...)` | Unicode 等价比较 | 使用 Unicode 规范化规则比较字符串 |
+| `str_flatten(string, collapse = "", last = NULL, na.rm = FALSE)` / `str_flatten_comma(string, last = NULL, na.rm = FALSE)` | 列表扁平化为字符串 | `str_flatten_comma` 专为逗号分隔优化，支持 Oxford comma |
+| `str_interp(string, env = parent.frame())` | 字符串插值 (旧版) | 被 `str_glue` 取代，使用 `${expression}` 语法 |
+| `str_order(x, decreasing = FALSE, na_last = TRUE, locale = "en", numeric = FALSE, ...)` / `str_sort(x, decreasing = FALSE, na_last = TRUE, locale = "en", numeric = FALSE, ...)` | 字符串排序/排序索引 | `numeric` 参数支持数字排序 |
+| `str_rank(x, locale = "en", numeric = FALSE, ...)` | 字符串排名 | 返回排名值，用于排序 |
+| `str_split_fixed(string, pattern, n)` | 分割为固定列数 | `split()` |
+| `str_split_i(string, pattern, i)` | 分割后取第 i 个 | `split()` + `nth()` |
+| `str_to_camel_case(string, first_upper = FALSE)` / `str_to_snake_case(string)` / `str_to_kebab_case(string)` | 命名格式转换 | 编程标识符转换，`first_upper` 控制首字母大写 |
+| `str_unique(string, locale = "en", ignore_case = FALSE, ...)` | 去重 | `ignore_case` 支持忽略大小写 |
+| `str_view(string, pattern = NULL, match = TRUE, html = FALSE, use_escapes = FALSE)` | 可视化匹配 | 调试工具，高亮显示匹配和特殊字符 |
+| `str_width(string)` | 显示宽度 | 等宽字体显示，考虑东亚字符双宽度 |
+| `str_wrap(string, width = 80, indent = 0, exdent = 0, whitespace_only = TRUE)` | 文本自动换行 | 支持首行缩进和后续行缩进 |
+| `fixed(pattern, ignore_case = FALSE)` / `coll(pattern, ignore_case = FALSE, locale = "en", ...)` / `regex(pattern, ignore_case = FALSE, multiline = FALSE, comments = FALSE, dotall = FALSE, ...)` / `boundary(type = c("character", "line_break", "sentence", "word"), ...)` | 模式匹配修饰符 | 控制匹配行为：固定字符串、本地化、正则、边界匹配 |
+| `invert_match(loc)` | 反转匹配位置 | 与 `str_locate` 配合使用，返回未匹配的位置 |
+
+#### 关于模式匹配引擎
+
+stringr 支持四种模式匹配引擎，tva 目前主要支持简单的子串匹配：
+
+| 引擎 | stringr | tva expr | 说明 |
+|:-----|:--------|:---------|:-----|
+| 正则表达式 | `regex()` | `regex_*` 函数 | 已部分支持 |
+| 固定字符串 | `fixed()` | 默认行为 | 直接匹配 |
+| 本地化匹配 | `coll()` | 无 | 考虑区域设置的比较 |
+| 边界匹配 | `boundary()` | 无 | 字符/单词/句子/行边界 |
+
+**建议**: 对于命令行工具场景，当前的正则支持已足够。`coll()` 和 `boundary()` 的复杂度较高，优先级较低。
+
+#### 关于本地化 (Locale)
+
+stringr 的以下函数支持 locale 参数：
+- `str_to_upper/lower/title/sentence()` - 大小写转换
+- `str_sort/order()` - 排序顺序
+
+**建议**: tva 目前定位为数据处理工具而非全球化工具，locale 支持优先级较低。如需实现，可考虑通过环境变量而非函数参数控制。
+

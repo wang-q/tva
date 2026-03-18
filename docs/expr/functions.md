@@ -21,12 +21,15 @@ TVA expr engine provides a rich set of built-in functions for data processing.
 - sqrt(x) -> float: Square root
 - tan(x) -> float: Tangent (radians)
 
+## Generic Functions
+
+- len(value) -> int: Returns length of string (bytes) or list (element count)
+
 ## String Manipulation
 
 - trim(string) -> string: Remove leading and trailing whitespace
 - upper(string) -> string: Convert to uppercase
 - lower(string) -> string: Convert to lowercase
-- len(string) -> int: String byte length
 - char_len(string) -> int: String character count (UTF-8)
 - substr(string, start, len) -> string: Substring
 - split(string, pat) -> list: Split string by pattern
@@ -63,7 +66,6 @@ tva expr -E 'wordcount("one two three four")'  # Returns: 4
 - first(list) -> T: First element
 - join(list, sep) -> string: Join list elements
 - last(list) -> T: Last element
-- len(list) -> int: List length (number of elements)
 - nth(list, n) -> T: nth element (0-based, negative indices return null)
 - reverse(list) -> list: Reverse list
 - replace_nth(list, n, value) -> list: Return new list with nth element replaced by value (original list unchanged)
