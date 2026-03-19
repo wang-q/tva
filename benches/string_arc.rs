@@ -37,7 +37,10 @@ fn create_large_string() -> String {
 
 /// Create a string with multiple parts for split
 fn create_split_string() -> String {
-    (0..100).map(|i| format!("part{}", i)).collect::<Vec<_>>().join(",")
+    (0..100)
+        .map(|i| format!("part{}", i))
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 // ==================== Current implementations ====================
@@ -61,9 +64,11 @@ fn split_current(args: &[ValueCurrent]) -> ValueCurrent {
 
 fn replace_current(args: &[ValueCurrent]) -> ValueCurrent {
     match (&args[0], &args[1], &args[2]) {
-        (ValueCurrent::String(s), ValueCurrent::String(from), ValueCurrent::String(to)) => {
-            ValueCurrent::String(s.replace(from, to))
-        }
+        (
+            ValueCurrent::String(s),
+            ValueCurrent::String(from),
+            ValueCurrent::String(to),
+        ) => ValueCurrent::String(s.replace(from, to)),
         _ => ValueCurrent::Null,
     }
 }
@@ -142,9 +147,11 @@ fn split_optimized(args: &[ValueOptimized]) -> ValueOptimized {
 
 fn replace_optimized(args: &[ValueOptimized]) -> ValueOptimized {
     match (&args[0], &args[1], &args[2]) {
-        (ValueOptimized::String(s), ValueOptimized::String(from), ValueOptimized::String(to)) => {
-            ValueOptimized::String(Arc::new(s.replace(from.as_str(), to.as_str())))
-        }
+        (
+            ValueOptimized::String(s),
+            ValueOptimized::String(from),
+            ValueOptimized::String(to),
+        ) => ValueOptimized::String(Arc::new(s.replace(from.as_str(), to.as_str()))),
         _ => ValueOptimized::Null,
     }
 }

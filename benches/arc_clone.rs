@@ -15,7 +15,9 @@ fn create_large_string() -> String {
 
 // Simulate a list of strings
 fn create_string_list() -> Vec<String> {
-    (0..100).map(|i| format!("field_{}_{}", i, "x".repeat(50))).collect()
+    (0..100)
+        .map(|i| format!("field_{}_{}", i, "x".repeat(50)))
+        .collect()
 }
 
 fn benchmark_string_clone(c: &mut Criterion) {
@@ -53,7 +55,8 @@ fn benchmark_string_clone(c: &mut Criterion) {
 
 fn benchmark_list_clone(c: &mut Criterion) {
     let string_list = create_string_list();
-    let data_size: usize = string_list.iter().map(|s| s.len()).sum::<usize>() * ITERATIONS;
+    let data_size: usize =
+        string_list.iter().map(|s| s.len()).sum::<usize>() * ITERATIONS;
 
     let mut group = c.benchmark_group("list_clone");
     group.throughput(Throughput::Bytes(data_size as u64));

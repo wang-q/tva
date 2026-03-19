@@ -45,7 +45,9 @@ fn create_large_list() -> Vec<ValueCurrent> {
 /// Create a list with many elements (optimized version)
 fn create_large_list_optimized() -> Vec<ValueOptimized> {
     (0..100)
-        .map(|i| ValueOptimized::String(Arc::new(format!("field_{}_{}", i, "x".repeat(50)))))
+        .map(|i| {
+            ValueOptimized::String(Arc::new(format!("field_{}_{}", i, "x".repeat(50))))
+        })
         .collect()
 }
 
@@ -425,7 +427,11 @@ fn benchmark_slice_function(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(3));
 
     let list_current = create_large_list();
-    let args_current = vec![ValueCurrent::List(list_current), ValueCurrent::Int(10), ValueCurrent::Int(50)];
+    let args_current = vec![
+        ValueCurrent::List(list_current),
+        ValueCurrent::Int(10),
+        ValueCurrent::Int(50),
+    ];
     group.bench_function("current_slice", |b| {
         b.iter(|| {
             for _ in 0..ITERATIONS {
