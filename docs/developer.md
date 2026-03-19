@@ -367,8 +367,10 @@ src/libs/tsv/simd/
 
 **目标**: 让 `TsvSplitter` 能够复用 `next_row` 的扫描结果。
 
+**当前状态**: `split.rs` 中的 `TsvSplitter` 使用 `memchr_iter` 独立扫描分隔符，存在二次解析。
+
 **方案**:
-1. 新增 `TsvRowSplitter` 结构体，从 `TsvRow` 创建
+1. 新增 `TsvRowSplitter` 结构体，从 `TsvRow` 创建，直接复用 `ends` 数组
 2. 或者直接使用 `TsvRow::get_bytes()` 访问字段
 
 **注意**: `split` 命令通常独立使用，优先级较低。
@@ -377,13 +379,21 @@ src/libs/tsv/simd/
 
 **目标**: 减少 `TsvRecord::parse_line` 的扫描开销。
 
+**当前状态**: `record.rs` 中的 `TsvRecord::parse_line` 使用 `memchr_iter` 扫描分隔符，存在二次解析。
+
 **方案**:
-1. 新增 `TsvRecord::from_row` 构造函数，从 `TsvRow` 创建
+1. 新增 `TsvRecord::from_row` 构造函数，从 `TsvRow` 创建，直接复用 `ends` 数组
 2. 修改需要存储的场景使用 `for_each_row` + `TsvRecord::from_row`
+
+#### 遗留 API 说明
+
+以下 API 仍使用二次解析，仅作为兼容保留：
+- `key.rs`: `extract()` 方法 - 内部构建 `TsvRow` 时扫描分隔符
+- `record.rs`: `parse_line()` 方法 - 扫描分隔符解析字段
 
 ### 实施建议
 
-1. **先实施阶段 1**: `select` 是最常用的命令之一，收益最明显
-2. **保持向后兼容**: 旧的 API (`extract_ranges` 等) 保留，新增 `_from_row` 版本
-3. **逐步迁移**: 命令逐个迁移，确保稳定性
-4. **基准测试**: 每个迁移后运行 `benches/tsv_reader_sse2.rs` 验证性能
+1. **阶段 1 已完成**: `select` 和 `join` 已优化，收益约 10%
+2. **阶段 2/3 待实施**: `split` 和 `record` 模块优化，预计收益有限
+3. **保持向后兼容**: 旧的 API 保留，新增优化版本
+4. **逐步迁移**: 命令逐个迁移，确保稳定性
