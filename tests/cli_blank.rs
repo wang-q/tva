@@ -5,61 +5,44 @@ mod common;
 use common::TvaCmd;
 use std::io::Write;
 use tempfile::NamedTempFile;
+use test_case::test_case;
 
-#[test]
-fn blank_basic() {
-    let input = "
-a\tb\tc
-1\tx\t10
-1\ty\t20
-2\tx\t30
-2\tz\t40
-";
-    let expected = "
-a\tb\tc
-1\tx\t10
-\ty\t20
-2\tx\t30
-\tz\t40
-";
-    let (result, _) = TvaCmd::new()
-        .stdin(input)
-        .args(&["blank", "--header", "--field", "1"])
-        .run();
+// ============================================================================
+// Basic Functionality Tests
+// ============================================================================
 
-    assert_eq!(result.trim(), expected.trim());
+#[test_case(
+    "a\tb\tc\n1\tx\t10\n1\ty\t20\n2\tx\t30\n2\tz\t40\n",
+    &["--header", "--field", "1"],
+    "a\tb\tc\n1\tx\t10\n\ty\t20\n2\tx\t30\n\tz\t40"
+    ; "basic_with_header"
+)]
+#[test_case(
+    "a\tb\tc\n1\tx\t10\n1\ty\t20\n",
+    &["--header", "--field", "1", "--line-buffered"],
+    "a\tb\tc\n1\tx\t10\n\ty\t20"
+    ; "line_buffered"
+)]
+#[test_case(
+    "1\tx\t10\n1\ty\t20\n2\tx\t30\n2\tz\t40\n",
+    &["--field", "1"],
+    "1\tx\t10\n\ty\t20\n2\tx\t30\n\tz\t40"
+    ; "no_header"
+)]
+fn blank_basic_tests(input: &str, args: &[&str], expected: &str) {
+    let mut all_args = vec!["blank"];
+    all_args.extend_from_slice(args);
+    let (result, _) = TvaCmd::new().stdin(input).args(&all_args).run();
+    assert_eq!(result.trim(), expected);
 }
 
-#[test]
-fn blank_line_buffered() {
-    let input = "
-a\tb\tc
-1\tx\t10
-1\ty\t20
-";
-    let expected = "
-a\tb\tc
-1\tx\t10
-\ty\t20
-";
-    // Just verifying that the flag is accepted and output is correct
-    let (result, _) = TvaCmd::new()
-        .stdin(input)
-        .args(&["blank", "--header", "--field", "1", "--line-buffered"])
-        .run();
-
-    assert_eq!(result.trim(), expected.trim());
-}
+// ============================================================================
+// File Input Tests
+// ============================================================================
 
 #[test]
 fn blank_from_file() {
-    let expected = "
-a\tb\tc
-1\tx\t10
-\ty\t20
-2\tx\t30
-\tz\t40
-";
+    let expected = "a\tb\tc\n1\tx\t10\n\ty\t20\n2\tx\t30\n\tz\t40";
     let (result, _) = TvaCmd::new()
         .args(&[
             "blank",
@@ -69,53 +52,13 @@ a\tb\tc
             "tests/data/blank/input1.tsv",
         ])
         .run();
-
-    assert_eq!(result.trim(), expected.trim());
-}
-
-#[test]
-fn blank_no_header() {
-    let input = "
-1\tx\t10
-1\ty\t20
-2\tx\t30
-2\tz\t40
-";
-    // Without header, first row is data.
-    // Row 1: 1, x, 10
-    // Row 2: 1 (same), y, 20 -> blank
-    // Row 3: 2, x, 30
-    // Row 4: 2 (same), z, 40 -> blank
-    let expected = "
-1\tx\t10
-\ty\t20
-2\tx\t30
-\tz\t40
-";
-    let (result, _) = TvaCmd::new()
-        .stdin(input)
-        .args(&["blank", "--field", "1"])
-        .run();
-
-    assert_eq!(result.trim(), expected.trim());
+    assert_eq!(result.trim(), expected);
 }
 
 #[test]
 fn blank_multi_file() {
-    // input1.tsv ends with: 2, z, 40
-    // input2.tsv starts with: 2, z, 50
-    // If blanking column 1 ("a") and 2 ("b"):
-    // input2 first row: 2==2 -> blank, z==z -> blank.
-    let expected = "
-a\tb\tc
-1\tx\t10
-\ty\t20
-2\tx\t30
-\tz\t40
-\t\t50
-3\t\t60
-\tw\t70
-";
+    let expected =
+        "a\tb\tc\n1\tx\t10\n\ty\t20\n2\tx\t30\n\tz\t40\n\t\t50\n3\t\t60\n\tw\t70";
     let (result, _) = TvaCmd::new()
         .args(&[
             "blank",
@@ -128,120 +71,69 @@ a\tb\tc
             "tests/data/blank/input2.tsv",
         ])
         .run();
-
-    assert_eq!(result.trim(), expected.trim());
+    assert_eq!(result.trim(), expected);
 }
 
-#[test]
-fn blank_with_replacement() {
-    let input = "
-a\tb\tc
-1\tx\t10
-1\ty\t20
-2\tx\t30
-2\tz\t40
-";
-    let expected = "
-a\tb\tc
-1\tx\t10
----\ty\t20
-2\tx\t30
----\tz\t40
-";
-    let (result, _) = TvaCmd::new()
-        .stdin(input)
-        .args(&["blank", "--header", "--field", "1:---"])
-        .run();
+// ============================================================================
+// Replacement Tests
+// ============================================================================
 
-    assert_eq!(result.trim(), expected.trim());
+#[test_case(
+    "a\tb\tc\n1\tx\t10\n1\ty\t20\n2\tx\t30\n2\tz\t40\n",
+    &["--header", "--field", "1:---"],
+    "a\tb\tc\n1\tx\t10\n---\ty\t20\n2\tx\t30\n---\tz\t40"
+    ; "single_replacement"
+)]
+#[test_case(
+    "c1\tc2\nA\t10\nA\t10\nB\t10\n",
+    &["--header", "-f", "1:.", "-f", "2:-"],
+    "c1\tc2\nA\t10\n.\t-\nB\t-"
+    ; "mixed_replacements"
+)]
+fn blank_replacement_tests(input: &str, args: &[&str], expected: &str) {
+    let mut all_args = vec!["blank"];
+    all_args.extend_from_slice(args);
+    let (result, _) = TvaCmd::new().stdin(input).args(&all_args).run();
+    assert_eq!(result.trim(), expected);
 }
+
+// ============================================================================
+// Multiple Columns Tests
+// ============================================================================
 
 #[test]
 fn blank_multiple_columns() {
-    let input = "
-g1\tg2\tval
-A\tX\t1
-A\tX\t2
-A\tY\t3
-B\tY\t4
-B\tY\t5
-";
-    // Expected logic:
-    // Row 1: prev=[A, X], out=A\tX
-    // Row 2: cur=[A, X]. A==A -> blank. X==X -> blank. prev=[A, X]. out=\t\t
-    // Row 3: cur=[A, Y]. A==A -> blank. Y!=X -> Y. prev=[A, Y]. out=\tY
-    // Row 4: cur=[B, Y]. B!=A -> B. Y==Y -> blank. prev=[B, Y]. out=B\t
-    // Row 5: cur=[B, Y]. B==B -> blank. Y==Y -> blank. prev=[B, Y]. out=\t\t
-
-    let expected = "
-g1\tg2\tval
-A\tX\t1
-\t\t2
-\tY\t3
-B\t\t4
-\t\t5
-";
+    let input = "g1\tg2\tval\nA\tX\t1\nA\tX\t2\nA\tY\t3\nB\tY\t4\nB\tY\t5\n";
+    let expected = "g1\tg2\tval\nA\tX\t1\n\t\t2\n\tY\t3\nB\t\t4\n\t\t5";
 
     let (result, _) = TvaCmd::new()
         .stdin(input)
         .args(&["blank", "--header", "--field", "1", "--field", "2"])
         .run();
 
-    assert_eq!(result.trim(), expected.trim());
+    assert_eq!(result.trim(), expected);
 }
+
+// ============================================================================
+// Case Insensitive Tests
+// ============================================================================
 
 #[test]
 fn blank_ignore_case() {
-    let input = "
-a
-A
-a
-B
-";
-    // With -i:
-    // Row 1: a
-    // Row 2: A == a (case-insensitive) -> blank
-    // Row 3: a == A (case-insensitive) -> blank
-    // Row 4: B != a -> B
-
-    let expected_case_insensitive = "
-a
-
-
-B
-";
+    let input = "a\nA\na\nB\n";
+    let expected = "a\nA\n\nB";
 
     let (result, _) = TvaCmd::new()
         .stdin(input)
         .args(&["blank", "--header", "--field", "1", "-i"])
         .run();
 
-    assert_eq!(result.trim(), expected_case_insensitive.trim());
+    assert_eq!(result.trim(), expected);
 }
 
-#[test]
-fn blank_mixed_replacements() {
-    let input = "
-c1\tc2
-A\t10
-A\t10
-B\t10
-";
-    let expected = "
-c1\tc2
-A\t10
-.\t-
-B\t-
-";
-    // Col 1 replace with ".", Col 2 replace with "-"
-
-    let (result, _) = TvaCmd::new()
-        .stdin(input)
-        .args(&["blank", "--header", "-f", "1:.", "-f", "2:-"])
-        .run();
-
-    assert_eq!(result.trim(), expected.trim());
-}
+// ============================================================================
+// Multi-File Header Handling Tests
+// ============================================================================
 
 #[test]
 fn blank_multi_file_header_handling() {
@@ -257,14 +149,12 @@ fn blank_multi_file_header_handling() {
         .args(&["blank", "--header", "-f", "1", path1, path2])
         .run();
 
-    // Should output header once, then data from both
     assert_eq!(stdout, "h1\th2\n1\t2\n3\t4\n");
 }
 
 #[test]
 fn blank_empty_file_handling() {
     let file1 = NamedTempFile::new().unwrap();
-    // Empty file
     let path1 = file1.path().to_str().unwrap();
 
     let mut file2 = NamedTempFile::new().unwrap();
@@ -275,7 +165,5 @@ fn blank_empty_file_handling() {
         .args(&["blank", "--header", "-f", "1", path1, path2])
         .run();
 
-    // First file empty -> skip.
-    // Second file -> write header, write data.
     assert_eq!(stdout, "h1\th2\n1\t2\n");
 }
