@@ -18,6 +18,9 @@ pub struct TsvReader<R> {
     pos: usize,
     /// Whether we've reached EOF on the underlying reader.
     eof: bool,
+    /// Cached separator positions for the current row (reused allocation).
+    /// Using Option to delay initialization until first use.
+    seps: Option<Vec<usize>>,
 }
 
 impl<R: Read> TsvReader<R> {
@@ -36,6 +39,7 @@ impl<R: Read> TsvReader<R> {
             len: 0,
             pos: 0,
             eof: false,
+            seps: None, // Delay initialization until first use
         }
     }
 
@@ -253,6 +257,120 @@ impl<R: Read> TsvReader<R> {
         Ok(total_copied)
     }
 
+    /// Read the next row with single-pass scanning.
+    ///
+    /// This method uses `memchr2` to simultaneously search for both tab and newline,
+    /// eliminating the two-pass overhead of `for_each_record` + field splitting.
+    ///
+    /// Returns `Ok(Some(TsvRow))` if a row was read, `Ok(None)` at EOF.
+    pub fn next_row(&mut self, delimiter: u8) -> io::Result<Option<TsvRow<'_, '_>>> {
+        // Lazy initialization: create seps vector only when first used
+        let seps = self.seps.get_or_insert_with(Vec::new);
+        seps.clear();
+        let mut line_start = self.pos;
+        let mut field_start = self.pos;
+
+        loop {
+            let available = &self.buf[field_start..self.len];
+
+            // Use memchr2 to find the next delimiter or newline
+            match memchr::memchr2(delimiter, b'\n', available) {
+                Some(offset) => {
+                    let abs_pos = field_start + offset;
+                    let byte = available[offset];
+
+                    if byte == delimiter {
+                        // Found delimiter - record field end position
+                        seps.push(abs_pos - line_start);
+                        field_start = abs_pos + 1;
+                    } else {
+                        // Found newline - complete the row
+                        let line_end = abs_pos;
+
+                        // Handle potential CR before LF
+                        let content_end = if line_end > line_start
+                            && line_end > 0
+                            && self.buf[line_end - 1] == b'\r'
+                        {
+                            line_end - 1 - line_start
+                        } else {
+                            line_end - line_start
+                        };
+
+                        // Add final field end position
+                        seps.push(content_end);
+                        self.pos = abs_pos + 1;
+
+                        // SAFETY: We return a TsvRow that references self.buf and self.seps.
+                        // This is safe because seps is stored in self and lives as long as self.
+                        // The caller must not hold the TsvRow across calls to next_row.
+                        let row = TsvRow {
+                            line: &self.buf[line_start..line_end],
+                            ends: seps.as_slice(),
+                        };
+                        return Ok(Some(row));
+                    }
+                }
+                None => {
+                    // No delimiter or newline found in current buffer
+                    if self.eof {
+                        // Handle last record without newline
+                        if field_start < self.len {
+                            let line_end = self.len;
+
+                            // Remove trailing CR if present
+                            let content_end = if line_end > line_start
+                                && line_end > 0
+                                && self.buf[line_end - 1] == b'\r'
+                            {
+                                line_end.saturating_sub(1).saturating_sub(line_start)
+                            } else {
+                                line_end.saturating_sub(line_start)
+                            };
+
+                            seps.push(content_end);
+                            self.pos = self.len;
+
+                            let row = TsvRow {
+                                line: &self.buf[line_start..line_end],
+                                ends: seps.as_slice(),
+                            };
+                            return Ok(Some(row));
+                        }
+                        return Ok(None);
+                    }
+
+                    // Need to refill buffer
+                    if field_start >= line_start {
+                        // We have partial data - move it to front and continue
+                        self.buf.copy_within(line_start..self.len, 0);
+                        self.len -= line_start;
+                        field_start -= line_start;
+                    } else if field_start >= self.len {
+                        field_start = 0;
+                        self.len = 0;
+                    }
+                    self.pos = 0;
+                    // After moving data, line_start is now at position 0
+                    line_start = 0;
+
+                    // Grow buffer if needed for large records
+                    if self.len == self.buf.len() {
+                        self.buf.resize(self.buf.len() * 2, 0);
+                    }
+
+                    // Read more data
+                    let read_len = self.reader.read(&mut self.buf[self.len..])?;
+                    if read_len == 0 {
+                        self.eof = true;
+                    } else {
+                        self.len += read_len;
+                    }
+                }
+            }
+        }
+    }
+
     /// Iterate over records using a closure.
     ///
     /// The closure receives a `&[u8]` slice representing the record (excluding the newline).
@@ -343,27 +461,23 @@ impl<R: Read> TsvReader<R> {
 
     /// Iterate over rows (parsed records) using a closure.
     ///
-    /// This is a convenience wrapper around `for_each_record` that constructs a `TsvRow`
-    /// for each record.
+    /// This method uses the optimized `next_row` internally for single-pass scanning.
     ///
     /// The delimiter parameter specifies the field separator (default is TAB).
     pub fn for_each_row<F>(&mut self, delimiter: u8, mut func: F) -> io::Result<()>
     where
         F: FnMut(&TsvRow) -> io::Result<()>,
     {
-        let mut ends = Vec::new();
-        self.for_each_record(|record| {
-            ends.clear();
-            // Pre-calculate field delimiters for the row
-            for pos in memchr::memchr_iter(delimiter, record) {
-                ends.push(pos);
+        while let Some(row) = self.next_row(delimiter)? {
+            match func(&row) {
+                Ok(_) => {}
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => {
+                    return Err(e);
+                }
+                Err(e) => return Err(e),
             }
-            let row = TsvRow {
-                line: record,
-                ends: &ends,
-            };
-            func(&row)
-        })
+        }
+        Ok(())
     }
 }
 
@@ -426,6 +540,57 @@ mod tests {
         assert_eq!(records.len(), 2);
         assert_eq!(records[0], b"a\tb");
         assert_eq!(records[1], b"c\td");
+    }
+
+    #[test]
+    fn test_for_each_record_error_propagation() {
+        let data = b"a\tb\nc\td\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+
+        let result = reader.for_each_record(|_| {
+            Err(io::Error::new(io::ErrorKind::Other, "test error"))
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_for_each_record_with_refill() {
+        // Data larger than buffer to force refill
+        let data = "a\tb\nc\td\ne\tf\n".repeat(1000);
+        let cursor = Cursor::new(data.clone());
+        let mut reader = TsvReader::with_capacity(cursor, 32); // Small buffer
+        let mut records = Vec::new();
+
+        reader
+            .for_each_record(|rec| {
+                records.push(rec.to_vec());
+                Ok(())
+            })
+            .unwrap();
+
+        assert_eq!(records.len(), 3000);
+    }
+
+    #[test]
+    fn test_for_each_record_with_refill2() {
+        // Test that buffer refilling works correctly
+        let data = b"line1\nline2\nline3\nline4\nline5\n";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::with_capacity(cursor, 16); // Small buffer
+
+        let mut records = Vec::new();
+        reader
+            .for_each_record(|rec| {
+                records.push(rec.to_vec());
+                Ok(())
+            })
+            .unwrap();
+
+        assert_eq!(records.len(), 5);
+        assert_eq!(records[0], b"line1");
+        assert_eq!(records[4], b"line5");
     }
 
     #[test]
@@ -838,7 +1003,7 @@ mod tests {
     }
 
     #[test]
-    fn test_for_each_record_error_propagation() {
+    fn test_for_each_record_error_propagation_with_failing_reader() {
         // Test that non-Interrupted errors are properly propagated
         let data = b"header1\theader2\n".to_vec();
         let reader = FailingReader::new(data, 0);
@@ -963,26 +1128,6 @@ mod tests {
 
         assert_eq!(count, 0);
         assert!(output.is_empty());
-    }
-
-    #[test]
-    fn test_for_each_record_with_refill() {
-        // Test that buffer refilling works correctly
-        let data = b"line1\nline2\nline3\nline4\nline5\n";
-        let cursor = Cursor::new(data);
-        let mut reader = TsvReader::with_capacity(cursor, 16); // Small buffer
-
-        let mut records = Vec::new();
-        reader
-            .for_each_record(|rec| {
-                records.push(rec.to_vec());
-                Ok(())
-            })
-            .unwrap();
-
-        assert_eq!(records.len(), 5);
-        assert_eq!(records[0], b"line1");
-        assert_eq!(records[4], b"line5");
     }
 
     #[test]
