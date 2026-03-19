@@ -79,5 +79,17 @@ harness = false
 name = "expr_eval"
 harness = false
 
+[[bench]]
+name = "arc_clone"
+harness = false
+
+[[bench]]
+name = "value_arc"
+harness = false
+
+[[bench]]
+name = "string_arc"
+harness = false
+
 [profile.release]
 lto = true
