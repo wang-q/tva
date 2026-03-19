@@ -49,24 +49,6 @@ tva expr -E 'cos(0)'                        # Returns: 1
 tva expr -E 'tan(0)'                        # Returns: 0
 ```
 
-## Logic & Control
-
-- if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (
-  or null)
-- default(val, fallback) -> T: Returns fallback if val is null or empty
-
-## Generic Functions
-
-These functions have different implementations for different argument types.
-The implementation is selected at runtime based on the first argument type.
-
-- len(value) -> int: Returns length of string (bytes) or list (element count)
-- is_empty(value) -> bool: Check if string or list is empty
-- contains(value, item) -> bool: Check if string contains substring, or list contains element
-- take(value, n) -> T: Take first n elements from string or list
-- drop(value, n) -> T: Drop first n elements from string or list
-- concat(value1, value2, ...) -> T: Concatenate strings or lists
-
 ## String Manipulation
 
 - trim(string) -> string: Remove leading and trailing whitespace
@@ -87,14 +69,15 @@ See [String Formatting (fmt)](fmt.md) for detailed documentation.
 
 ```bash
 # String manipulation examples
+tva expr -E 'trim("  hello  ")'             # Returns: "hello"
 tva expr -E 'upper("hello")'                # Returns: "HELLO"
 tva expr -E 'lower("WORLD")'                # Returns: "world"
 tva expr -E 'len("hello")'                  # Returns: 5
 tva expr -E 'char_len("你好")'               # Returns: 2 (UTF-8 characters)
-tva expr -E 'substr("hello", 1, 3)'         # Returns: "ell"
+tva expr -E 'substr("hello world", 0, 5)'   # Returns: "hello"
 
 tva expr -E 'split("1,2,3", ",")'           # Returns: ["1", "2", "3"]
-tva expr -E 'split("1-2-3", "-").reverse()' # Returns: ["3", "2", "1"]
+tva expr -E 'split("1,2,3", ",") | join(_, "-")'  # Returns: "1-2-3"
 
 tva expr -E 'contains("hello", "ll")'       # Returns: true
 tva expr -E 'starts_with("hello", "he")'    # Returns: true
@@ -103,7 +86,6 @@ tva expr -E 'ends_with("hello", "lo")'      # Returns: true
 tva expr -E 'replace("hello", "l", "x")'    # Returns: "hexxo"
 tva expr -E 'truncate("hello world", 5)'    # Returns: "he..."
 tva expr -E 'wordcount("hello world")'      # Returns: 2
-tva expr -E 'wordcount("one two three four")'  # Returns: 4
 
 # fmt() - String formatting (see fmt.md for complete documentation)
 tva expr -E 'fmt("Hello %()!", "World")'                    # Returns: "Hello World!"
@@ -119,6 +101,36 @@ tva expr -E 'map([1, 2, 3], x => fmt("value: %(x)"))'
 # Using different delimiters to avoid conflicts
 tva expr -E 'fmt(q(The "value" is %[1]), 42)'
 ```
+
+## Generic Functions
+
+These functions have different implementations for different argument types.
+The implementation is selected at runtime based on the first argument type.
+
+- len(value) -> int: Returns length of string (bytes) or list (element count)
+- is_empty(value) -> bool: Check if string or list is empty
+- contains(value, item) -> bool: Check if string contains substring, or list contains element
+- take(value, n) -> T: Take first n elements from string or list
+- drop(value, n) -> T: Drop first n elements from string or list
+- concat(value1, value2, ...) -> T: Concatenate strings or lists
+
+## Range Generation
+
+- range(upto) -> list: Generate numbers from 0 to upto (exclusive), step 1
+- range(from, upto) -> list: Generate numbers from from (inclusive) to upto (exclusive), step 1
+- range(from, upto, by) -> list: Generate numbers from from (inclusive) to upto (exclusive), step by
+
+The range function produces a list of numbers. Similar to jq's range:
+
+```bash
+tva expr -E 'range(4) | join(_, ", ")'          # Returns: "0, 1, 2, 3"
+tva expr -E 'range(2, 5) | join(_, ", ")'        # Returns: "2, 3, 4"
+tva expr -E 'range(0, 10, 3) | join(_, ", ")'    # Returns: "0, 3, 6, 9"
+tva expr -E 'range(0, -5, -1) | join(_, ", ")'   # Returns: "0, -1, -2, -3, -4"
+```
+
+Note: If step direction doesn't match the range direction (e.g., positive step with from > upto),
+returns empty list.
 
 ## List Operations
 
@@ -190,21 +202,20 @@ tva expr -E 'grouped([1, 2, 3, 4, 5], 2)'      # Returns: [[1, 2], [3, 4], [5]]
 tva expr -E 'grouped([1, 2, 3, 4], 2)'         # Returns: [[1, 2], [3, 4]]
 ```
 
-## Range Generation
+## Logic & Control
 
-- range(upto) -> list: Generate numbers from 0 to upto (exclusive), step 1
-- range(from, upto) -> list: Generate numbers from from (inclusive) to upto (exclusive), step 1
-- range(from, upto, by) -> list: Generate numbers from from (inclusive) to upto (exclusive), step by
+- if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (
+  or null)
+- default(val, fallback) -> T: Returns fallback if val is null or empty
 
-The range function produces a list of numbers. Similar to jq's range:
+```bash
+# Conditional expressions
+tva expr -E 'if(true, "yes", "no")'       # Returns: "yes"
+tva expr -E 'if(false, "yes", "no")'      # Returns: "no"
 
-- `range(4)` produces `[0, 1, 2, 3]`
-- `range(2, 4)` produces `[2, 3]`
-- `range(0, 10, 3)` produces `[0, 3, 6, 9]`
-- `range(0, -5, -1)` produces `[0, -1, -2, -3, -4]`
-
-Note: If step direction doesn't match the range direction (e.g., positive step with from > upto),
-returns empty list.
+# Default values for null/empty
+tva expr -E 'default(null, "fallback")'     # Returns: "fallback"
+```
 
 ## Higher-Order Functions
 
@@ -219,12 +230,12 @@ returns empty list.
 
 ```bash
 # Double each number
-tva expr -E 'map([1, 2, 3], x => x * 2)'
-# Returns: [2, 4, 6]
+tva expr -E 'map([1, 2, 3], x => x * 2) | join(_, ", ")'
+# Returns: "2, 4, 6"
 
 # Keep numbers greater than 2
-tva expr -E 'filter([1, 2, 3, 4], x => x > 2)'
-# Returns: [3, 4]
+tva expr -E 'filter([1, 2, 3, 4], x => x > 2) | join(_, ", ")'
+# Returns: "3, 4"
 
 # Sum all numbers (0 + 1 + 2 + 3)
 tva expr -E 'reduce([1, 2, 3], 0, (acc, x) => acc + x)'
@@ -279,8 +290,8 @@ tva expr -E 'filter_index([1, 2, 3, 4, 5], x => x % 2 == 0)'
 # Returns: [1, 3]
 
 # Concatenate lists
-tva expr -E 'concat([1, 2], [3, 4])'
-# Returns: [1, 2, 3, 4]
+tva expr -E 'concat([1, 2], [3, 4]) | join(_, ", ")'
+# Returns: "1, 2, 3, 4"
 
 # Concatenate strings (alternative to ++ operator)
 tva expr -E 'concat("hello", " ", "world")'
@@ -295,6 +306,17 @@ tva expr -E 'concat("hello", " ", "world")'
 - regex_extract(string, pattern, group?) -> string: Extract capture group
 - regex_replace(string, pattern, to) -> string: Regex replace
 
+```bash
+# Check if string matches regex pattern
+tva expr -E 'regex_match("hello", "h.*o")'           # Returns: true
+
+# Extract capture group from string
+tva expr -E 'regex_extract("hello world", "(\\w+)", 1)'  # Returns: "hello"
+
+# Replace using regex
+tva expr -E 'regex_replace("hello 123", "\\d+", "XXX")'  # Returns: "hello XXX"
+```
+
 ## Encoding & Hashing
 
 - md5(string) -> string: MD5 hash (hex)
@@ -302,11 +324,25 @@ tva expr -E 'concat("hello", " ", "world")'
 - base64(string) -> string: Base64 encode
 - unbase64(string) -> string: Base64 decode
 
+```bash
+# MD5 hash
+tva expr -E 'md5("hello")'           # Returns: "5d41402abc4b2a76b9719d911017c592"
+
+# Base64 encoding and decoding
+tva expr -E 'base64("hello")'        # Returns: "aGVsbG8="
+tva expr -E 'unbase64("aGVsbG8=")'   # Returns: "hello"
+```
+
 ## Date & Time
 
 - now() -> datetime: Current time
 - strptime(string, format) -> datetime: Parse datetime
 - strftime(datetime, format) -> string: Format datetime
+
+```bash
+# Current datetime
+tva expr -E 'now()'                  # Returns: current datetime (e.g., "2026-03-19T10:30:00+08:00")
+```
 
 ## IO
 
