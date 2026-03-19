@@ -19,7 +19,7 @@ Unix philosophy.
 * [eBay's tsv-utils](https://github.com/eBay/tsv-utils) (discontinued): The primary reference for
   functionality and performance.
 * [GNU Datamash](https://www.gnu.org/software/datamash/): Statistical operations.
-* [R's tidyr](https://tidyr.tidyverse.org/): Reshaping concepts (`longer`, `wider`).
+* [R's tidyverse](https://tidyr.tidyverse.org/): Reshaping concepts and string manipulation.
 * [xan](https://github.com/medialab/xan): DSL and terminal-based plotting.
 
 **Use Cases**
