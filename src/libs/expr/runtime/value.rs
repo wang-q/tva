@@ -355,6 +355,7 @@ impl Rem for Value {
 mod tests {
     use super::*;
     use crate::libs::expr::EvalError;
+    use test_case::test_case;
 
     #[test]
     fn test_value_arithmetic() {
@@ -407,17 +408,17 @@ mod tests {
         assert_eq!(a.pow(&b), Some(Value::Float(8.0)));
     }
 
-    #[test]
-    fn test_as_bool() {
-        assert_eq!(Value::Null.as_bool(), false);
-        assert_eq!(Value::Bool(true).as_bool(), true);
-        assert_eq!(Value::Bool(false).as_bool(), false);
-        assert_eq!(Value::Int(0).as_bool(), false);
-        assert_eq!(Value::Int(5).as_bool(), true);
-        assert_eq!(Value::Float(0.0).as_bool(), false);
-        assert_eq!(Value::Float(1.5).as_bool(), true);
-        assert_eq!(Value::String("".to_string()).as_bool(), false);
-        assert_eq!(Value::String("hello".to_string()).as_bool(), true);
+    #[test_case(Value::Null, false ; "as_bool_null")]
+    #[test_case(Value::Bool(true), true ; "as_bool_true")]
+    #[test_case(Value::Bool(false), false ; "as_bool_false")]
+    #[test_case(Value::Int(0), false ; "as_bool_int_zero")]
+    #[test_case(Value::Int(5), true ; "as_bool_int_nonzero")]
+    #[test_case(Value::Float(0.0), false ; "as_bool_float_zero")]
+    #[test_case(Value::Float(1.5), true ; "as_bool_float_nonzero")]
+    #[test_case(Value::String("".to_string()), false ; "as_bool_empty_string")]
+    #[test_case(Value::String("hello".to_string()), true ; "as_bool_non_empty_string")]
+    fn test_as_bool(input: Value, expected: bool) {
+        assert_eq!(input.as_bool(), expected);
     }
 
     #[test]
@@ -590,139 +591,85 @@ mod tests {
         assert_eq!(b.compare(&c), Some(std::cmp::Ordering::Less)); // [1, "c"] < [2, "b"]
     }
 
-    #[test]
-    fn test_is_numeric() {
-        assert_eq!(Value::Int(42).is_numeric(), true);
-        assert_eq!(Value::Float(3.14).is_numeric(), true);
-        assert_eq!(Value::Null.is_numeric(), false);
-        assert_eq!(Value::Bool(true).is_numeric(), false);
-        assert_eq!(Value::String("123".to_string()).is_numeric(), false);
-        assert_eq!(Value::List(vec![]).is_numeric(), false);
-        assert_eq!(Value::DateTime(chrono::Utc::now()).is_numeric(), false);
-        assert_eq!(
-            Value::Lambda(LambdaValue {
-                params: vec![],
-                body: crate::libs::expr::parser::ast::Expr::Int(1),
-                captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
-            })
-            .is_numeric(),
-            false
-        );
+    #[test_case(Value::Int(42), true ; "is_numeric_int")]
+    #[test_case(Value::Float(3.14), true ; "is_numeric_float")]
+    #[test_case(Value::Null, false ; "is_numeric_null")]
+    #[test_case(Value::Bool(true), false ; "is_numeric_bool")]
+    #[test_case(Value::String("123".to_string()), false ; "is_numeric_string")]
+    #[test_case(Value::List(vec![]), false ; "is_numeric_list")]
+    fn test_is_numeric(input: Value, expected: bool) {
+        assert_eq!(input.is_numeric(), expected);
     }
 
-    #[test]
-    fn test_is_null() {
-        assert_eq!(Value::Null.is_null(), true);
-        assert_eq!(Value::Int(42).is_null(), false);
-        assert_eq!(Value::Bool(false).is_null(), false);
-        assert_eq!(Value::String("".to_string()).is_null(), false);
+    #[test_case(Value::Null, true ; "is_null_null")]
+    #[test_case(Value::Int(42), false ; "is_null_int")]
+    #[test_case(Value::Bool(false), false ; "is_null_bool")]
+    #[test_case(Value::String("".to_string()), false ; "is_null_string")]
+    fn test_is_null(input: Value, expected: bool) {
+        assert_eq!(input.is_null(), expected);
     }
 
-    #[test]
-    fn test_type_name() {
-        assert_eq!(Value::Null.type_name(), "null");
-        assert_eq!(Value::Bool(true).type_name(), "bool");
-        assert_eq!(Value::Int(42).type_name(), "int");
-        assert_eq!(Value::Float(3.14).type_name(), "float");
-        assert_eq!(Value::String("hello".to_string()).type_name(), "string");
-        assert_eq!(Value::List(vec![]).type_name(), "list");
-        assert_eq!(Value::DateTime(chrono::Utc::now()).type_name(), "datetime");
-        assert_eq!(
-            Value::Lambda(LambdaValue {
-                params: vec![],
-                body: crate::libs::expr::parser::ast::Expr::Int(1),
-                captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
-            })
-            .type_name(),
-            "lambda"
-        );
+    #[test_case(Value::Null, "null" ; "type_name_null")]
+    #[test_case(Value::Bool(true), "bool" ; "type_name_bool")]
+    #[test_case(Value::Int(42), "int" ; "type_name_int")]
+    #[test_case(Value::Float(3.14), "float" ; "type_name_float")]
+    #[test_case(Value::String("hello".to_string()), "string" ; "type_name_string")]
+    #[test_case(Value::List(vec![]), "list" ; "type_name_list")]
+    fn test_type_name(input: Value, expected: &str) {
+        assert_eq!(input.type_name(), expected);
     }
 
-    #[test]
-    fn test_to_string() {
-        assert_eq!(Value::Null.to_string(), "null");
-        assert_eq!(Value::Bool(true).to_string(), "true");
-        assert_eq!(Value::Bool(false).to_string(), "false");
-        assert_eq!(Value::Int(42).to_string(), "42");
-        assert_eq!(Value::Float(3.14).to_string(), "3.14");
-        assert_eq!(Value::String("hello".to_string()).to_string(), "hello");
-        assert_eq!(
-            Value::List(vec![Value::Int(1), Value::Int(2)]).to_string(),
-            "[Int(1), Int(2)]"
-        );
-        let dt = chrono::Utc::now();
-        assert_eq!(Value::DateTime(dt).to_string(), dt.to_rfc3339());
-        assert_eq!(
-            Value::Lambda(LambdaValue {
-                params: vec![],
-                body: crate::libs::expr::parser::ast::Expr::Int(1),
-                captured_vars: HashMap::with_hasher(ahash::RandomState::new()),
-            })
-            .to_string(),
-            "<lambda>"
-        );
+    #[test_case(Value::Null, "null" ; "to_string_null")]
+    #[test_case(Value::Bool(true), "true" ; "to_string_true")]
+    #[test_case(Value::Bool(false), "false" ; "to_string_false")]
+    #[test_case(Value::Int(42), "42" ; "to_string_int")]
+    #[test_case(Value::Float(3.14), "3.14" ; "to_string_float")]
+    #[test_case(Value::String("hello".to_string()), "hello" ; "to_string_string")]
+    fn test_to_string(input: Value, expected: &str) {
+        assert_eq!(input.to_string(), expected);
     }
 
-    #[test]
-    fn test_as_string() {
-        assert_eq!(Value::String("hello".to_string()).as_string(), "hello");
-        assert_eq!(Value::Int(42).as_string(), "42");
-        assert_eq!(Value::Null.as_string(), "null");
-        assert_eq!(Value::Bool(true).as_string(), "true");
+    #[test_case(Value::String("hello".to_string()), "hello" ; "as_string_string")]
+    #[test_case(Value::Int(42), "42" ; "as_string_int")]
+    #[test_case(Value::Null, "null" ; "as_string_null")]
+    #[test_case(Value::Bool(true), "true" ; "as_string_bool")]
+    fn test_as_string(input: Value, expected: &str) {
+        assert_eq!(input.as_string(), expected);
     }
 
-    #[test]
-    fn test_as_int() {
-        // Int
-        assert_eq!(Value::Int(42).as_int(), Some(42));
-        // Float (truncates)
-        assert_eq!(Value::Float(3.7).as_int(), Some(3));
-        // String that parses
-        assert_eq!(Value::String("123".to_string()).as_int(), Some(123));
-        // String that doesn't parse
-        assert_eq!(Value::String("abc".to_string()).as_int(), None);
-        // Bool
-        assert_eq!(Value::Bool(true).as_int(), Some(1));
-        assert_eq!(Value::Bool(false).as_int(), Some(0));
-        // Other types return None
-        assert_eq!(Value::Null.as_int(), None);
-        assert_eq!(Value::List(vec![]).as_int(), None);
+    #[test_case(Value::Int(42), Some(42) ; "as_int_int")]
+    #[test_case(Value::Float(3.7), Some(3) ; "as_int_float")]
+    #[test_case(Value::String("123".to_string()), Some(123) ; "as_int_string_parses")]
+    #[test_case(Value::String("abc".to_string()), None ; "as_int_string_no_parse")]
+    #[test_case(Value::Bool(true), Some(1) ; "as_int_bool_true")]
+    #[test_case(Value::Bool(false), Some(0) ; "as_int_bool_false")]
+    #[test_case(Value::Null, None ; "as_int_null")]
+    #[test_case(Value::List(vec![]), None ; "as_int_list")]
+    fn test_as_int(input: Value, expected: Option<i64>) {
+        assert_eq!(input.as_int(), expected);
     }
 
-    #[test]
-    fn test_as_f64_non_numeric() {
-        assert_eq!(Value::Null.as_f64(), None);
-        assert_eq!(Value::Bool(true).as_f64(), None);
-        assert_eq!(Value::String("hello".to_string()).as_f64(), None);
-        assert_eq!(Value::List(vec![]).as_f64(), None);
-        assert_eq!(Value::DateTime(chrono::Utc::now()).as_f64(), None);
+    #[test_case(Value::Float(3.14), Some(3.14) ; "as_float_float")]
+    #[test_case(Value::Int(42), None ; "as_float_int")]
+    #[test_case(Value::Null, None ; "as_float_null")]
+    fn test_as_float(input: Value, expected: Option<f64>) {
+        assert_eq!(input.as_float(), expected);
     }
 
-    #[test]
-    fn test_as_float() {
-        assert_eq!(Value::Float(3.14).as_float(), Some(3.14));
-        assert_eq!(Value::Int(42).as_float(), None);
-        assert_eq!(Value::Null.as_float(), None);
-    }
-
-    #[test]
-    fn test_as_bool_with_list() {
-        // Empty list is falsy
-        assert_eq!(Value::List(vec![]).as_bool(), false);
-        // Non-empty list is truthy
-        assert_eq!(Value::List(vec![Value::Int(1)]).as_bool(), true);
+    #[test_case(Value::List(vec![]), false ; "as_bool_empty_list")]
+    #[test_case(Value::List(vec![Value::Int(1)]), true ; "as_bool_non_empty_list")]
+    fn test_as_bool_with_list(input: Value, expected: bool) {
+        assert_eq!(input.as_bool(), expected);
     }
 
     #[test]
     fn test_as_bool_with_datetime() {
         use chrono::Utc;
-        // DateTime is always truthy
         assert_eq!(Value::DateTime(Utc::now()).as_bool(), true);
     }
 
     #[test]
     fn test_as_bool_with_lambda() {
-        // Lambda is always truthy
         let lambda = Value::Lambda(LambdaValue {
             params: vec!["x".to_string()],
             body: crate::libs::expr::parser::ast::Expr::LambdaParam("x".to_string()),
