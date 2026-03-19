@@ -730,6 +730,7 @@ fn format_string(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_case::test_case;
 
     #[test]
     fn test_trim() {
@@ -899,9 +900,14 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_trim_null() {
-        assert_eq!(trim(&[Value::Null]).unwrap(), Value::Null);
+    #[test_case(trim, Value::Null, Value::Null ; "trim_null")]
+    #[test_case(upper, Value::Null, Value::Null ; "upper_null")]
+    #[test_case(lower, Value::Null, Value::Null ; "lower_null")]
+    fn test_string_null<F>(f: F, input: Value, expected: Value)
+    where
+        F: Fn(&[Value]) -> Result<Value, EvalError>,
+    {
+        assert_eq!(f(&[input]).unwrap(), expected);
     }
 
     #[test]
@@ -911,43 +917,15 @@ mod tests {
 
     // Additional tests to improve coverage
 
-    #[test]
-    fn test_trim_non_string() {
-        // trim with non-string, non-null value
-        assert_eq!(
-            trim(&[Value::Int(123)]).unwrap(),
-            Value::String("123".to_string())
-        );
-        assert_eq!(
-            trim(&[Value::Bool(true)]).unwrap(),
-            Value::String("true".to_string())
-        );
-    }
-
-    #[test]
-    fn test_upper_null() {
-        assert_eq!(upper(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_upper_non_string() {
-        assert_eq!(
-            upper(&[Value::Int(123)]).unwrap(),
-            Value::String("123".to_string())
-        );
-    }
-
-    #[test]
-    fn test_lower_null() {
-        assert_eq!(lower(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_lower_non_string() {
-        assert_eq!(
-            lower(&[Value::Int(123)]).unwrap(),
-            Value::String("123".to_string())
-        );
+    #[test_case(trim, Value::Int(123), "123" ; "trim_non_string_int")]
+    #[test_case(trim, Value::Bool(true), "true" ; "trim_non_string_bool")]
+    #[test_case(upper, Value::Int(123), "123" ; "upper_non_string")]
+    #[test_case(lower, Value::Int(123), "123" ; "lower_non_string")]
+    fn test_string_non_string<F>(f: F, input: Value, expected: &str)
+    where
+        F: Fn(&[Value]) -> Result<Value, EvalError>,
+    {
+        assert_eq!(f(&[input]).unwrap(), Value::String(expected.to_string()));
     }
 
     #[test]
@@ -1003,39 +981,16 @@ mod tests {
             .contains("truncate: length must be a number"));
     }
 
-    #[test]
-    fn test_contains_not_found() {
+    #[test_case(contains, "hello world", "foo", false ; "contains_not_found")]
+    #[test_case(starts_with, "hello", "lo", false ; "starts_with_false")]
+    #[test_case(ends_with, "hello", "he", false ; "ends_with_false")]
+    fn test_string_bool_false<F>(f: F, s: &str, pat: &str, expected: bool)
+    where
+        F: Fn(&[Value]) -> Result<Value, EvalError>,
+    {
         assert_eq!(
-            contains(&[
-                Value::String("hello world".to_string()),
-                Value::String("foo".to_string()),
-            ])
-            .unwrap(),
-            Value::Bool(false)
-        );
-    }
-
-    #[test]
-    fn test_starts_with_false() {
-        assert_eq!(
-            starts_with(&[
-                Value::String("hello".to_string()),
-                Value::String("lo".to_string()),
-            ])
-            .unwrap(),
-            Value::Bool(false)
-        );
-    }
-
-    #[test]
-    fn test_ends_with_false() {
-        assert_eq!(
-            ends_with(&[
-                Value::String("hello".to_string()),
-                Value::String("he".to_string()),
-            ])
-            .unwrap(),
-            Value::Bool(false)
+            f(&[Value::String(s.to_string()), Value::String(pat.to_string())]).unwrap(),
+            Value::Bool(expected)
         );
     }
 
@@ -1069,25 +1024,20 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_wordcount_single_word() {
+    #[test_case(wordcount, "hello", 1 ; "wordcount_single")]
+    #[test_case(char_len, "", 0 ; "char_len_empty")]
+    fn test_string_single<F>(f: F, input: &str, expected: i64)
+    where
+        F: Fn(&[Value]) -> Result<Value, EvalError>,
+    {
         assert_eq!(
-            wordcount(&[Value::String("hello".to_string())]).unwrap(),
-            Value::Int(1)
-        );
-    }
-
-    #[test]
-    fn test_char_len_empty() {
-        assert_eq!(
-            char_len(&[Value::String("".to_string())]).unwrap(),
-            Value::Int(0)
+            f(&[Value::String(input.to_string())]).unwrap(),
+            Value::Int(expected)
         );
     }
 
     #[test]
     fn test_substr_partial() {
-        // Substr that extends beyond string length
         assert_eq!(
             substr(&[
                 Value::String("hello".to_string()),
@@ -1100,81 +1050,39 @@ mod tests {
     }
 
     // Tests moved from src/libs/expr/tests/functions.rs
-    #[test]
-    fn test_trim_integration() {
+    #[test_case("trim", "  hello  ", "hello" ; "trim_integration")]
+    #[test_case("upper", "hello", "HELLO" ; "upper_integration")]
+    #[test_case("lower", "HELLO", "hello" ; "lower_integration")]
+    #[test_case("len", "hello", "5" ; "len_integration")]
+    fn test_string_integration(func: &str, input: &str, expected: &str) {
         use crate::libs::expr::eval_expr;
-        let row: Vec<String> = vec!["  hello  ".to_string()];
+        let row: Vec<String> = vec![input.to_string()];
         assert_eq!(
-            eval_expr("trim(@1)", &row, None).unwrap().to_string(),
-            "hello"
+            eval_expr(&format!("{}(@1)", func), &row, None)
+                .unwrap()
+                .to_string(),
+            expected
         );
-    }
-
-    #[test]
-    fn test_upper_integration() {
-        use crate::libs::expr::eval_expr;
-        let row: Vec<String> = vec!["hello".to_string()];
-        assert_eq!(
-            eval_expr("upper(@1)", &row, None).unwrap().to_string(),
-            "HELLO"
-        );
-    }
-
-    #[test]
-    fn test_lower_integration() {
-        use crate::libs::expr::eval_expr;
-        let row: Vec<String> = vec!["HELLO".to_string()];
-        assert_eq!(
-            eval_expr("lower(@1)", &row, None).unwrap().to_string(),
-            "hello"
-        );
-    }
-
-    #[test]
-    fn test_len_integration() {
-        use crate::libs::expr::eval_expr;
-        let row: Vec<String> = vec!["hello".to_string()];
-        assert_eq!(eval_expr("len(@1)", &row, None).unwrap().to_string(), "5");
     }
 
     // Tests for is_empty
-    #[test]
-    fn test_is_empty_string() {
-        assert_eq!(
-            is_empty(&[Value::String("".to_string())]).unwrap(),
-            Value::Bool(true)
-        );
-        assert_eq!(
-            is_empty(&[Value::String("hello".to_string())]).unwrap(),
-            Value::Bool(false)
-        );
-    }
-
-    #[test]
-    fn test_is_empty_null() {
-        assert_eq!(is_empty(&[Value::Null]).unwrap(), Value::Bool(true));
-    }
-
-    #[test]
-    fn test_is_empty_non_string() {
-        assert_eq!(is_empty(&[Value::Int(123)]).unwrap(), Value::Bool(false));
-        assert_eq!(is_empty(&[Value::Bool(true)]).unwrap(), Value::Bool(false));
+    #[test_case(Value::String("".to_string()), true ; "is_empty_empty")]
+    #[test_case(Value::String("hello".to_string()), false ; "is_empty_non_empty")]
+    #[test_case(Value::Null, true ; "is_empty_null")]
+    #[test_case(Value::Int(123), false ; "is_empty_int")]
+    #[test_case(Value::Bool(true), false ; "is_empty_bool")]
+    fn test_is_empty(input: Value, expected: bool) {
+        assert_eq!(is_empty(&[input]).unwrap(), Value::Bool(expected));
     }
 
     // Tests for take
-    #[test]
-    fn test_take_string() {
+    #[test_case(2i64, "he" ; "take_normal")]
+    #[test_case(10i64, "hello" ; "take_beyond_length")]
+    #[test_case(0i64, "" ; "take_zero")]
+    fn test_take_string(n: i64, expected: &str) {
         assert_eq!(
-            take(&[Value::String("hello".to_string()), Value::Int(2)]).unwrap(),
-            Value::String("he".to_string())
-        );
-        assert_eq!(
-            take(&[Value::String("hello".to_string()), Value::Int(10)]).unwrap(),
-            Value::String("hello".to_string())
-        );
-        assert_eq!(
-            take(&[Value::String("hello".to_string()), Value::Int(0)]).unwrap(),
-            Value::String("".to_string())
+            take(&[Value::String("hello".to_string()), Value::Int(n)]).unwrap(),
+            Value::String(expected.to_string())
         );
     }
 
@@ -1188,7 +1096,6 @@ mod tests {
 
     #[test]
     fn test_take_string_negative() {
-        // Negative number should be treated as 0
         assert_eq!(
             take(&[Value::String("hello".to_string()), Value::Int(-1)]).unwrap(),
             Value::String("".to_string())
@@ -1205,19 +1112,13 @@ mod tests {
     }
 
     // Tests for drop
-    #[test]
-    fn test_drop_string() {
+    #[test_case(2i64, "llo" ; "drop_normal")]
+    #[test_case(10i64, "" ; "drop_beyond_length")]
+    #[test_case(0i64, "hello" ; "drop_zero")]
+    fn test_drop_string(n: i64, expected: &str) {
         assert_eq!(
-            drop(&[Value::String("hello".to_string()), Value::Int(2)]).unwrap(),
-            Value::String("llo".to_string())
-        );
-        assert_eq!(
-            drop(&[Value::String("hello".to_string()), Value::Int(10)]).unwrap(),
-            Value::String("".to_string())
-        );
-        assert_eq!(
-            drop(&[Value::String("hello".to_string()), Value::Int(0)]).unwrap(),
-            Value::String("hello".to_string())
+            drop(&[Value::String("hello".to_string()), Value::Int(n)]).unwrap(),
+            Value::String(expected.to_string())
         );
     }
 
@@ -1231,7 +1132,6 @@ mod tests {
 
     #[test]
     fn test_drop_string_negative() {
-        // Negative number should be treated as 0
         assert_eq!(
             drop(&[Value::String("hello".to_string()), Value::Int(-1)]).unwrap(),
             Value::String("hello".to_string())
@@ -1248,30 +1148,20 @@ mod tests {
     }
 
     // Tests for concat
-    #[test]
-    fn test_concat_strings() {
-        assert_eq!(
-            concat(&[
-                Value::String("hello".to_string()),
-                Value::String("world".to_string())
-            ])
-            .unwrap(),
-            Value::String("helloworld".to_string())
-        );
-        assert_eq!(
-            concat(&[
-                Value::String("a".to_string()),
-                Value::String("b".to_string()),
-                Value::String("c".to_string()),
-            ])
-            .unwrap(),
-            Value::String("abc".to_string())
-        );
+    #[test_case(&["hello", "world"][..], "helloworld" ; "concat_two_strings")]
+    #[test_case(&["a", "b", "c"][..], "abc" ; "concat_three_strings")]
+    #[test_case(&[][..], "" ; "concat_empty")]
+    #[test_case(&["hello"][..], "hello" ; "concat_single")]
+    fn test_concat_strings(inputs: &[&str], expected: &str) {
+        let args: Vec<Value> = inputs
+            .iter()
+            .map(|s| Value::String(s.to_string()))
+            .collect();
+        assert_eq!(concat(&args).unwrap(), Value::String(expected.to_string()));
     }
 
     #[test]
     fn test_concat_with_numbers() {
-        // Numbers should be converted to strings
         assert_eq!(
             concat(&[Value::Int(1), Value::Int(2), Value::Int(3)]).unwrap(),
             Value::String("123".to_string())
@@ -1282,112 +1172,37 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_concat_empty() {
-        assert_eq!(concat(&[]).unwrap(), Value::String("".to_string()));
-    }
-
-    #[test]
-    fn test_concat_single() {
-        assert_eq!(
-            concat(&[Value::String("hello".to_string())]).unwrap(),
-            Value::String("hello".to_string())
-        );
-    }
-
     // Tests for fmt function
-    #[test]
-    fn test_fmt_basic() {
+    #[test_case("hello", &[][..], "hello" ; "fmt_basic")]
+    #[test_case("Hello, %()!", &["world"][..], "Hello, world!" ; "fmt_next_arg")]
+    #[test_case("%(1) + %(2) = %(3)", &["1", "2", "3"][..], "1 + 2 = 3" ; "fmt_indexed")]
+    #[test_case("Hello, %[]!", &["world"][..], "Hello, world!" ; "fmt_bracket")]
+    #[test_case("Hello, %{}!", &["world"][..], "Hello, world!" ; "fmt_brace")]
+    #[test_case("100%% complete", &[][..], "100% complete" ; "fmt_escaped")]
+    fn test_fmt_simple(template: &str, args: &[&str], expected: &str) {
+        let mut fmt_args = vec![Value::String(template.to_string())];
+        fmt_args.extend(args.iter().map(|s| Value::String(s.to_string())));
+        assert_eq!(fmt(&fmt_args).unwrap(), Value::String(expected.to_string()));
+    }
+
+    #[test_case("%(1:08b)", Value::Int(42), "00101010" ; "fmt_format_spec_binary")]
+    #[test_case("%(1:.2)", Value::Float(3.14159), "3.14" ; "fmt_format_spec_float")]
+    #[test_case("%(1:>10)", Value::String("hi".to_string()), "        hi" ; "fmt_format_spec_width")]
+    fn test_fmt_with_format_spec(template: &str, arg: Value, expected: &str) {
         assert_eq!(
-            fmt(&[Value::String("hello".to_string())]).unwrap(),
-            Value::String("hello".to_string())
+            fmt(&[Value::String(template.to_string()), arg]).unwrap(),
+            Value::String(expected.to_string())
         );
     }
 
-    #[test]
-    fn test_fmt_with_next_arg() {
-        assert_eq!(
-            fmt(&[
-                Value::String("Hello, %()!".to_string()),
-                Value::String("world".to_string()),
-            ])
-            .unwrap(),
-            Value::String("Hello, world!".to_string())
-        );
-    }
-
-    #[test]
-    fn test_fmt_with_indexed_arg() {
-        assert_eq!(
-            fmt(&[
-                Value::String("%(1) + %(2) = %(3)".to_string()),
-                Value::Int(1),
-                Value::Int(2),
-                Value::Int(3),
-            ])
-            .unwrap(),
-            Value::String("1 + 2 = 3".to_string())
-        );
-    }
-
-    #[test]
-    fn test_fmt_with_bracket_delim() {
-        assert_eq!(
-            fmt(&[
-                Value::String("Hello, %[]!".to_string()),
-                Value::String("world".to_string()),
-            ])
-            .unwrap(),
-            Value::String("Hello, world!".to_string())
-        );
-    }
-
-    #[test]
-    fn test_fmt_with_brace_delim() {
-        assert_eq!(
-            fmt(&[
-                Value::String("Hello, %{}!".to_string()),
-                Value::String("world".to_string()),
-            ])
-            .unwrap(),
-            Value::String("Hello, world!".to_string())
-        );
-    }
-
-    #[test]
-    fn test_fmt_escaped_percent() {
-        assert_eq!(
-            fmt(&[Value::String("100%% complete".to_string())]).unwrap(),
-            Value::String("100% complete".to_string())
-        );
-    }
-
-    #[test]
-    fn test_fmt_with_format_spec() {
-        assert_eq!(
-            fmt(&[Value::String("%(1:08b)".to_string()), Value::Int(42),]).unwrap(),
-            Value::String("00101010".to_string())
-        );
-    }
-
-    #[test]
-    fn test_fmt_not_enough_args() {
-        let result = fmt(&[
-            Value::String("Hello, %()!".to_string()),
-            // Missing argument
-        ]);
+    #[test_case("Hello, %()!", &[][..], "not enough arguments" ; "fmt_not_enough_args")]
+    #[test_case("%(5)", &["1"][..], "out of range" ; "fmt_index_out_of_range")]
+    fn test_fmt_error(template: &str, args: &[&str], expected_err: &str) {
+        let mut fmt_args = vec![Value::String(template.to_string())];
+        fmt_args.extend(args.iter().map(|s| Value::String(s.to_string())));
+        let result = fmt(&fmt_args);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("not enough arguments"));
-    }
-
-    #[test]
-    fn test_fmt_index_out_of_range() {
-        let result = fmt(&[Value::String("%(5)".to_string()), Value::Int(1)]);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("out of range"));
+        assert!(result.unwrap_err().to_string().contains(expected_err));
     }
 
     #[test]
@@ -1395,26 +1210,5 @@ mod tests {
         let result = fmt(&[]);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("expected 1"));
-    }
-
-    #[test]
-    fn test_fmt_with_float_format() {
-        assert_eq!(
-            fmt(&[Value::String("%(1:.2)".to_string()), Value::Float(3.14159),])
-                .unwrap(),
-            Value::String("3.14".to_string())
-        );
-    }
-
-    #[test]
-    fn test_fmt_with_width_align() {
-        assert_eq!(
-            fmt(&[
-                Value::String("%(1:>10)".to_string()),
-                Value::String("hi".to_string()),
-            ])
-            .unwrap(),
-            Value::String("        hi".to_string())
-        );
     }
 }
