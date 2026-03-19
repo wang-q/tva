@@ -938,13 +938,13 @@ impl TsvSearcher {
 
 | 阶段 | 任务 | 预期性能提升 | 工作量 | 优先级 | 状态 |
 |:-----|:-----|:-------------|:-------|:-------|:-----|
-| **1** | **手写 SSE2 SIMD 单层扫描** | **+670%** | 高 | 🔥 **最高** | ⏳ 待实施 |
-| 1.1 | 实现 `Sse2Searcher` 结构 | - | - | 🔥 最高 | ⏳ 待实施 |
-| 1.2 | 集成 SIMD searcher 到 `TsvReader` | - | - | 🔥 最高 | ⏳ 待实施 |
-| 1.3 | 实现 `next_row_simd()` 方法 | - | - | 🔥 最高 | ⏳ 待实施 |
-| 2 | aarch64 NEON 单层扫描 | **+670%** | 高 | 中 | ⏳ 待实施 |
-| 2.1 | 实现 `NeonSearcher` 结构 | - | - | 中 | ⏳ 待实施 |
-| 2.2 | 集成 NEON searcher 到 `TsvReader` | - | - | 中 | ⏳ 待实施 |
+| **1** | **手写 SSE2 SIMD 单层扫描** | **+114%** | 高 | 🔥 **最高** | ✅ **已完成** |
+| 1.1 | 实现 `Sse2Searcher` 结构 | - | - | 🔥 最高 | ✅ 已完成 |
+| 1.2 | 集成 SIMD searcher 到 `TsvReader` | - | - | 🔥 最高 | ✅ 已完成 |
+| 1.3 | 实现 `next_row_sse2()` 方法 | - | - | 🔥 最高 | ✅ 已完成 |
+| 2 | aarch64 NEON 单层扫描 | **+114%** | 高 | 中 | ✅ **已完成** |
+| 2.1 | 实现 `NeonSearcher` 结构 | - | - | 中 | ✅ 已完成 |
+| 2.2 | 集成 NEON searcher 到 `TsvReader` | - | - | 中 | ✅ 已完成 |
 | ~~3~~ | ~~单层扫描架构（memchr2）~~ | ~~-47%~~ | ~~中等~~ | ❌ ~~取消~~ | ~~实测更慢~~ |
 | 4 | 缓冲区管理优化 | +2-3% | 中等 | 低 | 待定 |
 | 4.1 | 实现 `ReadBuffer` 结构 | - | - | 低 | 待定 |
@@ -957,7 +957,9 @@ impl TsvSearcher {
 - ✅ `seps` 字段改为 `Option<Vec<usize>>` 延迟初始化
 - ✅ `for_each_row()` 已迁移到使用 `next_row()`
 - ✅ `for_each_record()` 保持现状（两层扫描更快）
-- ❌ **单层扫描优化取消**：实测比两层扫描慢 47%，不可行
+- ✅ **手写 SSE2 SIMD 单层扫描完成**：`next_row_sse2()` 实现，性能提升 114%
+- ✅ **手写 NEON SIMD 单层扫描完成**：`next_row_neon()` 实现，aarch64 支持
+- ❌ ~~单层扫描优化取消~~：已重新实施 SSE2/NEON 版本
 
 ---
 
@@ -1006,24 +1008,118 @@ impl TsvSearcher {
 - **无需追求 AVX2**，SSE2 有更广泛的兼容性（所有 x86_64 都支持）
 - 手写 SIMD  searcher 的核心价值在于**单层扫描架构**，而非向量宽度
 
+#### SSE2 实施完成（2025-03-20）
+
+手写 SSE2 SIMD 单层扫描已成功实施并集成到 `TsvReader`。
+
+**创建的文件**：
+- `src/libs/tsv/sse2.rs` - SSE2 searcher 模块，包含 `Sse2Searcher` 结构和迭代器
+- `benches/tsv_reader_sse2.rs` - TsvReader SSE2 vs 标准实现性能对比
+
+**修改的文件**：
+- `src/libs/tsv/mod.rs` - 添加 SSE2 模块导出
+- `src/libs/tsv/reader.rs` - 添加 `next_row_sse2()` 方法
+- `Cargo.toml` - 添加 benchmark 配置
+
+**实际性能结果**（`benches/tsv_reader_sse2.rs`）：
+
+| 方法 | 数据规模 | 吞吐量 | 相对性能 |
+|:-----|:---------|:-------|:---------|
+| **next_row_sse2** (SSE2) | 10K rows, 50 cols | **2.82 GiB/s** | 🥇 最快 |
+| next_row_standard (memchr2) | 10K rows, 50 cols | 1.32 GiB/s | 慢 2.1x |
+| for_each_record (两层扫描) | 10K rows, 50 cols | 2.01 GiB/s | 慢 1.4x |
+
+**关键发现**：
+- **SSE2 版本比标准 `next_row` 快 114%**（2.82 vs 1.32 GiB/s）
+- **SSE2 版本比 `for_each_record` 快 40%**（2.82 vs 2.01 GiB/s）
+- 在小数据集（1K rows, 5 cols）上提升更明显：**SSE2 快 140%**
+
+**与理论预期的差距**：
+- 理论预期提升 670%（基于 `tsv_strategy_compare` 的 6.48 GiB/s）
+- 实际提升 114%（2.82 GiB/s）
+- **差距原因**：`TsvReader` 的缓冲区管理、行解析和字段提取开销，以及 `TsvRow` 的构建成本
+
+**使用方法**：
+```rust
+use tva::libs::tsv::reader::TsvReader;
+
+let mut reader = TsvReader::new(file);
+
+// 使用 SSE2 加速版本 (x86_64 only)
+unsafe {
+    while let Some(row) = reader.next_row_sse2()? {
+        for i in 1..=row.ends.len() {
+            if let Some(field) = row.get_bytes(i) {
+                // 处理字段
+            }
+        }
+    }
+}
+```
+
+**注意事项**：
+- SSE2 版本需要 `unsafe` 块（因为使用 SIMD 内部函数）
+- 仅在 x86_64 平台可用（自动条件编译）
+- SSE2 在所有 x86_64 CPU 上都可用，无需运行时检测
+
+#### NEON 实施完成（2025-03-20）
+
+手写 ARM NEON SIMD 单层扫描已成功实施并集成到 `TsvReader`，为 aarch64 平台提供与 SSE2 类似的性能优化。
+
+**创建的文件**：
+- `src/libs/tsv/neon.rs` - NEON searcher 模块，包含 `NeonSearcher` 结构和迭代器
+
+**修改的文件**：
+- `src/libs/tsv/mod.rs` - 添加 NEON 模块导出
+- `src/libs/tsv/reader.rs` - 添加 `next_row_neon()` 方法
+
+**实现细节**：
+- 使用 `uint8x16_t` 128-bit 向量（与 SSE2 的 `__m128i` 等效）
+- 使用 `vceqq_u8` 进行向量比较（等效于 SSE2 的 `_mm_cmpeq_epi8`）
+- 使用 `vmaxq_u8` 进行 OR 操作组合比较结果
+- NEON movemask 通过软件实现（NEON 没有硬件 movemask 指令）
+
+**使用方法**：
+```rust
+use tva::libs::tsv::reader::TsvReader;
+
+let mut reader = TsvReader::new(file);
+
+// 使用 NEON 加速版本 (aarch64 only)
+unsafe {
+    while let Some(row) = reader.next_row_neon()? {
+        for i in 1..=row.ends.len() {
+            if let Some(field) = row.get_bytes(i) {
+                // 处理字段
+            }
+        }
+    }
+}
+```
+
+**注意事项**：
+- NEON 版本需要 `unsafe` 块
+- 仅在 aarch64 平台可用（自动条件编译）
+- 所有 aarch64 CPU 都支持 NEON，无需运行时检测
+- 预期性能与 SSE2 版本相当（~114% 提升）
+
 #### 后续优化方向（再次修订）
 
 基于 `tsv_strategy_compare` 基准测试结果，重新调整优化策略：
 
 | 优先级 | 优化项 | 预期收益 | 实施难度 | 状态 |
 |:-----|:------|:---------|:---------|:-----|
-| **高** | 手写 SSE2 SIMD 单层扫描 | **+670%** | 高 | ⏳ 待实施 |
-| 中 | NEON (ARM) 单层扫描 | **+670%** | 高 | ⏳ 待实施 |
+| **高** | 手写 SSE2 SIMD 单层扫描 | **+114%** | 高 | ✅ **已完成** |
+| 中 | NEON (ARM) 单层扫描 | **+114%** | 高 | ✅ **已完成** |
 | 低 | AVX2 优化 | -25% | 高 | ❌ 不推荐 |
 | 低 | 优化 `for_each_record` 使用 `memchr2` | 可能负增长 | 低 | ❌ 取消 |
 | 低 | 缓冲区管理优化 | +2-3% | 中 | 待定 |
 
 **新的建议**：
-- **手写 SSE2 SIMD 单层扫描是最佳优化方向**：理论性能提升 670%
+- **SSE2 和 NEON 实施已完成**，实际提升 114%，虽低于理论 670%，但仍是显著改进
 - **不需要 AVX2**：实测比 SSE2 慢 25%，且兼容性更差
-- 需要为 x86_64 实现 SSE2 版本，为 aarch64 实现 NEON 版本
+- 主要 SIMD 优化已完成，x86_64 和 aarch64 平台都有手写 SIMD 实现
 - 参考 `simd-csv/searcher.rs` 的实现方式
-- 这是值得投入大量工作的优化方向
 
 #### 零拷贝设计（已部分实现）
 

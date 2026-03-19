@@ -1,6 +1,8 @@
 //! Benchmark comparing TsvReader with SSE2 vs standard implementation
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{
+    black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput,
+};
 use std::io::Cursor;
 use tva::libs::tsv::reader::TsvReader;
 use tva::libs::tsv::record::Row;

@@ -6,7 +6,9 @@
 //! 3. memchr two-pass (memchr + memchr_iter)
 //! 4. Current TsvReader implementations
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{
+    black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput,
+};
 use memchr::{memchr, memchr2, memchr_iter};
 
 // ============================================================================
@@ -16,7 +18,8 @@ use memchr::{memchr, memchr2, memchr_iter};
 #[cfg(target_arch = "x86_64")]
 mod sse2 {
     use core::arch::x86_64::{
-        __m128i, _mm_cmpeq_epi8, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128, _mm_set1_epi8,
+        __m128i, _mm_cmpeq_epi8, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128,
+        _mm_set1_epi8,
     };
 
     pub struct Sse2Searcher {
@@ -77,7 +80,9 @@ mod sse2 {
                 let remaining = self.haystack.len() - self.pos;
                 if remaining >= STEP {
                     let chunk = unsafe {
-                        _mm_loadu_si128(self.haystack.as_ptr().add(self.pos) as *const __m128i)
+                        _mm_loadu_si128(
+                            self.haystack.as_ptr().add(self.pos) as *const __m128i
+                        )
                     };
                     let cmp1 = unsafe { _mm_cmpeq_epi8(chunk, self.searcher.v_tab) };
                     let cmp2 = unsafe { _mm_cmpeq_epi8(chunk, self.searcher.v_newline) };
@@ -118,14 +123,144 @@ mod sse2 {
 }
 
 // ============================================================================
+// Hand-written NEON SIMD Searcher (aarch64)
+// ============================================================================
+
+#[cfg(target_arch = "aarch64")]
+mod neon {
+    use core::arch::aarch64::{
+        uint8x16_t, vceqq_u8, vdupq_n_u8, vld1q_u8, vmaxq_u8,
+    };
+
+    pub struct NeonSearcher {
+        v_tab: uint8x16_t,
+        v_newline: uint8x16_t,
+        v_cr: uint8x16_t,
+    }
+
+    impl NeonSearcher {
+        #[inline]
+        pub unsafe fn new(tab: u8, newline: u8, cr: u8) -> Self {
+            Self {
+                v_tab: vdupq_n_u8(tab),
+                v_newline: vdupq_n_u8(newline),
+                v_cr: vdupq_n_u8(cr),
+            }
+        }
+
+        /// Check if NEON is available at runtime
+        #[inline]
+        pub fn is_available() -> bool {
+            // All aarch64 CPUs support NEON
+            true
+        }
+
+        /// Search for tab, newline, or CR in haystack
+        /// Returns iterator of positions
+        #[inline(always)]
+        pub fn search<'a>(&'a self, haystack: &'a [u8]) -> NeonIter<'a> {
+            NeonIter::new(self, haystack)
+        }
+    }
+
+    pub struct NeonIter<'a> {
+        searcher: &'a NeonSearcher,
+        haystack: &'a [u8],
+        pos: usize,
+        mask: u32,
+    }
+
+    impl<'a> NeonIter<'a> {
+        #[inline]
+        fn new(searcher: &'a NeonSearcher, haystack: &'a [u8]) -> Self {
+            Self {
+                searcher,
+                haystack,
+                pos: 0,
+                mask: 0,
+            }
+        }
+
+        #[inline(always)]
+        fn next_mask(&mut self) -> Option<usize> {
+            const STEP: usize = 16;
+
+            loop {
+                // Process current mask
+                if self.mask != 0 {
+                    let offset = self.pos - STEP + self.mask.trailing_zeros() as usize;
+                    self.mask &= self.mask - 1; // Clear least significant bit
+                    return Some(offset);
+                }
+
+                // Main SIMD loop
+                let remaining = self.haystack.len() - self.pos;
+                if remaining >= STEP {
+                    let chunk = unsafe { vld1q_u8(self.haystack.as_ptr().add(self.pos)) };
+                    let cmp1 = unsafe { vceqq_u8(chunk, self.searcher.v_tab) };
+                    let cmp2 = unsafe { vceqq_u8(chunk, self.searcher.v_newline) };
+                    let cmp3 = unsafe { vceqq_u8(chunk, self.searcher.v_cr) };
+                    let cmp = unsafe { vmaxq_u8(cmp1, cmp2) };
+                    let cmp = unsafe { vmaxq_u8(cmp, cmp3) };
+                    // NEON doesn't have movemask, so we use a workaround
+                    self.mask = unsafe { neon_movemask(cmp) };
+                    self.pos += STEP;
+
+                    if self.mask != 0 {
+                        continue;
+                    }
+                } else {
+                    // Linear scan for remaining bytes
+                    while self.pos < self.haystack.len() {
+                        let byte = self.haystack[self.pos];
+                        if byte == b'\t' || byte == b'\n' || byte == b'\r' {
+                            let offset = self.pos;
+                            self.pos += 1;
+                            return Some(offset);
+                        }
+                        self.pos += 1;
+                    }
+                    return None;
+                }
+            }
+        }
+    }
+
+    /// NEON movemask equivalent - converts vector comparison results to a bit mask
+    #[inline(always)]
+    unsafe fn neon_movemask(v: uint8x16_t) -> u32 {
+        // Extract each byte and build the mask
+        let lanes: [u8; 16] = core::mem::transmute(v);
+        let mut mask: u32 = 0;
+
+        for i in 0..16 {
+            if lanes[i] != 0 {
+                mask |= 1 << i;
+            }
+        }
+
+        mask
+    }
+
+    impl Iterator for NeonIter<'_> {
+        type Item = usize;
+
+        #[inline(always)]
+        fn next(&mut self) -> Option<Self::Item> {
+            self.next_mask()
+        }
+    }
+}
+
+// ============================================================================
 // Hand-written AVX2 SIMD Searcher (256-bit vectors)
 // ============================================================================
 
 #[cfg(target_arch = "x86_64")]
 mod avx2 {
     use core::arch::x86_64::{
-        __m256i, _mm256_cmpeq_epi8, _mm256_loadu_si256, _mm256_movemask_epi8, _mm256_or_si256,
-        _mm256_set1_epi8,
+        __m256i, _mm256_cmpeq_epi8, _mm256_loadu_si256, _mm256_movemask_epi8,
+        _mm256_or_si256, _mm256_set1_epi8,
     };
 
     pub struct Avx2Searcher {
@@ -433,6 +568,108 @@ fn parse_single_pass_avx2(data: &[u8]) -> usize {
     count
 }
 
+/// Strategy 3c: Single-pass with NEON SIMD searcher (aarch64)
+/// Use hand-written NEON to find tab, newline, CR in one scan
+#[cfg(target_arch = "aarch64")]
+#[inline(always)]
+fn parse_single_pass_neon(data: &[u8]) -> usize {
+    use neon::*;
+
+    let mut count = 0;
+    let mut field_start = 0;
+
+    unsafe {
+        let searcher = NeonSearcher::new(b'\t', b'\n', b'\r');
+        let mut iter = searcher.search(data);
+
+        while let Some(offset) = iter.next() {
+            let byte = data[offset];
+
+            if byte == b'\t' {
+                // Field delimiter
+                black_box(&data[field_start..offset]);
+                count += 1;
+                field_start = offset + 1;
+            } else if byte == b'\n' {
+                // Newline (handle CR+LF)
+                let end = if offset > 0 && data[offset - 1] == b'\r' {
+                    offset - 1
+                } else {
+                    offset
+                };
+                if field_start < end {
+                    black_box(&data[field_start..end]);
+                    count += 1;
+                }
+                field_start = offset + 1;
+            }
+            // Skip CR (handled with LF)
+        }
+
+        // Last field
+        if field_start < data.len() {
+            black_box(&data[field_start..]);
+            count += 1;
+        }
+    }
+
+    count
+}
+
+/// Strategy 4b: Two-pass with NEON (aarch64)
+/// Pass 1: Find newlines with NEON
+/// Pass 2: Split fields with memchr_iter
+#[cfg(target_arch = "aarch64")]
+#[inline(always)]
+fn parse_two_pass_neon(data: &[u8]) -> usize {
+    use neon::*;
+
+    let mut count = 0;
+    let mut line_start = 0;
+
+    unsafe {
+        let searcher = NeonSearcher::new(b'\t', b'\n', b'\r');
+        let mut iter = searcher.search(data);
+
+        while let Some(offset) = iter.next() {
+            let byte = data[offset];
+
+            if byte == b'\n' {
+                // Found newline - process the line
+                let line_end = if offset > 0 && data[offset - 1] == b'\r' {
+                    offset - 1
+                } else {
+                    offset
+                };
+                let line = &data[line_start..line_end];
+
+                // Second pass: split fields
+                for field in memchr_iter(b'\t', line) {
+                    black_box(field);
+                    count += 1;
+                }
+                black_box(line.len()); // Last field
+                count += 1;
+
+                line_start = offset + 1;
+            }
+        }
+
+        // Last line
+        if line_start < data.len() {
+            let line = &data[line_start..];
+            for field in memchr_iter(b'\t', line) {
+                black_box(field);
+                count += 1;
+            }
+            black_box(line.len());
+            count += 1;
+        }
+    }
+
+    count
+}
+
 /// Strategy 4: Two-pass with SSE2
 /// Pass 1: Find newlines with SSE2
 /// Pass 2: Split fields with memchr_iter
@@ -615,6 +852,26 @@ fn benchmark_strategies(c: &mut Criterion) {
                     },
                 );
             }
+        }
+
+        // NEON variants (aarch64 only)
+        #[cfg(target_arch = "aarch64")]
+        {
+            group.bench_with_input(
+                BenchmarkId::new("single_pass_neon", &bench_id),
+                &data,
+                |b, data| {
+                    b.iter(|| parse_single_pass_neon(black_box(data)));
+                },
+            );
+
+            group.bench_with_input(
+                BenchmarkId::new("two_pass_neon", &bench_id),
+                &data,
+                |b, data| {
+                    b.iter(|| parse_two_pass_neon(black_box(data)));
+                },
+            );
         }
     }
 

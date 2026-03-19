@@ -10,7 +10,8 @@
 
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::{
-    __m128i, _mm_cmpeq_epi8, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128, _mm_set1_epi8,
+    __m128i, _mm_cmpeq_epi8, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128,
+    _mm_set1_epi8,
 };
 
 /// SSE2 vector size in bytes.
@@ -111,7 +112,9 @@ impl<'a> Sse2Iter<'a> {
             if remaining >= SSE2_STEP {
                 // Load 16 bytes from current position (unaligned load)
                 let chunk = unsafe {
-                    _mm_loadu_si128(self.haystack.as_ptr().add(self.pos) as *const __m128i)
+                    _mm_loadu_si128(
+                        self.haystack.as_ptr().add(self.pos) as *const __m128i
+                    )
                 };
 
                 // Compare with all three target characters

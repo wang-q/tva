@@ -10,7 +10,7 @@
 //! - **Split**: SIMD-accelerated line splitting.
 //! - **Key**: Key extraction for grouping and joining.
 //! - **Header**: Header detection and handling.
-//! - **SSE2**: Hand-written SSE2 SIMD parser for x86_64 (670% faster).
+//! - **SIMD**: Hand-written SIMD parsers (SSE2 for x86_64, NEON for aarch64).
 
 pub mod fields;
 pub mod header;
@@ -19,6 +19,11 @@ pub mod reader;
 pub mod record;
 pub mod select;
 pub mod split;
+pub mod simd;
 
+// Re-export SIMD modules for backward compatibility
 #[cfg(target_arch = "x86_64")]
-pub mod sse2;
+pub use simd::sse2;
+
+#[cfg(target_arch = "aarch64")]
+pub use simd::neon;
