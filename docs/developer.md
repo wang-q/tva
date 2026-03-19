@@ -326,3 +326,64 @@ src/libs/tsv/simd/
 | `next_row()` | 单层扫描 | 高性能行读取 | ✅ 已实现 |
 
 **保持现状**：当前设计已满足需求，无需大规模重构。
+
+## TSV API 迁移计划
+
+随着 `TsvReader::next_row()` 提供单层扫描 SIMD 加速，以下模块需要逐步迁移以充分利用性能提升。
+
+### 当前状态分析
+
+| 文件 | 当前实现 | 问题 | 优先级 |
+|:-----|:---------|:-----|:-------|
+| `reader.rs` | `for_each_record` 使用 `next_row` | ✅ 已完成 | - |
+| `select.rs` | `extract_ranges` 使用 `TsvRow.ends` | ✅ 已完成 | - |
+| `select.rs` | `write_excluding_from_bytes` 使用 `TsvRow.ends` | ✅ 已完成 | - |
+| `select.rs` | `write_with_rest` 使用 `TsvRow.ends` | ✅ 已完成 | - |
+| `join.rs` | `extract_values` 使用 `TsvRow` | ✅ 已完成 | - |
+| `key.rs` | `extract_from_row` 使用 `TsvRow` | ✅ 已完成 | - |
+| `split.rs` | `TsvSplitter` 使用 `memchr_iter` | 独立扫描 | 🟡 中 |
+| `record.rs` | `TsvRecord::parse_line` 使用 `memchr_iter` | 独立扫描 | 🟡 中 |
+
+### 迁移策略
+
+#### 阶段 1: Select 模块优化 ✅ 已完成
+
+**目标**: 让 `select` 命令直接使用 `TsvRow` 的已解析字段边界，避免二次扫描。
+
+**已完成工作**:
+1. `src/libs/tsv/select.rs`: 修改 `extract_ranges` 函数接受 `&TsvRow` 而非 `&[u8]`
+2. `src/libs/tsv/select.rs`: 修改 `write_selected_from_bytes` 函数接受 `&TsvRow`
+3. `src/libs/tsv/select.rs`: 修改 `write_excluding_from_bytes` 函数接受 `&TsvRow`
+4. `src/libs/tsv/select.rs`: 修改 `write_with_rest` 函数接受 `&TsvRow`
+5. `src/cmd_tva/select.rs`: 使用 `for_each_row` 替代 `for_each_record`
+6. `src/cmd_tva/join.rs`: 使用 `for_each_row` 替代 `for_each_record`
+7. `src/libs/tsv/key.rs`: 新增 `extract_from_row` 方法接受 `&TsvRow`
+
+**实现说明**: 直接修改现有函数签名而非新增 `_from_row` 版本，因为 `select` 模块的使用场景单一，且修改范围可控。
+
+**实际收益**: `select` 和 `join` 命令性能提升约 **10%**
+
+#### 阶段 2: Split 模块优化 (中优先级)
+
+**目标**: 让 `TsvSplitter` 能够复用 `next_row` 的扫描结果。
+
+**方案**:
+1. 新增 `TsvRowSplitter` 结构体，从 `TsvRow` 创建
+2. 或者直接使用 `TsvRow::get_bytes()` 访问字段
+
+**注意**: `split` 命令通常独立使用，优先级较低。
+
+#### 阶段 3: Record 模块优化 (中优先级)
+
+**目标**: 减少 `TsvRecord::parse_line` 的扫描开销。
+
+**方案**:
+1. 新增 `TsvRecord::from_row` 构造函数，从 `TsvRow` 创建
+2. 修改需要存储的场景使用 `for_each_row` + `TsvRecord::from_row`
+
+### 实施建议
+
+1. **先实施阶段 1**: `select` 是最常用的命令之一，收益最明显
+2. **保持向后兼容**: 旧的 API (`extract_ranges` 等) 保留，新增 `_from_row` 版本
+3. **逐步迁移**: 命令逐个迁移，确保稳定性
+4. **基准测试**: 每个迁移后运行 `benches/tsv_reader_sse2.rs` 验证性能
