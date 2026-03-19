@@ -316,12 +316,45 @@ fn benchmark_parsing(c: &mut Criterion) {
     // 12. TVA TsvReader (Zero-copy, SIMD)
     // Uses internal buffer + memchr for zero-copy iteration.
     // Avoids String/Vec allocation per record.
+    // Now uses next_row internally for single-pass scanning with SSE2/NEON.
     group.bench_function("tva_tsv_reader", |b| {
         b.iter(|| {
             let cursor = std::io::Cursor::new(data.as_bytes());
             let mut reader = tva::libs::tsv::reader::TsvReader::new(cursor);
             reader
                 .for_each_record(|record| {
+                    // Simulate field processing to be fair with other benchmarks
+                    let mut iter = memchr::memchr_iter(b'\t', record);
+                    let mut last_pos = 0;
+                    loop {
+                        match iter.next() {
+                            Some(pos) => {
+                                let field =
+                                    unsafe { record.get_unchecked(last_pos..pos) };
+                                black_box(field);
+                                last_pos = pos + 1;
+                            }
+                            None => {
+                                let field = unsafe { record.get_unchecked(last_pos..) };
+                                black_box(field);
+                                break;
+                            }
+                        }
+                    }
+                    Ok(())
+                })
+                .unwrap();
+        })
+    });
+
+    // 12b. TVA TsvReader Legacy (Two-pass approach)
+    // Uses the old for_each_record_legacy for comparison.
+    group.bench_function("tva_tsv_reader_legacy", |b| {
+        b.iter(|| {
+            let cursor = std::io::Cursor::new(data.as_bytes());
+            let mut reader = tva::libs::tsv::reader::TsvReader::new(cursor);
+            reader
+                .for_each_record_legacy(|record| {
                     // Simulate field processing to be fair with other benchmarks
                     let mut iter = memchr::memchr_iter(b'\t', record);
                     let mut last_pos = 0;

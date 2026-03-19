@@ -97,7 +97,7 @@ impl<R: Read> TsvReader<R> {
 
     fn read_header_first_line(&mut self) -> io::Result<Option<HeaderInfo>> {
         let mut column_names = None;
-        let res = self.for_each_record(|record| {
+        let res = self.for_each_record_legacy(|record| {
             // Take the first line as header (even if empty)
             column_names = Some(record.to_vec());
             Err(io::Error::new(io::ErrorKind::Interrupted, "Stop"))
@@ -119,7 +119,7 @@ impl<R: Read> TsvReader<R> {
         let mut lines = Vec::new();
         let mut count = 0;
 
-        let res = self.for_each_record(|record| {
+        let res = self.for_each_record_legacy(|record| {
             if count < n {
                 lines.push(record.to_vec());
                 count += 1;
@@ -162,7 +162,7 @@ impl<R: Read> TsvReader<R> {
         let mut found_hash = false;
         let mut first_non_hash_line: Option<Vec<u8>> = None;
 
-        let res = self.for_each_record(|record| {
+        let res = self.for_each_record_legacy(|record| {
             if record.starts_with(b"#") {
                 lines.push(record.to_vec());
                 found_hash = true;
@@ -717,14 +717,18 @@ impl<R: Read> TsvReader<R> {
         }
     }
 
-    /// Iterate over records using a closure.
+    /// Iterate over records using a closure (legacy two-pass implementation).
+    ///
+    /// This method uses the old two-pass scanning approach (first find `\n`, then process).
+    /// It is kept for benchmarking purposes and backward compatibility.
     ///
     /// The closure receives a `&[u8]` slice representing the record (excluding the newline).
     /// This avoids allocating a `String` or `Vec<u8>` for each record.
     ///
     /// # Errors
     /// Returns any I/O error encountered while reading.
-    pub fn for_each_record<F>(&mut self, mut func: F) -> io::Result<()>
+    #[doc(hidden)]
+    pub fn for_each_record_legacy<F>(&mut self, mut func: F) -> io::Result<()>
     where
         F: FnMut(&[u8]) -> io::Result<()>,
     {
@@ -803,6 +807,38 @@ impl<R: Read> TsvReader<R> {
                 }
             }
         }
+    }
+
+    /// Iterate over records using a closure.
+    ///
+    /// The closure receives a `&[u8]` slice representing the record (excluding the newline).
+    /// This avoids allocating a `String` or `Vec<u8>` for each record.
+    ///
+    /// This method internally uses `next_row` for single-pass scanning with SIMD acceleration
+    /// (SSE2 on x86_64, NEON on aarch64).
+    ///
+    /// # Errors
+    /// Returns any I/O error encountered while reading.
+    pub fn for_each_record<F>(&mut self, mut func: F) -> io::Result<()>
+    where
+        F: FnMut(&[u8]) -> io::Result<()>,
+    {
+        while let Some(row) = self.next_row(b'\t')? {
+            // Remove trailing CR if present (for CRLF line endings)
+            let line = if row.line.ends_with(b"\r") {
+                &row.line[..row.line.len() - 1]
+            } else {
+                row.line
+            };
+            match func(line) {
+                Ok(_) => {}
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => {
+                    return Err(e);
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
     }
 
     /// Iterate over rows (parsed records) using a closure.

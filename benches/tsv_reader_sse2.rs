@@ -64,7 +64,33 @@ fn benchmark_tsv_reader(c: &mut Criterion) {
             },
         );
 
-        // for_each_record (two-pass approach)
+        // for_each_record_legacy (two-pass approach)
+        group.bench_with_input(
+            BenchmarkId::new("for_each_record_legacy", &bench_id),
+            &data,
+            |b, data| {
+                b.iter(|| {
+                    let cursor = Cursor::new(std::hint::black_box(data));
+                    let mut reader = TsvReader::new(cursor);
+                    let mut count = 0;
+
+                    reader
+                        .for_each_record_legacy(|record| {
+                            use memchr::memchr_iter;
+                            for field in memchr_iter(b'\t', record) {
+                                std::hint::black_box(field);
+                            }
+                            count += 1;
+                            Ok(())
+                        })
+                        .unwrap();
+
+                    std::hint::black_box(count);
+                });
+            },
+        );
+
+        // for_each_record (single-pass with SIMD)
         group.bench_with_input(
             BenchmarkId::new("for_each_record", &bench_id),
             &data,
