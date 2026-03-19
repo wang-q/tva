@@ -3,6 +3,11 @@
 mod common;
 
 use common::TvaCmd;
+use test_case::test_case;
+
+// ============================================================================
+// Error Handling Tests
+// ============================================================================
 
 #[test]
 fn sort_invalid_delimiter() {
@@ -27,112 +32,6 @@ fn sort_invalid_key() {
 }
 
 #[test]
-fn sort_empty_input() {
-    let (stdout, _) = TvaCmd::new().args(&["sort"]).stdin("").run();
-
-    assert!(stdout.is_empty());
-}
-
-#[test]
-fn sort_default_lexicographic_single_key() {
-    let input = "a\t2\nc\t1\nb\t3\n";
-
-    let (stdout, _) = TvaCmd::new().args(&["sort", "-k", "1"]).stdin(input).run();
-
-    assert_eq!(stdout, "a\t2\nb\t3\nc\t1\n");
-}
-
-#[test]
-fn sort_numeric_reverse_single_key() {
-    let input = "a\t2\nc\t10\nb\t3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "2", "-n", "-r"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "c\t10\nb\t3\na\t2\n");
-}
-
-#[test]
-fn sort_multiple_keys() {
-    let input = "a\t2\nc\t1\nb\t1\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "2,1"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "b\t1\nc\t1\na\t2\n");
-}
-
-#[test]
-fn sort_default_all_columns_when_no_key() {
-    let input = "b\t2\nb\t1\na\t3\n";
-
-    let (stdout, _) = TvaCmd::new().args(&["sort"]).stdin(input).run();
-
-    assert_eq!(stdout, "a\t3\nb\t1\nb\t2\n");
-}
-
-#[test]
-fn sort_respects_custom_delimiter() {
-    let input = "a,2\nc,1\nb,3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-t", ",", "-k", "1"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "a,2\nb,3\nc,1\n");
-}
-
-#[test]
-fn sort_numeric_with_non_numeric_values() {
-    let input = "x\n10\nLETTER\n2\n1\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "1", "-n"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "x\nLETTER\n1\n2\n10\n");
-}
-
-#[test]
-fn sort_reverse_lexicographic_single_key() {
-    let input = "a\t2\nc\t1\nb\t3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "1", "-r"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "c\t1\nb\t3\na\t2\n");
-}
-
-#[test]
-fn sort_lexicographic_file_names() {
-    let input = "file2.txt\na\nfile10.txt\nfile1.txt\n";
-
-    let (stdout, _) = TvaCmd::new().args(&["sort", "-k", "1"]).stdin(input).run();
-
-    assert_eq!(stdout, "a\nfile1.txt\nfile10.txt\nfile2.txt\n");
-}
-
-#[test]
-fn sort_with_header() {
-    let input = "name\tval\nc\t1\na\t2\nb\t3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "--header", "-k", "1"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "name\tval\na\t2\nb\t3\nc\t1\n");
-}
-
-#[test]
 fn sort_empty_key_part() {
     let (stdout, stderr) = TvaCmd::new()
         .args(&["sort", "-k", "1,,2"])
@@ -141,61 +40,6 @@ fn sort_empty_key_part() {
 
     assert!(stdout.is_empty());
     assert!(stderr.contains("empty key list element"));
-}
-
-// Tests for new header modes
-
-#[test]
-fn sort_with_header_lines_n() {
-    // LinesN mode: first N lines are treated as header (no column names line)
-    let input = "# Comment 1\n# Comment 2\nc\t1\na\t2\nb\t3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "--header-lines", "2", "-k", "1"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "# Comment 1\n# Comment 2\na\t2\nb\t3\nc\t1\n");
-}
-
-#[test]
-fn sort_with_header_hash() {
-    let input = "# Comment 1\n# Comment 2\nc\t1\na\t2\nb\t3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "--header-hash", "-k", "1"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "# Comment 1\n# Comment 2\na\t2\nb\t3\nc\t1\n");
-}
-
-#[test]
-fn sort_with_header_hash1() {
-    let input = "# Comment 1\n# Comment 2\nname\tval\nc\t1\na\t2\nb\t3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "--header-hash1", "-k", "1"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(
-        stdout,
-        "# Comment 1\n# Comment 2\nname\tval\na\t2\nb\t3\nc\t1\n"
-    );
-}
-
-#[test]
-fn sort_with_header_hash1_no_hash_lines() {
-    // When no hash lines exist, should use first line as column names
-    let input = "name\tval\nc\t1\na\t2\nb\t3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "--header-hash1", "-k", "1"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "name\tval\na\t2\nb\t3\nc\t1\n");
 }
 
 #[test]
@@ -211,46 +55,144 @@ fn sort_header_modes_mutually_exclusive() {
     ));
 }
 
+// ============================================================================
+// Basic Sorting Tests
+// ============================================================================
+
 #[test]
-fn sort_with_empty_lines() {
-    // Test handling of empty lines in input
-    let input = "b\t2\n\na\t1\n";
+fn sort_empty_input() {
+    let (stdout, _) = TvaCmd::new().args(&["sort"]).stdin("").run();
 
-    let (stdout, _) = TvaCmd::new().args(&["sort", "-k", "1"]).stdin(input).run();
+    assert!(stdout.is_empty());
+}
 
-    // Empty line should be preserved and sorted first (empty string < "a")
-    assert_eq!(stdout, "\na\t1\nb\t2\n");
+#[test_case("a\t2\nc\t1\nb\t3\n", &["sort", "-k", "1"], "a\t2\nb\t3\nc\t1\n" ; "lexicographic_single_key")]
+#[test_case("a\t2\nc\t1\nb\t3\n", &["sort", "-k", "1", "-r"], "c\t1\nb\t3\na\t2\n" ; "reverse_lexicographic")]
+#[test_case("b\t2\nb\t1\na\t3\n", &["sort"], "a\t3\nb\t1\nb\t2\n" ; "default_all_columns")]
+#[test_case("a,2\nc,1\nb,3\n", &["sort", "-t", ",", "-k", "1"], "a,2\nb,3\nc,1\n" ; "custom_delimiter")]
+#[test_case("b\t2\n\na\t1\n", &["sort", "-k", "1"], "\na\t1\nb\t2\n" ; "with_empty_lines")]
+#[test_case("b\t2\n", &["sort", "-k", "1"], "b\t2\n" ; "single_row")]
+#[test_case(" b\t2\n a\t1\n", &["sort", "-k", "1"], " a\t1\n b\t2\n" ; "with_whitespace")]
+fn sort_basic(input: &str, args: &[&str], expected: &str) {
+    let (stdout, _) = TvaCmd::new().args(args).stdin(input).run();
+    assert_eq!(stdout, expected);
+}
+
+// ============================================================================
+// Numeric Sorting Tests
+// ============================================================================
+
+#[test_case("a\t2\nc\t10\nb\t3\n", "a\t2\nb\t3\nc\t10\n" ; "basic_numeric")]
+#[test_case("a\t3.14\nb\t2.71\nc\t1.41\n", "c\t1.41\nb\t2.71\na\t3.14\n" ; "floats")]
+#[test_case("a\t-5\nb\t-10\nc\t0\n", "b\t-10\na\t-5\nc\t0\n" ; "negative_numbers")]
+#[test_case("a\t999999999\nb\t1000000000\nc\t1\n", "c\t1\na\t999999999\nb\t1000000000\n" ; "large_values")]
+#[test_case("a\t1e5\nb\t1e2\nc\t1e3\n", "b\t1e2\nc\t1e3\na\t1e5\n" ; "scientific_notation")]
+fn sort_numeric(input: &str, expected: &str) {
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sort", "-k", "2", "-n"])
+        .stdin(input)
+        .run();
+    assert_eq!(stdout, expected);
 }
 
 #[test]
-fn sort_header_only_no_data() {
-    // Test when input has only header and no data rows
-    let input = "name\tvalue\n";
+fn sort_numeric_with_non_numeric_values() {
+    let input = "x\n10\nLETTER\n2\n1\n";
 
     let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "--header", "-k", "1"])
+        .args(&["sort", "-k", "1", "-n"])
         .stdin(input)
         .run();
 
-    assert_eq!(stdout, "name\tvalue\n");
+    assert_eq!(stdout, "x\nLETTER\n1\n2\n10\n");
 }
 
 #[test]
-fn sort_header_lines_n_no_data() {
-    // Test --header-lines with no data rows
-    let input = "# Comment 1\n# Comment 2\n";
+fn sort_numeric_reverse_single_key() {
+    let input = "a\t2\nc\t10\nb\t3\n";
 
     let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "--header-lines", "2", "-k", "1"])
+        .args(&["sort", "-k", "2", "-n", "-r"])
         .stdin(input)
         .run();
 
-    assert_eq!(stdout, "# Comment 1\n# Comment 2\n");
+    assert_eq!(stdout, "c\t10\nb\t3\na\t2\n");
 }
+
+#[test]
+fn sort_reverse_numeric() {
+    let input = "a\t1\nb\t3\nc\t2\n";
+
+    let (stdout, _) = TvaCmd::new()
+        .args(&["sort", "-k", "2", "-n", "-r"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout, "b\t3\nc\t2\na\t1\n");
+}
+
+// ============================================================================
+// Multiple Keys Tests
+// ============================================================================
+
+#[test_case("a\t2\nc\t1\nb\t1\n", &["sort", "-k", "2,1"], "b\t1\nc\t1\na\t2\n" ; "multiple_keys")]
+#[test_case("b\t2\na\t1\na\t2\n", &["sort", "-k", "1-2"], "a\t1\na\t2\nb\t2\n" ; "key_range")]
+#[test_case("c\t3\na\t1\nb\t2\n", &["sort", "-k", "1,1"], "a\t1\nb\t2\nc\t3\n" ; "duplicate_indices")]
+fn sort_keys(input: &str, args: &[&str], expected: &str) {
+    let (stdout, _) = TvaCmd::new().args(args).stdin(input).run();
+    assert_eq!(stdout, expected);
+}
+
+// ============================================================================
+// Header Mode Tests
+// ============================================================================
+
+#[test_case(
+    "name\tval\nc\t1\na\t2\nb\t3\n",
+    &["sort", "--header", "-k", "1"],
+    "name\tval\na\t2\nb\t3\nc\t1\n" ; "header_basic"
+)]
+#[test_case(
+    "# Comment 1\n# Comment 2\nc\t1\na\t2\nb\t3\n",
+    &["sort", "--header-lines", "2", "-k", "1"],
+    "# Comment 1\n# Comment 2\na\t2\nb\t3\nc\t1\n" ; "header_lines_n"
+)]
+#[test_case(
+    "# Comment 1\n# Comment 2\nc\t1\na\t2\nb\t3\n",
+    &["sort", "--header-hash", "-k", "1"],
+    "# Comment 1\n# Comment 2\na\t2\nb\t3\nc\t1\n" ; "header_hash"
+)]
+#[test_case(
+    "# Comment 1\n# Comment 2\nname\tval\nc\t1\na\t2\nb\t3\n",
+    &["sort", "--header-hash1", "-k", "1"],
+    "# Comment 1\n# Comment 2\nname\tval\na\t2\nb\t3\nc\t1\n" ; "header_hash1"
+)]
+#[test_case(
+    "name\tval\nc\t1\na\t2\nb\t3\n",
+    &["sort", "--header-hash1", "-k", "1"],
+    "name\tval\na\t2\nb\t3\nc\t1\n" ; "header_hash1_no_hash_lines"
+)]
+#[test_case(
+    "name\tvalue\n",
+    &["sort", "--header", "-k", "1"],
+    "name\tvalue\n" ; "header_only_no_data"
+)]
+#[test_case(
+    "# Comment 1\n# Comment 2\n",
+    &["sort", "--header-lines", "2", "-k", "1"],
+    "# Comment 1\n# Comment 2\n" ; "header_lines_n_no_data"
+)]
+fn sort_header_modes(input: &str, args: &[&str], expected: &str) {
+    let (stdout, _) = TvaCmd::new().args(args).stdin(input).run();
+    assert_eq!(stdout, expected);
+}
+
+// ============================================================================
+// File Output Tests
+// ============================================================================
 
 #[test]
 fn sort_outfile() {
-    // Test output to file using --outfile
     let input = "c\t3\na\t1\nb\t2\n";
     let dir = tempfile::tempdir().unwrap();
     let outfile = dir.path().join("sorted.tsv");
@@ -260,17 +202,14 @@ fn sort_outfile() {
         .stdin(input)
         .run();
 
-    // stdout should be empty when writing to file
     assert!(stdout.is_empty());
 
-    // Verify file contents
     let contents = std::fs::read_to_string(&outfile).unwrap();
     assert_eq!(contents, "a\t1\nb\t2\nc\t3\n");
 }
 
 #[test]
 fn sort_outfile_with_header() {
-    // Test output to file with header
     let input = "name\tvalue\nc\t3\na\t1\n";
     let dir = tempfile::tempdir().unwrap();
     let outfile = dir.path().join("sorted.tsv");
@@ -293,89 +232,25 @@ fn sort_outfile_with_header() {
     assert_eq!(contents, "name\tvalue\na\t1\nc\t3\n");
 }
 
+// ============================================================================
+// Edge Cases Tests
+// ============================================================================
+
 #[test]
-fn sort_single_row() {
-    // Test sorting with only one data row
-    let input = "b\t2\n";
+fn sort_lexicographic_file_names() {
+    let input = "file2.txt\na\nfile10.txt\nfile1.txt\n";
 
     let (stdout, _) = TvaCmd::new().args(&["sort", "-k", "1"]).stdin(input).run();
 
-    assert_eq!(stdout, "b\t2\n");
-}
-
-#[test]
-fn sort_numeric_with_floats() {
-    // Test numeric sorting with floating point numbers
-    let input = "a\t3.14\nb\t2.71\nc\t1.41\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "2", "-n"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "c\t1.41\nb\t2.71\na\t3.14\n");
-}
-
-#[test]
-fn sort_numeric_with_negative_numbers() {
-    // Test numeric sorting with negative numbers
-    let input = "a\t-5\nb\t-10\nc\t0\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "2", "-n"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "b\t-10\na\t-5\nc\t0\n");
-}
-
-#[test]
-fn sort_reverse_numeric() {
-    // Test reverse numeric sorting
-    let input = "a\t1\nb\t3\nc\t2\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "2", "-n", "-r"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "b\t3\nc\t2\na\t1\n");
-}
-
-#[test]
-fn sort_key_range() {
-    // Test sorting with key range like "1-2"
-    let input = "b\t2\na\t1\na\t2\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "1-2"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "a\t1\na\t2\nb\t2\n");
-}
-
-#[test]
-fn sort_key_with_duplicate_indices() {
-    // Test that duplicate indices in key are handled (only first occurrence used)
-    let input = "c\t3\na\t1\nb\t2\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "1,1"]) // duplicate key should be deduplicated
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "a\t1\nb\t2\nc\t3\n");
+    assert_eq!(stdout, "a\nfile1.txt\nfile10.txt\nfile2.txt\n");
 }
 
 #[test]
 fn sort_unicode_values() {
-    // Test sorting with unicode characters
     let input = "中\t2\nあ\t1\n🎉\t3\n";
 
     let (stdout, _) = TvaCmd::new().args(&["sort", "-k", "1"]).stdin(input).run();
 
-    // Unicode sort order based on byte values
     assert!(stdout.contains("あ"));
     assert!(stdout.contains("中"));
     assert!(stdout.contains("🎉"));
@@ -383,7 +258,6 @@ fn sort_unicode_values() {
 
 #[test]
 fn sort_missing_fields_in_some_rows() {
-    // Test sorting when some rows have fewer fields
     let input = "a\t2\nb\n";
 
     let (stdout, _) = TvaCmd::new().args(&["sort", "-k", "1"]).stdin(input).run();
@@ -392,20 +266,20 @@ fn sort_missing_fields_in_some_rows() {
 }
 
 #[test]
-fn sort_with_whitespace_values() {
-    // Test sorting values with leading/trailing whitespace
-    let input = " b\t2\n a\t1\n";
+fn sort_identical_values_stable() {
+    let input = "b\t2\na\t1\na\t1\n";
 
-    let (stdout, _) = TvaCmd::new().args(&["sort", "-k", "1"]).stdin(input).run();
+    let (stdout, _) = TvaCmd::new().args(&["sort", "-k", "2"]).stdin(input).run();
 
-    // Space (ASCII 32) comes before 'a' (ASCII 97)
-    assert_eq!(stdout, " a\t1\n b\t2\n");
+    assert_eq!(stdout, "a\t1\na\t1\nb\t2\n");
 }
+
+// ============================================================================
+// Multi-File Tests
+// ============================================================================
 
 #[test]
 fn sort_multiple_files_with_different_headers() {
-    // Test multi-file input where files have different headers
-    // Only first file's header should be used
     let dir = tempfile::tempdir().unwrap();
     let file1 = dir.path().join("file1.tsv");
     let file2 = dir.path().join("file2.tsv");
@@ -425,51 +299,11 @@ fn sort_multiple_files_with_different_headers() {
         ])
         .run();
 
-    // Only first file's header should appear
     assert_eq!(stdout, "# File1 header\na\t2\nb\t3\nc\t1\n");
 }
 
 #[test]
-fn sort_identical_values_stable() {
-    // Test that sort is stable (preserves order of equal elements)
-    let input = "b\t2\na\t1\na\t1\n";
-
-    let (stdout, _) = TvaCmd::new().args(&["sort", "-k", "2"]).stdin(input).run();
-
-    // Both 'a' rows should appear before 'b', and their relative order should be preserved
-    assert_eq!(stdout, "a\t1\na\t1\nb\t2\n");
-}
-
-#[test]
-fn sort_large_numeric_values() {
-    // Test with large numbers
-    let input = "a\t999999999\nb\t1000000000\nc\t1\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "2", "-n"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "c\t1\na\t999999999\nb\t1000000000\n");
-}
-
-#[test]
-fn sort_scientific_notation() {
-    // Test numeric sorting with scientific notation
-    let input = "a\t1e5\nb\t1e2\nc\t1e3\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sort", "-k", "2", "-n"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "b\t1e2\nc\t1e3\na\t1e5\n");
-}
-
-#[test]
 fn sort_with_header_lines_n_multi_file() {
-    // Create temp files for multi-file test
-    // LinesN mode: first N lines are treated as header (no column names line)
     let dir = tempfile::tempdir().unwrap();
     let file1 = dir.path().join("file1.tsv");
     let file2 = dir.path().join("file2.tsv");
@@ -489,6 +323,5 @@ fn sort_with_header_lines_n_multi_file() {
         ])
         .run();
 
-    // Only first file's header should be written
     assert_eq!(stdout, "# Comment 1\na\t2\nb\t3\nc\t1\nd\t4\n");
 }
