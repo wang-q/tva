@@ -91,5 +91,9 @@ harness = false
 name = "string_arc"
 harness = false
 
+[[bench]]
+name = "tsv_strategy_compare"
+harness = false
+
 [profile.release]
 lto = true
