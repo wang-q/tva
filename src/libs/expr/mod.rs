@@ -396,6 +396,7 @@ pub fn eval_expr_cached_resolved(
 mod tests {
     use super::*;
     use parser::ast::{BinaryOp, ColumnRef, Expr, UnaryOp};
+    use test_case::test_case;
 
     #[test]
     fn test_parse_cached_basic() {
@@ -680,14 +681,15 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_fold_constants_unary_neg_int() {
+    #[test_case(UnaryOp::Neg, Expr::Int(42), Expr::Int(-42) ; "unary_neg_int")]
+    #[test_case(UnaryOp::Not, Expr::Bool(true), Expr::Bool(false) ; "unary_not")]
+    fn test_fold_constants_unary(op: UnaryOp, input: Expr, expected: Expr) {
         let mut expr = Expr::Unary {
-            op: UnaryOp::Neg,
-            expr: Box::new(Expr::Int(42)),
+            op,
+            expr: Box::new(input),
         };
         fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Int(-42)));
+        assert_eq!(expr, expected);
     }
 
     #[test]
@@ -703,58 +705,23 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_fold_constants_unary_not() {
-        let mut expr = Expr::Unary {
-            op: UnaryOp::Not,
-            expr: Box::new(Expr::Bool(true)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(false)));
-    }
-
-    #[test]
-    fn test_fold_constants_binary_add_int() {
+    #[test_case(BinaryOp::Add, 10, 5, 15 ; "binary_add_int")]
+    #[test_case(BinaryOp::Sub, 10, 3, 7 ; "binary_sub_int")]
+    #[test_case(BinaryOp::Mul, 6, 7, 42 ; "binary_mul_int")]
+    #[test_case(BinaryOp::Div, 20, 4, 5 ; "binary_div_int")]
+    fn test_fold_constants_binary_int(
+        op: BinaryOp,
+        left: i64,
+        right: i64,
+        expected: i64,
+    ) {
         let mut expr = Expr::Binary {
-            op: BinaryOp::Add,
-            left: Box::new(Expr::Int(10)),
-            right: Box::new(Expr::Int(5)),
+            op,
+            left: Box::new(Expr::Int(left)),
+            right: Box::new(Expr::Int(right)),
         };
         fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Int(15)));
-    }
-
-    #[test]
-    fn test_fold_constants_binary_sub_int() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Sub,
-            left: Box::new(Expr::Int(10)),
-            right: Box::new(Expr::Int(3)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Int(7)));
-    }
-
-    #[test]
-    fn test_fold_constants_binary_mul_int() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Mul,
-            left: Box::new(Expr::Int(6)),
-            right: Box::new(Expr::Int(7)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Int(42)));
-    }
-
-    #[test]
-    fn test_fold_constants_binary_div_int() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Div,
-            left: Box::new(Expr::Int(20)),
-            right: Box::new(Expr::Int(4)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Int(5)));
+        assert!(matches!(expr, Expr::Int(v) if v == expected));
     }
 
     #[test]
@@ -777,26 +744,21 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_fold_constants_binary_mod() {
+    #[test_case(BinaryOp::Mod, 17, 5, 2 ; "binary_mod")]
+    #[test_case(BinaryOp::Pow, 2, 10, 1024 ; "binary_pow_int")]
+    fn test_fold_constants_binary_mod_pow(
+        op: BinaryOp,
+        left: i64,
+        right: i64,
+        expected: i64,
+    ) {
         let mut expr = Expr::Binary {
-            op: BinaryOp::Mod,
-            left: Box::new(Expr::Int(17)),
-            right: Box::new(Expr::Int(5)),
+            op,
+            left: Box::new(Expr::Int(left)),
+            right: Box::new(Expr::Int(right)),
         };
         fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Int(2)));
-    }
-
-    #[test]
-    fn test_fold_constants_binary_pow_int() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Pow,
-            left: Box::new(Expr::Int(2)),
-            right: Box::new(Expr::Int(10)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Int(1024)));
+        assert!(matches!(expr, Expr::Int(v) if v == expected));
     }
 
     #[test]
@@ -817,31 +779,25 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_fold_constants_binary_float_arithmetic() {
+    #[test_case(BinaryOp::Add, 10, 2.5, 12.5 ; "mixed_add_int_float")]
+    #[test_case(BinaryOp::Sub, 10, 3.5, 6.5 ; "mixed_sub_int_float")]
+    #[test_case(BinaryOp::Mul, 5, 2.5, 12.5 ; "mixed_mul_int_float")]
+    #[test_case(BinaryOp::Div, 10, 2.5, 4.0 ; "mixed_div_int_float")]
+    fn test_fold_constants_binary_mixed_int_float(
+        op: BinaryOp,
+        left: i64,
+        right: f64,
+        expected: f64,
+    ) {
         let mut expr = Expr::Binary {
-            op: BinaryOp::Add,
-            left: Box::new(Expr::Float(1.5)),
-            right: Box::new(Expr::Float(2.5)),
+            op,
+            left: Box::new(Expr::Int(left)),
+            right: Box::new(Expr::Float(right)),
         };
         fold_constants(&mut expr);
         match expr {
-            Expr::Float(f) => assert!((f - 4.0).abs() < 0.001),
-            _ => panic!("Expected Float(4.0)"),
-        }
-    }
-
-    #[test]
-    fn test_fold_constants_binary_mixed_int_float() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Add,
-            left: Box::new(Expr::Int(10)),
-            right: Box::new(Expr::Float(2.5)),
-        };
-        fold_constants(&mut expr);
-        match expr {
-            Expr::Float(f) => assert!((f - 12.5).abs() < 0.001),
-            _ => panic!("Expected Float(12.5)"),
+            Expr::Float(f) => assert!((f - expected).abs() < 0.001),
+            _ => panic!("Expected Float({})", expected),
         }
     }
 
@@ -859,331 +815,128 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_fold_constants_comparison_int() {
+    #[test_case(BinaryOp::Lt, 5, 10, true ; "comparison_int_lt")]
+    #[test_case(BinaryOp::Ge, 10, 5, true ; "comparison_int_ge")]
+    #[test_case(BinaryOp::Eq, 5, 5, true ; "comparison_int_eq")]
+    #[test_case(BinaryOp::Ne, 5, 10, true ; "comparison_int_ne")]
+    fn test_fold_constants_comparison_int(
+        op: BinaryOp,
+        left: i64,
+        right: i64,
+        expected: bool,
+    ) {
         let mut expr = Expr::Binary {
-            op: BinaryOp::Lt,
-            left: Box::new(Expr::Int(5)),
-            right: Box::new(Expr::Int(10)),
+            op,
+            left: Box::new(Expr::Int(left)),
+            right: Box::new(Expr::Int(right)),
         };
         fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
+        assert!(matches!(expr, Expr::Bool(v) if v == expected));
     }
 
-    #[test]
-    fn test_fold_constants_comparison_float() {
+    #[test_case(BinaryOp::Ge, 3.14, 2.71, true ; "comparison_float_ge")]
+    #[test_case(BinaryOp::Eq, 3.14, 3.14, true ; "comparison_float_eq")]
+    #[test_case(BinaryOp::Ne, 3.14, 2.71, true ; "comparison_float_ne")]
+    #[test_case(BinaryOp::Lt, 2.71, 3.14, true ; "comparison_float_lt")]
+    #[test_case(BinaryOp::Le, 3.14, 3.14, true ; "comparison_float_le")]
+    #[test_case(BinaryOp::Gt, 3.14, 2.71, true ; "comparison_float_gt")]
+    fn test_fold_constants_comparison_float(
+        op: BinaryOp,
+        left: f64,
+        right: f64,
+        expected: bool,
+    ) {
         let mut expr = Expr::Binary {
-            op: BinaryOp::Ge,
-            left: Box::new(Expr::Float(3.14)),
-            right: Box::new(Expr::Float(2.71)),
+            op,
+            left: Box::new(Expr::Float(left)),
+            right: Box::new(Expr::Float(right)),
         };
         fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
+        assert!(matches!(expr, Expr::Bool(v) if v == expected));
     }
 
-    #[test]
-    fn test_fold_constants_string_comparison() {
+    #[test_case(BinaryOp::StrEq, "test", "test", true ; "string_comparison_eq")]
+    #[test_case(BinaryOp::StrNe, "a", "b", true ; "string_comparison_ne")]
+    #[test_case(BinaryOp::StrLt, "a", "b", true ; "string_comparison_lt")]
+    #[test_case(BinaryOp::StrLe, "a", "a", true ; "string_comparison_le")]
+    #[test_case(BinaryOp::StrGt, "b", "a", true ; "string_comparison_gt")]
+    #[test_case(BinaryOp::StrGe, "b", "a", true ; "string_comparison_ge")]
+    fn test_fold_constants_string_comparison(
+        op: BinaryOp,
+        left: &str,
+        right: &str,
+        expected: bool,
+    ) {
         let mut expr = Expr::Binary {
-            op: BinaryOp::StrEq,
-            left: Box::new(Expr::String("test".to_string())),
-            right: Box::new(Expr::String("test".to_string())),
+            op,
+            left: Box::new(Expr::String(left.to_string())),
+            right: Box::new(Expr::String(right.to_string())),
         };
         fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
+        assert!(matches!(expr, Expr::Bool(v) if v == expected));
     }
 
-    #[test]
-    fn test_fold_constants_binary_float_sub() {
+    #[test_case(BinaryOp::Add, 1.5, 2.5, 4.0 ; "binary_float_add")]
+    #[test_case(BinaryOp::Sub, 5.0, 3.0, 2.0 ; "binary_float_sub")]
+    #[test_case(BinaryOp::Mul, 2.5, 4.0, 10.0 ; "binary_float_mul")]
+    #[test_case(BinaryOp::Div, 10.0, 2.0, 5.0 ; "binary_float_div")]
+    #[test_case(BinaryOp::Pow, 2.0, 3.0, 8.0 ; "binary_float_pow")]
+    fn test_fold_constants_binary_float(
+        op: BinaryOp,
+        left: f64,
+        right: f64,
+        expected: f64,
+    ) {
         let mut expr = Expr::Binary {
-            op: BinaryOp::Sub,
-            left: Box::new(Expr::Float(5.0)),
-            right: Box::new(Expr::Float(3.0)),
+            op,
+            left: Box::new(Expr::Float(left)),
+            right: Box::new(Expr::Float(right)),
         };
         fold_constants(&mut expr);
         match expr {
-            Expr::Float(f) => assert!((f - 2.0).abs() < 0.001),
-            _ => panic!("Expected Float(2.0)"),
+            Expr::Float(f) => assert!((f - expected).abs() < 0.001),
+            _ => panic!("Expected Float({})", expected),
         }
     }
 
-    #[test]
-    fn test_fold_constants_binary_float_mul() {
+    #[test_case(BinaryOp::Sub, 10.5, 3, 7.5 ; "mixed_sub_float_int")]
+    #[test_case(BinaryOp::Mul, 2.5, 4, 10.0 ; "mixed_mul_float_int")]
+    #[test_case(BinaryOp::Div, 10.0, 4, 2.5 ; "mixed_div_float_int")]
+    fn test_fold_constants_binary_mixed_float_int(
+        op: BinaryOp,
+        left: f64,
+        right: i64,
+        expected: f64,
+    ) {
         let mut expr = Expr::Binary {
-            op: BinaryOp::Mul,
-            left: Box::new(Expr::Float(2.5)),
-            right: Box::new(Expr::Float(4.0)),
+            op,
+            left: Box::new(Expr::Float(left)),
+            right: Box::new(Expr::Int(right)),
         };
         fold_constants(&mut expr);
         match expr {
-            Expr::Float(f) => assert!((f - 10.0).abs() < 0.001),
-            _ => panic!("Expected Float(10.0)"),
+            Expr::Float(f) => assert!((f - expected).abs() < 0.001),
+            _ => panic!("Expected Float({})", expected),
         }
     }
 
-    #[test]
-    fn test_fold_constants_binary_float_div() {
+    #[test_case(BinaryOp::And, true, false, false ; "logical_and")]
+    #[test_case(BinaryOp::And, true, true, true ; "logical_and_both_true")]
+    #[test_case(BinaryOp::Or, false, true, true ; "logical_or")]
+    #[test_case(BinaryOp::Or, false, false, false ; "logical_or_both_false")]
+    fn test_fold_constants_logical(
+        op: BinaryOp,
+        left: bool,
+        right: bool,
+        expected: bool,
+    ) {
         let mut expr = Expr::Binary {
-            op: BinaryOp::Div,
-            left: Box::new(Expr::Float(10.0)),
-            right: Box::new(Expr::Float(2.0)),
+            op,
+            left: Box::new(Expr::Bool(left)),
+            right: Box::new(Expr::Bool(right)),
         };
         fold_constants(&mut expr);
-        match expr {
-            Expr::Float(f) => assert!((f - 5.0).abs() < 0.001),
-            _ => panic!("Expected Float(5.0)"),
-        }
-    }
-
-    #[test]
-    fn test_fold_constants_binary_float_pow() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Pow,
-            left: Box::new(Expr::Float(2.0)),
-            right: Box::new(Expr::Float(3.0)),
-        };
-        fold_constants(&mut expr);
-        match expr {
-            Expr::Float(f) => assert!((f - 8.0).abs() < 0.001),
-            _ => panic!("Expected Float(8.0)"),
-        }
-    }
-
-    #[test]
-    fn test_fold_constants_binary_mixed_sub_int_float() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Sub,
-            left: Box::new(Expr::Int(10)),
-            right: Box::new(Expr::Float(3.5)),
-        };
-        fold_constants(&mut expr);
-        match expr {
-            Expr::Float(f) => assert!((f - 6.5).abs() < 0.001),
-            _ => panic!("Expected Float(6.5)"),
-        }
-    }
-
-    #[test]
-    fn test_fold_constants_binary_mixed_sub_float_int() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Sub,
-            left: Box::new(Expr::Float(10.5)),
-            right: Box::new(Expr::Int(3)),
-        };
-        fold_constants(&mut expr);
-        match expr {
-            Expr::Float(f) => assert!((f - 7.5).abs() < 0.001),
-            _ => panic!("Expected Float(7.5)"),
-        }
-    }
-
-    #[test]
-    fn test_fold_constants_binary_mixed_mul_int_float() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Mul,
-            left: Box::new(Expr::Int(5)),
-            right: Box::new(Expr::Float(2.5)),
-        };
-        fold_constants(&mut expr);
-        match expr {
-            Expr::Float(f) => assert!((f - 12.5).abs() < 0.001),
-            _ => panic!("Expected Float(12.5)"),
-        }
-    }
-
-    #[test]
-    fn test_fold_constants_binary_mixed_mul_float_int() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Mul,
-            left: Box::new(Expr::Float(2.5)),
-            right: Box::new(Expr::Int(4)),
-        };
-        fold_constants(&mut expr);
-        match expr {
-            Expr::Float(f) => assert!((f - 10.0).abs() < 0.001),
-            _ => panic!("Expected Float(10.0)"),
-        }
-    }
-
-    #[test]
-    fn test_fold_constants_binary_mixed_div_int_float() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Div,
-            left: Box::new(Expr::Int(10)),
-            right: Box::new(Expr::Float(2.5)),
-        };
-        fold_constants(&mut expr);
-        match expr {
-            Expr::Float(f) => assert!((f - 4.0).abs() < 0.001),
-            _ => panic!("Expected Float(4.0)"),
-        }
-    }
-
-    #[test]
-    fn test_fold_constants_binary_mixed_div_float_int() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Div,
-            left: Box::new(Expr::Float(10.0)),
-            right: Box::new(Expr::Int(4)),
-        };
-        fold_constants(&mut expr);
-        match expr {
-            Expr::Float(f) => assert!((f - 2.5).abs() < 0.001),
-            _ => panic!("Expected Float(2.5)"),
-        }
-    }
-
-    #[test]
-    fn test_fold_constants_comparison_int_eq() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Eq,
-            left: Box::new(Expr::Int(5)),
-            right: Box::new(Expr::Int(5)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_comparison_int_ne() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Ne,
-            left: Box::new(Expr::Int(5)),
-            right: Box::new(Expr::Int(10)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_comparison_float_eq() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Eq,
-            left: Box::new(Expr::Float(3.14)),
-            right: Box::new(Expr::Float(3.14)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_comparison_float_ne() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Ne,
-            left: Box::new(Expr::Float(3.14)),
-            right: Box::new(Expr::Float(2.71)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_comparison_float_lt() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Lt,
-            left: Box::new(Expr::Float(2.71)),
-            right: Box::new(Expr::Float(3.14)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_comparison_float_le() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Le,
-            left: Box::new(Expr::Float(3.14)),
-            right: Box::new(Expr::Float(3.14)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_comparison_float_gt() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Gt,
-            left: Box::new(Expr::Float(3.14)),
-            right: Box::new(Expr::Float(2.71)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_string_comparison_ne() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::StrNe,
-            left: Box::new(Expr::String("a".to_string())),
-            right: Box::new(Expr::String("b".to_string())),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_string_comparison_lt() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::StrLt,
-            left: Box::new(Expr::String("a".to_string())),
-            right: Box::new(Expr::String("b".to_string())),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_string_comparison_le() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::StrLe,
-            left: Box::new(Expr::String("a".to_string())),
-            right: Box::new(Expr::String("a".to_string())),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_string_comparison_gt() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::StrGt,
-            left: Box::new(Expr::String("b".to_string())),
-            right: Box::new(Expr::String("a".to_string())),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_string_comparison_ge() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::StrGe,
-            left: Box::new(Expr::String("b".to_string())),
-            right: Box::new(Expr::String("a".to_string())),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
-    }
-
-    #[test]
-    fn test_fold_constants_logical_and() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::And,
-            left: Box::new(Expr::Bool(true)),
-            right: Box::new(Expr::Bool(false)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(false)));
-    }
-
-    #[test]
-    fn test_fold_constants_logical_or() {
-        let mut expr = Expr::Binary {
-            op: BinaryOp::Or,
-            left: Box::new(Expr::Bool(false)),
-            right: Box::new(Expr::Bool(true)),
-        };
-        fold_constants(&mut expr);
-        assert!(matches!(expr, Expr::Bool(true)));
+        assert!(matches!(expr, Expr::Bool(v) if v == expected));
     }
 
     #[test]
