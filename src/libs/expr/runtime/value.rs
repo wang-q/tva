@@ -357,55 +357,60 @@ mod tests {
     use crate::libs::expr::EvalError;
     use test_case::test_case;
 
-    #[test]
-    fn test_value_arithmetic() {
-        let a = Value::Float(10.0);
-        let b = Value::Float(3.0);
+    #[test_case(Value::Float(10.0), Value::Float(3.0), Value::Float(13.0) ; "float_add")]
+    #[test_case(Value::Int(10), Value::Int(3), Value::Int(13) ; "int_add")]
+    #[test_case(Value::Int(10), Value::Float(3.5), Value::Float(13.5) ; "mixed_add")]
+    fn test_value_add(left: Value, right: Value, expected: Value) {
+        assert_eq!(left + right, Some(expected));
+    }
 
-        assert_eq!(a.clone() + b.clone(), Some(Value::Float(13.0)));
-        assert_eq!(a.clone() - b.clone(), Some(Value::Float(7.0)));
-        assert_eq!(a.clone() * b.clone(), Some(Value::Float(30.0)));
-        assert_eq!(a.clone() / b.clone(), Some(Value::Float(10.0 / 3.0)));
+    #[test_case(Value::Float(10.0), Value::Float(3.0), Value::Float(7.0) ; "float_sub")]
+    #[test_case(Value::Int(10), Value::Int(3), Value::Int(7) ; "int_sub")]
+    #[test_case(Value::Int(10), Value::Float(3.5), Value::Float(6.5) ; "mixed_sub")]
+    fn test_value_sub(left: Value, right: Value, expected: Value) {
+        assert_eq!(left - right, Some(expected));
+    }
+
+    #[test_case(Value::Float(10.0), Value::Float(3.0), Value::Float(30.0) ; "float_mul")]
+    #[test_case(Value::Int(10), Value::Int(3), Value::Int(30) ; "int_mul")]
+    #[test_case(Value::Int(10), Value::Float(3.5), Value::Float(35.0) ; "mixed_mul")]
+    fn test_value_mul(left: Value, right: Value, expected: Value) {
+        assert_eq!(left * right, Some(expected));
     }
 
     #[test]
-    fn test_value_int_arithmetic() {
-        let a = Value::Int(10);
-        let b = Value::Int(3);
-
-        assert_eq!(a.clone() + b.clone(), Some(Value::Int(13)));
-        assert_eq!(a.clone() - b.clone(), Some(Value::Int(7)));
-        assert_eq!(a.clone() * b.clone(), Some(Value::Int(30)));
-        // Division promotes to float
-        assert_eq!(a.clone() / b.clone(), Some(Value::Float(10.0 / 3.0)));
+    fn test_value_div() {
+        assert_eq!(
+            Value::Float(10.0) / Value::Float(3.0),
+            Some(Value::Float(10.0 / 3.0))
+        );
+        assert_eq!(
+            Value::Int(10) / Value::Int(3),
+            Some(Value::Float(10.0 / 3.0))
+        );
     }
 
-    #[test]
-    fn test_value_mixed_arithmetic() {
-        let a = Value::Int(10);
-        let b = Value::Float(3.5);
-
-        assert_eq!(a.clone() + b.clone(), Some(Value::Float(13.5)));
-        assert_eq!(a.clone() - b.clone(), Some(Value::Float(6.5)));
-        assert_eq!(a.clone() * b.clone(), Some(Value::Float(35.0)));
+    #[test_case(Value::Int(10), Value::Int(5), Value::Bool(false) ; "lt")]
+    #[test_case(Value::Int(5), Value::Int(10), Value::Bool(true) ; "lt_true")]
+    fn test_value_lt(left: Value, right: Value, expected: Value) {
+        assert_eq!(left.lt(&right), Some(expected));
     }
 
-    #[test]
-    fn test_value_comparison() {
-        let a = Value::Int(10);
-        let b = Value::Int(5);
-
-        assert_eq!(a.lt(&b), Some(Value::Bool(false)));
-        assert_eq!(a.gt(&b), Some(Value::Bool(true)));
-        assert_eq!(a.eq(&b), Value::Bool(false));
+    #[test_case(Value::Int(10), Value::Int(5), Value::Bool(true) ; "gt")]
+    #[test_case(Value::Int(5), Value::Int(10), Value::Bool(false) ; "gt_false")]
+    fn test_value_gt(left: Value, right: Value, expected: Value) {
+        assert_eq!(left.gt(&right), Some(expected));
     }
 
-    #[test]
-    fn test_value_power() {
-        let a = Value::Int(2);
-        let b = Value::Int(3);
+    #[test_case(Value::Int(10), Value::Int(5), Value::Bool(false) ; "eq_false")]
+    #[test_case(Value::Int(5), Value::Int(5), Value::Bool(true) ; "eq_true")]
+    fn test_value_eq(left: Value, right: Value, expected: Value) {
+        assert_eq!(left.eq(&right), expected);
+    }
 
-        assert_eq!(a.pow(&b), Some(Value::Float(8.0)));
+    #[test_case(Value::Int(2), Value::Int(3), Value::Float(8.0) ; "int_power")]
+    fn test_value_power(base: Value, exp: Value, expected: Value) {
+        assert_eq!(base.pow(&exp), Some(expected));
     }
 
     #[test_case(Value::Null, false ; "as_bool_null")]
@@ -421,98 +426,47 @@ mod tests {
         assert_eq!(input.as_bool(), expected);
     }
 
-    #[test]
-    fn test_value_compare_null() {
-        assert_eq!(
-            Value::Null.compare(&Value::Null),
-            Some(std::cmp::Ordering::Equal)
-        );
-        assert_eq!(
-            Value::Null.compare(&Value::Int(1)),
-            Some(std::cmp::Ordering::Less)
-        );
-        assert_eq!(
-            Value::Int(1).compare(&Value::Null),
-            Some(std::cmp::Ordering::Greater)
-        );
+    #[test_case(Value::Null, Value::Null, Some(std::cmp::Ordering::Equal) ; "compare_null_eq")]
+    #[test_case(Value::Null, Value::Int(1), Some(std::cmp::Ordering::Less) ; "compare_null_less")]
+    #[test_case(Value::Int(1), Value::Null, Some(std::cmp::Ordering::Greater) ; "compare_null_greater")]
+    #[test_case(Value::Bool(false), Value::Bool(true), Some(std::cmp::Ordering::Less) ; "compare_bool_less")]
+    #[test_case(Value::Bool(true), Value::Bool(true), Some(std::cmp::Ordering::Equal) ; "compare_bool_eq")]
+    #[test_case(Value::Bool(true), Value::Bool(false), Some(std::cmp::Ordering::Greater) ; "compare_bool_greater")]
+    #[test_case(Value::Int(1), Value::Int(2), Some(std::cmp::Ordering::Less) ; "compare_int_less")]
+    #[test_case(Value::Int(5), Value::Int(5), Some(std::cmp::Ordering::Equal) ; "compare_int_eq")]
+    #[test_case(Value::Int(10), Value::Int(3), Some(std::cmp::Ordering::Greater) ; "compare_int_greater")]
+    #[test_case(Value::Float(1.5), Value::Float(2.5), Some(std::cmp::Ordering::Less) ; "compare_float_less")]
+    #[test_case(Value::Float(3.0), Value::Float(3.0), Some(std::cmp::Ordering::Equal) ; "compare_float_eq")]
+    fn test_value_compare(
+        left: Value,
+        right: Value,
+        expected: Option<std::cmp::Ordering>,
+    ) {
+        assert_eq!(left.compare(&right), expected);
     }
 
-    #[test]
-    fn test_value_compare_bool() {
-        assert_eq!(
-            Value::Bool(false).compare(&Value::Bool(true)),
-            Some(std::cmp::Ordering::Less)
-        );
-        assert_eq!(
-            Value::Bool(true).compare(&Value::Bool(true)),
-            Some(std::cmp::Ordering::Equal)
-        );
-        assert_eq!(
-            Value::Bool(true).compare(&Value::Bool(false)),
-            Some(std::cmp::Ordering::Greater)
-        );
+    #[test_case(Value::Int(1), Value::Float(2.0), Some(std::cmp::Ordering::Less) ; "int_float_less")]
+    #[test_case(Value::Int(5), Value::Float(5.0), Some(std::cmp::Ordering::Equal) ; "int_float_eq")]
+    #[test_case(Value::Float(1.5), Value::Int(2), Some(std::cmp::Ordering::Less) ; "float_int_less")]
+    fn test_value_compare_int_float(
+        left: Value,
+        right: Value,
+        expected: Option<std::cmp::Ordering>,
+    ) {
+        assert_eq!(left.compare(&right), expected);
     }
 
-    #[test]
-    fn test_value_compare_int() {
+    #[test_case("apple", "banana", Some(std::cmp::Ordering::Less) ; "string_less")]
+    #[test_case("zebra", "apple", Some(std::cmp::Ordering::Greater) ; "string_greater")]
+    #[test_case("same", "same", Some(std::cmp::Ordering::Equal) ; "string_eq")]
+    fn test_value_compare_string(
+        left: &str,
+        right: &str,
+        expected: Option<std::cmp::Ordering>,
+    ) {
         assert_eq!(
-            Value::Int(1).compare(&Value::Int(2)),
-            Some(std::cmp::Ordering::Less)
-        );
-        assert_eq!(
-            Value::Int(5).compare(&Value::Int(5)),
-            Some(std::cmp::Ordering::Equal)
-        );
-        assert_eq!(
-            Value::Int(10).compare(&Value::Int(3)),
-            Some(std::cmp::Ordering::Greater)
-        );
-    }
-
-    #[test]
-    fn test_value_compare_float() {
-        assert_eq!(
-            Value::Float(1.5).compare(&Value::Float(2.5)),
-            Some(std::cmp::Ordering::Less)
-        );
-        assert_eq!(
-            Value::Float(3.0).compare(&Value::Float(3.0)),
-            Some(std::cmp::Ordering::Equal)
-        );
-    }
-
-    #[test]
-    fn test_value_compare_int_float() {
-        assert_eq!(
-            Value::Int(1).compare(&Value::Float(2.0)),
-            Some(std::cmp::Ordering::Less)
-        );
-        assert_eq!(
-            Value::Int(5).compare(&Value::Float(5.0)),
-            Some(std::cmp::Ordering::Equal)
-        );
-        assert_eq!(
-            Value::Float(1.5).compare(&Value::Int(2)),
-            Some(std::cmp::Ordering::Less)
-        );
-    }
-
-    #[test]
-    fn test_value_compare_string() {
-        assert_eq!(
-            Value::String("apple".to_string())
-                .compare(&Value::String("banana".to_string())),
-            Some(std::cmp::Ordering::Less)
-        );
-        assert_eq!(
-            Value::String("zebra".to_string())
-                .compare(&Value::String("apple".to_string())),
-            Some(std::cmp::Ordering::Greater)
-        );
-        assert_eq!(
-            Value::String("same".to_string())
-                .compare(&Value::String("same".to_string())),
-            Some(std::cmp::Ordering::Equal)
+            Value::String(left.to_string()).compare(&Value::String(right.to_string())),
+            expected
         );
     }
 
@@ -558,37 +512,41 @@ mod tests {
         assert_eq!(nested1.compare(&nested2), Some(std::cmp::Ordering::Less));
     }
 
-    #[test]
-    fn test_value_compare_mixed_types() {
-        // Type priority: null < bool < int/float < string < list
-        assert_eq!(
-            Value::Null.compare(&Value::Bool(true)),
-            Some(std::cmp::Ordering::Less)
-        );
-        assert_eq!(
-            Value::Bool(false).compare(&Value::Int(0)),
-            Some(std::cmp::Ordering::Less)
-        );
-        assert_eq!(
-            Value::Int(100).compare(&Value::String("a".to_string())),
-            Some(std::cmp::Ordering::Less)
-        );
-        assert_eq!(
-            Value::String("z".to_string()).compare(&Value::List(vec![])),
-            Some(std::cmp::Ordering::Less)
-        );
+    // Type priority: null < bool < int/float < string < list
+    #[test_case(Value::Null, Value::Bool(true), Some(std::cmp::Ordering::Less) ; "null_lt_bool")]
+    #[test_case(Value::Bool(false), Value::Int(0), Some(std::cmp::Ordering::Less) ; "bool_lt_int")]
+    #[test_case(Value::Int(100), Value::String("a".to_string()), Some(std::cmp::Ordering::Less) ; "int_lt_string")]
+    #[test_case(Value::String("z".to_string()), Value::List(vec![]), Some(std::cmp::Ordering::Less) ; "string_lt_list")]
+    fn test_value_compare_mixed_types(
+        left: Value,
+        right: Value,
+        expected: Option<std::cmp::Ordering>,
+    ) {
+        assert_eq!(left.compare(&right), expected);
     }
 
-    #[test]
-    fn test_value_compare_list_lexicographical() {
-        // Test lexicographical ordering with composite keys like [r.nth(0), r.nth(1)]
-        let a = Value::List(vec![Value::Int(1), Value::String("a".to_string())]);
-        let b = Value::List(vec![Value::Int(1), Value::String("c".to_string())]);
-        let c = Value::List(vec![Value::Int(2), Value::String("b".to_string())]);
-
-        assert_eq!(a.compare(&b), Some(std::cmp::Ordering::Less)); // [1, "a"] < [1, "c"]
-        assert_eq!(a.compare(&c), Some(std::cmp::Ordering::Less)); // [1, "a"] < [2, "b"]
-        assert_eq!(b.compare(&c), Some(std::cmp::Ordering::Less)); // [1, "c"] < [2, "b"]
+    // Test lexicographical ordering with composite keys like [r.nth(0), r.nth(1)]
+    #[test_case(
+        vec![Value::Int(1), Value::String("a".to_string())],
+        vec![Value::Int(1), Value::String("c".to_string())],
+        Some(std::cmp::Ordering::Less) ; "lex_same_first_diff_second"
+    )]
+    #[test_case(
+        vec![Value::Int(1), Value::String("a".to_string())],
+        vec![Value::Int(2), Value::String("b".to_string())],
+        Some(std::cmp::Ordering::Less) ; "lex_diff_first"
+    )]
+    #[test_case(
+        vec![Value::Int(1), Value::String("c".to_string())],
+        vec![Value::Int(2), Value::String("b".to_string())],
+        Some(std::cmp::Ordering::Less) ; "lex_same_first_greater_second"
+    )]
+    fn test_value_compare_list_lexicographical(
+        left: Vec<Value>,
+        right: Vec<Value>,
+        expected: Option<std::cmp::Ordering>,
+    ) {
+        assert_eq!(Value::List(left).compare(&Value::List(right)), expected);
     }
 
     #[test_case(Value::Int(42), true ; "is_numeric_int")]
