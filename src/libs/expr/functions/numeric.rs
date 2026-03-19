@@ -567,247 +567,244 @@ pub fn exp(args: &[Value]) -> Result<Value, EvalError> {
 mod tests {
     use super::*;
     use ahash::HashMapExt;
+    use test_case::test_case;
 
-    #[test]
-    fn test_abs() {
-        assert_eq!(abs(&[Value::Int(-5)]).unwrap(), Value::Int(5));
-        assert_eq!(abs(&[Value::Float(-3.5)]).unwrap(), Value::Float(3.5));
-        assert_eq!(abs(&[Value::Null]).unwrap(), Value::Null);
+    #[test_case(Value::Int(-5), Ok(Value::Int(5)) ; "abs_negative_int")]
+    #[test_case(Value::Int(5), Ok(Value::Int(5)) ; "abs_positive_int")]
+    #[test_case(Value::Int(0), Ok(Value::Int(0)) ; "abs_zero_int")]
+    #[test_case(Value::Float(-3.5), Ok(Value::Float(3.5)) ; "abs_negative_float")]
+    #[test_case(Value::Float(3.14), Ok(Value::Float(3.14)) ; "abs_positive_float")]
+    #[test_case(Value::Float(0.0), Ok(Value::Float(0.0)) ; "abs_zero_float")]
+    #[test_case(Value::Null, Ok(Value::Null) ; "abs_null")]
+    #[test_case(Value::Bool(true), Ok(Value::Int(1)) ; "abs_true")]
+    #[test_case(Value::Bool(false), Ok(Value::Int(0)) ; "abs_false")]
+    fn test_abs_basic(input: Value, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(abs(&[input]).unwrap(), v),
+            Err(_) => assert!(abs(&[input]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_round() {
-        assert_eq!(round(&[Value::Float(3.7)]).unwrap(), Value::Int(4));
-        assert_eq!(round(&[Value::Float(3.2)]).unwrap(), Value::Int(3));
-        assert_eq!(round(&[Value::Int(5)]).unwrap(), Value::Int(5));
+    #[test_case(Value::Float(3.7), Ok(Value::Int(4)) ; "round_up")]
+    #[test_case(Value::Float(3.2), Ok(Value::Int(3)) ; "round_down")]
+    #[test_case(Value::Float(5.0), Ok(Value::Int(5)) ; "round_exact")]
+    #[test_case(Value::Float(2.5), Ok(Value::Int(3)) ; "round_half_up")]
+    #[test_case(Value::Float(3.5), Ok(Value::Int(4)) ; "round_half_up_2")]
+    #[test_case(Value::Float(-2.3), Ok(Value::Int(-2)) ; "round_negative_up")]
+    #[test_case(Value::Float(-2.7), Ok(Value::Int(-3)) ; "round_negative_down")]
+    #[test_case(Value::Int(5), Ok(Value::Int(5)) ; "round_int")]
+    #[test_case(Value::Null, Ok(Value::Null) ; "round_null")]
+    #[test_case(Value::Bool(true), Ok(Value::Int(1)) ; "round_true")]
+    #[test_case(Value::Bool(false), Ok(Value::Int(0)) ; "round_false")]
+    fn test_round_basic(input: Value, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(round(&[input]).unwrap(), v),
+            Err(_) => assert!(round(&[input]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_min() {
-        assert_eq!(
-            min(&[Value::Int(3), Value::Int(1), Value::Int(2)]).unwrap(),
-            Value::Int(1)
-        );
-        assert_eq!(
-            min(&[Value::Float(3.5), Value::Float(1.2), Value::Float(2.8)]).unwrap(),
-            Value::Float(1.2)
-        );
-        assert_eq!(min(&[Value::Null]).unwrap(), Value::Null);
+    #[test_case(vec![Value::Int(3), Value::Int(1), Value::Int(2)], Ok(Value::Int(1)) ; "min_int")]
+    #[test_case(vec![Value::Float(3.5), Value::Float(1.2), Value::Float(2.8)], Ok(Value::Float(1.2)) ; "min_float")]
+    #[test_case(vec![Value::Int(42)], Ok(Value::Int(42)) ; "min_single")]
+    #[test_case(vec![Value::Null], Ok(Value::Null) ; "min_null")]
+    #[test_case(vec![Value::Null, Value::Null], Ok(Value::Null) ; "min_all_null")]
+    #[test_case(vec![Value::Bool(true), Value::Bool(false)], Ok(Value::Int(0)) ; "min_bool")]
+    #[test_case(vec![Value::String("10".to_string()), Value::String("5".to_string())], Ok(Value::Int(5)) ; "min_string")]
+    #[test_case(vec![Value::Int(3), Value::Float(1.5), Value::String("2".to_string())], Ok(Value::Float(1.5)) ; "min_mixed")]
+    fn test_min_various(args: Vec<Value>, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(min(&args).unwrap(), v),
+            Err(_) => assert!(min(&args).is_err()),
+        }
     }
 
-    #[test]
-    fn test_max() {
-        assert_eq!(
-            max(&[Value::Int(3), Value::Int(5), Value::Int(2)]).unwrap(),
-            Value::Int(5)
-        );
-        assert_eq!(
-            max(&[Value::Float(3.5), Value::Float(5.2), Value::Float(2.8)]).unwrap(),
-            Value::Float(5.2)
-        );
-        assert_eq!(max(&[Value::Null]).unwrap(), Value::Null);
+    #[test_case(vec![Value::Int(3), Value::Int(5), Value::Int(2)], Ok(Value::Int(5)) ; "max_int")]
+    #[test_case(vec![Value::Float(3.5), Value::Float(5.2), Value::Float(2.8)], Ok(Value::Float(5.2)) ; "max_float")]
+    #[test_case(vec![Value::Int(42)], Ok(Value::Int(42)) ; "max_single")]
+    #[test_case(vec![Value::Null], Ok(Value::Null) ; "max_null")]
+    #[test_case(vec![Value::Null, Value::Null], Ok(Value::Null) ; "max_all_null")]
+    #[test_case(vec![Value::Bool(true), Value::Bool(false)], Ok(Value::Int(1)) ; "max_bool")]
+    #[test_case(vec![Value::String("10".to_string()), Value::String("5".to_string())], Ok(Value::Int(10)) ; "max_string")]
+    fn test_max_various(args: Vec<Value>, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(max(&args).unwrap(), v),
+            Err(_) => assert!(max(&args).is_err()),
+        }
     }
 
-    #[test]
-    fn test_int() {
-        assert_eq!(int(&[Value::Float(3.7)]).unwrap(), Value::Int(3));
-        assert_eq!(
-            int(&[Value::String("42".to_string())]).unwrap(),
-            Value::Int(42)
-        );
-        assert_eq!(int(&[Value::Int(42)]).unwrap(), Value::Int(42));
+    #[test_case(Value::Float(3.7), Ok(Value::Int(3)) ; "int_from_float")]
+    #[test_case(Value::Float(-3.7), Ok(Value::Int(-3)) ; "int_from_negative_float")]
+    #[test_case(Value::Int(42), Ok(Value::Int(42)) ; "int_from_int")]
+    #[test_case(Value::Null, Ok(Value::Null) ; "int_from_null")]
+    #[test_case(Value::Bool(true), Ok(Value::Int(1)) ; "int_from_true")]
+    #[test_case(Value::Bool(false), Ok(Value::Int(0)) ; "int_from_false")]
+    fn test_int_basic(input: Value, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(int(&[input]).unwrap(), v),
+            Err(_) => assert!(int(&[input]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_float() {
-        assert_eq!(float(&[Value::Int(42)]).unwrap(), Value::Float(42.0));
-        assert_eq!(
-            float(&[Value::String("3.14".to_string())]).unwrap(),
-            Value::Float(3.14)
-        );
+    #[test_case(Value::Int(42), Ok(Value::Float(42.0)) ; "float_from_int")]
+    #[test_case(Value::Int(-42), Ok(Value::Float(-42.0)) ; "float_from_negative_int")]
+    #[test_case(Value::Null, Ok(Value::Null) ; "float_from_null")]
+    #[test_case(Value::Bool(true), Ok(Value::Float(1.0)) ; "float_from_true")]
+    #[test_case(Value::Bool(false), Ok(Value::Float(0.0)) ; "float_from_false")]
+    fn test_float_basic(input: Value, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(float(&[input]).unwrap(), v),
+            Err(_) => assert!(float(&[input]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_ceil() {
-        assert_eq!(ceil(&[Value::Float(3.2)]).unwrap(), Value::Int(4));
-        assert_eq!(ceil(&[Value::Float(-3.7)]).unwrap(), Value::Int(-3));
+    #[test_case(Value::Float(3.2), Ok(Value::Int(4)) ; "ceil_positive")]
+    #[test_case(Value::Float(-3.7), Ok(Value::Int(-3)) ; "ceil_negative")]
+    #[test_case(Value::Float(-3.2), Ok(Value::Int(-3)) ; "ceil_negative_2")]
+    #[test_case(Value::Float(-3.8), Ok(Value::Int(-3)) ; "ceil_negative_3")]
+    #[test_case(Value::Int(5), Ok(Value::Int(5)) ; "ceil_int")]
+    #[test_case(Value::Null, Ok(Value::Null) ; "ceil_null")]
+    #[test_case(Value::Bool(true), Ok(Value::Int(1)) ; "ceil_true")]
+    #[test_case(Value::Bool(false), Ok(Value::Int(0)) ; "ceil_false")]
+    fn test_ceil_basic(input: Value, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(ceil(&[input]).unwrap(), v),
+            Err(_) => assert!(ceil(&[input]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_floor() {
-        assert_eq!(floor(&[Value::Float(3.7)]).unwrap(), Value::Int(3));
-        assert_eq!(floor(&[Value::Float(-3.2)]).unwrap(), Value::Int(-4));
+    #[test_case(Value::Float(3.7), Ok(Value::Int(3)) ; "floor_positive")]
+    #[test_case(Value::Float(-3.2), Ok(Value::Int(-4)) ; "floor_negative")]
+    #[test_case(Value::Int(5), Ok(Value::Int(5)) ; "floor_int")]
+    #[test_case(Value::Null, Ok(Value::Null) ; "floor_null")]
+    #[test_case(Value::Bool(true), Ok(Value::Int(1)) ; "floor_true")]
+    #[test_case(Value::Bool(false), Ok(Value::Int(0)) ; "floor_false")]
+    fn test_floor_basic(input: Value, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(floor(&[input]).unwrap(), v),
+            Err(_) => assert!(floor(&[input]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_sqrt() {
-        assert_eq!(sqrt(&[Value::Float(16.0)]).unwrap(), Value::Float(4.0));
-        assert_eq!(sqrt(&[Value::Int(9)]).unwrap(), Value::Float(3.0));
-        // Negative number error
-        assert!(sqrt(&[Value::Float(-4.0)]).is_err());
+    #[test_case(Value::Float(16.0), Ok(Value::Float(4.0)) ; "sqrt_float")]
+    #[test_case(Value::Int(9), Ok(Value::Float(3.0)) ; "sqrt_int")]
+    #[test_case(Value::Int(16), Ok(Value::Float(4.0)) ; "sqrt_int_16")]
+    #[test_case(Value::Float(0.0), Ok(Value::Float(0.0)) ; "sqrt_zero")]
+    #[test_case(Value::Float(1.0), Ok(Value::Float(1.0)) ; "sqrt_one")]
+    #[test_case(Value::Bool(true), Ok(Value::Float(1.0)) ; "sqrt_true")]
+    #[test_case(Value::Bool(false), Ok(Value::Float(0.0)) ; "sqrt_false")]
+    #[test_case(Value::Null, Ok(Value::Null) ; "sqrt_null")]
+    #[test_case(Value::Float(-4.0), Err(()) ; "sqrt_negative")]
+    fn test_sqrt_basic(input: Value, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(sqrt(&[input]).unwrap(), v),
+            Err(_) => assert!(sqrt(&[input]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_pow() {
-        assert_eq!(
-            pow(&[Value::Float(2.0), Value::Float(3.0)]).unwrap(),
-            Value::Float(8.0)
-        );
-        assert_eq!(
-            pow(&[Value::Int(2), Value::Int(10)]).unwrap(),
-            Value::Float(1024.0)
-        );
+    #[test_case(Value::Float(2.0), Value::Float(3.0), Ok(Value::Float(8.0)) ; "pow_float")]
+    #[test_case(Value::Int(2), Value::Int(10), Ok(Value::Float(1024.0)) ; "pow_int")]
+    #[test_case(Value::Int(5), Value::Int(0), Ok(Value::Float(1.0)) ; "pow_zero_exp")]
+    #[test_case(Value::Int(0), Value::Int(5), Ok(Value::Float(0.0)) ; "pow_zero_base")]
+    #[test_case(Value::Int(2), Value::Int(-1), Ok(Value::Float(0.5)) ; "pow_neg_exp")]
+    #[test_case(Value::Null, Value::Int(2), Ok(Value::Null) ; "pow_null_base")]
+    #[test_case(Value::Int(2), Value::Null, Ok(Value::Null) ; "pow_null_exp")]
+    fn test_pow_basic(base: Value, exp: Value, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(pow(&[base, exp]).unwrap(), v),
+            Err(_) => assert!(pow(&[base, exp]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_sin() {
-        assert!(
-            (sin(&[Value::Float(0.0)]).unwrap().as_float().unwrap() - 0.0).abs() < 1e-10
-        );
-        assert!(
-            (sin(&[Value::Float(std::f64::consts::PI / 2.0)])
-                .unwrap()
-                .as_float()
-                .unwrap()
-                - 1.0)
-                .abs()
-                < 1e-10
-        );
+    #[test_case(Value::Float(0.0), 0.0 ; "sin_zero")]
+    #[test_case(Value::Float(std::f64::consts::PI / 2.0), 1.0 ; "sin_pi_2")]
+    #[test_case(Value::Null, f64::NAN ; "sin_null")]
+    fn test_sin_basic(input: Value, expected: f64) {
+        let result = sin(&[input]).unwrap();
+        if expected.is_nan() {
+            assert_eq!(result, Value::Null);
+        } else {
+            assert!((result.as_float().unwrap() - expected).abs() < 1e-10);
+        }
     }
 
-    #[test]
-    fn test_cos() {
-        assert!(
-            (cos(&[Value::Float(0.0)]).unwrap().as_float().unwrap() - 1.0).abs() < 1e-10
-        );
-        assert!(
-            (cos(&[Value::Float(std::f64::consts::PI)])
-                .unwrap()
-                .as_float()
-                .unwrap()
-                + 1.0)
-                .abs()
-                < 1e-10
-        );
+    #[test_case(Value::Float(0.0), 1.0 ; "cos_zero")]
+    #[test_case(Value::Float(std::f64::consts::PI), -1.0 ; "cos_pi")]
+    #[test_case(Value::Null, f64::NAN ; "cos_null")]
+    fn test_cos_basic(input: Value, expected: f64) {
+        let result = cos(&[input]).unwrap();
+        if expected.is_nan() {
+            assert_eq!(result, Value::Null);
+        } else {
+            assert!((result.as_float().unwrap() - expected).abs() < 1e-10);
+        }
     }
 
-    #[test]
-    fn test_tan() {
-        assert!(
-            (tan(&[Value::Float(0.0)]).unwrap().as_float().unwrap() - 0.0).abs() < 1e-10
-        );
-        assert!(
-            (tan(&[Value::Float(std::f64::consts::PI / 4.0)])
-                .unwrap()
-                .as_float()
-                .unwrap()
-                - 1.0)
-                .abs()
-                < 1e-10
-        );
+    #[test_case(Value::Float(0.0), 0.0 ; "tan_zero")]
+    #[test_case(Value::Float(std::f64::consts::PI / 4.0), 1.0 ; "tan_pi_4")]
+    #[test_case(Value::Null, f64::NAN ; "tan_null")]
+    fn test_tan_basic(input: Value, expected: f64) {
+        let result = tan(&[input]).unwrap();
+        if expected.is_nan() {
+            assert_eq!(result, Value::Null);
+        } else {
+            assert!((result.as_float().unwrap() - expected).abs() < 1e-10);
+        }
     }
 
-    #[test]
-    fn test_ln() {
-        assert!(
-            (ln(&[Value::Float(1.0)]).unwrap().as_float().unwrap() - 0.0).abs() < 1e-10
-        );
-        assert!(
-            (ln(&[Value::Float(std::f64::consts::E)])
-                .unwrap()
-                .as_float()
-                .unwrap()
-                - 1.0)
-                .abs()
-                < 1e-10
-        );
-        // Error on non-positive
-        assert!(ln(&[Value::Float(-1.0)]).is_err());
+    #[test_case(Value::Float(1.0), 0.0 ; "ln_one")]
+    #[test_case(Value::Float(std::f64::consts::E), 1.0 ; "ln_e")]
+    #[test_case(Value::Null, f64::NAN ; "ln_null")]
+    #[test_case(Value::Bool(true), 0.0 ; "ln_true")]
+    fn test_ln_basic(input: Value, expected: f64) {
+        let result = ln(&[input]).unwrap();
+        if expected.is_nan() {
+            assert_eq!(result, Value::Null);
+        } else {
+            assert!((result.as_float().unwrap() - expected).abs() < 1e-10);
+        }
     }
 
-    #[test]
-    fn test_log10() {
-        assert!(
-            (log10(&[Value::Float(1.0)]).unwrap().as_float().unwrap() - 0.0).abs()
-                < 1e-10
-        );
-        assert!(
-            (log10(&[Value::Float(100.0)]).unwrap().as_float().unwrap() - 2.0).abs()
-                < 1e-10
-        );
-        // Error on non-positive
-        assert!(log10(&[Value::Float(0.0)]).is_err());
+    #[test_case(Value::Float(1.0), 0.0 ; "log10_one")]
+    #[test_case(Value::Float(10.0), 1.0 ; "log10_10")]
+    #[test_case(Value::Float(100.0), 2.0 ; "log10_100")]
+    #[test_case(Value::Null, f64::NAN ; "log10_null")]
+    #[test_case(Value::Bool(true), 0.0 ; "log10_true")]
+    fn test_log10_basic(input: Value, expected: f64) {
+        let result = log10(&[input]).unwrap();
+        if expected.is_nan() {
+            assert_eq!(result, Value::Null);
+        } else {
+            assert!((result.as_float().unwrap() - expected).abs() < 1e-10);
+        }
     }
 
-    #[test]
-    fn test_exp() {
-        assert!(
-            (exp(&[Value::Float(0.0)]).unwrap().as_float().unwrap() - 1.0).abs() < 1e-10
-        );
-        assert!(
-            (exp(&[Value::Float(1.0)]).unwrap().as_float().unwrap()
-                - std::f64::consts::E)
-                .abs()
-                < 1e-10
-        );
+    #[test_case(Value::Float(0.0), 1.0 ; "exp_zero")]
+    #[test_case(Value::Float(1.0), std::f64::consts::E ; "exp_one")]
+    #[test_case(Value::Null, f64::NAN ; "exp_null")]
+    #[test_case(Value::Bool(true), std::f64::consts::E ; "exp_true")]
+    fn test_exp_basic(input: Value, expected: f64) {
+        let result = exp(&[input]).unwrap();
+        if expected.is_nan() {
+            assert_eq!(result, Value::Null);
+        } else {
+            assert!((result.as_float().unwrap() - expected).abs() < 1e-10);
+        }
     }
 
-    #[test]
-    fn test_abs_null() {
-        assert_eq!(abs(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_abs_bool() {
-        assert_eq!(abs(&[Value::Bool(true)]).unwrap(), Value::Int(1));
-        assert_eq!(abs(&[Value::Bool(false)]).unwrap(), Value::Int(0));
-    }
-
-    #[test]
-    fn test_abs_string() {
-        assert_eq!(
-            abs(&[Value::String("-42".to_string())]).unwrap(),
-            Value::Int(42)
-        );
-        assert_eq!(
-            abs(&[Value::String("-3.14".to_string())]).unwrap(),
-            Value::Float(3.14)
-        );
-        // Invalid string should error
-        assert!(abs(&[Value::String("abc".to_string())]).is_err());
-    }
-
-    #[test]
-    fn test_round_string() {
-        assert_eq!(
-            round(&[Value::String("3.7".to_string())]).unwrap(),
-            Value::Int(4)
-        );
-        // Invalid string should error
-        assert!(round(&[Value::String("abc".to_string())]).is_err());
-    }
-
-    #[test]
-    fn test_min_empty() {
-        assert_eq!(min(&[Value::Null]).unwrap(), Value::Null);
+    #[test_case("-42", Ok(Value::Int(42)) ; "abs_int_string")]
+    #[test_case("-3.14", Ok(Value::Float(3.14)) ; "abs_float_string")]
+    #[test_case("0", Ok(Value::Int(0)) ; "abs_zero_string")]
+    #[test_case("abc", Err(()) ; "abs_invalid_string")]
+    fn test_abs_string(input: &str, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(abs(&[Value::String(input.to_string())]).unwrap(), v),
+            Err(_) => assert!(abs(&[Value::String(input.to_string())]).is_err()),
+        }
     }
 
     #[test]
     fn test_min_no_args() {
         assert!(min(&[]).is_err());
-    }
-
-    #[test]
-    fn test_min_mixed_types() {
-        assert_eq!(
-            min(&[
-                Value::Int(3),
-                Value::Float(1.5),
-                Value::String("2".to_string())
-            ])
-            .unwrap(),
-            Value::Float(1.5)
-        );
     }
 
     #[test]
@@ -826,100 +823,56 @@ mod tests {
     }
 
     #[test]
-    fn test_max_empty() {
-        assert_eq!(max(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
     fn test_max_no_args() {
         assert!(max(&[]).is_err());
     }
 
-    #[test]
-    fn test_int_string_float() {
-        // String containing float should be parsed and truncated
-        assert_eq!(
-            int(&[Value::String("3.14".to_string())]).unwrap(),
-            Value::Int(3)
-        );
+    #[test_case("42", Ok(Value::Int(42)) ; "int_string_int")]
+    #[test_case("3.14", Ok(Value::Int(3)) ; "int_string_float")]
+    #[test_case("-42", Ok(Value::Int(-42)) ; "int_string_negative")]
+    #[test_case("abc", Err(()) ; "int_string_invalid")]
+    fn test_int_string(input: &str, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(int(&[Value::String(input.to_string())]).unwrap(), v),
+            Err(_) => assert!(int(&[Value::String(input.to_string())]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_int_invalid_string() {
-        assert!(int(&[Value::String("abc".to_string())]).is_err());
+    #[test_case("3.14", Ok(Value::Float(3.14)) ; "float_string")]
+    #[test_case("-3.14", Ok(Value::Float(-3.14)) ; "float_string_negative")]
+    #[test_case("abc", Err(()) ; "float_string_invalid")]
+    fn test_float_string(input: &str, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(float(&[Value::String(input.to_string())]).unwrap(), v),
+            Err(_) => assert!(float(&[Value::String(input.to_string())]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_int_bool() {
-        assert_eq!(int(&[Value::Bool(true)]).unwrap(), Value::Int(1));
-        assert_eq!(int(&[Value::Bool(false)]).unwrap(), Value::Int(0));
+    #[test_case("3.2", Ok(Value::Int(4)) ; "ceil_string")]
+    #[test_case("abc", Err(()) ; "ceil_string_invalid")]
+    fn test_ceil_string(input: &str, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(ceil(&[Value::String(input.to_string())]).unwrap(), v),
+            Err(_) => assert!(ceil(&[Value::String(input.to_string())]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_float_invalid_string() {
-        assert!(float(&[Value::String("abc".to_string())]).is_err());
+    #[test_case("3.7", Ok(Value::Int(3)) ; "floor_string")]
+    #[test_case("abc", Err(()) ; "floor_string_invalid")]
+    fn test_floor_string(input: &str, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(floor(&[Value::String(input.to_string())]).unwrap(), v),
+            Err(_) => assert!(floor(&[Value::String(input.to_string())]).is_err()),
+        }
     }
 
-    #[test]
-    fn test_float_bool() {
-        assert_eq!(float(&[Value::Bool(true)]).unwrap(), Value::Float(1.0));
-        assert_eq!(float(&[Value::Bool(false)]).unwrap(), Value::Float(0.0));
-    }
-
-    #[test]
-    fn test_ceil_int() {
-        // Int should pass through unchanged
-        assert_eq!(ceil(&[Value::Int(5)]).unwrap(), Value::Int(5));
-    }
-
-    #[test]
-    fn test_ceil_string() {
-        assert_eq!(
-            ceil(&[Value::String("3.2".to_string())]).unwrap(),
-            Value::Int(4)
-        );
-        assert!(ceil(&[Value::String("abc".to_string())]).is_err());
-    }
-
-    #[test]
-    fn test_floor_int() {
-        // Int should pass through unchanged
-        assert_eq!(floor(&[Value::Int(5)]).unwrap(), Value::Int(5));
-    }
-
-    #[test]
-    fn test_floor_string() {
-        assert_eq!(
-            floor(&[Value::String("3.7".to_string())]).unwrap(),
-            Value::Int(3)
-        );
-        assert!(floor(&[Value::String("abc".to_string())]).is_err());
-    }
-
-    #[test]
-    fn test_sqrt_zero() {
-        assert_eq!(sqrt(&[Value::Float(0.0)]).unwrap(), Value::Float(0.0));
-    }
-
-    #[test]
-    fn test_sqrt_string() {
-        assert_eq!(
-            sqrt(&[Value::String("16".to_string())]).unwrap(),
-            Value::Float(4.0)
-        );
-        assert!(sqrt(&[Value::String("abc".to_string())]).is_err());
-    }
-
-    #[test]
-    fn test_sqrt_null() {
-        assert_eq!(sqrt(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_pow_null() {
-        // If either arg is Null, return Null
-        assert_eq!(pow(&[Value::Null, Value::Int(2)]).unwrap(), Value::Null);
-        assert_eq!(pow(&[Value::Int(2), Value::Null]).unwrap(), Value::Null);
+    #[test_case("16", Ok(Value::Float(4.0)) ; "sqrt_string")]
+    #[test_case("abc", Err(()) ; "sqrt_string_invalid")]
+    fn test_sqrt_string(input: &str, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(sqrt(&[Value::String(input.to_string())]).unwrap(), v),
+            Err(_) => assert!(sqrt(&[Value::String(input.to_string())]).is_err()),
+        }
     }
 
     #[test]
@@ -987,102 +940,19 @@ mod tests {
     }
 
     // Additional tests for abs
-    #[test]
-    fn test_abs_positive() {
-        assert_eq!(abs(&[Value::Int(5)]).unwrap(), Value::Int(5));
-        assert_eq!(abs(&[Value::Float(3.14)]).unwrap(), Value::Float(3.14));
-    }
-
-    #[test]
-    fn test_abs_zero() {
-        assert_eq!(abs(&[Value::Int(0)]).unwrap(), Value::Int(0));
-        assert_eq!(abs(&[Value::Float(0.0)]).unwrap(), Value::Float(0.0));
-    }
-
-    #[test]
-    fn test_abs_negative_int() {
-        assert_eq!(abs(&[Value::Int(-100)]).unwrap(), Value::Int(100));
-        // Note: i64::MIN cannot be negated (would overflow), skipping this edge case
-    }
 
     // Additional tests for round
-    #[test]
-    fn test_round_exact() {
-        assert_eq!(round(&[Value::Float(5.0)]).unwrap(), Value::Int(5));
-    }
-
-    #[test]
-    fn test_round_half() {
-        assert_eq!(round(&[Value::Float(2.5)]).unwrap(), Value::Int(3));
-        assert_eq!(round(&[Value::Float(3.5)]).unwrap(), Value::Int(4));
-    }
-
-    #[test]
-    fn test_round_negative() {
-        assert_eq!(round(&[Value::Float(-2.3)]).unwrap(), Value::Int(-2));
-        assert_eq!(round(&[Value::Float(-2.7)]).unwrap(), Value::Int(-3));
-    }
-
-    #[test]
-    fn test_round_null() {
-        assert_eq!(round(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_round_bool() {
-        assert_eq!(round(&[Value::Bool(true)]).unwrap(), Value::Int(1));
-        assert_eq!(round(&[Value::Bool(false)]).unwrap(), Value::Int(0));
+    #[test_case("3.7", Ok(Value::Int(4)) ; "round_string_up")]
+    #[test_case("3.2", Ok(Value::Int(3)) ; "round_string_down")]
+    #[test_case("abc", Err(()) ; "round_string_invalid")]
+    fn test_round_string(input: &str, expected: Result<Value, ()>) {
+        match expected {
+            Ok(v) => assert_eq!(round(&[Value::String(input.to_string())]).unwrap(), v),
+            Err(_) => assert!(round(&[Value::String(input.to_string())]).is_err()),
+        }
     }
 
     // Additional tests for min/max
-    #[test]
-    fn test_min_single_value() {
-        assert_eq!(min(&[Value::Int(42)]).unwrap(), Value::Int(42));
-    }
-
-    #[test]
-    fn test_min_all_null() {
-        assert_eq!(min(&[Value::Null, Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_min_bool_values() {
-        assert_eq!(
-            min(&[Value::Bool(true), Value::Bool(false)]).unwrap(),
-            Value::Int(0)
-        );
-    }
-
-    #[test]
-    fn test_min_string_values() {
-        assert_eq!(
-            min(&[
-                Value::String("10".to_string()),
-                Value::String("5".to_string())
-            ])
-            .unwrap(),
-            Value::Int(5)
-        );
-    }
-
-    #[test]
-    fn test_max_single_value() {
-        assert_eq!(max(&[Value::Int(42)]).unwrap(), Value::Int(42));
-    }
-
-    #[test]
-    fn test_max_all_null() {
-        assert_eq!(max(&[Value::Null, Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_max_bool_values() {
-        assert_eq!(
-            max(&[Value::Bool(true), Value::Bool(false)]).unwrap(),
-            Value::Int(1)
-        );
-    }
-
     #[test]
     fn test_max_string_values() {
         assert_eq!(
@@ -1097,24 +967,6 @@ mod tests {
 
     // Additional tests for int
     #[test]
-    fn test_int_null() {
-        assert_eq!(int(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_int_negative_float() {
-        assert_eq!(int(&[Value::Float(-3.7)]).unwrap(), Value::Int(-3));
-    }
-
-    #[test]
-    fn test_int_negative_string() {
-        assert_eq!(
-            int(&[Value::String("-42".to_string())]).unwrap(),
-            Value::Int(-42)
-        );
-    }
-
-    #[test]
     fn test_int_large_number() {
         assert_eq!(
             int(&[Value::Int(9007199254740992i64)]).unwrap(),
@@ -1123,16 +975,6 @@ mod tests {
     }
 
     // Additional tests for float
-    #[test]
-    fn test_float_null() {
-        assert_eq!(float(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_float_negative() {
-        assert_eq!(float(&[Value::Int(-42)]).unwrap(), Value::Float(-42.0));
-    }
-
     #[test]
     fn test_float_negative_string() {
         assert_eq!(
@@ -1149,83 +991,7 @@ mod tests {
         );
     }
 
-    // Additional tests for ceil
-    #[test]
-    fn test_ceil_null() {
-        assert_eq!(ceil(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_ceil_bool() {
-        assert_eq!(ceil(&[Value::Bool(true)]).unwrap(), Value::Int(1));
-        assert_eq!(ceil(&[Value::Bool(false)]).unwrap(), Value::Int(0));
-    }
-
-    #[test]
-    fn test_ceil_negative() {
-        assert_eq!(ceil(&[Value::Float(-3.2)]).unwrap(), Value::Int(-3));
-        assert_eq!(ceil(&[Value::Float(-3.8)]).unwrap(), Value::Int(-3));
-    }
-
-    // Additional tests for floor
-    #[test]
-    fn test_floor_null() {
-        assert_eq!(floor(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_floor_bool() {
-        assert_eq!(floor(&[Value::Bool(true)]).unwrap(), Value::Int(1));
-        assert_eq!(floor(&[Value::Bool(false)]).unwrap(), Value::Int(0));
-    }
-
-    #[test]
-    fn test_floor_negative() {
-        assert_eq!(floor(&[Value::Float(-3.2)]).unwrap(), Value::Int(-4));
-        assert_eq!(floor(&[Value::Float(-3.8)]).unwrap(), Value::Int(-4));
-    }
-
-    // Additional tests for sqrt
-    #[test]
-    fn test_sqrt_int() {
-        assert_eq!(sqrt(&[Value::Int(16)]).unwrap(), Value::Float(4.0));
-    }
-
-    #[test]
-    fn test_sqrt_bool() {
-        assert_eq!(sqrt(&[Value::Bool(true)]).unwrap(), Value::Float(1.0));
-        assert_eq!(sqrt(&[Value::Bool(false)]).unwrap(), Value::Float(0.0));
-    }
-
-    #[test]
-    fn test_sqrt_one() {
-        assert_eq!(sqrt(&[Value::Float(1.0)]).unwrap(), Value::Float(1.0));
-    }
-
-    // Additional tests for pow
-    #[test]
-    fn test_pow_zero_exponent() {
-        assert_eq!(
-            pow(&[Value::Int(5), Value::Int(0)]).unwrap(),
-            Value::Float(1.0)
-        );
-    }
-
-    #[test]
-    fn test_pow_zero_base() {
-        assert_eq!(
-            pow(&[Value::Int(0), Value::Int(5)]).unwrap(),
-            Value::Float(0.0)
-        );
-    }
-
-    #[test]
-    fn test_pow_negative_exponent() {
-        assert_eq!(
-            pow(&[Value::Int(2), Value::Int(-1)]).unwrap(),
-            Value::Float(0.5)
-        );
-    }
+    // Additional tests for ceil and floor
 
     #[test]
     fn test_pow_fractional() {
@@ -1249,112 +1015,8 @@ mod tests {
     }
 
     // Additional tests for trigonometric functions
-    #[test]
-    fn test_sin_null() {
-        assert_eq!(sin(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_sin_bool() {
-        assert!(
-            (sin(&[Value::Bool(true)]).unwrap().as_float().unwrap() - 1.0f64.sin())
-                .abs()
-                < 1e-10
-        );
-    }
-
-    #[test]
-    fn test_cos_null() {
-        assert_eq!(cos(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_cos_bool() {
-        assert!(
-            (cos(&[Value::Bool(true)]).unwrap().as_float().unwrap() - 1.0f64.cos())
-                .abs()
-                < 1e-10
-        );
-    }
-
-    #[test]
-    fn test_tan_null() {
-        assert_eq!(tan(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_tan_bool() {
-        assert!(
-            (tan(&[Value::Bool(true)]).unwrap().as_float().unwrap() - 1.0f64.tan())
-                .abs()
-                < 1e-10
-        );
-    }
 
     // Additional tests for logarithmic functions
-    #[test]
-    fn test_ln_one() {
-        assert!(
-            (ln(&[Value::Float(1.0)]).unwrap().as_float().unwrap() - 0.0).abs() < 1e-10
-        );
-    }
-
-    #[test]
-    fn test_ln_null() {
-        assert_eq!(ln(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_ln_bool() {
-        assert!(
-            (ln(&[Value::Bool(true)]).unwrap().as_float().unwrap() - 0.0).abs() < 1e-10
-        );
-    }
-
-    #[test]
-    fn test_log10_one() {
-        assert!(
-            (log10(&[Value::Float(1.0)]).unwrap().as_float().unwrap() - 0.0).abs()
-                < 1e-10
-        );
-    }
-
-    #[test]
-    fn test_log10_null() {
-        assert_eq!(log10(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_log10_bool() {
-        assert!(
-            (log10(&[Value::Bool(true)]).unwrap().as_float().unwrap() - 0.0).abs()
-                < 1e-10
-        );
-    }
-
-    #[test]
-    fn test_log10_10() {
-        assert!(
-            (log10(&[Value::Float(10.0)]).unwrap().as_float().unwrap() - 1.0).abs()
-                < 1e-10
-        );
-    }
-
-    // Additional tests for exp
-    #[test]
-    fn test_exp_null() {
-        assert_eq!(exp(&[Value::Null]).unwrap(), Value::Null);
-    }
-
-    #[test]
-    fn test_exp_bool() {
-        assert!(
-            (exp(&[Value::Bool(true)]).unwrap().as_float().unwrap()
-                - std::f64::consts::E)
-                .abs()
-                < 1e-10
-        );
-    }
 
     #[test]
     fn test_exp_negative() {
