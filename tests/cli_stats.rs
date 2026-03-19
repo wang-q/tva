@@ -5,6 +5,7 @@ mod common;
 use common::TvaCmd;
 use std::io::Write;
 use tempfile::NamedTempFile;
+use test_case::test_case;
 
 // --- Helper Functions and Constants ---
 
@@ -98,54 +99,22 @@ fn stats_basic_help() {
     assert!(stdout.contains("Calculates summary statistics"));
 }
 
-#[test]
-fn stats_count() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--count"])
-        .stdin(INPUT_BASIC)
-        .run();
+// ============================================================================
+// Basic Stats Tests (with header)
+// ============================================================================
 
-    assert_eq!(stdout, "count\n6\n");
-}
-
-#[test]
-fn stats_sum() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--sum", "value"])
-        .stdin(INPUT_BASIC)
-        .run();
-
-    assert_eq!(stdout, "value_sum\n210\n");
-}
-
-#[test]
-fn stats_mean() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--mean", "value"])
-        .stdin(INPUT_BASIC)
-        .run();
-
-    assert_eq!(stdout, "value_mean\n35\n");
-}
-
-#[test]
-fn stats_min_max() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--min", "value", "--max", "value"])
-        .stdin(INPUT_BASIC)
-        .run();
-
-    assert_eq!(stdout, "value_min\tvalue_max\n10\t60\n");
-}
-
-#[test]
-fn stats_median() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--median", "value"])
-        .stdin(INPUT_BASIC)
-        .run();
-
-    assert_eq!(stdout, "value_median\n35\n");
+#[test_case("--count", "count\n6\n"; "count")]
+#[test_case("--sum value", "value_sum\n210\n"; "sum")]
+#[test_case("--mean value", "value_mean\n35\n"; "mean")]
+#[test_case("--median value", "value_median\n35\n"; "median")]
+#[test_case("--min value --max value", "value_min\tvalue_max\n10\t60\n"; "min_max")]
+fn test_stats_basic_with_header(args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(std::iter::once("--header"))
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(INPUT_BASIC).run();
+    assert_eq!(stdout, expected);
 }
 
 #[test]
@@ -197,74 +166,34 @@ fn stats_mad() {
     common::assert_close(mad, 22.239, 1e-3);
 }
 
-#[test]
-fn stats_first_last() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--first", "value", "--last", "value"])
-        .stdin(INPUT_BASIC)
-        .run();
-
-    assert_eq!(stdout, "value_first\tvalue_last\n10\t60\n");
+#[test_case("--first value --last value", "value_first\tvalue_last\n10\t60\n"; "first_last")]
+#[test_case("--nunique header1 --mode header1", "header1_nunique\theader1_mode\n2\tA\n"; "nunique_mode")]
+fn test_stats_string_ops_with_header(args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(std::iter::once("--header"))
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(INPUT_BASIC).run();
+    assert_eq!(stdout, expected);
 }
 
-#[test]
-fn stats_nunique_mode() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--nunique",
-            "header1",
-            "--mode",
-            "header1",
-        ])
-        .stdin(INPUT_BASIC)
-        .run();
-
-    assert_eq!(stdout, "header1_nunique\theader1_mode\n2\tA\n");
-}
-
-#[test]
-fn stats_group_by() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "header1",
-            "--count",
-            "--sum",
-            "value",
-        ])
-        .stdin(INPUT_BASIC)
-        .run();
-
-    assert_eq!(stdout, "header1\tcount\tvalue_sum\nA\t3\t60\nB\t3\t150\n");
-}
-
-#[test]
-fn stats_group_by_multiple() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "header1,header2",
-            "--sum",
-            "value",
-        ])
-        .stdin(INPUT_BASIC)
-        .run();
-
-    assert_eq!(
-        stdout,
-        "header1\theader2\tvalue_sum
-A\tX\t30
-A\tY\t30
-B\tX\t40
-B\tY\t110
-"
-    );
+#[test_case(
+    "--group-by header1 --count --sum value",
+    "header1\tcount\tvalue_sum\nA\t3\t60\nB\t3\t150\n";
+    "group_by_single"
+)]
+#[test_case(
+    "--group-by header1,header2 --sum value",
+    "header1\theader2\tvalue_sum\nA\tX\t30\nA\tY\t30\nB\tX\t40\nB\tY\t110\n";
+    "group_by_multiple"
+)]
+fn test_stats_group_by_with_header(args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(std::iter::once("--header"))
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(INPUT_BASIC).run();
+    assert_eq!(stdout, expected);
 }
 
 #[test]
@@ -301,17 +230,19 @@ fn stats_advanced_math() {
     common::assert_close(cv, 0.848528, 1e-5);
 }
 
-#[test]
-fn stats_quartiles() {
-    let input = "val\n1\n2\n3\n4\n5\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats", "--header", "--q1", "val", "--q3", "val", "--iqr", "val",
-        ])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "val_q1\tval_q3\tval_iqr\n2\t4\t2\n");
+#[test_case(
+    "val\n1\n2\n3\n4\n5\n",
+    "--q1 val --q3 val --iqr val",
+    "val_q1\tval_q3\tval_iqr\n2\t4\t2\n";
+    "quartiles"
+)]
+fn test_stats_quartiles(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(std::iter::once("--header"))
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert_eq!(stdout, expected);
 }
 
 #[test]
@@ -336,9 +267,8 @@ fn stats_string_ops() {
     assert_eq!(collapse_val, "A|B|A");
 }
 
-#[test]
-fn stats_rand() {
-    let input = "val\n100\n200\n";
+#[test_case("val\n100\n200\n", "val_rand", &["100", "200"]; "rand")]
+fn test_stats_rand(input: &str, header: &str, expected_values: &[&str]) {
     let (stdout, _) = TvaCmd::new()
         .args(&["stats", "--header", "--rand", "val"])
         .stdin(input)
@@ -346,214 +276,125 @@ fn stats_rand() {
 
     let lines: Vec<&str> = stdout.trim().lines().collect();
     assert_eq!(lines.len(), 2);
-    assert_eq!(lines[0], "val_rand");
+    assert_eq!(lines[0], header);
 
     let val = lines[1];
-    assert!(val == "100" || val == "200");
+    assert!(expected_values.contains(&val));
 }
 
-#[test]
-fn stats_replace_missing() {
-    // Mean of all missing values is nan.
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--mean", "2", "--replace-missing", "0.0"])
-        .stdin(INPUT_ALL_MISSING)
-        .run();
-
-    assert_eq!(stdout.trim(), "0");
-
-    // Default behavior (nan)
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--mean", "2"])
-        .stdin(INPUT_ALL_MISSING)
-        .run();
-
-    assert_eq!(stdout.trim(), "nan");
+#[test_case(INPUT_ALL_MISSING, "--mean 2 --replace-missing 0.0", "0"; "replace_missing")]
+#[test_case(INPUT_ALL_MISSING, "--mean 2", "nan"; "default_missing")]
+fn test_stats_replace_missing(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert_eq!(stdout.trim(), expected);
 }
 
-#[test]
-fn stats_missing_count_ops() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--missing-count",
-            "2",
-            "--not-missing-count",
-            "2",
-            "--count",
-        ])
-        .stdin(INPUT_MISSING)
-        .run();
-
-    // Total rows: 4.
-    // Col 2: "10", "", "20", "".
-    // Missing: 2. Not Missing: 2. Count: 4.
-    // Note: 'count' (OpKind::Count) is currently forced to be the first column by stats.rs logic (arg_index: 0).
-    assert_eq!(stdout.trim(), "4\t2\t2");
+#[test_case(
+    INPUT_MISSING,
+    "--missing-count 2 --not-missing-count 2 --count",
+    "4\t2\t2";
+    "missing_count_ops"
+)]
+fn test_stats_missing_count_ops(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert_eq!(stdout.trim(), expected);
 }
 
-#[test]
-fn stats_mode_count() {
-    let input = "A\nA\nB";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--mode-count", "1", "--mode", "1"])
-        .stdin(input)
-        .run();
-
-    // Mode: A. Count: 2.
-    assert_eq!(stdout.trim(), "2\tA");
+#[test_case("A\nA\nB", "--mode-count 1 --mode 1", "2\tA"; "mode_count")]
+#[test_case("A\nA\nB", "--unique-count 1", "2"; "unique_count_alias")]
+fn test_stats_mode_ops(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert_eq!(stdout.trim(), expected);
 }
 
-#[test]
-fn stats_unique_count_alias() {
-    let input = "A\nA\nB";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--unique-count", "1"]) // Should work same as --nunique
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout.trim(), "2");
+#[test_case(
+    "A\t10\nA\t20\nB\t30\nB\t40\nB\t50\n",
+    "--quantile 2:0.5,0.25,0.75",
+    "30\t20\t40";
+    "quantile"
+)]
+fn test_stats_quantile_ops(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert_eq!(stdout.trim(), expected);
 }
 
-#[test]
-fn stats_quantile() {
-    let input = "A\t10
-A\t20
-B\t30
-B\t40
-B\t50
-";
-    // Quantile 0.5 (Median), 0.25, 0.75
-    let (stdout, stderr) = TvaCmd::new()
-        .args(&["stats", "--quantile", "2:0.5,0.25,0.75"])
-        .stdin(input)
-        .run();
-
-    if !stderr.is_empty() {
-        println!("STDERR: {}", stderr);
-    }
-
-    // Data: 10, 20, 30, 40, 50. Sorted: 10, 20, 30, 40, 50.
-    // 0.5 -> 30
-    // 0.25 -> 20
-    // 0.75 -> 40
-    assert_eq!(stdout.trim(), "30\t20\t40");
+#[test_case("A\nB", "--values 1", "A|B"; "values_alias")]
+#[test_case("A\nA\nB", "--unique-values 1", "A|B"; "unique_values_alias")]
+fn test_stats_values_aliases(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert_eq!(stdout.trim(), expected);
 }
 
-#[test]
-fn stats_values_alias() {
-    let input = "A\nB";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--values", "1"]) // Alias for --collapse
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout.trim(), "A|B");
+#[test_case(
+    "--header --count --count-header my_count",
+    "col1\nA\n",
+    "my_count\n1\n";
+    "count_header"
+)]
+#[test_case(
+    "--header --count-header my_count",
+    "col1\nA\n",
+    "my_count\n1\n";
+    "count_header_implicit"
+)]
+fn test_stats_count_header(args: &str, input: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert_eq!(stdout, expected);
 }
 
-#[test]
-fn stats_unique_values_alias() {
-    let input = "A\nA\nB";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--unique-values", "1"]) // Alias for --unique
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout.trim(), "A|B");
-}
-
-#[test]
-fn stats_count_header() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--count", "--count-header", "my_count"])
-        .stdin("col1\nA\n")
-        .run();
-
-    assert_eq!(stdout, "my_count\n1\n");
-}
-
-#[test]
-fn stats_count_header_implicit() {
-    // --count-header should enable count even without --count
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--count-header", "my_count"])
-        .stdin("col1\nA\n")
-        .run();
-
-    assert_eq!(stdout, "my_count\n1\n");
-}
-
-#[test]
-fn stats_write_header() {
-    let input = "A\t10
-A\t20
-B\t30
-B\t40
-B\t50
-";
-    // No input header (-H not set), but force output header (-w)
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--write-header", "--sum", "2"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "field2_sum\n150\n");
+#[test_case(
+    "A\t10\nA\t20\nB\t30\nB\t40\nB\t50\n",
+    "--write-header --sum 2",
+    "field2_sum\n150\n";
+    "write_header"
+)]
+fn test_stats_write_header(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert_eq!(stdout, expected);
 }
 
 // --- Tests from cli_stats_new.rs ---
 
-#[test]
-fn stats_retain_alias() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--retain", "2"])
-        .stdin(INPUT_NEW)
-        .run();
-
-    // retain should act like first
-    assert_eq!(stdout.trim(), "10");
+#[test_case(INPUT_NEW, "--retain 2", "10"; "retain")]
+#[test_case("val\n2\n4\n", "--header --var val", "val_variance\n2"; "var")]
+fn test_stats_aliases(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert_eq!(stdout.trim(), expected);
 }
 
-#[test]
-fn stats_var_alias() {
-    let input = "val\n2\n4\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--var", "val"])
-        .stdin(input)
-        .run();
-
-    // Variance of 2,4 is 2. (Mean=3, (1+1)/1 = 2)
-    assert_eq!(stdout.trim(), "val_variance\n2");
-}
-
-#[test]
-fn stats_custom_header() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--sum", "2:my_sum", "--write-header"])
-        .stdin(INPUT_NEW)
-        .run();
-
-    assert_eq!(stdout.trim(), "my_sum\n150");
-}
-
-#[test]
-fn stats_custom_header_multiple() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--sum", "2:S", "--write-header"])
-        .stdin(INPUT_NEW)
-        .run();
-
-    assert_eq!(stdout.trim(), "S\n150");
-}
-
-#[test]
-fn stats_custom_header_quantile() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--quantile", "2:0.5:Median", "--write-header"])
-        .stdin(INPUT_NEW)
-        .run();
-
-    // Quantile of 10,20,30,40,50 is 30. Header should be Median.
-    assert_eq!(stdout.trim(), "Median\n30");
+#[test_case(INPUT_NEW, "--sum 2:my_sum --write-header", "my_sum\n150"; "custom_header")]
+#[test_case(INPUT_NEW, "--sum 2:S --write-header", "S\n150"; "custom_header_short")]
+#[test_case(INPUT_NEW, "--quantile 2:0.5:Median --write-header", "Median\n30"; "custom_header_quantile")]
+fn test_stats_custom_header(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
@@ -915,33 +756,39 @@ fn tsv_utils_test_advanced_stats_1() {
     assert!(stdout.contains("blue"));
 }
 
-#[test]
-fn tsv_utils_error_test_missing_file() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--count", "no_such_file.tsv"])
-        .run_fail();
-
-    assert!(stderr.contains("os error 2"));
-}
-
-#[test]
-fn tsv_utils_error_test_invalid_field_index() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--nunique", "0"])
-        .stdin(INPUT_5FIELD_A)
-        .run_fail();
-
-    assert!(stderr.contains("field index must be >= 1"));
-}
-
-#[test]
-fn tsv_utils_error_test_invalid_field_list_empty_element() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--nunique", "2,"])
-        .stdin(INPUT_5FIELD_A)
-        .run_fail();
-
-    assert!(stderr.contains("empty field list element"));
+#[test_case(
+    "--count no_such_file.tsv",
+    "",
+    "os error 2";
+    "missing_file"
+)]
+#[test_case(
+    "--nunique 0",
+    INPUT_5FIELD_A,
+    "field index must be >= 1";
+    "invalid_field_index"
+)]
+#[test_case(
+    "--nunique 2,",
+    INPUT_5FIELD_A,
+    "empty field list element";
+    "invalid_field_list_empty"
+)]
+fn test_tsv_utils_errors(args: &str, input: &str, expected_err: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (_, stderr) = if input.is_empty() {
+        TvaCmd::new().args(&args).run_fail()
+    } else {
+        TvaCmd::new().args(&args).stdin(input).run_fail()
+    };
+    assert!(
+        stderr.contains(expected_err),
+        "Expected error containing '{}' in: {}",
+        expected_err,
+        stderr
+    );
 }
 
 #[test]
@@ -1123,24 +970,29 @@ fn tsv_utils_test_float_precision_defaults() {
     common::assert_close(red_parts[7].parse().unwrap(), 0.0774, 1e-4);
 }
 
-#[test]
-fn tsv_utils_error_test_non_numeric_group_by() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--group-by", "x", "--count"])
-        .stdin(INPUT_5FIELD_A)
-        .run_fail();
-
-    assert!(stderr.contains("field name `x` requires header"));
-}
-
-#[test]
-fn tsv_utils_error_test_field_not_found_header() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--header", "--group-by", "2", "--sum", "width,len"])
-        .stdin(INPUT_5FIELD_A)
-        .run_fail();
-
-    assert!(stderr.contains("unknown field name `len`"));
+#[test_case(
+    "--group-by x --count",
+    INPUT_5FIELD_A,
+    "field name `x` requires header";
+    "non_numeric_group_by"
+)]
+#[test_case(
+    "--header --group-by 2 --sum width,len",
+    INPUT_5FIELD_A,
+    "unknown field name `len`";
+    "field_not_found_header"
+)]
+fn test_tsv_utils_errors_2(args: &str, input: &str, expected_err: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (_, stderr) = TvaCmd::new().args(&args).stdin(input).run_fail();
+    assert!(
+        stderr.contains(expected_err),
+        "Expected error containing '{}' in: {}",
+        expected_err,
+        stderr
+    );
 }
 
 #[test]
@@ -1185,24 +1037,29 @@ fn tsv_utils_test_header_only() {
     assert!(stdout.contains("0"));
 }
 
-#[test]
-fn tsv_utils_error_test_zero_index() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--header", "--count", "--min", "0"])
-        .stdin(INPUT_5FIELD_A)
-        .run_fail();
-
-    assert!(stderr.contains("field index must be >= 1"));
-}
-
-#[test]
-fn tsv_utils_error_test_invalid_field_list() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--header", "--count", "--min", "1,,2"])
-        .stdin(INPUT_5FIELD_A)
-        .run_fail();
-
-    assert!(stderr.contains("empty field list element"));
+#[test_case(
+    "--header --count --min 0",
+    INPUT_5FIELD_A,
+    "field index must be >= 1";
+    "zero_index"
+)]
+#[test_case(
+    "--header --count --min 1,,2",
+    INPUT_5FIELD_A,
+    "empty field list element";
+    "invalid_field_list"
+)]
+fn test_tsv_utils_errors_3(args: &str, input: &str, expected_err: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (_, stderr) = TvaCmd::new().args(&args).stdin(input).run_fail();
+    assert!(
+        stderr.contains(expected_err),
+        "Expected error containing '{}' in: {}",
+        expected_err,
+        stderr
+    );
 }
 
 #[test]
@@ -1278,63 +1135,51 @@ fn tsv_utils_test_no_header_group_by() {
     assert!(stdout.contains("\t1\t1"));
 }
 
-#[test]
-fn stats_error_quantile_invalid_prob() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--quantile", "1:1.5"])
-        .stdin(INPUT_BASIC)
-        .run_fail();
+// ============================================================================
+// Error Handling Tests
+// ============================================================================
 
-    assert!(stderr.contains("probability must be between 0.0 and 1.0"));
-}
-
-#[test]
-fn stats_error_quantile_no_prob() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--quantile", "1"])
-        .stdin(INPUT_BASIC)
-        .run_fail();
-
-    // tva uses clap, so it might be a parsing error or custom validation
-    // The current implementation expects field:prob format
-    assert!(stderr.to_lowercase().contains("invalid quantile syntax"));
-}
-
-#[test]
-fn stats_error_custom_header_multiple_fields() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--sum", "1,2:header"])
-        .stdin(INPUT_BASIC)
-        .run_fail();
-
-    assert!(stderr.contains("custom header is not allowed with multiple fields"));
-}
-
-#[test]
-fn stats_error_exclude_and_replace_missing() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--exclude-missing",
-            "--replace-missing",
-            "0",
-            "--mean",
-            "1",
-        ])
-        .stdin(INPUT_BASIC)
-        .run_fail();
-
-    assert!(stderr.contains("argument '--exclude-missing' cannot be used with '--replace-missing <replace-missing>'"));
-}
-
-#[test]
-fn stats_error_delimiter_and_values_delimiter_same() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "-d", ",", "-v", ",", "--values", "1"])
-        .stdin(INPUT_BASIC)
-        .run_fail();
-
-    assert!(stderr.contains("values delimiter cannot be the same as field delimiter"));
+#[test_case(
+    "--quantile 1:1.5",
+    INPUT_BASIC,
+    "probability must be between 0.0 and 1.0";
+    "quantile_invalid_prob"
+)]
+#[test_case(
+    "--quantile 1",
+    INPUT_BASIC,
+    "invalid quantile syntax";
+    "quantile_no_prob"
+)]
+#[test_case(
+    "--sum 1,2:header",
+    INPUT_BASIC,
+    "custom header is not allowed with multiple fields";
+    "custom_header_multiple_fields"
+)]
+#[test_case(
+    "--exclude-missing --replace-missing 0 --mean 1",
+    INPUT_BASIC,
+    "cannot be used with";
+    "exclude_and_replace_missing"
+)]
+#[test_case(
+    "-d , -v , --values 1",
+    INPUT_BASIC,
+    "values delimiter cannot be the same as field delimiter";
+    "delimiter_conflict"
+)]
+fn test_stats_errors(args: &str, input: &str, expected_err: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (_, stderr) = TvaCmd::new().args(&args).stdin(input).run_fail();
+    assert!(
+        stderr.to_lowercase().contains(expected_err),
+        "Expected error containing '{}' in: {}",
+        expected_err,
+        stderr
+    );
 }
 
 // ============================================================================
@@ -1411,87 +1256,53 @@ fn stats_float_precision() {
     assert!(lines[1].contains(".") || lines[1] == "2.06");
 }
 
-#[test]
-fn stats_single_row() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats", "--header", "--mean", "val", "--median", "val", "--stdev", "val",
-            "--min", "val", "--max", "val",
-        ])
-        .stdin(input)
-        .run();
-
+#[test_case("val\n42\n", "--header --mean val --median val --stdev val --min val --max val", 42.0; "single_row")]
+fn test_stats_row_count(input: &str, args: &str, expected: f64) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
     let lines: Vec<&str> = stdout.trim().lines().collect();
     assert_eq!(lines.len(), 2);
 
     let parts: Vec<&str> = lines[1].split('\t').collect();
-    // All stats should be 42 for single value
     for part in parts {
         let val: f64 = part.parse().unwrap();
-        assert!((val - 42.0).abs() < 1e-6 || val.is_nan()); // stdev might be nan for single value
+        assert!((val - expected).abs() < 1e-6 || val.is_nan());
     }
 }
 
-#[test]
-fn stats_two_rows() {
-    let input = "val\n10\n20\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--mean", "val", "--median", "val"])
-        .stdin(input)
-        .run();
-
+#[test_case("val\n10\n20\n", "--header --mean val --median val", "15"; "two_rows")]
+fn test_stats_two_rows(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
     let lines: Vec<&str> = stdout.trim().lines().collect();
     assert_eq!(lines.len(), 2);
-    assert!(lines[1].contains("15")); // mean = 15
+    assert!(
+        lines[1].contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
 }
 
-#[test]
-fn stats_negative_numbers() {
-    let input = "val\n-10\n-20\n-30\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats", "--header", "--sum", "val", "--min", "val", "--max", "val",
-        ])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("-60")); // sum
-    assert!(stdout.contains("-30")); // min
-    assert!(stdout.contains("-10")); // max
-}
-
-#[test]
-fn stats_mixed_positive_negative() {
-    let input = "val\n-10\n0\n10\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--sum", "val", "--mean", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("0")); // sum = 0
-}
-
-#[test]
-fn stats_large_numbers() {
-    let input = "val\n1000000\n2000000\n3000000\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--sum", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("6000000"));
-}
-
-#[test]
-fn stats_small_numbers() {
-    let input = "val\n0.0001\n0.0002\n0.0003\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--sum", "val", "-p", "6"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("0.0006") || stdout.contains("0.0005"));
+#[test_case("val\n-10\n-20\n-30\n", "--header --sum val --min val --max val", &["-60", "-30", "-10"]; "negative")]
+#[test_case("val\n-10\n0\n10\n", "--header --sum val --mean val", &["0"]; "mixed")]
+#[test_case("val\n1000000\n2000000\n3000000\n", "--header --sum val", &["6000000"]; "large")]
+#[test_case("val\n0.0001\n0.0002\n0.0003\n", "--header --sum val -p 6", &["0.0006", "0.0005"]; "small")]
+fn test_stats_number_edge_cases(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    let found = expected.iter().any(|&e| stdout.contains(e));
+    assert!(
+        found,
+        "Expected one of {:?} in output: {}",
+        expected, stdout
+    );
 }
 
 #[test]
@@ -1559,204 +1370,161 @@ fn stats_multiple_files_with_empty() {
     assert!(stdout.contains("30")); // 10 + 20
 }
 
-#[test]
-fn stats_collapse_with_custom_delimiter() {
-    let input = "val\nA\nB\nC\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--values", "val", "-v", ","])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A,B,C") || stdout.contains("A|B|C"));
-}
-
-#[test]
-fn stats_unique_single_value() {
-    let input = "val\nA\nA\nA\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--unique", "val", "--nunique", "val"])
-        .stdin(input)
-        .run();
-
-    // Should have only one unique value
-    assert!(stdout.contains("1")); // nunique = 1
-}
-
-#[test]
-fn stats_mode_single_value() {
-    let input = "val\nA\nA\nA\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--mode", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A"));
-}
-
-#[test]
-fn stats_mode_tie() {
-    // Two values with same frequency
-    let input = "val\nA\nA\nB\nB\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--mode", "val"])
-        .stdin(input)
-        .run();
-
-    // Mode could be either A or B
-    assert!(stdout.contains("A") || stdout.contains("B"));
-}
-
-#[test]
-fn stats_geomean_positive() {
-    let input = "val\n1\n2\n4\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--geomean", "val"])
-        .stdin(input)
-        .run();
-
-    // Geometric mean of 1, 2, 4 is 2
-    assert!(stdout.contains("2"));
-}
-
-#[test]
-fn stats_harmmean_positive() {
-    let input = "val\n1\n2\n3\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--harmmean", "val"])
-        .stdin(input)
-        .run();
-
-    // Harmonic mean of 1, 2, 3 is 3/(1/1+1/2+1/3) = 3/1.833... = 1.636...
-    assert!(stdout.contains("1.636") || stdout.contains("1.64"));
-}
-
-#[test]
-fn stats_range() {
-    let input = "val\n5\n10\n15\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--range", "val"])
-        .stdin(input)
-        .run();
-
-    // Range = max - min = 15 - 5 = 10
-    assert!(stdout.contains("10"));
-}
-
-#[test]
-fn stats_cv() {
-    let input = "val\n10\n20\n30\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--cv", "val", "-p", "4"])
-        .stdin(input)
-        .run();
-
-    // CV = stdev / mean = 10 / 20 = 0.5
+#[test_case("val\nA\nB\nC\n", "--header --values val -v ,", &["A,B,C", "A|B|C"]; "collapse_custom_delim")]
+fn test_stats_string_ops_advanced(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    let found = expected.iter().any(|&e| stdout.contains(e));
     assert!(
-        stdout.contains("0.5") || stdout.contains("0.50") || stdout.contains("0.500")
+        found,
+        "Expected one of {:?} in output: {}",
+        expected, stdout
     );
 }
 
-#[test]
-fn stats_quantile_single_prob() {
-    let input = "val\n1\n2\n3\n4\n5\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--quantile", "val:0.5"])
-        .stdin(input)
-        .run();
-
-    // Median of 1,2,3,4,5 is 3
-    assert!(stdout.contains("3"));
+#[test_case("val\nA\nA\nA\n", "--header --unique val --nunique val", "1"; "unique_single_value")]
+#[test_case("val\nA\nA\nA\n", "--header --mode val", "A"; "mode_single_value")]
+fn test_stats_single_value_string(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
 }
 
-#[test]
-fn stats_quantile_extremes() {
-    let input = "val\n1\n2\n3\n4\n5\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--quantile", "val:0.0,1.0"])
-        .stdin(input)
-        .run();
-
-    // 0th percentile = 1, 100th percentile = 5
-    assert!(stdout.contains("1"));
-    assert!(stdout.contains("5"));
+#[test_case("val\nA\nA\nB\nB\n", "--header --mode val", &["A", "B"]; "mode_tie")]
+fn test_stats_mode_tie(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    let found = expected.iter().any(|&e| stdout.contains(e));
+    assert!(
+        found,
+        "Expected one of {:?} in output: {}",
+        expected, stdout
+    );
 }
 
-#[test]
-fn stats_iqr() {
-    let input = "val\n1\n2\n3\n4\n5\n6\n7\n8\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--iqr", "val"])
-        .stdin(input)
-        .run();
-
-    // IQR calculation returns 3.5 for this dataset
-    assert!(stdout.contains("3.5"));
+#[test_case("val\n1\n2\n4\n", "--header --geomean val", &["2"]; "geomean")]
+#[test_case("val\n1\n2\n3\n", "--header --harmmean val", &["1.636", "1.64"]; "harmmean")]
+#[test_case("val\n5\n10\n15\n", "--header --range val", &["10"]; "range")]
+fn test_stats_advanced_stats(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    let found = expected.iter().any(|&e| stdout.contains(e));
+    assert!(
+        found,
+        "Expected one of {:?} in output: {}",
+        expected, stdout
+    );
 }
 
-#[test]
-fn stats_first_last_single_row() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--first", "val", "--last", "val"])
-        .stdin(input)
-        .run();
+#[test_case("val\n10\n20\n30\n", "--header --cv val -p 4", &["0.5", "0.50", "0.500"]; "cv")]
+fn test_stats_cv(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    let found = expected.iter().any(|&e| stdout.contains(e));
+    assert!(
+        found,
+        "Expected one of {:?} in output: {}",
+        expected, stdout
+    );
+}
 
-    // First and last should be the same
+#[test_case("val\n1\n2\n3\n4\n5\n", "--header --quantile val:0.5", "3"; "single_prob")]
+fn test_stats_quantile_single(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
+}
+
+#[test_case("val\n1\n2\n3\n4\n5\n", "--header --quantile val:0.0,1.0", &["1", "5"]; "extremes")]
+fn test_stats_quantile_multi(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    for &e in expected {
+        assert!(stdout.contains(e), "Expected '{}' in output: {}", e, stdout);
+    }
+}
+
+#[test_case("val\n1\n2\n3\n4\n5\n6\n7\n8\n", "--header --iqr val", "3.5"; "iqr")]
+fn test_stats_iqr_standalone(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
+}
+
+#[test_case("val\n42\n", "--header --first val --last val", |stdout: &str| {
     let parts: Vec<&str> = stdout.trim().lines().last().unwrap().split('\t').collect();
-    assert_eq!(parts[0], parts[1]);
+    parts[0] == parts[1]
+}; "first_last")]
+#[test_case("val\n42\n", "--header --rand val", |stdout: &str| stdout.contains("42"); "rand")]
+fn test_stats_single_row_ops<F>(input: &str, args: &str, check: F)
+where
+    F: Fn(&str) -> bool,
+{
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert!(check(&stdout), "Check failed for output: {}", stdout);
 }
 
-#[test]
-fn stats_rand_single_row() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--rand", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("42"));
+#[test_case("val\n10\n20\n30\n", "--header --mean val --exclude-missing", "20"; "exclude_missing_all_present")]
+#[test_case("col\n", "--header --count", "0"; "count_header_only")]
+fn test_stats_missing_ops(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
 }
 
-#[test]
-fn stats_exclude_missing_all_present() {
-    // All values present, exclude-missing shouldn't change anything
-    let input = "val\n10\n20\n30\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--mean", "val", "--exclude-missing"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("20"));
-}
-
-#[test]
-fn stats_replace_missing_numeric() {
-    let input = "val\n10\n\n30\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--mean",
-            "val",
-            "--replace-missing",
-            "0",
-        ])
-        .stdin(input)
-        .run();
-
-    // Mean of 10, 0, 30 = 13.33...
-    assert!(stdout.contains("13") || stdout.contains("14"));
-}
-
-#[test]
-fn stats_count_header_only() {
-    let input = "col\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--count"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("0"));
+#[test_case("val\n10\n\n30\n", "--header --mean val --replace-missing 0", &["13", "14"]; "replace_missing_numeric")]
+fn test_stats_replace_missing_ops(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    let found = expected.iter().any(|&e| stdout.contains(e));
+    assert!(
+        found,
+        "Expected one of {:?} in output: {}",
+        expected, stdout
+    );
 }
 
 #[test]
@@ -2115,26 +1883,19 @@ fn stats_custom_header_with_quantile() {
     assert!(stdout.contains("MedianValue"));
 }
 
-#[test]
-fn stats_collapse_single_value() {
-    let input = "val\nA\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--values", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A"));
-}
-
-#[test]
-fn stats_unique_single_row() {
-    let input = "val\nA\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--unique", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A"));
+#[test_case("val\nA\n", "--header --values val", "A"; "collapse")]
+#[test_case("val\nA\n", "--header --unique val", "A"; "unique")]
+fn test_stats_single_value_ops(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
 }
 
 #[test]
@@ -2149,455 +1910,113 @@ fn stats_mode_no_repeats() {
     assert!(!stdout.trim().is_empty());
 }
 
-#[test]
-fn stats_mad_single_value() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--mad", "val"])
-        .stdin(input)
-        .run();
-
-    // MAD of single value is 0
-    assert!(stdout.contains("0") || stdout.contains("nan"));
+#[test_case("val\n42\n", "--header --mad val", &["0", "nan"]; "mad")]
+#[test_case("val\n42\n", "--header --variance val", &["0", "nan"]; "variance")]
+#[test_case("val\n42\n", "--header --stdev val", &["0", "nan"]; "stdev")]
+#[test_case("val\n42\n", "--header --q1 val", &["42"]; "q1")]
+#[test_case("val\n42\n", "--header --q3 val", &["42"]; "q3")]
+#[test_case("val\n42\n", "--header --iqr val", &["0"]; "iqr")]
+#[test_case("val\n42\n", "--header --cv val", &["0", "nan"]; "cv")]
+#[test_case("val\n42\n", "--header --range val", &["0"]; "range")]
+fn test_stats_single_value_stats(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    let found = expected.iter().any(|&e| stdout.contains(e));
+    assert!(
+        found,
+        "Expected one of {:?} in output: {}",
+        expected, stdout
+    );
 }
 
-#[test]
-fn stats_variance_single_value() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--variance", "val"])
-        .stdin(input)
-        .run();
-
-    // Variance of single value is 0 or nan
-    assert!(stdout.contains("0") || stdout.contains("nan"));
+#[test_case("val\n0\n10\n20\n", "--header --geomean val", &["14.1421", "14.14"]; "geomean_with_zero")]
+#[test_case("val\n0\n10\n20\n", "--header --harmmean val", &["13.3333", "13.33"]; "harmmean_with_zero")]
+fn test_stats_with_zero(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    let found = expected.iter().any(|&e| stdout.contains(e));
+    assert!(
+        found,
+        "Expected one of {:?} in output: {}",
+        expected, stdout
+    );
 }
 
-#[test]
-fn stats_stdev_single_value() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--stdev", "val"])
-        .stdin(input)
-        .run();
-
-    // Stdev of single value is 0 or nan
-    assert!(stdout.contains("0") || stdout.contains("nan"));
+#[test_case("val\n1\n2\n3\n", "--header --missing-count val", "0"; "missing_count_no_missing")]
+#[test_case("val\n1\n2\n3\n", "--header --not-missing-count val", "3"; "not_missing_count_all_present")]
+#[test_case("val\nA\n", "--header --mode-count val", "1"; "mode_count_single_value")]
+#[test_case("val\nA\nA\nB\nB\n", "--header --mode-count val", "2"; "mode_count_multiple_same")]
+fn test_stats_count_ops(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
 }
 
-#[test]
-fn stats_geomean_with_zero() {
-    let input = "val\n0\n10\n20\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--geomean", "val"])
-        .stdin(input)
-        .run();
+// ============================================================================
+// No Header Tests
+// ============================================================================
 
-    // Geomean with 0 returns a calculated value (14.1421)
-    assert!(stdout.contains("14.1421") || stdout.contains("14.14"));
+#[test_case("1\n2\n3\n", "--count", "3"; "count")]
+#[test_case("1\n2\n3\n", "--sum 1", "6"; "sum")]
+#[test_case("10\n20\n30\n", "--mean 1", "20"; "mean")]
+#[test_case("1\n2\n3\n4\n5\n", "--median 1", "3"; "median")]
+#[test_case("5\n3\n8\n1\n9\n", "--min 1", "1"; "min")]
+#[test_case("5\n3\n8\n1\n9\n", "--max 1", "9"; "max")]
+#[test_case("A\nB\nC\n", "--first 1", "A"; "first")]
+#[test_case("A\nB\nC\n", "--last 1", "C"; "last")]
+#[test_case("A\nB\nA\nC\n", "--nunique 1", "3"; "nunique")]
+#[test_case("A\nB\nC\n", "--values 1", "A|B|C"; "collapse")]
+#[test_case("A\nA\nB\n", "--mode 1", "A"; "mode")]
+#[test_case("A\nA\nB\n", "--mode-count 1", "2"; "mode_count")]
+#[test_case("A\n\nB\n", "--missing-count 1", "1"; "missing_count")]
+#[test_case("A\n\nB\n", "--not-missing-count 1", "2"; "not_missing_count")]
+#[test_case("1\n2\n4\n", "--geomean 1", "2"; "geomean")]
+#[test_case("1\n2\n3\n", "--harmmean 1", "1.6"; "harmmean")]
+#[test_case("1\n2\n3\n4\n5\n", "--q1 1", "2"; "q1")]
+#[test_case("1\n2\n3\n4\n5\n", "--q3 1", "4"; "q3")]
+#[test_case("1\n2\n3\n4\n5\n6\n7\n8\n", "--iqr 1", "3.5"; "iqr")]
+#[test_case("10\n20\n30\n", "--cv 1", "0.5"; "cv")]
+#[test_case("5\n10\n15\n", "--range 1", "10"; "range")]
+#[test_case("1\n2\n3\n4\n5\n", "--quantile 1:0.5", "3"; "quantile")]
+#[test_case("10\n20\n30\n", "--stdev 1", "10"; "stdev")]
+#[test_case("10\n20\n30\n", "--variance 1", "100"; "variance")]
+fn test_stats_no_header(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
 }
 
-#[test]
-fn stats_harmmean_with_zero() {
-    let input = "val\n0\n10\n20\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--harmmean", "val"])
-        .stdin(input)
-        .run();
-
-    // Harmmean with 0 returns a calculated value (13.3333)
-    assert!(stdout.contains("13.3333") || stdout.contains("13.33"));
-}
-
-#[test]
-fn stats_q1_single_value() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--q1", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("42"));
-}
-
-#[test]
-fn stats_q3_single_value() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--q3", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("42"));
-}
-
-#[test]
-fn stats_iqr_single_value() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--iqr", "val"])
-        .stdin(input)
-        .run();
-
-    // IQR of single value is 0
-    assert!(stdout.contains("0"));
-}
-
-#[test]
-fn stats_cv_single_value() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--cv", "val"])
-        .stdin(input)
-        .run();
-
-    // CV of single value is 0 or nan
-    assert!(stdout.contains("0") || stdout.contains("nan"));
-}
-
-#[test]
-fn stats_range_single_value() {
-    let input = "val\n42\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--range", "val"])
-        .stdin(input)
-        .run();
-
-    // Range of single value is 0
-    assert!(stdout.contains("0"));
-}
-
-#[test]
-fn stats_missing_count_no_missing() {
-    let input = "val\n1\n2\n3\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--missing-count", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("0"));
-}
-
-#[test]
-fn stats_not_missing_count_all_present() {
-    let input = "val\n1\n2\n3\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--not-missing-count", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("3"));
-}
-
-#[test]
-fn stats_mode_count_single_value() {
-    let input = "val\nA\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--mode-count", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("1"));
-}
-
-#[test]
-fn stats_mode_count_multiple_same() {
-    let input = "val\nA\nA\nB\nB\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--mode-count", "val"])
-        .stdin(input)
-        .run();
-
-    // Mode count should be 2
-    assert!(stdout.contains("2"));
-}
-
-#[test]
-fn stats_count_no_header() {
-    let input = "1\n2\n3\n";
-    let (stdout, _) = TvaCmd::new().args(&["stats", "--count"]).stdin(input).run();
-
-    assert!(stdout.contains("3"));
-}
-
-#[test]
-fn stats_sum_no_header() {
-    let input = "1\n2\n3\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--sum", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("6"));
-}
-
-#[test]
-fn stats_mean_no_header() {
-    let input = "10\n20\n30\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--mean", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("20"));
-}
-
-#[test]
-fn stats_median_no_header() {
-    let input = "1\n2\n3\n4\n5\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--median", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("3"));
-}
-
-#[test]
-fn stats_min_no_header() {
-    let input = "5\n3\n8\n1\n9\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--min", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("1"));
-}
-
-#[test]
-fn stats_max_no_header() {
-    let input = "5\n3\n8\n1\n9\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--max", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("9"));
-}
-
-#[test]
-fn stats_first_no_header() {
-    let input = "A\nB\nC\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--first", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A"));
-}
-
-#[test]
-fn stats_last_no_header() {
-    let input = "A\nB\nC\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--last", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("C"));
-}
-
-#[test]
-fn stats_nunique_no_header() {
-    let input = "A\nB\nA\nC\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--nunique", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("3"));
-}
-
-#[test]
-fn stats_unique_no_header() {
-    let input = "A\nB\nA\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--unique", "1"])
-        .stdin(input)
-        .run();
-
-    // Should contain A and B in some order
-    assert!(stdout.contains("A") && stdout.contains("B"));
-}
-
-#[test]
-fn stats_collapse_no_header() {
-    let input = "A\nB\nC\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--values", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A") && stdout.contains("B") && stdout.contains("C"));
-}
-
-#[test]
-fn stats_rand_no_header() {
-    let input = "A\nB\nC\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--rand", "1"])
-        .stdin(input)
-        .run();
-
-    // Should return one of the values
-    assert!(stdout.contains("A") || stdout.contains("B") || stdout.contains("C"));
-}
-
-#[test]
-fn stats_mode_no_header() {
-    let input = "A\nA\nB\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--mode", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A"));
-}
-
-#[test]
-fn stats_mode_count_no_header() {
-    let input = "A\nA\nB\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--mode-count", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("2"));
-}
-
-#[test]
-fn stats_missing_count_no_header() {
-    let input = "A\n\nB\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--missing-count", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("1"));
-}
-
-#[test]
-fn stats_not_missing_count_no_header() {
-    let input = "A\n\nB\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--not-missing-count", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("2"));
-}
-
-#[test]
-fn stats_geomean_no_header() {
-    let input = "1\n2\n4\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--geomean", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("2"));
-}
-
-#[test]
-fn stats_harmmean_no_header() {
-    let input = "1\n2\n3\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--harmmean", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("1.6") || stdout.contains("1.64"));
-}
-
-#[test]
-fn stats_q1_no_header() {
-    let input = "1\n2\n3\n4\n5\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--q1", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("2"));
-}
-
-#[test]
-fn stats_q3_no_header() {
-    let input = "1\n2\n3\n4\n5\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--q3", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("4"));
-}
-
-#[test]
-fn stats_iqr_no_header() {
-    let input = "1\n2\n3\n4\n5\n6\n7\n8\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--iqr", "1"])
-        .stdin(input)
-        .run();
-
-    // IQR calculation returns 3.5 for this dataset
-    assert!(stdout.contains("3.5"));
-}
-
-#[test]
-fn stats_cv_no_header() {
-    let input = "10\n20\n30\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--cv", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("0.5") || stdout.contains("0.50"));
-}
-
-#[test]
-fn stats_range_no_header() {
-    let input = "5\n10\n15\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--range", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("10"));
-}
-
-#[test]
-fn stats_quantile_no_header() {
-    let input = "1\n2\n3\n4\n5\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--quantile", "1:0.5"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("3"));
-}
-
-#[test]
-fn stats_stdev_no_header() {
-    let input = "10\n20\n30\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--stdev", "1"])
-        .stdin(input)
-        .run();
-
-    // stdev of 10, 20, 30 is about 10
-    assert!(stdout.contains("10"));
-}
-
-#[test]
-fn stats_variance_no_header() {
-    let input = "10\n20\n30\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--variance", "1"])
-        .stdin(input)
-        .run();
-
-    // variance of 10, 20, 30 is 100
-    assert!(stdout.contains("100"));
+#[test_case("A\nB\nA\n", "--unique 1", &["A", "B"]; "unique")]
+#[test_case("A\nB\nC\n", "--rand 1", &["A", "B", "C"]; "rand")]
+fn test_stats_no_header_multi(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    let found = expected.iter().any(|&e| stdout.contains(e));
+    assert!(
+        found,
+        "Expected one of {:?} in output: {}",
+        expected, stdout
+    );
 }
 
 #[test]
@@ -2644,59 +2063,32 @@ A\t10\nB\t20\n";
     assert!(stdout.contains("grp") || stdout.contains("val_sum"));
 }
 
-#[test]
-fn stats_retain_alias_no_header() {
-    let input = "A\nB\nC\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--retain", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A"));
+#[test_case("A\nB\nC\n", "--retain 1", "A"; "retain")]
+#[test_case("2\n4\n", "--var 1", "2"; "var")]
+#[test_case("A\nA\nB\n", "--unique-count 1", "2"; "unique_count")]
+fn test_stats_aliases_no_header(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
 }
 
-#[test]
-fn stats_var_alias_no_header() {
-    let input = "2\n4\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--var", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("2"));
-}
-
-#[test]
-fn stats_unique_count_alias_no_header() {
-    let input = "A\nA\nB\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--unique-count", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("2"));
-}
-
-#[test]
-fn stats_unique_values_alias_no_header() {
-    let input = "A\nA\nB\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--unique-values", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A") && stdout.contains("B"));
-}
-
-#[test]
-fn stats_collapse_alias_no_header() {
-    let input = "A\nB\nC\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--collapse", "1"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A") && stdout.contains("B") && stdout.contains("C"));
+#[test_case("A\nA\nB\n", "--unique-values 1", &["A", "B"]; "unique_values")]
+#[test_case("A\nB\nC\n", "--collapse 1", &["A", "B", "C"]; "collapse")]
+fn test_stats_aliases_no_header_multi(input: &str, args: &str, expected: &[&str]) {
+    let args: Vec<&str> = std::iter::once("stats")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input).run();
+    for &e in expected {
+        assert!(stdout.contains(e), "Expected '{}' in output: {}", e, stdout);
+    }
 }
 
 // --- Tests for --header-hash1 mode ---
