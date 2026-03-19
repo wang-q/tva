@@ -49,18 +49,18 @@ impl<R: Read> TsvReader<R> {
         }
     }
 
-    /// Reads the first record as a header and returns it as a `Vec<u8>`.
+    /// Reads the first line as a header and returns it as a `Vec<u8>`.
     ///
-    /// This advances the reader position. It should be called before `for_each_record`
+    /// This advances the reader position. It should be called before `for_each_line`
     /// if header processing is needed.
     ///
     /// Note: This method copies the header data because the internal buffer
-    /// will be reused for subsequent records.
+    /// will be reused for subsequent lines.
     pub fn read_header(&mut self) -> io::Result<Option<Vec<u8>>> {
         let mut header = None;
-        // We use a temporary closure to capture the first record
-        let res = self.for_each_record(|record| {
-            header = Some(record.to_vec());
+        // We use a temporary closure to capture the first line
+        let res = self.for_each_line(|line| {
+            header = Some(line.to_vec());
             Err(io::Error::new(io::ErrorKind::Interrupted, "Stop iteration"))
         });
 
@@ -97,7 +97,7 @@ impl<R: Read> TsvReader<R> {
 
     fn read_header_first_line(&mut self) -> io::Result<Option<HeaderInfo>> {
         let mut column_names = None;
-        let res = self.for_each_record_legacy(|record| {
+        let res = self.for_each_line_legacy(|record| {
             // Take the first line as header (even if empty)
             column_names = Some(record.to_vec());
             Err(io::Error::new(io::ErrorKind::Interrupted, "Stop"))
@@ -119,7 +119,7 @@ impl<R: Read> TsvReader<R> {
         let mut lines = Vec::new();
         let mut count = 0;
 
-        let res = self.for_each_record_legacy(|record| {
+        let res = self.for_each_line_legacy(|record| {
             if count < n {
                 lines.push(record.to_vec());
                 count += 1;
@@ -162,7 +162,7 @@ impl<R: Read> TsvReader<R> {
         let mut found_hash = false;
         let mut first_non_hash_line: Option<Vec<u8>> = None;
 
-        let res = self.for_each_record_legacy(|record| {
+        let res = self.for_each_line_legacy(|record| {
             if record.starts_with(b"#") {
                 lines.push(record.to_vec());
                 found_hash = true;
@@ -187,7 +187,7 @@ impl<R: Read> TsvReader<R> {
                     }
                 }
                 // Hash lines ended - remember this line and stop
-                // Don't use Interrupted here because for_each_record will skip the line
+                // Don't use Interrupted here because for_each_line will skip the line
                 first_non_hash_line = Some(record.to_vec());
                 return Err(io::Error::other("Hash lines ended"));
             }
@@ -195,9 +195,9 @@ impl<R: Read> TsvReader<R> {
             Ok(())
         });
 
-        // Note: When for_each_record returns an error (not Interrupted),
+        // Note: When for_each_line returns an error (not Interrupted),
         // self.pos is NOT advanced past the current line. This means the next
-        // for_each_record call will re-read the same line. This is the desired
+        // for_each_line call will re-read the same line. This is the desired
         // behavior for HashLines mode - the first non-hash line should be
         // processed as data, not skipped.
 
@@ -492,19 +492,17 @@ impl<R: Read> TsvReader<R> {
             }
 
             if found_newline {
-                let line_end = newline_pos;
+                let mut line_end = newline_pos;
 
-                // Handle potential CR before LF
-                let content_end = if line_end > line_start
+                // Handle potential CR before LF - strip it from line_end
+                let has_cr = line_end > line_start
                     && line_end > 0
-                    && self.buf[line_end - 1] == b'\r'
-                {
-                    line_end - 1 - line_start
-                } else {
-                    line_end - line_start
-                };
+                    && self.buf[line_end - 1] == b'\r';
+                if has_cr {
+                    line_end -= 1;
+                }
 
-                seps.push(content_end);
+                seps.push(line_end - line_start);
                 self.pos = newline_pos + 1;
 
                 return Ok(Some(TsvRow {
@@ -518,16 +516,15 @@ impl<R: Read> TsvReader<R> {
             if self.eof {
                 // EOF reached without finding newline - return remaining data as last row
                 if line_start < self.len {
-                    let line_end = self.len;
-                    let content_end = if line_end > line_start
+                    let mut line_end = self.len;
+                    // Strip trailing CR if present
+                    if line_end > line_start
                         && line_end > 0
                         && self.buf[line_end - 1] == b'\r'
                     {
-                        line_end - 1 - line_start
-                    } else {
-                        line_end - line_start
-                    };
-                    seps.push(content_end);
+                        line_end -= 1;
+                    }
+                    seps.push(line_end - line_start);
                     self.pos = self.len;
 
                     return Ok(Some(TsvRow {
@@ -728,7 +725,7 @@ impl<R: Read> TsvReader<R> {
     /// # Errors
     /// Returns any I/O error encountered while reading.
     #[doc(hidden)]
-    pub fn for_each_record_legacy<F>(&mut self, mut func: F) -> io::Result<()>
+    pub fn for_each_line_legacy<F>(&mut self, mut func: F) -> io::Result<()>
     where
         F: FnMut(&[u8]) -> io::Result<()>,
     {
@@ -811,26 +808,20 @@ impl<R: Read> TsvReader<R> {
 
     /// Iterate over records using a closure.
     ///
-    /// The closure receives a `&[u8]` slice representing the record (excluding the newline).
-    /// This avoids allocating a `String` or `Vec<u8>` for each record.
+    /// The closure receives a `&[u8]` slice representing the line (excluding the newline).
+    /// This avoids allocating a `String` or `Vec<u8>` for each line.
     ///
     /// This method internally uses `next_row` for single-pass scanning with SIMD acceleration
     /// (SSE2 on x86_64, NEON on aarch64).
     ///
     /// # Errors
     /// Returns any I/O error encountered while reading.
-    pub fn for_each_record<F>(&mut self, mut func: F) -> io::Result<()>
+    pub fn for_each_line<F>(&mut self, mut func: F) -> io::Result<()>
     where
         F: FnMut(&[u8]) -> io::Result<()>,
     {
         while let Some(row) = self.next_row(b'\t')? {
-            // Remove trailing CR if present (for CRLF line endings)
-            let line = if row.line.ends_with(b"\r") {
-                &row.line[..row.line.len() - 1]
-            } else {
-                row.line
-            };
-            match func(line) {
+            match func(row.line) {
                 Ok(_) => {}
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => {
                     return Err(e);
@@ -876,7 +867,7 @@ mod tests {
         let mut records = Vec::new();
 
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -895,7 +886,7 @@ mod tests {
         let mut records = Vec::new();
 
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -913,7 +904,7 @@ mod tests {
         let mut records = Vec::new();
 
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -925,12 +916,12 @@ mod tests {
     }
 
     #[test]
-    fn test_for_each_record_error_propagation() {
+    fn test_for_each_line_error_propagation() {
         let data = b"a\tb\nc\td\n";
         let cursor = Cursor::new(data);
         let mut reader = TsvReader::new(cursor);
 
-        let result = reader.for_each_record(|_| {
+        let result = reader.for_each_line(|_| {
             Err(io::Error::new(io::ErrorKind::Other, "test error"))
         });
 
@@ -938,7 +929,7 @@ mod tests {
     }
 
     #[test]
-    fn test_for_each_record_with_refill() {
+    fn test_for_each_line_with_refill() {
         // Data larger than buffer to force refill
         let data = "a\tb\nc\td\ne\tf\n".repeat(1000);
         let cursor = Cursor::new(data.clone());
@@ -946,7 +937,7 @@ mod tests {
         let mut records = Vec::new();
 
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -956,7 +947,7 @@ mod tests {
     }
 
     #[test]
-    fn test_for_each_record_with_refill2() {
+    fn test_for_each_line_with_refill2() {
         // Test that buffer refilling works correctly
         let data = b"line1\nline2\nline3\nline4\nline5\n";
         let cursor = Cursor::new(data);
@@ -964,7 +955,7 @@ mod tests {
 
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -984,7 +975,7 @@ mod tests {
         let mut records = Vec::new();
 
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1066,7 +1057,7 @@ mod tests {
 
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1104,7 +1095,7 @@ mod tests {
         // Verify data lines follow
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1132,7 +1123,7 @@ mod tests {
         // Verify remaining data lines
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1164,7 +1155,7 @@ mod tests {
 
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1192,7 +1183,7 @@ mod tests {
 
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1222,7 +1213,7 @@ mod tests {
 
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1259,7 +1250,7 @@ mod tests {
         // The first line should NOT be consumed
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1292,7 +1283,7 @@ mod tests {
         // Verify data lines follow
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1325,7 +1316,7 @@ mod tests {
         // No data lines should follow
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1353,7 +1344,7 @@ mod tests {
         // Remaining data should be readable
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })
@@ -1414,14 +1405,14 @@ mod tests {
     }
 
     #[test]
-    fn test_for_each_record_error_propagation_with_failing_reader() {
+    fn test_for_each_line_error_propagation_with_failing_reader() {
         // Test that non-Interrupted errors are properly propagated
         let data = b"header1\theader2\n".to_vec();
         let reader = FailingReader::new(data, 0);
         let mut tsv_reader = TsvReader::new(reader);
 
         let result: std::io::Result<()> = tsv_reader
-            .for_each_record(|_rec| {
+            .for_each_line(|_rec| {
                 Err(std::io::Error::new(
                     std::io::ErrorKind::Interrupted,
                     "Stop iteration",
@@ -1560,7 +1551,7 @@ mod tests {
         // Verify data follows
         let mut records = Vec::new();
         reader
-            .for_each_record(|rec| {
+            .for_each_line(|rec| {
                 records.push(rec.to_vec());
                 Ok(())
             })

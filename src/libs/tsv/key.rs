@@ -3,6 +3,7 @@
 //! Used by commands like `join`, `sample`, `uniq` to extract composite keys
 //! from one or more fields.
 
+use crate::libs::tsv::record::TsvRow;
 use crate::libs::tsv::select::SelectPlan;
 use smallvec::SmallVec;
 use std::ops::Range;
@@ -74,23 +75,23 @@ impl KeyExtractor {
         }
     }
 
-    /// Extract key from a line.
+    /// Extract key from a TsvRow.
     /// Returns `Ok(ParsedKey)` on success.
     /// Returns `Err(missing_idx)` if a required field index is out of range and strict mode is enabled.
-    pub fn extract<'a>(
+    pub fn extract_from_row<'a>(
         &mut self,
-        line: &'a [u8],
+        row: &TsvRow<'a, '_>,
         delimiter: u8,
     ) -> Result<ParsedKey<'a>, usize> {
         // Case 1: Whole line (no plan)
         if self.plan.is_none() {
             if self.ignore_case {
-                let mut buf = KeyBuffer::with_capacity(line.len());
+                let mut buf = KeyBuffer::with_capacity(row.line.len());
                 // Simple ASCII lowercase mapping
-                buf.extend(line.iter().map(|b| b.to_ascii_lowercase()));
+                buf.extend(row.line.iter().map(|b| b.to_ascii_lowercase()));
                 return Ok(ParsedKey::Owned(buf));
             } else {
-                return Ok(ParsedKey::Ref(line));
+                return Ok(ParsedKey::Ref(row.line));
             }
         }
 
@@ -98,7 +99,7 @@ impl KeyExtractor {
         let plan = self.plan.as_ref().unwrap();
 
         // Propagate error if field is missing and strict is true
-        if let Err(idx) = plan.extract_ranges(line, delimiter, &mut self.ranges_buf) {
+        if let Err(idx) = plan.extract_ranges(row, &mut self.ranges_buf) {
             if self.strict {
                 return Err(idx);
             }
@@ -116,8 +117,8 @@ impl KeyExtractor {
                     return Ok(ParsedKey::Ref(&[]));
                 }
                 // Safety check for bounds
-                if range.end <= line.len() {
-                    return Ok(ParsedKey::Ref(&line[range.clone()]));
+                if range.end <= row.line.len() {
+                    return Ok(ParsedKey::Ref(&row.line[range.clone()]));
                 } else {
                     return Ok(ParsedKey::Ref(&[]));
                 }
@@ -132,8 +133,8 @@ impl KeyExtractor {
             if !first {
                 key.push(delimiter);
             }
-            if range.start < range.end && range.end <= line.len() {
-                let slice = &line[range.clone()];
+            if range.start < range.end && range.end <= row.line.len() {
+                let slice = &row.line[range.clone()];
                 if self.ignore_case {
                     key.extend(slice.iter().map(|b| b.to_ascii_lowercase()));
                 } else {
@@ -144,6 +145,24 @@ impl KeyExtractor {
         }
 
         Ok(ParsedKey::Owned(key))
+    }
+
+    /// Extract key from a line (legacy API, builds TsvRow internally).
+    /// Returns `Ok(ParsedKey)` on success.
+    /// Returns `Err(missing_idx)` if a required field index is out of range and strict mode is enabled.
+    pub fn extract<'a>(
+        &mut self,
+        line: &'a [u8],
+        delimiter: u8,
+    ) -> Result<ParsedKey<'a>, usize> {
+        // Build TsvRow from line
+        let mut ends = Vec::new();
+        for pos in memchr::memchr_iter(delimiter, line) {
+            ends.push(pos);
+        }
+        ends.push(line.len());
+        let row = TsvRow { line, ends: &ends };
+        self.extract_from_row(&row, delimiter)
     }
 
     /// Extract key from a TsvRecord.
@@ -239,95 +258,12 @@ impl KeyExtractor {
 
         Ok(ParsedKey::Owned(key))
     }
-
-    /// Extract key from a Row implementation.
-    /// Note: `Row` trait uses 1-based indexing for `get_bytes`.
-    /// `KeyExtractor` now uses 1-based indices internally.
-    pub fn extract_from_row<'a, R: crate::libs::tsv::record::Row + ?Sized>(
-        &mut self,
-        row: &'a R,
-        delimiter: u8,
-    ) -> Result<ParsedKey<'a>, usize> {
-        // Case 1: Whole line
-        if self.indices.is_none() {
-            // Row trait doesn't expose whole line easily.
-            // We assume caller handles whole line case or we fail.
-            return Ok(ParsedKey::Ref(&[])); // Or error?
-        }
-
-        let indices = self.indices.as_ref().unwrap();
-
-        // Optimization: Single field
-        if indices.len() == 1 {
-            let idx = indices[0]; // 1-based index
-            let field = row.get_bytes(idx).unwrap_or(&[]);
-
-            // Row::get_bytes returns None if out of bounds.
-            if self.strict && row.get_bytes(idx).is_none() {
-                return Err(idx);
-            }
-
-            if self.ignore_case {
-                let mut buf = KeyBuffer::with_capacity(field.len());
-                buf.extend(field.iter().map(|b| b.to_ascii_lowercase()));
-                return Ok(ParsedKey::Owned(buf));
-            } else {
-                return Ok(ParsedKey::Ref(field));
-            }
-        }
-
-        // Multiple fields
-        let mut key = KeyBuffer::new();
-        let mut first = true;
-
-        for &idx in indices {
-            if !first {
-                key.push(delimiter);
-            }
-
-            let field = row.get_bytes(idx);
-            let field_bytes = if let Some(f) = field {
-                f
-            } else {
-                if self.strict {
-                    return Err(idx);
-                }
-                &[] as &[u8]
-            };
-
-            if self.ignore_case {
-                key.extend(field_bytes.iter().map(|b| b.to_ascii_lowercase()));
-            } else {
-                key.extend_from_slice(field_bytes);
-            }
-            first = false;
-        }
-
-        Ok(ParsedKey::Owned(key))
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::libs::tsv::record::TsvRecord;
-
-    // Helper mock row for testing
-    struct MockRow<'a> {
-        fields: Vec<&'a [u8]>,
-    }
-
-    impl<'a> crate::libs::tsv::record::Row for MockRow<'a> {
-        fn get_bytes(&self, index: usize) -> Option<&[u8]> {
-            if index > 0 && index <= self.fields.len() {
-                Some(self.fields[index - 1])
-            } else {
-                None
-            }
-        }
-
-        // Removed unnecessary methods that are not part of the Row trait
-    }
 
     #[test]
     fn test_extract_whole_line() {
@@ -405,36 +341,6 @@ mod tests {
 
         let mut extractor = KeyExtractor::new(Some(vec![1, 3]), true, true);
         let key = extractor.extract_from_record(&record, b'\t').unwrap();
-        assert_eq!(key.as_ref(), b"a\tc");
-    }
-
-    // Covers L292-296: `extract_from_row` strict error
-    #[test]
-    fn test_extract_from_row_strict_error() {
-        let fields: Vec<&[u8]> = vec![b"A", b"B", b"C"];
-        let row = MockRow { fields };
-
-        // Field 4 missing
-        let mut extractor = KeyExtractor::new(Some(vec![4]), false, true);
-        let result = extractor.extract_from_row(&row, b'\t');
-        assert!(result.is_err());
-        assert_eq!(result.err(), Some(4));
-
-        // Multiple fields, one missing
-        let mut extractor = KeyExtractor::new(Some(vec![1, 4]), false, true);
-        let result = extractor.extract_from_row(&row, b'\t');
-        assert!(result.is_err());
-        assert_eq!(result.err(), Some(4));
-    }
-
-    // Covers L299-300: `extract_from_row` multiple fields ignore case
-    #[test]
-    fn test_extract_from_row_multiple_fields_ignore_case() {
-        let fields: Vec<&[u8]> = vec![b"A", b"B", b"C"];
-        let row = MockRow { fields };
-
-        let mut extractor = KeyExtractor::new(Some(vec![1, 3]), true, true);
-        let key = extractor.extract_from_row(&row, b'\t').unwrap();
         assert_eq!(key.as_ref(), b"a\tc");
     }
 
@@ -540,11 +446,10 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_from_row_trait_basic() {
-        use crate::libs::tsv::record::StrSliceRow;
-
-        let fields = vec!["A", "B", "C"];
-        let row = StrSliceRow { fields: &fields };
+    fn test_extract_from_row_basic() {
+        let line = b"A\tB\tC";
+        let ends = vec![1, 3, 5];
+        let row = TsvRow { line, ends: &ends };
 
         // Extract field 2 (B)
         let mut extractor = KeyExtractor::new(Some(vec![2]), false, true);
@@ -553,11 +458,10 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_from_row_trait_multiple() {
-        use crate::libs::tsv::record::StrSliceRow;
-
-        let fields = vec!["A", "B", "C"];
-        let row = StrSliceRow { fields: &fields };
+    fn test_extract_from_row_multiple() {
+        let line = b"A\tB\tC";
+        let ends = vec![1, 3, 5];
+        let row = TsvRow { line, ends: &ends };
 
         // Extract fields 3, 1 (C, A)
         let mut extractor = KeyExtractor::new(Some(vec![3, 1]), false, true);
@@ -566,11 +470,10 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_from_row_trait_ignore_case() {
-        use crate::libs::tsv::record::StrSliceRow;
-
-        let fields = vec!["A", "B", "C"];
-        let row = StrSliceRow { fields: &fields };
+    fn test_extract_from_row_ignore_case() {
+        let line = b"A\tB\tC";
+        let ends = vec![1, 3, 5];
+        let row = TsvRow { line, ends: &ends };
 
         // Extract field 2 (B)
         let mut extractor = KeyExtractor::new(Some(vec![2]), true, true);
@@ -579,11 +482,10 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_from_row_trait_strict() {
-        use crate::libs::tsv::record::StrSliceRow;
-
-        let fields = vec!["A", "B", "C"];
-        let row = StrSliceRow { fields: &fields };
+    fn test_extract_from_row_strict() {
+        let line = b"A\tB\tC";
+        let ends = vec![1, 3, 5];
+        let row = TsvRow { line, ends: &ends };
 
         // Index 4 out of bounds
         let mut extractor = KeyExtractor::new(Some(vec![4]), false, true);
@@ -592,11 +494,10 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_from_row_trait_non_strict() {
-        use crate::libs::tsv::record::StrSliceRow;
-
-        let fields = vec!["A", "B", "C"];
-        let row = StrSliceRow { fields: &fields };
+    fn test_extract_from_row_non_strict() {
+        let line = b"A\tB\tC";
+        let ends = vec![1, 3, 5];
+        let row = TsvRow { line, ends: &ends };
 
         // Index 4 out of bounds
         let mut extractor = KeyExtractor::new(Some(vec![4]), false, false);
@@ -605,18 +506,15 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_from_row_whole_line_limitation() {
-        use crate::libs::tsv::record::StrSliceRow;
-
-        let fields = vec!["A", "B", "C"];
-        let row = StrSliceRow { fields: &fields };
+    fn test_extract_from_row_whole_line() {
+        let line = b"A\tB\tC";
+        let ends = vec![1, 3, 5];
+        let row = TsvRow { line, ends: &ends };
 
         // No indices -> Whole line
         let mut extractor = KeyExtractor::new(None, false, true);
-        // Current implementation returns empty slice because Row doesn't expose whole line
-        // This is a known limitation when using extract_from_row without indices
         let key = extractor.extract_from_row(&row, b'\t').unwrap();
-        assert_eq!(key.as_ref(), b"");
+        assert_eq!(key.as_ref(), b"A\tB\tC");
     }
 
     #[test]
