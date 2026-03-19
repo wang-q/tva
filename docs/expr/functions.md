@@ -21,6 +21,34 @@ TVA expr engine provides a rich set of built-in functions for data processing.
 - sqrt(x) -> float: Square root
 - tan(x) -> float: Tangent (radians)
 
+```bash
+# Basic numeric operations
+tva expr -E 'abs(-42)'                      # Returns: 42
+tva expr -E 'ceil(3.14)'                    # Returns: 4
+tva expr -E 'floor(3.14)'                   # Returns: 3
+tva expr -E 'round(3.5)'                    # Returns: 4
+tva expr -E 'sqrt(16)'                      # Returns: 4
+
+# Power and logarithm
+tva expr -E 'pow(2, 10)'                    # Returns: 1024
+tva expr -E 'ln(1)'                         # Returns: 0
+tva expr -E 'log10(100)'                    # Returns: 2
+tva expr -E 'exp(0)'                        # Returns: 1
+
+# Min and max
+tva expr -E 'max(1, 5, 3, 9, 2)'            # Returns: 9
+tva expr -E 'min(1, 5, 3, -2, 2)'           # Returns: -2
+
+# Type conversions
+tva expr -E 'int("42")'                     # Returns: 42
+tva expr -E 'float("3.14")'                 # Returns: 3.14
+
+# Trigonometric functions
+tva expr -E 'sin(0)'                        # Returns: 0
+tva expr -E 'cos(0)'                        # Returns: 1
+tva expr -E 'tan(0)'                        # Returns: 0
+```
+
 ## Logic & Control
 
 - if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (

@@ -5,9 +5,9 @@ mod common;
 use common::TvaCmd;
 
 // =============================================================================
-// Expression Documentation Tests
+// Expr Documentation Tests
 // =============================================================================
-// This file contains tests for expression features documented in docs/expr/
+// This file contains tests for expr features documented in docs/expr/
 //
 // Covered documents:
 // - functions.md: Built-in functions
@@ -22,164 +22,12 @@ use common::TvaCmd;
 // =============================================================================
 // Functions Tests (functions.md)
 // =============================================================================
-
-// -----------------------------------------------------------------------------
-// Numeric Operations
-// -----------------------------------------------------------------------------
-#[test]
-fn test_numeric_abs() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "abs(-42)"]).run();
-    assert!(
-        stdout.contains("42"),
-        "Expected '42' for abs(-42), got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_ceil() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "ceil(3.14)"]).run();
-    assert!(
-        stdout.contains("4"),
-        "Expected '4' for ceil(3.14), got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_floor() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "floor(3.14)"]).run();
-    assert!(
-        stdout.contains("3"),
-        "Expected '3' for floor(3.14), got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_round() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "round(3.5)"]).run();
-    assert!(
-        stdout.contains("4"),
-        "Expected '4' for round(3.5), got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_sqrt() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "sqrt(16)"]).run();
-    assert!(
-        stdout.contains("4"),
-        "Expected '4' for sqrt(16), got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_pow() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "pow(2, 10)"]).run();
-    assert!(
-        stdout.contains("1024"),
-        "Expected '1024' for pow(2, 10), got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_max() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["expr", "-E", "max(1, 5, 3, 9, 2)"])
-        .run();
-    assert!(
-        stdout.contains("9"),
-        "Expected '9' for max, got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_min() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["expr", "-E", "min(1, 5, 3, -2, 2)"])
-        .run();
-    assert!(
-        stdout.contains("-2"),
-        "Expected '-2' for min, got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_int_conversion() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "int(\"42\")"]).run();
-    assert!(
-        stdout.contains("42"),
-        "Expected '42' for int conversion, got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_float_conversion() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "float(\"3.14\")"]).run();
-    assert!(
-        stdout.contains("3.14"),
-        "Expected '3.14' for float conversion, got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_ln() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "ln(1)"]).run();
-    assert!(
-        stdout.contains("0"),
-        "Expected '0' for ln(1), got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_log10() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "log10(100)"]).run();
-    assert!(
-        stdout.contains("2"),
-        "Expected '2' for log10(100), got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_exp() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "exp(0)"]).run();
-    assert!(
-        stdout.contains("1"),
-        "Expected '1' for exp(0), got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_numeric_trigonometric() {
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "sin(0)"]).run();
-    assert!(
-        stdout.contains("0"),
-        "Expected '0' for sin(0), got: {}",
-        stdout
-    );
-
-    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", "cos(0)"]).run();
-    assert!(
-        stdout.contains("1"),
-        "Expected '1' for cos(0), got: {}",
-        stdout
-    );
-}
+// Note: Numeric operations tests have been moved to cli_expr_docs_functions.rs
 
 // -----------------------------------------------------------------------------
 // String Manipulation
 // -----------------------------------------------------------------------------
+// Note: String manipulation tests should also be moved to cli_expr_docs_functions.rs
 #[test]
 fn test_string_trim() {
     let (stdout, _) = TvaCmd::new()
