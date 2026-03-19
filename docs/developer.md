@@ -351,24 +351,41 @@ let mask = _mm_movemask_epi8(cmp) as u32; // 压缩为 16-bit mask
 
 #### 基准测试结果 (`benches/tsv_parse.rs`)
 
-测试数据：3000 行 TSV，每行 5 个字段
+测试数据：3000 行 TSV，每行 5 个字段 (约 71KB 数据)
 
 | 实现 | 时间 | 吞吐量 | 相对性能 |
 |:-----|:-----|:-------|:---------|
-| **simd-csv** | 61.6 µs | **1.15 GiB/s** | 🥇 最快 |
-| **tva_tsv_reader** | 72.9 µs | **993 MiB/s** | 🥈 快 (比 simd-csv 慢 18%) |
-| csv crate | 102.4 µs | 708 MiB/s | 中等 |
-| memchr2 (多字符) | 90.0 µs | 805 MiB/s | 较好 |
-| memchr + 重用缓冲区 | 91.2 µs | 795 MiB/s | 较好 |
-| TsvRecord 结构 | 105.3 µs | 688 MiB/s | 中等 |
-| std::split 迭代器 | 182.9 µs | 396 MiB/s | 较慢 |
-| 手动字节循环 | 170.0 µs | 426 MiB/s | 较慢 |
-| naive split + collect | 436.0 µs | 166 MiB/s | 🐢 最慢 |
+| **simd-csv** | 71.8 µs | **1009.5 MiB/s** | 🥇 最快 |
+| **tva_tsv_reader** | 84.6 µs | **857.0 MiB/s** | 🥈 快 (比 simd-csv 慢 15%) |
+| csv crate | 106.5 µs | 682.0 MiB/s | 中等 |
+| memchr2_simd_loop | 99.4 µs | 729.4 MiB/s | 较好 |
+| chunked_reader_sim | 102.0 µs | 710.9 MiB/s | 较好 |
+| memchr_reused_buffer | 102.3 µs | 708.6 MiB/s | 较好 |
+| TsvRecord 结构 | 120.9 µs | 599.6 MiB/s | 中等 |
+| std::split 迭代器 | 226.4 µs | 322.9 MiB/s | 较慢 |
+| 手动字节循环 | 203.2 µs | 356.7 MiB/s | 较慢 |
+| memchr_inline_loop | 224.4 µs | 322.9 MiB/s | 较慢 |
+| naive split + collect | 502.5 µs | 144.3 MiB/s | 🐢 最慢 |
 
 **关键发现**：
-- `simd-csv` 比 `tva_tsv_reader` 快约 **18%**，差距主要来自自定义 SIMD Searcher
-- `tva_tsv_reader` 比 `csv` crate 快约 **40%**
-- `memchr` 重用的缓冲区方法比 naive split 快 **4.8 倍**
+- `tva_tsv_reader` 比 `csv` crate 快约 **26%**
+- `tva_tsv_reader` 比 naive split 快约 **5.9 倍**
+- `simd-csv` 比 `tva_tsv_reader` 快约 **15%**，差距主要来自自定义 SIMD Searcher
+- `memchr` 重用的缓冲区方法比 naive split 快 **4.9 倍**
+
+**基准测试详情** (`benches/tsv_parse.rs`)：
+
+1. **csv_crate** - 使用 `csv` crate 的 `ReaderBuilder`，DFA 状态机实现
+2. **simd_csv_crate** - 使用 `simd-csv` crate，SIMD 加速解析
+3. **algo_naive_split_collect** - 使用 `BufReader::lines()` + `split().collect()`，每次分配 String 和 Vec
+4. **algo_std_split_iter** - 使用 `BufReader::lines()` + `split()` 迭代器，避免 Vec 分配
+5. **algo_manual_byte_loop** - 使用 `BufReader::lines()` + 手动字节遍历找分隔符
+6. **algo_memchr_inline_loop** - 使用 `BufReader::lines()` + `memchr::memchr_iter` 找分隔符
+7. **algo_memchr_reused_buffer** - 使用 `read_until()` 重用缓冲区 + `memchr::memchr_iter`
+8. **tsv_record_struct** - 使用 `TsvRecord::parse_line()` 预分配缓冲区解析
+9. **algo_memchr2_simd_loop** - 使用 `memchr::memchr2_iter` 同时搜索 `\t` 和 `\n`
+10. **algo_chunked_reader_sim** - 模拟分块读取器，8KB 块 + 处理跨边界记录
+11. **tva_tsv_reader** - TVA 的 `TsvReader::for_each_record()`，内部缓冲区 + SIMD
 
 #### 与 simd-csv 的差距分析
 
