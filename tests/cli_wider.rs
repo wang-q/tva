@@ -67,14 +67,7 @@ fn test_wider_missing_and_id(input: &str, args: &str, expected: &str) {
 
 #[test]
 fn wider_doc_example_us_rent_income() {
-    let expected = "
-GEOID\tNAME\tincome\trent
-01\tAlabama\t24476\t747
-02\tAlaska\t32940\t1200
-04\tArizona\t27517\t972
-05\tArkansas\t23789\t709
-06\tCalifornia\t29454\t1358
-";
+    let expected = "GEOID\tNAME\tincome\trent\n01\tAlabama\t24476\t747\n02\tAlaska\t32940\t1200\n04\tArizona\t27517\t972\n05\tArkansas\t23789\t709\n06\tCalifornia\t29454\t1358";
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "wider",
@@ -88,7 +81,7 @@ GEOID\tNAME\tincome\trent
         ])
         .run();
 
-    assert_eq!(stdout.trim(), expected.trim());
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
@@ -113,17 +106,11 @@ fn wider_multi_file_error() {
 
 #[test]
 fn wider_preserve_space() {
-    let input = "
-ID\tname\tvalue
-A\tcost\t 
-";
-    let expected = "
-ID\tcost
-A\t 
-";
+    let input = "ID\tname\tvalue\nA\tcost\t ";
+    let expected = "ID\tcost\nA\t ";
     let (stdout, _) = TvaCmd::new()
         .args(&["wider", "--names-from", "name", "--values-from", "value"])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     assert_eq!(stdout.trim(), expected.trim());
@@ -132,16 +119,8 @@ A\t
 #[test]
 fn wider_datamash_scenarios() {
     // Scenario 1
-    let input1 = "
-ID\tKey\tVal
-a\tx\t1
-a\ty\t2
-a\tx\t3
-";
-    let expected1 = "
-ID\tx\ty
-a\t3\t2
-";
+    let input1 = "ID\tKey\tVal\na\tx\t1\na\ty\t2\na\tx\t3";
+    let expected1 = "ID\tx\ty\na\t3\t2";
     let (stdout1, _) = TvaCmd::new()
         .args(&[
             "wider",
@@ -152,23 +131,14 @@ a\t3\t2
             "--id-cols",
             "ID",
         ])
-        .stdin(input1.trim())
+        .stdin(input1)
         .run();
 
-    assert_eq!(stdout1.trim(), expected1.trim());
+    assert_eq!(stdout1.trim(), expected1);
 
     // Scenario 2
-    let input2 = "
-ID\tKey\tVal
-a\tx\t1
-a\ty\t2
-b\tx\t3
-";
-    let expected2 = "
-ID\tx\ty
-a\t1\t2
-b\t3\tXX
-";
+    let input2 = "ID\tKey\tVal\na\tx\t1\na\ty\t2\nb\tx\t3";
+    let expected2 = "ID\tx\ty\na\t1\t2\nb\t3\tXX";
     let (stdout2, _) = TvaCmd::new()
         .args(&[
             "wider",
@@ -181,10 +151,10 @@ b\t3\tXX
             "--values-fill",
             "XX",
         ])
-        .stdin(input2.trim())
+        .stdin(input2)
         .run();
 
-    assert_eq!(stdout2.trim(), expected2.trim());
+    assert_eq!(stdout2.trim(), expected2);
 }
 
 #[test_case(
@@ -200,9 +170,27 @@ b\t3\tXX
 fn test_wider_aggregation_ops(op: &str, expected: &str) {
     let input = "ID\tname\tval\nA\tX\t10\nA\tX\t20\nB\tY\t5\nB\tY\t15\nC\tZ\t100";
     let args: Vec<&str> = if op == "count" {
-        vec!["wider", "--names-from", "name", "--id-cols", "ID", "--op", op]
+        vec![
+            "wider",
+            "--names-from",
+            "name",
+            "--id-cols",
+            "ID",
+            "--op",
+            op,
+        ]
     } else {
-        vec!["wider", "--names-from", "name", "--values-from", "val", "--id-cols", "ID", "--op", op]
+        vec![
+            "wider",
+            "--names-from",
+            "name",
+            "--values-from",
+            "val",
+            "--id-cols",
+            "ID",
+            "--op",
+            op,
+        ]
     };
     let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
     assert_eq!(stdout.trim(), expected.trim());
@@ -215,7 +203,15 @@ fn test_wider_aggregation_ops(op: &str, expected: &str) {
     "aggregation_count"
 )]
 fn test_wider_count_op(input: &str, op: &str, expected: &str) {
-    let args: Vec<&str> = vec!["wider", "--names-from", "name", "--id-cols", "ID", "--op", op];
+    let args: Vec<&str> = vec![
+        "wider",
+        "--names-from",
+        "name",
+        "--id-cols",
+        "ID",
+        "--op",
+        op,
+    ];
     let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
     assert_eq!(stdout.trim(), expected.trim());
 }
@@ -227,11 +223,29 @@ fn test_wider_count_op(input: &str, op: &str, expected: &str) {
 fn test_wider_extended_stats(op: &str, expected_a: &str, expected_b: &str) {
     let input = "ID\tKey\tVal\nA\tX\t1\nA\tX\t3\nA\tX\t5\nB\tX\t2\nB\tX\t2\nB\tX\t8";
     let args: Vec<&str> = vec![
-        "wider", "--names-from", "Key", "--values-from", "Val", "--id-cols", "ID", "--op", op,
+        "wider",
+        "--names-from",
+        "Key",
+        "--values-from",
+        "Val",
+        "--id-cols",
+        "ID",
+        "--op",
+        op,
     ];
     let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
-    assert!(stdout.contains(expected_a), "Expected '{}' in output: {}", expected_a, stdout);
-    assert!(stdout.contains(expected_b), "Expected '{}' in output: {}", expected_b, stdout);
+    assert!(
+        stdout.contains(expected_a),
+        "Expected '{}' in output: {}",
+        expected_a,
+        stdout
+    );
+    assert!(
+        stdout.contains(expected_b),
+        "Expected '{}' in output: {}",
+        expected_b,
+        stdout
+    );
 }
 
 #[test_case("first", "A\tfirst_val"; "first")]
@@ -239,10 +253,23 @@ fn test_wider_extended_stats(op: &str, expected_a: &str, expected_b: &str) {
 fn test_wider_first_last(op: &str, expected: &str) {
     let input = "ID\tKey\tVal\nA\tX\tfirst_val\nA\tX\tmiddle_val\nA\tX\tlast_val";
     let args: Vec<&str> = vec![
-        "wider", "--names-from", "Key", "--values-from", "Val", "--id-cols", "ID", "--op", op,
+        "wider",
+        "--names-from",
+        "Key",
+        "--values-from",
+        "Val",
+        "--id-cols",
+        "ID",
+        "--op",
+        op,
     ];
     let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
-    assert!(stdout.contains(expected), "Expected '{}' in output: {}", expected, stdout);
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
 }
 
 #[test_case("q1", "A\t2"; "quartiles_q1")]
@@ -251,10 +278,23 @@ fn test_wider_first_last(op: &str, expected: &str) {
 fn test_wider_quartiles(op: &str, expected: &str) {
     let input = "ID\tKey\tVal\nA\tX\t1\nA\tX\t2\nA\tX\t3\nA\tX\t4\nA\tX\t5";
     let args: Vec<&str> = vec![
-        "wider", "--names-from", "Key", "--values-from", "Val", "--id-cols", "ID", "--op", op,
+        "wider",
+        "--names-from",
+        "Key",
+        "--values-from",
+        "Val",
+        "--id-cols",
+        "ID",
+        "--op",
+        op,
     ];
     let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
-    assert!(stdout.contains(expected), "Expected '{}' in output: {}", expected, stdout);
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
 }
 
 #[test_case("geomean", "A\t4"; "advanced_geomean")]
@@ -265,10 +305,23 @@ fn test_wider_quartiles(op: &str, expected: &str) {
 fn test_wider_advanced_math(op: &str, expected: &str) {
     let input = "ID\tKey\tVal\nA\tX\t2\nA\tX\t8";
     let args: Vec<&str> = vec![
-        "wider", "--names-from", "Key", "--values-from", "Val", "--id-cols", "ID", "--op", op,
+        "wider",
+        "--names-from",
+        "Key",
+        "--values-from",
+        "Val",
+        "--id-cols",
+        "ID",
+        "--op",
+        op,
     ];
     let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
-    assert!(stdout.contains(expected), "Expected '{}' in output: {}", expected, stdout);
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in output: {}",
+        expected,
+        stdout
+    );
 }
 
 #[test]
@@ -298,17 +351,8 @@ fn wider_empty_file() {
 fn wider_count_no_values_from() {
     // Test count operation doesn't require --values-from (covers L227-228)
     // Note: without --id-cols, code uses default ID columns logic (all except names)
-    let input = "
-ID	name
-A	X
-A	X
-B	Y
-";
-    let expected = "
-ID	X	Y
-A	2	0
-B	0	1
-";
+    let input = "ID\tname\nA\tX\nA\tX\nB\tY";
+    let expected = "ID\tX\tY\nA\t2\t0\nB\t0\t1";
     let (stdout, _) = TvaCmd::new()
         .args(&[
             "wider",
@@ -319,7 +363,7 @@ B	0	1
             "--values-fill",
             "0",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     assert_eq!(stdout.trim(), expected.trim());
@@ -330,10 +374,7 @@ fn wider_multi_column_names_from_error() {
     // Test multi-column --names-from error (covers L196-199)
     let (_, stderr) = TvaCmd::new()
         .args(&["wider", "--names-from", "1,2", "--values-from", "3"])
-        .stdin(
-            "A	B	C
-1	2	3\n",
-        )
+        .stdin("A\tB\tC\n1\t2\t3")
         .run_fail();
 
     assert!(stderr.contains("only single column supported for --names-from"));
@@ -344,10 +385,7 @@ fn wider_multi_column_values_from_error() {
     // Test multi-column --values-from error (covers L207-210)
     let (_, stderr) = TvaCmd::new()
         .args(&["wider", "--names-from", "1", "--values-from", "2,3"])
-        .stdin(
-            "A	B	C
-1	2	3\n",
-        )
+        .stdin("A\tB\tC\n1\t2\t3")
         .run_fail();
 
     assert!(stderr.contains("only single column supported for --values-from"));
@@ -356,15 +394,8 @@ fn wider_multi_column_values_from_error() {
 #[test]
 fn wider_header_flag() {
     // Test --header flag (FirstLine mode)
-    let input = "\
-ID	Key	Val
-A	X	1
-A	Y	2
-";
-    let expected = "\
-ID	X	Y
-A	1	2
-";
+    let input = "ID\tKey\tVal\nA\tX\t1\nA\tY\t2";
+    let expected = "ID\tX\tY\nA\t1\t2";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -380,22 +411,14 @@ A	1	2
         .stdin(input)
         .run();
 
-    assert_eq!(stdout, expected);
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
 fn wider_header_hash1() {
     // Test --header-hash1 flag (HashLines1 mode)
-    let input = "\
-# Comment line
-ID	Key	Val
-A	X	1
-A	Y	2
-";
-    let expected = "\
-ID	X	Y
-A	1	2
-";
+    let input = "# Comment line\nID\tKey\tVal\nA\tX\t1\nA\tY\t2";
+    let expected = "ID\tX\tY\nA\t1\t2";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -411,21 +434,14 @@ A	1	2
         .stdin(input)
         .run();
 
-    assert_eq!(stdout, expected);
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
 fn wider_header_hash1_no_hash_lines() {
     // Test --header-hash1 graceful degradation when no hash lines exist
-    let input = "\
-ID	Key	Val
-A	X	1
-A	Y	2
-";
-    let expected = "\
-ID	X	Y
-A	1	2
-";
+    let input = "ID\tKey\tVal\nA\tX\t1\nA\tY\t2";
+    let expected = "ID\tX\tY\nA\t1\t2";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -441,22 +457,14 @@ A	1	2
         .stdin(input)
         .run();
 
-    assert_eq!(stdout, expected);
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
 fn wider_header_hash1_multiple_comments() {
     // Test --header-hash1 with multiple comment lines
-    let input = "\
-# First comment
-# Second comment
-ID	Key	Val
-A	X	1
-";
-    let expected = "\
-ID	X
-A	1
-";
+    let input = "# First comment\n# Second comment\nID\tKey\tVal\nA\tX\t1";
+    let expected = "ID\tX\nA\t1";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -472,25 +480,19 @@ A	1
         .stdin(input)
         .run();
 
-    assert_eq!(stdout, expected);
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
 fn wider_no_header_numeric_fields() {
     // Test that without explicit header flag, first line is treated as header
     // This is the default behavior for backward compatibility
-    let input = "\
-A	X	1
-A	Y	2
-";
+    let input = "A\tX\t1\nA\tY\t2";
     // First line "A	X	1" is treated as header
     // Column 1 = "A", Column 2 = "X", Column 3 = "1"
     // names-from=2 -> "X", values-from=3 -> "1", id-cols=1 -> "A"
     // Second line "A	Y	2" is data: ID="A", Name="Y", Value="2"
-    let expected = "\
-A	Y
-A	2
-";
+    let expected = "A\tY\nA\t2";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -505,7 +507,7 @@ A	2
         .stdin(input)
         .run();
 
-    assert_eq!(stdout, expected);
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
@@ -520,12 +522,7 @@ fn wider_help_text_clarity() {
 #[test]
 fn wider_range_op() {
     // Test range operation (max - min)
-    let input = "
-ID	Key	Val
-A	X	5
-A	X	10
-A	X	15
-";
+    let input = "ID\tKey\tVal\nA\tX\t5\nA\tX\t10\nA\tX\t15";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -539,47 +536,33 @@ A	X	15
             "--op",
             "range",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     // Range = 15 - 5 = 10
-    assert!(stdout.contains("A	10"));
+    assert!(stdout.contains("A\t10"));
 }
 
 #[test]
 fn wider_single_row_single_column() {
     // Test with minimal data - single row
-    let input = "
-ID	name	value
-A	cost	100
-";
-    let expected = "
-ID	cost
-A	100
-";
+    let input = "ID\tname\tvalue\nA\tcost\t100";
+    let expected = "ID\tcost\nA\t100";
 
     let (stdout, _) = TvaCmd::new()
         .args(&["wider", "--names-from", "name", "--values-from", "value"])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
-    assert_eq!(stdout.trim(), expected.trim());
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
 fn wider_duplicate_id_name_combinations() {
     // Test aggregation when same ID+Name combination appears multiple times
     // Default op is "last", so last value should win
-    let input = "
-ID	name	value
-A	cost	10
-A	cost	20
-A	cost	30
-";
-    let expected = "
-ID	cost
-A	30
-";
+    let input = "ID\tname\tvalue\nA\tcost\t10\nA\tcost\t20\nA\tcost\t30";
+    let expected = "ID\tcost\nA\t30";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -591,26 +574,17 @@ A	30
             "--id-cols",
             "ID",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
-    assert_eq!(stdout.trim(), expected.trim());
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
 fn wider_numeric_column_indices() {
     // Test using numeric column indices instead of names
-    let input = "
-col1	col2	col3
-A	X	1
-A	Y	2
-B	X	3
-";
-    let expected = "
-col1	X	Y
-A	1	2
-B	3	
-";
+    let input = "col1\tcol2\tcol3\nA\tX\t1\nA\tY\t2\nB\tX\t3";
+    let expected = "col1\tX\tY\nA\t1\t2\nB\t3\t";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -633,18 +607,9 @@ fn wider_empty_values_with_fill() {
     // Test handling of missing columns with custom fill
     // Note: --values-fill is used when a column is missing for an ID,
     // not when the value is empty
-    let input = "
-ID	name	value
-A	x	5
-A	y	10
-B	x	20
-";
+    let input = "ID\tname\tvalue\nA\tx\t5\nA\ty\t10\nB\tx\t20";
     // B doesn't have 'y', so it should be filled with "NA"
-    let expected = "
-ID	x	y
-A	5	10
-B	20	NA
-";
+    let expected = "ID\tx\ty\nA\t5\t10\nB\t20\tNA";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -659,26 +624,17 @@ B	20	NA
             "NA",
             "--names-sort",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
-    assert_eq!(stdout.trim(), expected.trim());
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
 fn wider_multiple_id_columns() {
     // Test with multiple ID columns
-    let input = "
-Year	Month	Type	Value
-2024	Jan	A	100
-2024	Jan	B	200
-2024	Feb	A	150
-";
-    let expected = "
-Year	Month	A	B
-2024	Jan	100	200
-2024	Feb	150	
-";
+    let input = "Year\tMonth\tType\tValue\n2024\tJan\tA\t100\n2024\tJan\tB\t200\n2024\tFeb\tA\t150";
+    let expected = "Year\tMonth\tA\tB\n2024\tJan\t100\t200\n2024\tFeb\t150";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -690,21 +646,16 @@ Year	Month	A	B
             "--id-cols",
             "Year,Month",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
-    assert_eq!(stdout.trim(), expected.trim());
+    assert_eq!(stdout.trim(), expected);
 }
 
 #[test]
 fn wider_special_characters_in_names() {
     // Test handling of special characters in name column
-    let input = "
-ID	name	value
-A	X-Y	1
-A	X+Y	2
-B	X*Y	3
-";
+    let input = "ID\tname\tvalue\nA\tX-Y\t1\nA\tX+Y\t2\nB\tX*Y\t3";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -717,7 +668,7 @@ B	X*Y	3
             "ID",
             "--names-sort",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     // Should contain all special column names
@@ -729,11 +680,7 @@ B	X*Y	3
 #[test]
 fn wider_unicode_content() {
     // Test with unicode characters in data
-    let input = "
-ID	name	value
-中文	成本	100
-中文	尺寸	50
-";
+    let input = "ID\tname\tvalue\n中文\t成本\t100\n中文\t尺寸\t50";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -745,7 +692,7 @@ ID	name	value
             "--id-cols",
             "ID",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     // Should handle unicode correctly
@@ -759,11 +706,7 @@ ID	name	value
 #[test]
 fn wider_large_numbers() {
     // Test with large numbers
-    let input = "
-ID	name	value
-A	sales	999999999.99
-B	sales	1000000000.00
-";
+    let input = "ID\tname\tvalue\nA\tsales\t999999999.99\nB\tsales\t1000000000.00";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -775,7 +718,7 @@ B	sales	1000000000.00
             "--id-cols",
             "ID",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     assert!(stdout.contains("999999999.99"));
@@ -785,11 +728,7 @@ B	sales	1000000000.00
 #[test]
 fn wider_negative_numbers() {
     // Test with negative numbers
-    let input = "
-ID	name	value
-A	profit	-100
-A	loss	50
-";
+    let input = "ID\tname\tvalue\nA\tprofit\t-100\nA\tloss\t50";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -801,7 +740,7 @@ A	loss	50
             "--id-cols",
             "ID",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     assert!(stdout.contains("-100"));
@@ -811,10 +750,7 @@ A	loss	50
 #[test]
 fn wider_float_precision() {
     // Test float precision handling
-    let input = "
-ID	name	value
-A	pi	3.14159265359
-";
+    let input = "ID\tname\tvalue\nA\tpi\t3.14159265359";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -826,7 +762,7 @@ A	pi	3.14159265359
             "--id-cols",
             "ID",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     assert!(stdout.contains("3.14159265359"));
@@ -835,9 +771,7 @@ A	pi	3.14159265359
 #[test]
 fn wider_only_header_no_data() {
     // Test with only header row, no data
-    let input = "
-ID	name	value
-";
+    let input = "ID\tname\tvalue";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -849,7 +783,7 @@ ID	name	value
             "--id-cols",
             "ID",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     // Should output just the header
@@ -859,11 +793,7 @@ ID	name	value
 #[test]
 fn wider_mixed_types_in_value_column() {
     // Test handling of mixed types (numbers and strings) in value column
-    let input = "
-ID	name	value
-A	num	100
-A	str	hello
-";
+    let input = "ID\tname\tvalue\nA\tnum\t100\nA\tstr\thello";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -875,7 +805,7 @@ A	str	hello
             "--id-cols",
             "ID",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     // Should handle both numeric and string values
@@ -886,11 +816,7 @@ A	str	hello
 #[test]
 fn wider_id_cols_with_spaces() {
     // Test ID columns that contain spaces (should be preserved)
-    let input = "
-ID	name	value
-A B	x	1
-A B	y	2
-";
+    let input = "ID\tname\tvalue\nA B\tx\t1\nA B\ty\t2";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -902,7 +828,7 @@ A B	y	2
             "--id-cols",
             "ID",
         ])
-        .stdin(input.trim())
+        .stdin(input)
         .run();
 
     // ID with space should be preserved
