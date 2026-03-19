@@ -5,6 +5,7 @@ mod common;
 use common::TvaCmd;
 use std::io::Write;
 use tempfile::NamedTempFile;
+use test_case::test_case;
 
 fn create_file(content: &str) -> NamedTempFile {
     let mut file = NamedTempFile::new().expect("failed to create temp file");
@@ -12,162 +13,55 @@ fn create_file(content: &str) -> NamedTempFile {
     file
 }
 
-#[test]
-fn wider_basic() {
-    let input = "
-ID\tname\tvalue
-A\tcost\t10
-A\tsize\t5
-B\tcost\t20
-B\tsize\t8
-";
-    let expected = "
-ID\tcost\tsize
-A\t10\t5
-B\t20\t8
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["wider", "--names-from", "name", "--values-from", "value"])
-        .stdin(input.trim())
-        .run();
-
+#[test_case(
+    "ID\tname\tvalue\nA\tcost\t10\nA\tsize\t5\nB\tcost\t20\nB\tsize\t8",
+    "--names-from name --values-from value",
+    "ID\tcost\tsize\nA\t10\t5\nB\t20\t8";
+    "basic"
+)]
+#[test_case(
+    "A\tB\tkey\tval\n1\tx\tk1\t10\n1\tx\tk2\t20\n2\ty\tk1\t30",
+    "--names-from key --values-from val",
+    "A\tB\tk1\tk2\n1\tx\t10\t20\n2\ty\t30\t";
+    "implicit_id_multi_col"
+)]
+#[test_case(
+    "ID\tkey\tval\n1\tb\t2\n1\ta\t1\n1\tc\t3",
+    "--names-from key --values-from val --names-sort",
+    "ID\ta\tb\tc\n1\t1\t2\t3";
+    "names_sort"
+)]
+#[test_case(
+    "ID\tkey\tval\n1\ta\t1\n2\tb\t2",
+    "--names-from key --values-from val --values-fill missing --names-sort",
+    "ID\ta\tb\n1\t1\tmissing\n2\tmissing\t2";
+    "custom_fill_string"
+)]
+fn test_wider_basic(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("wider")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
     assert_eq!(stdout.trim(), expected.trim());
 }
 
-#[test]
-fn wider_implicit_id_multi_col() {
-    let input = "
-A\tB\tkey\tval
-1\tx\tk1\t10
-1\tx\tk2\t20
-2\ty\tk1\t30
-";
-    // Expected:
-    // A  B  k1  k2
-    // 1  x  10  20
-    // 2  y  30
-    let expected = "
-A\tB\tk1\tk2
-1\tx\t10\t20
-2\ty\t30\t
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["wider", "--names-from", "key", "--values-from", "val"])
-        .stdin(input.trim())
-        .run();
-
-    assert_eq!(stdout.trim(), expected.trim());
-}
-
-#[test]
-fn wider_names_sort() {
-    let input = "
-ID\tkey\tval
-1\tb\t2
-1\ta\t1
-1\tc\t3
-";
-    let expected = "
-ID\ta\tb\tc
-1\t1\t2\t3
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "key",
-            "--values-from",
-            "val",
-            "--names-sort",
-        ])
-        .stdin(input.trim())
-        .run();
-
-    assert_eq!(stdout.trim(), expected.trim());
-}
-
-#[test]
-fn wider_custom_fill_string() {
-    let input = "
-ID\tkey\tval
-1\ta\t1
-2\tb\t2
-";
-    let expected = "
-ID\ta\tb
-1\t1\tmissing
-2\tmissing\t2
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "key",
-            "--values-from",
-            "val",
-            "--values-fill",
-            "missing",
-            "--names-sort",
-        ])
-        .stdin(input.trim())
-        .run();
-
-    assert_eq!(stdout.trim(), expected.trim());
-}
-
-#[test]
-fn wider_missing_values() {
-    let input = "
-ID\tname\tvalue
-A\tcost\t10
-B\tsize\t8
-";
-    let expected = "
-ID\tcost\tsize
-A\t10\t0
-B\t0\t8
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "name",
-            "--values-from",
-            "value",
-            "--values-fill",
-            "0",
-            "--names-sort",
-        ])
-        .stdin(input.trim())
-        .run();
-
-    assert_eq!(stdout.trim(), expected.trim());
-}
-
-#[test]
-fn wider_explicit_id() {
-    let input = "
-ID\tDate\tname\tvalue
-A\t2020\tcost\t10
-A\t2021\tcost\t12
-";
-    let expected = "
-ID\tcost
-A\t12
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "name",
-            "--values-from",
-            "value",
-            "--id-cols",
-            "ID",
-        ])
-        .stdin(input.trim())
-        .run();
-
+#[test_case(
+    "ID\tname\tvalue\nA\tcost\t10\nB\tsize\t8",
+    "--names-from name --values-from value --values-fill 0 --names-sort",
+    "ID\tcost\tsize\nA\t10\t0\nB\t0\t8";
+    "missing_values"
+)]
+#[test_case(
+    "ID\tname\tvalue\nA\tcost\t10\nA\tcost\t12",
+    "--names-from name --values-from value --id-cols ID",
+    "ID\tcost\nA\t12";
+    "explicit_id"
+)]
+fn test_wider_missing_and_id(input: &str, args: &str, expected: &str) {
+    let args: Vec<&str> = std::iter::once("wider")
+        .chain(args.split_whitespace())
+        .collect();
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
     assert_eq!(stdout.trim(), expected.trim());
 }
 
@@ -293,372 +187,88 @@ b\t3\tXX
     assert_eq!(stdout2.trim(), expected2.trim());
 }
 
-#[test]
-fn wider_aggregation_ops() {
-    let input = "
-ID\tname\tval
-A\tX\t10
-A\tX\t20
-B\tY\t5
-B\tY\t15
-C\tZ\t100
-";
-
-    // 1. Test SUM
-    let expected_sum = "
-ID\tX\tY\tZ
-A\t30\t\t
-B\t\t20\t
-C\t\t\t100
-";
-    let (stdout_sum, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "name",
-            "--values-from",
-            "val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "sum",
-        ])
-        .stdin(input.trim())
-        .run();
-
-    assert_eq!(stdout_sum.trim(), expected_sum.trim());
-
-    // 2. Test MEAN
-    let expected_mean = "
-ID\tX\tY\tZ
-A\t15\t\t
-B\t\t10\t
-C\t\t\t100
-";
-    let (stdout_mean, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "name",
-            "--values-from",
-            "val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "mean",
-        ])
-        .stdin(input.trim())
-        .run();
-
-    assert_eq!(stdout_mean.trim(), expected_mean.trim());
-
-    // 3. Test COUNT
-    let expected_count = "
-ID\tX\tY\tZ
-A\t2\t\t
-B\t\t2\t
-C\t\t\t1
-";
-    let (stdout_count, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "name",
-            "--id-cols",
-            "ID",
-            "--op",
-            "count",
-        ])
-        .stdin(input.trim())
-        .run();
-
-    assert_eq!(stdout_count.trim(), expected_count.trim());
+#[test_case(
+    "sum",
+    "ID\tX\tY\tZ\nA\t30\t\t\nB\t\t20\t\nC\t\t\t100";
+    "aggregation_sum"
+)]
+#[test_case(
+    "mean",
+    "ID\tX\tY\tZ\nA\t15\t\t\nB\t\t10\t\nC\t\t\t100";
+    "aggregation_mean"
+)]
+fn test_wider_aggregation_ops(op: &str, expected: &str) {
+    let input = "ID\tname\tval\nA\tX\t10\nA\tX\t20\nB\tY\t5\nB\tY\t15\nC\tZ\t100";
+    let args: Vec<&str> = if op == "count" {
+        vec!["wider", "--names-from", "name", "--id-cols", "ID", "--op", op]
+    } else {
+        vec!["wider", "--names-from", "name", "--values-from", "val", "--id-cols", "ID", "--op", op]
+    };
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
+    assert_eq!(stdout.trim(), expected.trim());
 }
 
-#[test]
-fn wider_extended_stats() {
-    let input = "
-ID\tKey\tVal
-A\tX\t1
-A\tX\t3
-A\tX\t5
-B\tX\t2
-B\tX\t2
-B\tX\t8
-";
-
-    // 1. Min
-    let (stdout_min, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "min",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_min.contains("A\t1"));
-    assert!(stdout_min.contains("B\t2"));
-
-    // Max
-    let (stdout_max, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "max",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_max.contains("A\t5"));
-    assert!(stdout_max.contains("B\t8"));
-
-    // 2. Median
-    let (stdout_median, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "median",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_median.contains("A\t3"));
-    assert!(stdout_median.contains("B\t2"));
-
-    // 3. Mode
-    let (stdout_mode, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "mode",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_mode.contains("A\t1"));
-    assert!(stdout_mode.contains("B\t2"));
+#[test_case(
+    "ID\tname\tval\nA\tX\t10\nA\tX\t20\nB\tY\t5\nB\tY\t15\nC\tZ\t100",
+    "count",
+    "ID\tX\tY\tZ\nA\t2\t\t\nB\t\t2\t\nC\t\t\t1";
+    "aggregation_count"
+)]
+fn test_wider_count_op(input: &str, op: &str, expected: &str) {
+    let args: Vec<&str> = vec!["wider", "--names-from", "name", "--id-cols", "ID", "--op", op];
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
+    assert_eq!(stdout.trim(), expected.trim());
 }
 
-#[test]
-fn wider_first_last() {
-    let input = "
-ID\tKey\tVal
-A\tX\tfirst_val
-A\tX\tmiddle_val
-A\tX\tlast_val
-";
-
-    // First
-    let (stdout_first, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "first",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_first.contains("A\tfirst_val"));
-
-    // Last
-    let (stdout_last, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "last",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_last.contains("A\tlast_val"));
+#[test_case("min", "A\t1", "B\t2"; "extended_min")]
+#[test_case("max", "A\t5", "B\t8"; "extended_max")]
+#[test_case("median", "A\t3", "B\t2"; "extended_median")]
+#[test_case("mode", "A\t1", "B\t2"; "extended_mode")]
+fn test_wider_extended_stats(op: &str, expected_a: &str, expected_b: &str) {
+    let input = "ID\tKey\tVal\nA\tX\t1\nA\tX\t3\nA\tX\t5\nB\tX\t2\nB\tX\t2\nB\tX\t8";
+    let args: Vec<&str> = vec![
+        "wider", "--names-from", "Key", "--values-from", "Val", "--id-cols", "ID", "--op", op,
+    ];
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
+    assert!(stdout.contains(expected_a), "Expected '{}' in output: {}", expected_a, stdout);
+    assert!(stdout.contains(expected_b), "Expected '{}' in output: {}", expected_b, stdout);
 }
 
-#[test]
-fn wider_quartiles_iqr() {
-    let input = "
-ID\tKey\tVal
-A\tX\t1
-A\tX\t2
-A\tX\t3
-A\tX\t4
-A\tX\t5
-";
-
-    // Q1
-    let (stdout_q1, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "q1",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_q1.contains("A\t2"));
-
-    // Q3
-    let (stdout_q3, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "q3",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_q3.contains("A\t4"));
-
-    // IQR
-    let (stdout_iqr, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "iqr",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_iqr.contains("A\t2"));
+#[test_case("first", "A\tfirst_val"; "first")]
+#[test_case("last", "A\tlast_val"; "last")]
+fn test_wider_first_last(op: &str, expected: &str) {
+    let input = "ID\tKey\tVal\nA\tX\tfirst_val\nA\tX\tmiddle_val\nA\tX\tlast_val";
+    let args: Vec<&str> = vec![
+        "wider", "--names-from", "Key", "--values-from", "Val", "--id-cols", "ID", "--op", op,
+    ];
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
+    assert!(stdout.contains(expected), "Expected '{}' in output: {}", expected, stdout);
 }
 
-#[test]
-fn wider_advanced_math_stats() {
-    let input = "
-ID\tKey\tVal
-A\tX\t2
-A\tX\t8
-";
+#[test_case("q1", "A\t2"; "quartiles_q1")]
+#[test_case("q3", "A\t4"; "quartiles_q3")]
+#[test_case("iqr", "A\t2"; "quartiles_iqr")]
+fn test_wider_quartiles(op: &str, expected: &str) {
+    let input = "ID\tKey\tVal\nA\tX\t1\nA\tX\t2\nA\tX\t3\nA\tX\t4\nA\tX\t5";
+    let args: Vec<&str> = vec![
+        "wider", "--names-from", "Key", "--values-from", "Val", "--id-cols", "ID", "--op", op,
+    ];
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
+    assert!(stdout.contains(expected), "Expected '{}' in output: {}", expected, stdout);
+}
 
-    // GeoMean
-    let (stdout_geo, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "geomean",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_geo.contains("A\t4"));
-
-    // HarmMean
-    let (stdout_harm, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "harmmean",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_harm.contains("A\t3.2"));
-
-    // Variance
-    let (stdout_var, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "variance",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_var.contains("A\t18"));
-
-    // Stdev
-    let (stdout_std, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "stdev",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_std.contains("A\t4.242"));
-
-    // CV
-    let (stdout_cv, _) = TvaCmd::new()
-        .args(&[
-            "wider",
-            "--names-from",
-            "Key",
-            "--values-from",
-            "Val",
-            "--id-cols",
-            "ID",
-            "--op",
-            "cv",
-        ])
-        .stdin(input.trim())
-        .run();
-    assert!(stdout_cv.contains("A\t0.848"));
+#[test_case("geomean", "A\t4"; "advanced_geomean")]
+#[test_case("harmmean", "A\t3.2"; "advanced_harmmean")]
+#[test_case("variance", "A\t18"; "advanced_variance")]
+#[test_case("stdev", "A\t4.242"; "advanced_stdev")]
+#[test_case("cv", "A\t0.848"; "advanced_cv")]
+fn test_wider_advanced_math(op: &str, expected: &str) {
+    let input = "ID\tKey\tVal\nA\tX\t2\nA\tX\t8";
+    let args: Vec<&str> = vec![
+        "wider", "--names-from", "Key", "--values-from", "Val", "--id-cols", "ID", "--op", op,
+    ];
+    let (stdout, _) = TvaCmd::new().args(&args).stdin(input.trim()).run();
+    assert!(stdout.contains(expected), "Expected '{}' in output: {}", expected, stdout);
 }
 
 #[test]
