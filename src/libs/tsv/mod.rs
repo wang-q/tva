@@ -18,8 +18,8 @@ pub mod key;
 pub mod reader;
 pub mod record;
 pub mod select;
-pub mod split;
 pub mod simd;
+pub mod split;
 
 // Re-export SIMD modules for backward compatibility
 #[cfg(target_arch = "x86_64")]

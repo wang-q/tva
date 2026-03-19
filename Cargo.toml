@@ -99,5 +99,9 @@ harness = false
 name = "tsv_reader_sse2"
 harness = false
 
+[[bench]]
+name = "tsv_simd_compare"
+harness = false
+
 [profile.release]
 lto = true

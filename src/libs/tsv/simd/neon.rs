@@ -10,7 +10,8 @@
 
 #[cfg(target_arch = "aarch64")]
 use core::arch::aarch64::{
-    uint8x16_t, vceqq_u8, vdupq_n_u8, vld1q_u8, vmaxq_u8, vmovq_n_u8, vreinterpretq_u32_u8,
+    uint8x16_t, vceqq_u8, vdupq_n_u8, vld1q_u8, vmaxq_u8, vmovq_n_u8,
+    vreinterpretq_u32_u8,
 };
 
 /// NEON vector size in bytes.
@@ -135,9 +136,24 @@ impl<'a> NeonIter<'a> {
     /// Linear scan for remaining bytes when less than 16 bytes remain.
     #[inline(always)]
     fn linear_scan(&mut self) -> Option<usize> {
+        // Extract the delimiter bytes from the searcher's vectors
+        // The vectors were created with vdupq_n_u8, so all bytes are the same
+        let tab = unsafe {
+            let arr: [u8; 16] = std::mem::transmute(self.searcher.v_tab);
+            arr[0]
+        };
+        let newline = unsafe {
+            let arr: [u8; 16] = std::mem::transmute(self.searcher.v_newline);
+            arr[0]
+        };
+        let cr = unsafe {
+            let arr: [u8; 16] = std::mem::transmute(self.searcher.v_cr);
+            arr[0]
+        };
+
         while self.pos < self.haystack.len() {
             let byte = self.haystack[self.pos];
-            if byte == b'\t' || byte == b'\n' || byte == b'\r' {
+            if byte == tab || byte == newline || byte == cr {
                 let pos = self.pos;
                 self.pos += 1;
                 return Some(pos);

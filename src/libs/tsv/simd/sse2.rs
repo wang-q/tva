@@ -145,9 +145,16 @@ impl<'a> Sse2Iter<'a> {
     /// Linear scan for the tail of the haystack (less than 16 bytes).
     #[inline(always)]
     fn linear_scan(&mut self) -> Option<usize> {
+        // Extract the delimiter bytes from the searcher's vectors
+        // The vectors were created with _mm_set1_epi8, so all bytes are the same
+        let tab = unsafe { std::mem::transmute::<_, [u8; 16]>(self.searcher.v_tab)[0] };
+        let newline =
+            unsafe { std::mem::transmute::<_, [u8; 16]>(self.searcher.v_newline)[0] };
+        let cr = unsafe { std::mem::transmute::<_, [u8; 16]>(self.searcher.v_cr)[0] };
+
         while self.pos < self.haystack.len() {
             let byte = self.haystack[self.pos];
-            if byte == b'\t' || byte == b'\n' || byte == b'\r' {
+            if byte == tab || byte == newline || byte == cr {
                 let offset = self.pos;
                 self.pos += 1;
                 return Some(offset);

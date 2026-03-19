@@ -1,8 +1,6 @@
 //! Benchmark comparing TsvReader with SSE2 vs standard implementation
 
-use criterion::{
-    black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput,
-};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::io::Cursor;
 use tva::libs::tsv::reader::TsvReader;
 use tva::libs::tsv::record::Row;
@@ -41,13 +39,13 @@ fn benchmark_tsv_reader(c: &mut Criterion) {
 
         let bench_id = format!("{}rows_{}cols", rows, cols);
 
-        // Standard next_row implementation (memchr2-based)
+        // next_row implementation (auto-selects SSE2 on x86_64)
         group.bench_with_input(
-            BenchmarkId::new("next_row_standard", &bench_id),
+            BenchmarkId::new("next_row", &bench_id),
             &data,
             |b, data| {
                 b.iter(|| {
-                    let cursor = Cursor::new(black_box(data));
+                    let cursor = Cursor::new(std::hint::black_box(data));
                     let mut reader = TsvReader::new(cursor);
                     let mut count = 0;
 
@@ -55,46 +53,16 @@ fn benchmark_tsv_reader(c: &mut Criterion) {
                         // Iterate through fields using get_bytes
                         for i in 1..=row.ends.len() {
                             if let Some(field) = row.get_bytes(i) {
-                                black_box(field);
+                                std::hint::black_box(field);
                             }
                         }
                         count += 1;
                     }
 
-                    black_box(count);
+                    std::hint::black_box(count);
                 });
             },
         );
-
-        // SSE2-accelerated implementation (x86_64 only)
-        #[cfg(target_arch = "x86_64")]
-        {
-            group.bench_with_input(
-                BenchmarkId::new("next_row_sse2", &bench_id),
-                &data,
-                |b, data| {
-                    b.iter(|| {
-                        let cursor = Cursor::new(black_box(data));
-                        let mut reader = TsvReader::new(cursor);
-                        let mut count = 0;
-
-                        unsafe {
-                            while let Ok(Some(row)) = reader.next_row_sse2() {
-                                // Iterate through fields using get_bytes
-                                for i in 1..=row.ends.len() {
-                                    if let Some(field) = row.get_bytes(i) {
-                                        black_box(field);
-                                    }
-                                }
-                                count += 1;
-                            }
-                        }
-
-                        black_box(count);
-                    });
-                },
-            );
-        }
 
         // for_each_record (two-pass approach)
         group.bench_with_input(
@@ -102,7 +70,7 @@ fn benchmark_tsv_reader(c: &mut Criterion) {
             &data,
             |b, data| {
                 b.iter(|| {
-                    let cursor = Cursor::new(black_box(data));
+                    let cursor = Cursor::new(std::hint::black_box(data));
                     let mut reader = TsvReader::new(cursor);
                     let mut count = 0;
 
@@ -110,14 +78,14 @@ fn benchmark_tsv_reader(c: &mut Criterion) {
                         .for_each_record(|record| {
                             use memchr::memchr_iter;
                             for field in memchr_iter(b'\t', record) {
-                                black_box(field);
+                                std::hint::black_box(field);
                             }
                             count += 1;
                             Ok(())
                         })
                         .unwrap();
 
-                    black_box(count);
+                    std::hint::black_box(count);
                 });
             },
         );

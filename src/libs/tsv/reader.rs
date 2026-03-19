@@ -265,11 +265,39 @@ impl<R: Read> TsvReader<R> {
 
     /// Read the next row with single-pass scanning.
     ///
-    /// This method uses `memchr2` to simultaneously search for both tab and newline,
-    /// eliminating the two-pass overhead of `for_each_record` + field splitting.
+    /// This method automatically selects the optimal implementation based on the platform:
+    /// - x86_64: Uses hand-written SSE2 SIMD for maximum performance
+    /// - aarch64: Uses hand-written NEON SIMD for maximum performance
+    /// - Other platforms: Uses `memchr2` for good performance
+    ///
+    /// Benchmarks show SSE2/NEON implementations achieve ~2.8 GiB/s throughput,
+    /// which is ~114% faster than the memchr2-based approach.
     ///
     /// Returns `Ok(Some(TsvRow))` if a row was read, `Ok(None)` at EOF.
     pub fn next_row(&mut self, delimiter: u8) -> io::Result<Option<TsvRow<'_, '_>>> {
+        // Auto-select optimal implementation based on platform
+        #[cfg(target_arch = "x86_64")]
+        {
+            // SAFETY: SSE2 is available on all x86_64 CPUs
+            unsafe { self.next_row_sse2_internal(delimiter) }
+        }
+        #[cfg(target_arch = "aarch64")]
+        {
+            // SAFETY: NEON is available on all aarch64 CPUs
+            unsafe { self.next_row_neon_internal(delimiter) }
+        }
+        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+        {
+            self.next_row_memchr2(delimiter)
+        }
+    }
+
+    /// Internal implementation using memchr2 (fallback for non-SIMD platforms).
+    #[allow(dead_code)]
+    pub fn next_row_memchr2(
+        &mut self,
+        delimiter: u8,
+    ) -> io::Result<Option<TsvRow<'_, '_>>> {
         // Lazy initialization: create seps vector only when first used
         let seps = self.seps.get_or_insert_with(Vec::new);
         seps.clear();
@@ -377,33 +405,20 @@ impl<R: Read> TsvReader<R> {
         }
     }
 
-    /// Read the next row using SSE2-accelerated single-pass scanning (x86_64 only).
+    /// Internal implementation using SSE2 SIMD (x86_64 only).
     ///
     /// This method uses hand-written SSE2 SIMD instructions to simultaneously search
     /// for tab, newline, and carriage return characters. Benchmarks show this achieves
-    /// ~6.5 GiB/s throughput, which is ~670% faster than the standard two-pass approach.
-    ///
-    /// # Platform Support
-    ///
-    /// This method is only available on x86_64 platforms. On other platforms,
-    /// use `next_row()` instead.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// let mut reader = TsvReader::new(file);
-    /// while let Some(row) = unsafe { reader.next_row_sse2() }? {
-    ///     for field in row.fields() {
-    ///         println!("{}", std::str::from_utf8(field).unwrap());
-    ///     }
-    /// }
-    /// ```
+    /// ~2.8 GiB/s throughput, which is ~114% faster than the memchr2-based approach.
     #[cfg(target_arch = "x86_64")]
-    pub unsafe fn next_row_sse2(&mut self) -> io::Result<Option<TsvRow<'_, '_>>> {
+    pub unsafe fn next_row_sse2_internal(
+        &mut self,
+        delimiter: u8,
+    ) -> io::Result<Option<TsvRow<'_, '_>>> {
         let seps = self.seps.get_or_insert_with(Vec::new);
         seps.clear();
 
-        let searcher = Sse2Searcher::new_tsv();
+        let searcher = Sse2Searcher::new(delimiter, b'\n', b'\r');
         let mut line_start = self.pos;
 
         loop {
@@ -464,7 +479,7 @@ impl<R: Read> TsvReader<R> {
                 let byte = available[pos];
                 let abs_pos = self.pos + pos;
 
-                if byte == b'\t' {
+                if byte == delimiter {
                     // Field delimiter
                     seps.push(abs_pos - line_start);
                 } else if byte == b'\n' {
@@ -499,10 +514,36 @@ impl<R: Read> TsvReader<R> {
             }
 
             // No newline found - need more data
+            // Check if we've reached EOF and have remaining data
+            if self.eof {
+                // EOF reached without finding newline - return remaining data as last row
+                if line_start < self.len {
+                    let line_end = self.len;
+                    let content_end = if line_end > line_start
+                        && line_end > 0
+                        && self.buf[line_end - 1] == b'\r'
+                    {
+                        line_end - 1 - line_start
+                    } else {
+                        line_end - line_start
+                    };
+                    seps.push(content_end);
+                    self.pos = self.len;
+
+                    return Ok(Some(TsvRow {
+                        line: &self.buf[line_start..line_end],
+                        ends: seps.as_slice(),
+                    }));
+                }
+                return Ok(None);
+            }
+
             // Move partial data to front and refill
             self.buf.copy_within(self.pos..self.len, 0);
             self.len -= self.pos;
+            // Reset line_start and seps since we're moving the data to the front of the buffer
             line_start = 0;
+            seps.clear();
             self.pos = 0;
 
             // Grow buffer if needed
@@ -520,33 +561,20 @@ impl<R: Read> TsvReader<R> {
         }
     }
 
-    /// Read the next row using NEON-accelerated single-pass scanning (aarch64 only).
+    /// Internal implementation using NEON SIMD (aarch64 only).
     ///
     /// This method uses hand-written ARM NEON SIMD instructions to simultaneously search
     /// for tab, newline, and carriage return characters. Similar to SSE2 version,
     /// this provides significant performance improvement over standard two-pass approach.
-    ///
-    /// # Platform Support
-    ///
-    /// This method is only available on aarch64 platforms. On other platforms,
-    /// use `next_row()` instead.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// let mut reader = TsvReader::new(file);
-    /// while let Some(row) = unsafe { reader.next_row_neon() }? {
-    ///     for field in row.fields() {
-    ///         println!("{}", std::str::from_utf8(field).unwrap());
-    ///     }
-    /// }
-    /// ```
     #[cfg(target_arch = "aarch64")]
-    pub unsafe fn next_row_neon(&mut self) -> io::Result<Option<TsvRow<'_, '_>>> {
+    pub unsafe fn next_row_neon_internal(
+        &mut self,
+        delimiter: u8,
+    ) -> io::Result<Option<TsvRow<'_, '_>>> {
         let seps = self.seps.get_or_insert_with(Vec::new);
         seps.clear();
 
-        let searcher = NeonSearcher::new_tsv();
+        let searcher = NeonSearcher::new(delimiter, b'\n', b'\r');
         let mut line_start = self.pos;
 
         loop {
@@ -607,7 +635,7 @@ impl<R: Read> TsvReader<R> {
                 let byte = available[pos];
                 let abs_pos = self.pos + pos;
 
-                if byte == b'\t' {
+                if byte == delimiter {
                     // Field delimiter
                     seps.push(abs_pos - line_start);
                 } else if byte == b'\n' {
@@ -642,10 +670,36 @@ impl<R: Read> TsvReader<R> {
             }
 
             // No newline found - need more data
+            // Check if we've reached EOF and have remaining data
+            if self.eof {
+                // EOF reached without finding newline - return remaining data as last row
+                if line_start < self.len {
+                    let line_end = self.len;
+                    let content_end = if line_end > line_start
+                        && line_end > 0
+                        && self.buf[line_end - 1] == b'\r'
+                    {
+                        line_end - 1 - line_start
+                    } else {
+                        line_end - line_start
+                    };
+                    seps.push(content_end);
+                    self.pos = self.len;
+
+                    return Ok(Some(TsvRow {
+                        line: &self.buf[line_start..line_end],
+                        ends: seps.as_slice(),
+                    }));
+                }
+                return Ok(None);
+            }
+
             // Move partial data to front and refill
             self.buf.copy_within(self.pos..self.len, 0);
             self.len -= self.pos;
+            // Reset line_start and seps since we're moving the data to the front of the buffer
             line_start = 0;
+            seps.clear();
             self.pos = 0;
 
             // Grow buffer if needed
@@ -934,6 +988,35 @@ mod tests {
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0], vec!["A", "B"]);
         assert_eq!(rows[1], vec!["C", "D"]);
+    }
+
+    #[test]
+    fn test_for_each_row_no_newline_at_eof() {
+        use crate::libs::tsv::record::Row;
+
+        // Test data without trailing newline
+        let data = b"A	B\nC	D";
+        let cursor = Cursor::new(data);
+        let mut reader = TsvReader::new(cursor);
+        let mut rows = Vec::new();
+
+        reader
+            .for_each_row(b'\t', |row| {
+                let mut row_data = Vec::new();
+                if let Some(s) = row.get_str(1) {
+                    row_data.push(s.to_string());
+                }
+                if let Some(s) = row.get_str(2) {
+                    row_data.push(s.to_string());
+                }
+                rows.push(row_data);
+                Ok(())
+            })
+            .unwrap();
+
+        assert_eq!(rows.len(), 2, "Should read 2 rows");
+        assert_eq!(rows[0], vec!["A", "B"], "First row should be A, B");
+        assert_eq!(rows[1], vec!["C", "D"], "Second row should be C, D");
     }
 
     #[test]

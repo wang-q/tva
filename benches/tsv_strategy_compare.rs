@@ -128,9 +128,7 @@ mod sse2 {
 
 #[cfg(target_arch = "aarch64")]
 mod neon {
-    use core::arch::aarch64::{
-        uint8x16_t, vceqq_u8, vdupq_n_u8, vld1q_u8, vmaxq_u8,
-    };
+    use core::arch::aarch64::{uint8x16_t, vceqq_u8, vdupq_n_u8, vld1q_u8, vmaxq_u8};
 
     pub struct NeonSearcher {
         v_tab: uint8x16_t,
@@ -196,7 +194,8 @@ mod neon {
                 // Main SIMD loop
                 let remaining = self.haystack.len() - self.pos;
                 if remaining >= STEP {
-                    let chunk = unsafe { vld1q_u8(self.haystack.as_ptr().add(self.pos)) };
+                    let chunk =
+                        unsafe { vld1q_u8(self.haystack.as_ptr().add(self.pos)) };
                     let cmp1 = unsafe { vceqq_u8(chunk, self.searcher.v_tab) };
                     let cmp2 = unsafe { vceqq_u8(chunk, self.searcher.v_newline) };
                     let cmp3 = unsafe { vceqq_u8(chunk, self.searcher.v_cr) };

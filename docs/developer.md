@@ -260,11 +260,29 @@ Bar Charts）。
 
 ### 性能基准
 
+#### TsvReader 实现对比 (`benches/tsv_simd_compare.rs`)
+
+在 x86_64 平台上对比 SSE2 与 memchr2 实现：
+
+| 测试场景 | memchr2 | SSE2 | 提升 |
+|:---------|:--------|:-----|:-----|
+| 1000 rows, 5 cols | ~400 µs | ~200 µs | **~100%** |
+| 10000 rows, 5 cols | ~398 µs | ~205 µs | **~94%** |
+| 1000 rows, 50 cols | ~446 µs | ~181 µs | **~146%** |
+| 10000 rows, 50 cols | ~4.77 ms | ~2.00 ms | **~138%** |
+
+**关键发现**：
+- SSE2 比 memchr2 快约 **2 倍**（94% ~ 146% 提升）
+- `auto` 模式正确选择 SSE2 实现，性能与直接调用 SSE2 一致
+- 宽表（50 cols）比窄表（5 cols）提升更明显
+
+#### 各实现吞吐量对比
+
 | 实现 | 吞吐量 | 说明 |
 |:-----|:-------|:-----|
-| 手写 SSE2 SIMD | **2.82 GiB/s** | x86_64，单层扫描 |
+| 手写 SSE2 SIMD | **2.8~3.3 GiB/s** | x86_64，单层扫描 |
 | 手写 NEON SIMD | **~2.8 GiB/s** | aarch64，单层扫描 |
-| `memchr2` 单层扫描 | 1.32 GiB/s | 通用实现 |
+| `memchr2` 单层扫描 | 1.3~1.5 GiB/s | 通用实现 |
 | `for_each_record` | 2.01 GiB/s | 两层扫描 |
 
 **关键结论**：
@@ -282,9 +300,10 @@ src/libs/tsv/simd/
 ```
 
 **使用方式**：
-- SSE2: `TsvReader::next_row_sse2()` - x86_64 自动可用
-- NEON: `TsvReader::next_row_neon()` - aarch64 自动可用
-- 标准: `TsvReader::next_row()` - 自动选择最优实现
+- `TsvReader::next_row()` - 自动选择最优实现：
+  - x86_64: 自动使用 SSE2 单层扫描
+  - aarch64: 自动使用 NEON 单层扫描
+  - 其他平台: 使用 `memchr2` 单层扫描
 
 ### 优化原理
 
