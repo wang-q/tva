@@ -322,7 +322,7 @@ fn benchmark_parsing(c: &mut Criterion) {
             let cursor = std::io::Cursor::new(data.as_bytes());
             let mut reader = tva::libs::tsv::reader::TsvReader::new(cursor);
             reader
-                .for_each_record(|record| {
+                .for_each_line(|record| {
                     // Simulate field processing to be fair with other benchmarks
                     let mut iter = memchr::memchr_iter(b'\t', record);
                     let mut last_pos = 0;
@@ -348,13 +348,13 @@ fn benchmark_parsing(c: &mut Criterion) {
     });
 
     // 12b. TVA TsvReader Legacy (Two-pass approach)
-    // Uses the old for_each_record_legacy for comparison.
+    // Uses the old for_each_line_legacy for comparison.
     group.bench_function("tva_tsv_reader_legacy", |b| {
         b.iter(|| {
             let cursor = std::io::Cursor::new(data.as_bytes());
             let mut reader = tva::libs::tsv::reader::TsvReader::new(cursor);
             reader
-                .for_each_record_legacy(|record| {
+                .for_each_line_legacy(|record| {
                     // Simulate field processing to be fair with other benchmarks
                     let mut iter = memchr::memchr_iter(b'\t', record);
                     let mut last_pos = 0;
@@ -381,7 +381,7 @@ fn benchmark_parsing(c: &mut Criterion) {
 
     // 13. TVA TsvReader with for_each_row (Single-pass scanning)
     // Uses memchr2 to scan for both tab and newline in one pass.
-    // This avoids the two-pass overhead of for_each_record + field splitting.
+    // This avoids the two-pass overhead of for_each_line + field splitting.
     group.bench_function("tva_tsv_reader_single_pass", |b| {
         b.iter(|| {
             let cursor = std::io::Cursor::new(data.as_bytes());

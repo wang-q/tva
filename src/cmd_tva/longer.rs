@@ -249,7 +249,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut field_buf: Vec<usize> = Vec::with_capacity(64);
 
         // Process remaining rows
-        reader.for_each_record(|line| {
+        reader.for_each_line(|line| {
             if line.is_empty() {
                 return Ok(());
             }

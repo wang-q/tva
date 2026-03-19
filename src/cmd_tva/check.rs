@@ -61,7 +61,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        reader.for_each_record(|record| {
+        reader.for_each_line(|record| {
             total_lines += 1;
             total_data_lines += 1;
 

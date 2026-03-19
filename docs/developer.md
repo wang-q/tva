@@ -283,7 +283,7 @@ Bar Charts）。
 | 手写 SSE2 SIMD | **2.8~3.3 GiB/s** | x86_64，单层扫描 |
 | 手写 NEON SIMD | **~2.8 GiB/s** | aarch64，单层扫描 |
 | `memchr2` 单层扫描 | 1.3~1.5 GiB/s | 通用实现 |
-| `for_each_record` | 2.01 GiB/s | 两层扫描 |
+| `for_each_line` | 2.01 GiB/s | 两层扫描 |
 
 **关键结论**：
 - 手写 SSE2/NEON 单层扫描比 `memchr2` 快约 **114%**
@@ -335,7 +335,7 @@ src/libs/tsv/simd/
 
 | 文件 | 当前实现 | 问题 | 优先级 |
 |:-----|:---------|:-----|:-------|
-| `reader.rs` | `for_each_record` 使用 `next_row` | ✅ 已完成 | - |
+| `reader.rs` | `for_each_line` 使用 `next_row` | ✅ 已完成 | - |
 | `select.rs` | `extract_ranges` 使用 `TsvRow.ends` | ✅ 已完成 | - |
 | `select.rs` | `write_excluding_from_bytes` 使用 `TsvRow.ends` | ✅ 已完成 | - |
 | `select.rs` | `write_with_rest` 使用 `TsvRow.ends` | ✅ 已完成 | - |
@@ -355,8 +355,8 @@ src/libs/tsv/simd/
 2. `src/libs/tsv/select.rs`: 修改 `write_selected_from_bytes` 函数接受 `&TsvRow`
 3. `src/libs/tsv/select.rs`: 修改 `write_excluding_from_bytes` 函数接受 `&TsvRow`
 4. `src/libs/tsv/select.rs`: 修改 `write_with_rest` 函数接受 `&TsvRow`
-5. `src/cmd_tva/select.rs`: 使用 `for_each_row` 替代 `for_each_record`
-6. `src/cmd_tva/join.rs`: 使用 `for_each_row` 替代 `for_each_record`
+5. `src/cmd_tva/select.rs`: 使用 `for_each_row` 替代 `for_each_line`
+6. `src/cmd_tva/join.rs`: 使用 `for_each_row` 替代 `for_each_line`
 7. `src/libs/tsv/key.rs`: 新增 `extract_from_row` 方法接受 `&TsvRow`
 
 **实现说明**: 直接修改现有函数签名而非新增 `_from_row` 版本，因为 `select` 模块的使用场景单一，且修改范围可控。

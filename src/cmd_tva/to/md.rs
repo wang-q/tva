@@ -97,7 +97,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     // Optimization: could store as Vec<Vec<Vec<u8>>> or similar but markdown formatter likely needs strings.
     let mut data: Vec<Vec<String>> = Vec::new();
 
-    reader.for_each_record(|line| {
+    reader.for_each_line(|line| {
         let fields: Vec<String> = line
             .split(|&b| b == b'\t')
             .map(|field| String::from_utf8_lossy(field).to_string())

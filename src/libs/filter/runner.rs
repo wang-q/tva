@@ -123,7 +123,7 @@ pub fn run_filter<W: Write>(
             }
         }
 
-        tsv_reader.for_each_record(|record| {
+        tsv_reader.for_each_line(|record| {
             let tests: &[TestKind] = if has_header {
                 match tests_with_header.as_ref() {
                     Some(v) => v.as_slice(),

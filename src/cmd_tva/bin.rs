@@ -140,7 +140,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             ));
         }
 
-        tsv_reader.for_each_record(|record| {
+        tsv_reader.for_each_line(|record| {
             // SAFETY: field_idx is always Some here (validated earlier)
             let idx = field_idx.unwrap();
 

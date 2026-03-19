@@ -104,7 +104,7 @@ pub fn load_scatter_data<R: std::io::Read>(
     let mut data: IndexMap<String, Vec<Point>> = IndexMap::new();
     let mut record = TsvRecord::new();
 
-    reader.for_each_record(|line| {
+    reader.for_each_line(|line| {
         record.parse_line(line, b'\t');
 
         // Parse X value
@@ -218,7 +218,7 @@ pub fn load_numeric_column<R: std::io::Read>(
     let mut values: Vec<f64> = Vec::new();
     let mut record = TsvRecord::new();
 
-    reader.for_each_record(|line| {
+    reader.for_each_line(|line| {
         record.parse_line(line, b'\t');
 
         let bytes = match record.get_bytes(col_idx + 1) {
@@ -267,7 +267,7 @@ pub fn load_box_data<R: std::io::Read>(
     let mut data: IndexMap<String, Vec<f64>> = IndexMap::new();
     let mut record = TsvRecord::new();
 
-    reader.for_each_record(|line| {
+    reader.for_each_line(|line| {
         record.parse_line(line, b'\t');
 
         // Get color group if specified
@@ -354,7 +354,7 @@ pub fn load_bin2d_data<R: std::io::Read>(
     let mut y_values: Vec<f64> = Vec::new();
     let mut record = TsvRecord::new();
 
-    reader.for_each_record(|line| {
+    reader.for_each_line(|line| {
         record.parse_line(line, b'\t');
 
         // Parse X value

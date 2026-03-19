@@ -319,7 +319,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
 
         tsv_reader
-            .for_each_record(|line| {
+            .for_each_line(|line| {
                 let subject = {
                     let key_res =
                         extractor.as_mut().unwrap().extract(line, delimiter as u8);

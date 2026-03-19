@@ -122,7 +122,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        reader.for_each_record(|record| {
+        reader.for_each_line(|record| {
             if record.is_empty() {
                 rows.push(TsvRecord::new());
             } else {

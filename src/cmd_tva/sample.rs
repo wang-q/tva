@@ -377,7 +377,7 @@ fn run_gen_random_inorder<W: Write>(
         let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_record = true;
 
-        reader.for_each_record(|record| {
+        reader.for_each_line(|record| {
             if record.is_empty() {
                 writer.write_all(b"\n")?;
                 return Ok(());
@@ -605,7 +605,7 @@ fn run_standard_sampling<W: Write>(
         let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_record = true;
 
-        reader.for_each_record(|record| {
+        reader.for_each_line(|record| {
             if record.is_empty() {
                 writer.write_all(b"\n")?;
                 return Ok(());

@@ -5,6 +5,7 @@ use std::ops::Range;
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
 
+use crate::libs::tsv::record::TsvRow;
 use crate::libs::tsv::select;
 use crate::libs::tsv::select::SelectPlan;
 
@@ -203,10 +204,21 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 let empty_vec = Vec::new();
                 let f_indices = field_indices.as_ref().unwrap_or(&empty_vec);
 
+                // Build TsvRow for header - need to compute field ends
+                let mut header_ends = Vec::new();
+                for pos in memchr::memchr_iter(delim_byte, &column_names_bytes) {
+                    header_ends.push(pos);
+                }
+                header_ends.push(column_names_bytes.len());
+                let header_row = TsvRow {
+                    line: &column_names_bytes,
+                    ends: &header_ends,
+                };
+
                 // Write output header (only column names line, not all header lines)
                 select::write_with_rest(
                     &mut writer,
-                    &column_names_bytes,
+                    &header_row,
                     delim_byte,
                     f_indices,
                     exclude_set.as_ref(),
@@ -262,15 +274,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        tsv_reader.for_each_record(|line_bytes| {
-            if line_bytes.is_empty() {
+        tsv_reader.for_each_row(delim_byte, |row| {
+            if row.line.is_empty() {
                 return Ok(());
             }
 
             if let Some(ref plan) = select_plan {
                 select::write_selected_from_bytes(
                     &mut writer,
-                    line_bytes,
+                    row,
                     delim_byte,
                     plan,
                     &mut output_ranges,
@@ -281,7 +293,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 select::write_with_rest(
                     &mut writer,
-                    line_bytes,
+                    row,
                     delim_byte,
                     f_indices,
                     exclude_set.as_ref(),

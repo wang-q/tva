@@ -921,9 +921,8 @@ mod tests {
         let cursor = Cursor::new(data);
         let mut reader = TsvReader::new(cursor);
 
-        let result = reader.for_each_line(|_| {
-            Err(io::Error::new(io::ErrorKind::Other, "test error"))
-        });
+        let result = reader
+            .for_each_line(|_| Err(io::Error::new(io::ErrorKind::Other, "test error")));
 
         assert!(result.is_err());
     }

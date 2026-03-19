@@ -152,7 +152,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         target_cols.sort_unstable();
         target_cols.dedup();
 
-        reader.for_each_record(|record| {
+        reader.for_each_line(|record| {
             let mut first = true;
             for (current_col, cell_bytes) in TsvSplitter::new(record, b'\t').enumerate()
             {

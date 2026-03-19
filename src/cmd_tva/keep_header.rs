@@ -82,7 +82,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             let mut current_file_records = 0;
 
             // Read line by line until we satisfy header_lines
-            let res = reader.for_each_record(|line| {
+            let res = reader.for_each_line(|line| {
                 current_file_records += 1;
 
                 if current_file_records <= header_lines {
@@ -102,7 +102,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 Ok(())
             });
 
-            // Handle the result of for_each_record
+            // Handle the result of for_each_line
             match res {
                 Ok(_) => {
                     // Reached EOF before finding body lines (or exactly at end of header).
@@ -122,14 +122,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         } else {
             let mut skipped = 0;
             // Skip header lines
-            let res = reader.for_each_record(|line| {
+            let res = reader.for_each_line(|line| {
                 if skipped < header_lines {
                     skipped += 1;
                 } else {
                     // Found body line. Interrupt to switch to block copy.
                     // The current line is ALREADY read into buffer and passed as slice.
                     // We need to write THIS line, then copy remainder.
-                    // If we return Interrupted, `for_each_record` advances `pos` past this line.
+                    // If we return Interrupted, `for_each_line` advances `pos` past this line.
                     // So we must write THIS line here.
                     child_stdin.write_all(line)?;
                     child_stdin.write_all(b"\n")?;

@@ -327,7 +327,7 @@ fn split_by_line_count(
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_line_of_file = true;
 
-        reader.for_each_record(|record| {
+        reader.for_each_line(|record| {
             if record.is_empty() {
                 if let Some(writer) = current_writer.as_mut() {
                     writer.write_all(b"\n")?;
@@ -435,7 +435,7 @@ fn split_randomly(
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_line_of_file = true;
 
-        reader.for_each_record(|record| {
+        reader.for_each_line(|record| {
             // Treat empty lines as data (will be assigned to a file).
             if !record.is_empty()
                 && (header_in_out || header_in_only)

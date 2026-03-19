@@ -36,7 +36,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut expected_fields: Option<usize> = None;
     let mut line_number: u64 = 0;
 
-    tsv_reader.for_each_record(|line| {
+    tsv_reader.for_each_line(|line| {
         line_number += 1;
 
         let mut record = TsvRecord::new();

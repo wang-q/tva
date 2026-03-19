@@ -153,7 +153,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // have correct absolute line numbers
         line_num = header_lines_count;
 
-        reader.for_each_record(|record| {
+        reader.for_each_line(|record| {
             line_num += 1;
 
             // Check if current line is in any range

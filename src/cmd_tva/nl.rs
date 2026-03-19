@@ -118,8 +118,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
 
         // Process remaining data rows
-        // Empty files are naturally skipped as for_each_record finds no records
-        reader.for_each_record(|line| {
+        // Empty files are naturally skipped as for_each_line finds no records
+        reader.for_each_line(|line| {
             writer.write_all(line_num.to_string().as_bytes())?;
             writer.write_all(delimiter_bytes)?;
             writer.write_all(line)?;

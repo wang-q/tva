@@ -324,7 +324,7 @@ pub fn execute_with_mode(args: &ArgMatches, mode: &str) -> anyhow::Result<()> {
         let mutate_mode_flag = mutate_mode;
         let mutate_target_ref = mutate_target.as_ref();
         let globals_clone = globals.clone();
-        let result: std::io::Result<()> = tsv_reader.for_each_record(|record| {
+        let result: std::io::Result<()> = tsv_reader.for_each_line(|record| {
             // Split record into fields
             let row: Vec<String> = record
                 .split(|&b| b == delim_byte)

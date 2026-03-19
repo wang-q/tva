@@ -227,7 +227,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        reader.for_each_record(|record| {
+        reader.for_each_line(|record| {
             if track_source {
                 writer.write_all(label_bytes)?;
                 writer.write_all(&[delimiter as u8])?;

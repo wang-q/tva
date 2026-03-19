@@ -2,6 +2,7 @@ use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::tsv::fields::{self, Header};
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::record::TsvRow;
 use ahash::RandomState;
 use clap::*;
 use std::collections::HashMap;
@@ -153,16 +154,16 @@ fn count_fields(line: &[u8], delimiter: u8) -> usize {
     }
 }
 
-/// Extracts values to append from a line.
+/// Extracts values to append from a TsvRow.
 /// Values are stored as a single byte string with delimiters to avoid Vec<String> overhead.
 fn extract_values(
-    line: &[u8],
+    row: &TsvRow<'_, '_>,
     delimiter: u8,
     plan: &crate::libs::tsv::select::SelectPlan,
     ranges_buf: &mut Vec<Range<usize>>,
 ) -> Vec<u8> {
-    if let Err(idx) = plan.extract_ranges(line, delimiter, ranges_buf) {
-        let n = count_fields(line, delimiter);
+    if let Err(idx) = plan.extract_ranges(row, ranges_buf) {
+        let n = row.ends.len();
         eprintln!(
             "tva join: line has {} fields, but append index {} is out of range",
             n, idx
@@ -170,14 +171,14 @@ fn extract_values(
         std::process::exit(1);
     }
 
-    let mut values = Vec::with_capacity(line.len());
+    let mut values = Vec::with_capacity(row.line.len());
     let mut first = true;
     for range in ranges_buf.iter() {
         if !first {
             values.push(delimiter);
         }
         if range.start < range.end {
-            values.extend_from_slice(&line[range.clone()]);
+            values.extend_from_slice(&row.line[range.clone()]);
         }
         first = false;
     }
@@ -337,15 +338,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         HashMap::with_hasher(RandomState::new());
     let mut ranges_buf: Vec<Range<usize>> = Vec::new();
 
-    filter_reader.for_each_record(|line| {
-        if line.is_empty() {
+    filter_reader.for_each_row(delimiter, |row| {
+        if row.line.is_empty() {
             return Ok(());
         }
 
-        let key = match filter_key_extractor.extract(line, delimiter) {
+        let key = match filter_key_extractor.extract_from_row(row, delimiter) {
             Ok(k) => k,
             Err(idx) => {
-                let n = count_fields(line, delimiter);
+                let n = row.ends.len();
                 eprintln!(
                     "tva join: line has {} fields, but key index {} is out of range",
                     n, idx
@@ -356,7 +357,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         let values = if let Some(ref plan) = append_plan {
             ranges_buf.clear();
-            extract_values(line, delimiter, plan, &mut ranges_buf)
+            extract_values(row, delimiter, plan, &mut ranges_buf)
         } else {
             Vec::new()
         };
@@ -472,7 +473,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .expect("data_key_extractor should be initialized");
 
         // Process data records
-        reader.for_each_record(|line| {
+        reader.for_each_line(|line| {
             if line.is_empty() {
                 return Ok(());
             }
