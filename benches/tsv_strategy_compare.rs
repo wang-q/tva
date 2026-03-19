@@ -118,6 +118,129 @@ mod sse2 {
 }
 
 // ============================================================================
+// Hand-written AVX2 SIMD Searcher (256-bit vectors)
+// ============================================================================
+
+#[cfg(target_arch = "x86_64")]
+mod avx2 {
+    use core::arch::x86_64::{
+        __m256i, _mm256_cmpeq_epi8, _mm256_loadu_si256, _mm256_movemask_epi8, _mm256_or_si256,
+        _mm256_set1_epi8,
+    };
+
+    pub struct Avx2Searcher {
+        v_tab: __m256i,
+        v_newline: __m256i,
+        v_cr: __m256i,
+    }
+
+    impl Avx2Searcher {
+        #[inline]
+        #[target_feature(enable = "avx2")]
+        pub unsafe fn new(tab: u8, newline: u8, cr: u8) -> Self {
+            Self {
+                v_tab: _mm256_set1_epi8(tab as i8),
+                v_newline: _mm256_set1_epi8(newline as i8),
+                v_cr: _mm256_set1_epi8(cr as i8),
+            }
+        }
+
+        /// Check if AVX2 is available at runtime
+        #[inline]
+        pub fn is_available() -> bool {
+            #[cfg(target_feature = "avx2")]
+            {
+                true
+            }
+            #[cfg(not(target_feature = "avx2"))]
+            {
+                std::is_x86_feature_detected!("avx2")
+            }
+        }
+
+        /// Search for tab, newline, or CR in haystack
+        /// Returns iterator of positions
+        #[inline(always)]
+        pub fn search<'a>(&'a self, haystack: &'a [u8]) -> Avx2Iter<'a> {
+            Avx2Iter::new(self, haystack)
+        }
+    }
+
+    pub struct Avx2Iter<'a> {
+        searcher: &'a Avx2Searcher,
+        haystack: &'a [u8],
+        pos: usize,
+        mask: u32,
+    }
+
+    impl<'a> Avx2Iter<'a> {
+        #[inline]
+        fn new(searcher: &'a Avx2Searcher, haystack: &'a [u8]) -> Self {
+            Self {
+                searcher,
+                haystack,
+                pos: 0,
+                mask: 0,
+            }
+        }
+
+        #[target_feature(enable = "avx2")]
+        unsafe fn next_mask_avx2(&mut self) -> Option<usize> {
+            const STEP: usize = 32;
+
+            loop {
+                // Process current mask
+                if self.mask != 0 {
+                    let offset = self.pos - STEP + self.mask.trailing_zeros() as usize;
+                    self.mask &= self.mask - 1; // Clear least significant bit
+                    return Some(offset);
+                }
+
+                // Main AVX2 loop - process 32 bytes at a time
+                let remaining = self.haystack.len() - self.pos;
+                if remaining >= STEP {
+                    let chunk = _mm256_loadu_si256(
+                        self.haystack.as_ptr().add(self.pos) as *const __m256i
+                    );
+                    let cmp1 = _mm256_cmpeq_epi8(chunk, self.searcher.v_tab);
+                    let cmp2 = _mm256_cmpeq_epi8(chunk, self.searcher.v_newline);
+                    let cmp3 = _mm256_cmpeq_epi8(chunk, self.searcher.v_cr);
+                    let cmp = _mm256_or_si256(cmp1, cmp2);
+                    let cmp = _mm256_or_si256(cmp, cmp3);
+                    self.mask = _mm256_movemask_epi8(cmp) as u32;
+                    self.pos += STEP;
+
+                    if self.mask != 0 {
+                        continue;
+                    }
+                } else {
+                    // Linear scan for remaining bytes
+                    while self.pos < self.haystack.len() {
+                        let byte = self.haystack[self.pos];
+                        if byte == b'\t' || byte == b'\n' || byte == b'\r' {
+                            let offset = self.pos;
+                            self.pos += 1;
+                            return Some(offset);
+                        }
+                        self.pos += 1;
+                    }
+                    return None;
+                }
+            }
+        }
+    }
+
+    impl Iterator for Avx2Iter<'_> {
+        type Item = usize;
+
+        #[inline(always)]
+        fn next(&mut self) -> Option<Self::Item> {
+            unsafe { self.next_mask_avx2() }
+        }
+    }
+}
+
+// ============================================================================
 // Parsing Strategies
 // ============================================================================
 
@@ -222,11 +345,58 @@ fn parse_single_pass_sse2(data: &[u8]) -> usize {
     use sse2::*;
 
     let mut count = 0;
-    let mut pos = 0;
     let mut field_start = 0;
 
     unsafe {
         let searcher = Sse2Searcher::new(b'\t', b'\n', b'\r');
+        let mut iter = searcher.search(data);
+
+        while let Some(offset) = iter.next() {
+            let byte = data[offset];
+
+            if byte == b'\t' {
+                // Field delimiter
+                black_box(&data[field_start..offset]);
+                count += 1;
+                field_start = offset + 1;
+            } else if byte == b'\n' {
+                // Newline (handle CR+LF)
+                let end = if offset > 0 && data[offset - 1] == b'\r' {
+                    offset - 1
+                } else {
+                    offset
+                };
+                if field_start < end {
+                    black_box(&data[field_start..end]);
+                    count += 1;
+                }
+                field_start = offset + 1;
+            }
+            // Skip CR (handled with LF)
+        }
+
+        // Last field
+        if field_start < data.len() {
+            black_box(&data[field_start..]);
+            count += 1;
+        }
+    }
+
+    count
+}
+
+/// Strategy 3b: Single-pass with AVX2 SIMD searcher
+/// Use hand-written AVX2 to find tab, newline, CR in one scan (256-bit vectors)
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+fn parse_single_pass_avx2(data: &[u8]) -> usize {
+    use avx2::*;
+
+    let mut count = 0;
+    let mut field_start = 0;
+
+    unsafe {
+        let searcher = Avx2Searcher::new(b'\t', b'\n', b'\r');
         let mut iter = searcher.search(data);
 
         while let Some(offset) = iter.next() {
@@ -430,6 +600,21 @@ fn benchmark_strategies(c: &mut Criterion) {
                     b.iter(|| parse_two_pass_sse2(black_box(data)));
                 },
             );
+        }
+
+        // AVX2 variants (x86_64 only, requires runtime check)
+        #[cfg(target_arch = "x86_64")]
+        {
+            use avx2::Avx2Searcher;
+            if Avx2Searcher::is_available() {
+                group.bench_with_input(
+                    BenchmarkId::new("single_pass_avx2", &bench_id),
+                    &data,
+                    |b, data| {
+                        b.iter(|| parse_single_pass_avx2(black_box(data)));
+                    },
+                );
+            }
         }
     }
 

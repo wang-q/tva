@@ -1036,6 +1036,32 @@ pub fn next_row(&mut self, delimiter: u8) -> io::Result<Option<TsvRow<'_, '_>>> 
 2. **手写 SSE2 可以同时搜索 `\t`, `\n`, `\r` 三个字符**，每次处理 16 字节
 3. **SSE2 单层扫描 (6.48 GiB/s) 远超当前 `tva_tsv_reader` (861.6 MiB/s = 0.84 GiB/s)**
 
+#### AVX2 与 SSE2 对比测试（2025-03-20 更新）
+
+在 `benches/tsv_strategy_compare.rs` 中添加了手写 AVX2 SIMD 实现（256-bit 向量），与 SSE2（128-bit）进行对比：
+
+| 策略 | 实现方式 | 数据规模 | 吞吐量 | 相对性能 |
+|:-----|:---------|:---------|:-------|:---------|
+| **single_pass_sse2** | 手写 SSE2 SIMD 单层扫描 (128-bit) | 10000rows_50cols | **6.59 GiB/s** | 🥇 最快 |
+| **single_pass_avx2** | 手写 AVX2 SIMD 单层扫描 (256-bit) | 10000rows_50cols | **4.94 GiB/s** | 🥈 第二 |
+| two_pass_memchr | memchr 找行 + memchr_iter 分割 | 10000rows_50cols | 2.41 GiB/s | 慢 2.7x |
+| two_pass_sse2 | SSE2 找行 + memchr_iter 分割 | 10000rows_50cols | 2.06 GiB/s | 慢 3.2x |
+| single_pass_memchr2 | memchr2 单层扫描 | 10000rows_50cols | 1.61 GiB/s | 慢 4.1x |
+| naive_byte_by_byte | 逐字节扫描 | 10000rows_50cols | 1.44 GiB/s | 慢 4.6x |
+
+**意外发现：AVX2 (256-bit) 比 SSE2 (128-bit) 慢 25%！**
+
+可能原因：
+1. **AVX2 功耗/频率调节 (throttling)** - AVX2 指令可能导致 CPU 降频
+2. **内存带宽限制** - 此 workload 可能受限于内存带宽而非计算能力
+3. **延迟差异** - AVX2 指令的延迟可能比 SSE2 更高
+4. **循环开销** - 虽然 AVX2 每次处理 32 字节，但循环控制逻辑可能抵消了收益
+
+**关键结论**：
+- **SSE2 在此场景下已足够高效**，额外的 128-bit 宽度带来的收益被其他因素抵消
+- **无需追求 AVX2**，SSE2 有更广泛的兼容性（所有 x86_64 都支持）
+- 手写 SIMD  searcher 的核心价值在于**单层扫描架构**，而非向量宽度
+
 #### 后续优化方向（再次修订）
 
 基于 `tsv_strategy_compare` 基准测试结果，重新调整优化策略：
@@ -1044,12 +1070,14 @@ pub fn next_row(&mut self, delimiter: u8) -> io::Result<Option<TsvRow<'_, '_>>> 
 |:-----|:------|:---------|:---------|:-----|
 | **高** | 手写 SSE2 SIMD 单层扫描 | **+670%** | 高 | ⏳ 待实施 |
 | 中 | NEON (ARM) 单层扫描 | **+670%** | 高 | ⏳ 待实施 |
+| 低 | AVX2 优化 | -25% | 高 | ❌ 不推荐 |
 | 低 | 优化 `for_each_record` 使用 `memchr2` | 可能负增长 | 低 | ❌ 取消 |
 | 低 | 缓冲区管理优化 | +2-3% | 中 | 待定 |
 
 **新的建议**：
 - **手写 SSE2 SIMD 单层扫描是最佳优化方向**：理论性能提升 670%
-- 需要为 x86_64 实现 SSE2/AVX2 版本，为 aarch64 实现 NEON 版本
+- **不需要 AVX2**：实测比 SSE2 慢 25%，且兼容性更差
+- 需要为 x86_64 实现 SSE2 版本，为 aarch64 实现 NEON 版本
 - 参考 `simd-csv/searcher.rs` 的实现方式
 - 这是值得投入大量工作的优化方向
 
