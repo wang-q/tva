@@ -6,49 +6,52 @@ use common::TvaCmd;
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
+use test_case::test_case;
 
 // ============================================================================
 // Basic Sampling Tests
 // ============================================================================
 
-#[test]
-fn sample_shuffle_basic() {
-    let input = "a\nb\nc\nd\n";
-    let (stdout, _) = TvaCmd::new().args(&["sample"]).stdin(input).run();
-
-    let mut lines: Vec<&str> = stdout.lines().collect();
-    lines.sort();
-    assert_eq!(lines, vec!["a", "b", "c", "d"]);
-}
-
-#[test]
-fn sample_num_limited() {
-    let input = "a\nb\nc\nd\n";
+#[test_case(
+    "a\nb\nc\nd\n",
+    &[],
+    |lines: &[&str]| {
+        let mut sorted: Vec<&str> = lines.to_vec();
+        sorted.sort();
+        assert_eq!(sorted, vec!["a", "b", "c", "d"]);
+    };
+    "shuffle_basic"
+)]
+#[test_case(
+    "a\nb\nc\nd\n",
+    &["--num", "2"],
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 2);
+        for line in lines {
+            assert!(["a", "b", "c", "d"].contains(line));
+        }
+    };
+    "num_limited"
+)]
+#[test_case(
+    "a\nb\nc\nd\n",
+    &["--prob", "0.5"],
+    |lines: &[&str]| {
+        assert!(lines.len() <= 4);
+        for line in lines {
+            assert!(["a", "b", "c", "d"].contains(line));
+        }
+    };
+    "prob_keeps_subset"
+)]
+fn test_sample_basic(input: &str, args: &[&str], assertions: fn(&[&str])) {
     let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--num", "2"])
+        .args(&["sample"])
+        .args(args)
         .stdin(input)
         .run();
     let lines: Vec<&str> = stdout.lines().collect();
-
-    assert_eq!(lines.len(), 2);
-    for line in &lines {
-        assert!(["a", "b", "c", "d"].contains(line));
-    }
-}
-
-#[test]
-fn sample_prob_keeps_subset() {
-    let input = "a\nb\nc\nd\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--prob", "0.5"])
-        .stdin(input)
-        .run();
-    let lines: Vec<&str> = stdout.lines().collect();
-
-    assert!(lines.len() <= 4);
-    for line in &lines {
-        assert!(["a", "b", "c", "d"].contains(line));
-    }
+    assertions(&lines);
 }
 
 #[test]
@@ -74,164 +77,113 @@ fn sample_header_preserved() {
 // Error Handling Tests
 // ============================================================================
 
-#[test]
-fn sample_invalid_prob_rejected() {
-    let (_, stderr) = TvaCmd::new().args(&["sample", "--prob", "0.0"]).run_fail();
-
-    assert!(stderr.contains("invalid --prob/-p value"));
-}
-
-#[test]
-fn sample_num_prob_conflict() {
+#[test_case(
+    &["--prob", "0.0"],
+    "",
+    |stderr: &str| stderr.contains("invalid --prob/-p value");
+    "invalid_prob_rejected"
+)]
+#[test_case(
+    &["-n", "10", "-p", "0.5"],
+    "a\n",
+    |stderr: &str| stderr.contains("--num/-n and --prob/-p cannot be used together");
+    "num_prob_conflict"
+)]
+#[test_case(
+    &["-r", "-p", "0.5"],
+    "a\n",
+    |stderr: &str| stderr.contains("--replace/-r cannot be used with --prob/-p");
+    "replace_prob_conflict"
+)]
+#[test_case(
+    &["-r"],
+    "a\n",
+    |stderr: &str| stderr.contains("--replace/-r requires --num/-n greater than 0");
+    "replace_no_num"
+)]
+#[test_case(
+    &["-i", "-r", "-n", "5"],
+    "a\n",
+    |stderr: &str| stderr.contains("--inorder/-i requires --num/-n without --replace/-r or --prob/-p");
+    "inorder_conflicts"
+)]
+#[test_case(
+    &["-w", "1", "-p", "0.5"],
+    "a\n",
+    |stderr: &str| stderr.contains("--weight-field/-w cannot be used with --prob/-p");
+    "weight_prob_conflict"
+)]
+#[test_case(
+    &["-p", "1.5"],
+    "a\n",
+    |stderr: &str| stderr.contains("invalid --prob/-p value");
+    "invalid_prob"
+)]
+#[test_case(
+    &["--gen-random-inorder", "-n", "10"],
+    "a\n",
+    |stderr: &str| stderr.contains("--gen-random-inorder cannot be combined with sampling options");
+    "gen_random_inorder_conflicts"
+)]
+#[test_case(
+    &["-w", "1", "-r", "-n", "10"],
+    "a\n",
+    |stderr: &str| stderr.contains("--weight-field/-w cannot be used with --replace/-r");
+    "weight_replace_conflict"
+)]
+#[test_case(
+    &["-k", "1"],
+    "a\n",
+    |stderr: &str| stderr.contains("--key-fields/-k requires --prob/-p");
+    "key_no_prob"
+)]
+#[test_case(
+    &["-k", "1", "-p", "0.5", "-n", "10"],
+    "a\n",
+    |stderr: &str| stderr.contains("--key-fields/-k cannot be used with --num/-n");
+    "key_conflicts"
+)]
+#[test_case(
+    &["--print-random", "--gen-random-inorder"],
+    "a\n",
+    |stderr: &str| stderr.contains("--print-random cannot be used with --gen-random-inorder");
+    "print_random_gen_random_conflict"
+)]
+#[test_case(
+    &["--print-random", "-r", "-n", "10"],
+    "a\n",
+    |stderr: &str| stderr.contains("--print-random is not supported with --replace/-r");
+    "print_random_replace_conflict"
+)]
+#[test_case(
+    &["-w", "5", "-n", "1"],
+    "a\tb\n",
+    |stderr: &str| stderr.contains("weight field index 5 out of range");
+    "weight_index_out_of_range"
+)]
+#[test_case(
+    &["-w", "1", "-n", "1"],
+    "not_a_number\n",
+    |stderr: &str| stderr.contains("weight value `not_a_number` is not a valid number");
+    "weight_invalid_value"
+)]
+#[test_case(
+    &["-k", "5", "-p", "0.5"],
+    "a\tb\n",
+    |stderr: &str| stderr.contains("key field index 5 out of range");
+    "key_index_out_of_range"
+)]
+fn test_sample_errors(args: &[&str], input: &str, check: fn(&str) -> bool) {
     let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-n", "10", "-p", "0.5"])
-        .stdin("a\n")
+        .args(&["sample"])
+        .args(args)
+        .stdin(input)
         .run_fail();
-
-    assert!(stderr.contains("--num/-n and --prob/-p cannot be used together"));
-}
-
-#[test]
-fn sample_replace_prob_conflict() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-r", "-p", "0.5"])
-        .stdin("a\n")
-        .run_fail();
-
-    assert!(stderr.contains("--replace/-r cannot be used with --prob/-p"));
-}
-
-#[test]
-fn sample_replace_no_num() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-r"])
-        .stdin("a\n")
-        .run_fail();
-
-    assert!(stderr.contains("--replace/-r requires --num/-n greater than 0"));
-}
-
-#[test]
-fn sample_inorder_conflicts() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-i", "-r", "-n", "5"])
-        .stdin("a\n")
-        .run_fail();
-
-    assert!(stderr
-        .contains("--inorder/-i requires --num/-n without --replace/-r or --prob/-p"));
-}
-
-#[test]
-fn sample_weight_prob_conflict() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-w", "1", "-p", "0.5"])
-        .stdin("a\n")
-        .run_fail();
-
-    assert!(stderr.contains("--weight-field/-w cannot be used with --prob/-p"));
-}
-
-#[test]
-fn sample_invalid_prob() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-p", "1.5"])
-        .stdin("a\n")
-        .run_fail();
-
-    assert!(stderr.contains("invalid --prob/-p value"));
-}
-
-#[test]
-fn sample_gen_random_inorder_conflicts() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "--gen-random-inorder", "-n", "10"])
-        .stdin("a\n")
-        .run_fail();
-
     assert!(
-        stderr.contains("--gen-random-inorder cannot be combined with sampling options")
+        check(&stderr),
+        "Expected error message not found in: {}",
+        stderr
     );
-}
-
-#[test]
-fn sample_weight_replace_conflict() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-w", "1", "-r", "-n", "10"])
-        .stdin("a\n")
-        .run_fail();
-
-    assert!(stderr.contains("--weight-field/-w cannot be used with --replace/-r"));
-}
-
-#[test]
-fn sample_key_no_prob() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-k", "1"])
-        .stdin("a\n")
-        .run_fail();
-
-    assert!(stderr.contains("--key-fields/-k requires --prob/-p"));
-}
-
-#[test]
-fn sample_key_conflicts() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-k", "1", "-p", "0.5", "-n", "10"])
-        .stdin("a\n")
-        .run_fail();
-
-    assert!(stderr.contains("--key-fields/-k cannot be used with --num/-n"));
-}
-
-#[test]
-fn sample_print_random_gen_random_conflict() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "--print-random", "--gen-random-inorder"])
-        .stdin("a\n")
-        .run_fail();
-
-    assert!(stderr.contains("--print-random cannot be used with --gen-random-inorder"));
-}
-
-#[test]
-fn sample_print_random_replace_conflict() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "--print-random", "-r", "-n", "10"])
-        .stdin("a\n")
-        .run_fail();
-
-    assert!(stderr.contains("--print-random is not supported with --replace/-r"));
-}
-
-#[test]
-fn sample_weight_index_out_of_range() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-w", "5", "-n", "1"])
-        .stdin("a\tb\n")
-        .run_fail();
-
-    assert!(stderr.contains("weight field index 5 out of range"));
-}
-
-#[test]
-fn sample_weight_invalid_value() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-w", "1", "-n", "1"])
-        .stdin("not_a_number\n")
-        .run_fail();
-
-    assert!(stderr.contains("weight value `not_a_number` is not a valid number"));
-}
-
-#[test]
-fn sample_key_index_out_of_range() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "-k", "5", "-p", "0.5"])
-        .stdin("a\tb\n")
-        .run_fail();
-
-    assert!(stderr.contains("key field index 5 out of range"));
 }
 
 // ============================================================================
@@ -255,15 +207,19 @@ fn sample_static_seed_produces_reproducible_output() {
     assert_eq!(s1, s2);
 }
 
-#[test]
-fn sample_replace_requires_num() {
-    let input = "a\nb\nc\nd\n";
+#[test_case(
+    &["--replace"],
+    "a\nb\nc\nd\n",
+    |stderr: &str| stderr.contains("requires --num/-n greater than 0");
+    "replace_requires_num"
+)]
+fn test_sample_replace_errors(args: &[&str], input: &str, check: fn(&str) -> bool) {
     let (_, stderr) = TvaCmd::new()
-        .args(&["sample", "--replace"])
+        .args(&["sample"])
+        .args(args)
         .stdin(input)
         .run_fail();
-
-    assert!(stderr.contains("requires --num/-n greater than 0"));
+    assert!(check(&stderr));
 }
 
 #[test]
@@ -294,11 +250,16 @@ fn sample_replace_basic() {
 // Inorder Tests
 // ============================================================================
 
-#[test]
-fn sample_inorder_requires_num() {
-    let input = "a\nb\nc\nd\n";
+#[test_case(
+    &["--inorder"],
+    "a\nb\nc\nd\n",
+    |_stderr: &str| true; // Just check it fails
+    "inorder_requires_num"
+)]
+fn test_sample_inorder_errors(args: &[&str], input: &str, _check: fn(&str) -> bool) {
     TvaCmd::new()
-        .args(&["sample", "--inorder"])
+        .args(&["sample"])
+        .args(args)
         .stdin(input)
         .run_fail();
 }

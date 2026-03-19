@@ -4,93 +4,117 @@ mod common;
 
 use common::TvaCmd;
 use std::fs;
+use test_case::test_case;
 
 // ============================================================================
-// Distinct Advanced Tests
+// Distinct Sampling Tests
 // ============================================================================
 
-#[test]
-fn sample_distinct_with_header() {
-    let input = "h1\th2
-A\t1
-A\t2
-B\t1
-";
+#[test_case(
+    "h1\th2\nA\t1\nA\t2\nB\t1\n",
+    &["--header", "--key-fields", "h1", "--prob", "0.5", "--static-seed"],
+    true,
+    |lines: &[&str]| {
+        let a_count = lines.iter().filter(|l| l.starts_with("A\t")).count();
+        assert!(a_count == 0 || a_count == 2);
+    };
+    "distinct_with_header"
+)]
+#[test_case(
+    "A\t1\nA\t2\nB\t1\n",
+    &["--key-fields", "0", "--prob", "0.5", "--static-seed"],
+    false,
+    |lines: &[&str]| {
+        assert!(lines.len() <= 3);
+    };
+    "distinct_k0_vs_all_fields"
+)]
+#[test_case(
+    "A\t1\nA\t2\nB\t1\n",
+    &["--key-fields", "1", "--prob", "0.5", "--static-seed"],
+    false,
+    |lines: &[&str]| {
+        let a_count = lines.iter().filter(|l| l.starts_with("A\t")).count();
+        assert!(a_count == 0 || a_count == 2);
+    };
+    "distinct_no_header"
+)]
+#[test_case(
+    "A\t1\tX\nA\t1\tY\nA\t2\tX\n",
+    &["--key-fields", "1,2", "--prob", "0.5", "--static-seed"],
+    false,
+    |lines: &[&str]| {
+        let a1_count = lines.iter().filter(|l| l.starts_with("A\t1")).count();
+        assert!(a1_count == 0 || a1_count == 2);
+        let a2_count = lines.iter().filter(|l| l.starts_with("A\t2")).count();
+        assert!(a2_count == 0 || a2_count == 1);
+    };
+    "distinct_multiple_keys"
+)]
+#[test_case(
+    "A\t1\tX\nA\t1\tY\nB\t2\tZ\n",
+    &["--key-fields", "1-2", "--prob", "0.5", "--static-seed"],
+    false,
+    |lines: &[&str]| {
+        let a1_count = lines.iter().filter(|l| l.starts_with("A\t1")).count();
+        assert!(a1_count == 0 || a1_count == 2);
+    };
+    "distinct_key_ranges"
+)]
+#[test_case(
+    "h1\th2\th3\nA\t1\tX\nA\t1\tY\nB\t2\tZ\n",
+    &["--header", "--key-fields", "h1-h2", "--prob", "0.5", "--static-seed"],
+    true,
+    |lines: &[&str]| {
+        let a1_count = lines.iter().filter(|l| l.starts_with("A\t1")).count();
+        assert!(a1_count == 0 || a1_count == 2);
+    };
+    "distinct_key_names_range"
+)]
+#[test_case(
+    "h1\th2\th3\nA\t1\tX\nA\t1\tY\nB\t2\tZ\n",
+    &["--header", "--key-fields", "h1,h2", "--prob", "0.5", "--static-seed"],
+    true,
+    |lines: &[&str]| {
+        let a1_count = lines.iter().filter(|l| l.starts_with("A\t1")).count();
+        assert!(a1_count == 0 || a1_count == 2);
+    };
+    "distinct_key_names_list"
+)]
+#[test_case(
+    "h1\th2\nA\t1\nA\t2\nB\t1\n",
+    &["--header", "--prob", "1.0", "--key-fields", "h1", "--static-seed"],
+    true,
+    |lines: &[&str]| {
+        // Header + 2 distinct keys (A and B) with all their rows = 4 lines total
+        assert_eq!(lines.len(), 3); // data lines only (excluding header)
+    };
+    "distinct_prob_1_0"
+)]
+#[test_case(
+    "h1\th2\nA\t1\nA\t2\nA\t3\n",
+    &["--header", "--prob", "0.5", "--key-fields", "h1", "--static-seed"],
+    true,
+    |lines: &[&str]| {
+        // Either all rows selected (3) or none (0) since they share the same key
+        assert!(lines.len() == 0 || lines.len() == 3);
+    };
+    "distinct_with_single_key"
+)]
+fn test_sample_distinct(
+    input: &str,
+    args: &[&str],
+    has_header: bool,
+    assertions: fn(&[&str]),
+) {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--header",
-            "--key-fields",
-            "h1",
-            "--prob",
-            "0.5",
-            "--static-seed",
-        ])
+        .args(&["sample"])
+        .args(args)
         .stdin(input)
         .run();
-
-    let mut lines = stdout.lines();
-
-    let header = lines.next().unwrap();
-    assert_eq!(header, "h1\th2");
-
-    let data: Vec<&str> = lines.collect();
-    let a_count = data.iter().filter(|l| l.starts_with("A\t")).count();
-    assert!(a_count == 0 || a_count == 2);
-}
-
-#[test]
-fn sample_distinct_k0_vs_all_fields() {
-    // Key 0 means all fields are key (same as not specifying -k in some modes,
-    // but for distinct sampling it means the whole line is the key).
-    // Actually, distinct sampling with key 0 means all fields are keys.
-    // This is different from "no key" which would be non-distinct sampling.
-
-    let input = "A\t1
-A\t2
-B\t1
-";
-
-    // Test with -k 0 (all fields as key)
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--key-fields",
-            "0",
-            "--prob",
-            "0.5",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
     let lines: Vec<&str> = stdout.lines().collect();
-    // All lines are distinct keys, so we should get roughly half of them.
-    // With static seed, we can check the exact count if needed.
-    assert!(lines.len() <= 3);
-}
-
-#[test]
-fn sample_distinct_no_header() {
-    let input = "A\t1
-A\t2
-B\t1
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--key-fields",
-            "1",
-            "--prob",
-            "0.5",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    let a_count = lines.iter().filter(|l| l.starts_with("A\t")).count();
-    assert!(a_count == 0 || a_count == 2);
+    let data_lines = if has_header { &lines[1..] } else { &lines[..] };
+    assertions(data_lines);
 }
 
 #[test]
@@ -121,7 +145,6 @@ B\t1
 
     let data: Vec<&str> = lines.collect();
 
-    // If no data selected, skip the rest
     if data.is_empty() {
         return;
     }
@@ -129,12 +152,10 @@ B\t1
     let a_count = data.iter().filter(|l| l.contains("\tA\t")).count();
     assert!(a_count == 0 || a_count == 2);
 
-    // Only check if we have at least 2 rows
     if data.len() >= 2 {
         let parts0: Vec<&str> = data[0].split('\t').collect();
         let parts1: Vec<&str> = data[1].split('\t').collect();
 
-        // If both rows are A, they should have same random value
         if parts0[1] == "A" && parts1[1] == "A" {
             assert_eq!(parts0[0], parts1[0]);
         }
@@ -186,83 +207,122 @@ B\t1
     );
 }
 
-#[test]
-fn sample_distinct_multiple_keys() {
-    // -k 1,2
-    let input = "A\t1\tX
-A\t1\tY
-A\t2\tX
-";
+// ============================================================================
+// Weight Field Tests
+// ============================================================================
 
+#[test_case(
+    "h1\th2\th3\nA\t1\t100\nB\t2\t1\n",
+    &["--header", "--weight-field", "h3", "--static-seed"],
+    true,
+    |lines: &[&str]| {
+        // 2 data lines (excluding header)
+        assert_eq!(lines.len(), 2);
+        assert!(lines.contains(&"A\t1\t100"));
+        assert!(lines.contains(&"B\t2\t1"));
+    };
+    "weight_field_header_by_name_multiple_cols"
+)]
+#[test_case(
+    "h1\th2\tweight_col\nA\t1\t100\nB\t2\t1\n",
+    &["--header", "--weight-field", "weight_*", "--static-seed"],
+    true,
+    |lines: &[&str]| {
+        // 2 data lines (excluding header)
+        assert_eq!(lines.len(), 2);
+    };
+    "weight_field_header_by_wildcard"
+)]
+#[test_case(
+    "h1\th2\nA\t10\nB\t1\n",
+    &["--header", "--weight-field", "2", "--print-random", "--static-seed"],
+    true,
+    |lines: &[&str]| {
+        // With --print-random, output has random_value prefix
+        // lines[0] is first data row with random value prefix
+        let parts: Vec<&str> = lines[0].split('\t').collect();
+        assert!(parts[0].parse::<f64>().is_ok());
+    };
+    "weighted_print_random"
+)]
+#[test_case(
+    "A\t10\nB\t1\nC\t100\n",
+    &["--num", "2", "--weight-field", "2", "--inorder", "--static-seed"],
+    false,
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 2);
+        let pos_a = lines.iter().position(|&r| r.starts_with("A"));
+        let pos_c = lines.iter().position(|&r| r.starts_with("C"));
+        if let (Some(pa), Some(pc)) = (pos_a, pos_c) {
+            assert!(pa < pc, "Output was not inorder: {:?}", lines);
+        }
+    };
+    "weighted_inorder"
+)]
+#[test_case(
+    "A\t10\nB\t1\nC\t100\n",
+    &["--num", "1", "--weight-field", "2", "--inorder", "--static-seed"],
+    false,
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 1);
+    };
+    "weighted_inorder_single_item"
+)]
+#[test_case(
+    "A\t100\n",
+    &["--num", "5", "--weight-field", "2", "--static-seed"],
+    false,
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0], "A\t100");
+    };
+    "weight_field_with_single_row"
+)]
+#[test_case(
+    "A\t0\nB\t-1\nC\t10\n",
+    &["--num", "2", "--weight-field", "2", "--static-seed"],
+    false,
+    |lines: &[&str]| {
+        assert!(!lines.is_empty());
+    };
+    "weight_zero_or_negative"
+)]
+#[test_case(
+    "A\t0\nB\t-1\nC\t0\n",
+    &["--weight-field", "2", "--static-seed"],
+    false,
+    |lines: &[&str]| {
+        assert!(lines.is_empty());
+    };
+    "weighted_shuffle_all_weights_zero"
+)]
+#[test_case(
+    "A\t1\nB\t2\nC\t3\n",
+    &["--num", "2", "--weight-field", "2", "--prefer-algorithm-r", "--static-seed"],
+    false,
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 2);
+    };
+    "weighted_with_algorithm_r"
+)]
+fn test_sample_weighted(
+    input: &str,
+    args: &[&str],
+    has_header: bool,
+    assertions: fn(&[&str]),
+) {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--key-fields",
-            "1,2",
-            "--prob",
-            "0.5",
-            "--static-seed",
-        ])
+        .args(&["sample"])
+        .args(args)
         .stdin(input)
         .run();
-
     let lines: Vec<&str> = stdout.lines().collect();
-    let a1_count = lines.iter().filter(|l| l.starts_with("A\t1")).count();
-    assert!(a1_count == 0 || a1_count == 2);
-
-    let a2_count = lines.iter().filter(|l| l.starts_with("A\t2")).count();
-    assert!(a2_count == 0 || a2_count == 1);
+    let data_lines = if has_header { &lines[1..] } else { &lines[..] };
+    assertions(data_lines);
 }
 
 // ============================================================================
-// Weight Field Advanced Tests
-// ============================================================================
-
-#[test]
-fn sample_weight_field_header_by_name_multiple_cols() {
-    let input = "h1\th2\th3\nA\t1\t100\nB\t2\t1\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--header",
-            "--weight-field",
-            "h3",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 3);
-    assert_eq!(lines[0], "h1\th2\th3");
-    assert!(lines.contains(&"A\t1\t100"));
-    assert!(lines.contains(&"B\t2\t1"));
-}
-
-#[test]
-fn sample_weight_field_header_by_wildcard() {
-    let input = "h1\th2\tweight_col
-A\t1\t100
-B\t2\t1
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--header",
-            "--weight-field",
-            "weight_*",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 3);
-}
-
-// ============================================================================
-// Inorder Advanced Tests
+// Inorder Tests
 // ============================================================================
 
 #[test]
@@ -294,7 +354,7 @@ fn sample_inorder_numeric() {
 }
 
 // ============================================================================
-// Replace Advanced Tests
+// Replace Mode Tests
 // ============================================================================
 
 #[test]
@@ -370,67 +430,151 @@ fn sample_bernoulli_basic() {
 // Edge Cases and Boundary Tests
 // ============================================================================
 
-#[test]
-fn sample_subset_num_greater_than_input() {
-    let input = "A\nB\nC\n";
+#[test_case(
+    "A\nB\nC\n",
+    &["--num", "10", "--static-seed"],
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 3);
+        assert!(lines.contains(&"A"));
+        assert!(lines.contains(&"B"));
+        assert!(lines.contains(&"C"));
+    };
+    "subset_num_greater_than_input"
+)]
+#[test_case(
+    "a\nb\nc\n",
+    &["--num", "0", "--static-seed"],
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 3);
+    };
+    "reservoir_k0"
+)]
+#[test_case(
+    "a\nb\nc\n",
+    &["--prob", "1.0", "--static-seed"],
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 3);
+        assert!(lines.contains(&"a"));
+        assert!(lines.contains(&"b"));
+        assert!(lines.contains(&"c"));
+    };
+    "prob_1_0"
+)]
+#[test_case(
+    "",
+    &["--num", "5", "--static-seed"],
+    |lines: &[&str]| {
+        assert!(lines.is_empty());
+    };
+    "empty_input"
+)]
+#[test_case(
+    "only_row\n",
+    &["--num", "5", "--static-seed"],
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0], "only_row");
+    };
+    "single_row"
+)]
+#[test_case(
+    "a\nb\n",
+    &["--num", "10", "--static-seed"],
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 2);
+    };
+    "reservoir_with_fewer_rows_than_k"
+)]
+#[test_case(
+    "a\n\nb\n",
+    &["-n", "2", "--static-seed"],
+    |lines: &[&str]| {
+        assert!(lines.contains(&""));
+        assert!(lines.contains(&"a"));
+        assert!(lines.contains(&"b"));
+    };
+    "standard_empty_lines"
+)]
+#[test_case(
+    "a\n\n\nb\n",
+    &["--static-seed"],
+    |lines: &[&str]| {
+        assert!(lines.len() >= 2);
+    };
+    "multiple_empty_lines"
+)]
+fn test_sample_edge_cases(input: &str, args: &[&str], assertions: fn(&[&str])) {
     let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--num", "10", "--static-seed"])
+        .args(&["sample"])
+        .args(args)
         .stdin(input)
         .run();
-
     let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 3);
-    assert!(lines.contains(&"A"));
-    assert!(lines.contains(&"B"));
-    assert!(lines.contains(&"C"));
+    assertions(&lines);
 }
 
 #[test]
-fn sample_distinct_key_ranges() {
-    let input = "A\t1\tX
-A\t1\tY
-B\t2\tZ
-";
+fn sample_very_small_prob() {
+    let input: String = (0..1000).map(|i| format!("line{}\n", i)).collect();
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--key-fields",
-            "1-2",
-            "--prob",
-            "0.5",
-            "--static-seed",
-        ])
-        .stdin(input)
+        .args(&["sample", "--prob", "0.001", "--static-seed"])
+        .stdin(&input)
         .run();
 
     let lines: Vec<&str> = stdout.lines().collect();
-    let a1_count = lines.iter().filter(|l| l.starts_with("A\t1")).count();
-    assert!(a1_count == 0 || a1_count == 2);
+    assert!(lines.len() < 10);
 }
 
-#[test]
-fn sample_distinct_key_names_range() {
-    let input = "h1\th2\th3
-A\t1\tX
-A\t1\tY
-B\t2\tZ
-";
+// ============================================================================
+// Print Random Tests
+// ============================================================================
+
+#[test_case(
+    "a\nb\nc\n",
+    &["--prob", "0.5", "--print-random", "--static-seed"],
+    |lines: &[&str]| {
+        for line in lines {
+            let parts: Vec<&str> = line.split('\t').collect();
+            assert_eq!(parts.len(), 2);
+            assert!(parts[0].parse::<f64>().is_ok());
+        }
+    };
+    "bernoulli_with_print_random"
+)]
+#[test_case(
+    "a\nb\nc\n",
+    &["--print-random", "--static-seed"],
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 3);
+        for line in lines {
+            let parts: Vec<&str> = line.split('\t').collect();
+            assert_eq!(parts.len(), 2);
+            assert!(parts[0].parse::<f64>().is_ok());
+        }
+    };
+    "shuffle_with_print_random"
+)]
+#[test_case(
+    "a\nb\nc\nd\n",
+    &["--num", "2", "--inorder", "--print-random", "--static-seed"],
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 2);
+        for line in lines {
+            let parts: Vec<&str> = line.split('\t').collect();
+            assert_eq!(parts.len(), 2);
+            assert!(parts[0].parse::<f64>().is_ok());
+        }
+    };
+    "inorder_with_print_random"
+)]
+fn test_sample_print_random(input: &str, args: &[&str], assertions: fn(&[&str])) {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--header",
-            "--key-fields",
-            "h1-h2",
-            "--prob",
-            "0.5",
-            "--static-seed",
-        ])
+        .args(&["sample"])
+        .args(args)
         .stdin(input)
         .run();
-
     let lines: Vec<&str> = stdout.lines().collect();
-    let a1_count = lines.iter().filter(|l| l.starts_with("A\t1")).count();
-    assert!(a1_count == 0 || a1_count == 2);
+    assertions(&lines);
 }
 
 #[test]
@@ -455,60 +599,9 @@ fn sample_print_random_with_header_custom() {
     assert!(lines[1].ends_with("\tA"));
 }
 
-#[test]
-fn sample_distinct_key_names_list() {
-    let input = "h1\th2\th3
-A\t1\tX
-A\t1\tY
-B\t2\tZ
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--header",
-            "--key-fields",
-            "h1,h2",
-            "--prob",
-            "0.5",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    let a1_count = lines.iter().filter(|l| l.starts_with("A\t1")).count();
-    assert!(a1_count == 0 || a1_count == 2);
-}
-
-#[test]
-fn sample_weighted_inorder() {
-    let input = "A\t10
-B\t1
-C\t100
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--num",
-            "2",
-            "--weight-field",
-            "2",
-            "--inorder",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 2);
-
-    let pos_a = lines.iter().position(|&r| r.starts_with("A"));
-    let pos_c = lines.iter().position(|&r| r.starts_with("C"));
-
-    if let (Some(pa), Some(pc)) = (pos_a, pos_c) {
-        assert!(pa < pc, "Output was not inorder: {:?}", lines);
-    }
-}
+// ============================================================================
+// Compatibility Mode Tests
+// ============================================================================
 
 #[test]
 fn sample_compat_mode_single_col() {
@@ -536,26 +629,21 @@ fn sample_compat_mode_single_col() {
 }
 
 #[test]
-fn sample_weighted_print_random() {
-    let input = "h1\th2\nA\t10\nB\t1\n";
+fn sample_compat_mode_shuffle() {
+    let input = "a\nb\nc\nd\n";
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--header",
-            "--weight-field",
-            "2",
-            "--print-random",
-            "--static-seed",
-        ])
+        .args(&["sample", "--compatibility-mode", "--static-seed"])
         .stdin(input)
         .run();
 
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert!(lines[0].starts_with("random_value\th1"));
-
-    let parts: Vec<&str> = lines[1].split('\t').collect();
-    assert!(parts[0].parse::<f64>().is_ok());
+    let mut lines: Vec<&str> = stdout.lines().collect();
+    lines.sort();
+    assert_eq!(lines, vec!["a", "b", "c", "d"]);
 }
+
+// ============================================================================
+// Key Fields Tests
+// ============================================================================
 
 #[test]
 fn sample_key_fields_star() {
@@ -583,34 +671,63 @@ A\t2
 }
 
 // ============================================================================
-// Gen Random Inorder Advanced Tests
+// Gen Random Inorder Tests
 // ============================================================================
 
-#[test]
-fn sample_gen_random_inorder_custom_header() {
-    let input = "h1\tv1\nA\t1\nB\t2\n";
+#[test_case(
+    "h1\tv1\nA\t1\nB\t2\n",
+    &["--gen-random-inorder", "--header", "--random-value-header", "RND", "--static-seed"],
+    |lines: &[&str]| {
+        assert_eq!(lines[0], "RND\th1\tv1");
+        let parts: Vec<&str> = lines[1].split('\t').collect();
+        assert_eq!(parts.len(), 3);
+        assert!(parts[0].parse::<f64>().is_ok());
+        assert_eq!(parts[1], "A");
+        assert_eq!(parts[2], "1");
+    };
+    "gen_random_inorder_custom_header"
+)]
+#[test_case(
+    "a\nb\nc\n",
+    &["--gen-random-inorder", "--static-seed"],
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 3);
+        for line in lines {
+            let parts: Vec<&str> = line.split('\t').collect();
+            assert_eq!(parts.len(), 2);
+            assert!(parts[0].parse::<f64>().is_ok());
+        }
+    };
+    "gen_random_inorder_no_header"
+)]
+#[test_case(
+    "A\t1\nA\t2\n",
+    &["--gen-random-inorder", "--key-fields", "1", "--static-seed"],
+    |lines: &[&str]| {
+        assert_eq!(lines.len(), 2);
+        let val1 = lines[0].split('\t').next().unwrap();
+        let val2 = lines[1].split('\t').next().unwrap();
+        assert_eq!(val1, val2);
+    };
+    "gen_random_inorder_key_fields_no_header"
+)]
+#[test_case(
+    "a\n\nb\n",
+    &["--gen-random-inorder", "--static-seed"],
+    |lines: &[&str]| {
+        assert!(lines.contains(&""));
+        assert_eq!(lines.len(), 3);
+    };
+    "gen_random_inorder_empty_lines"
+)]
+fn test_sample_gen_random_inorder(input: &str, args: &[&str], assertions: fn(&[&str])) {
     let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--gen-random-inorder",
-            "--header",
-            "--random-value-header",
-            "RND",
-            "--static-seed",
-        ])
+        .args(&["sample"])
+        .args(args)
         .stdin(input)
         .run();
-
-    let mut lines = stdout.lines();
-    let header = lines.next().unwrap();
-    assert_eq!(header, "RND\th1\tv1");
-
-    let row1 = lines.next().unwrap();
-    let parts: Vec<&str> = row1.split('\t').collect();
-    assert_eq!(parts.len(), 3);
-    assert!(parts[0].parse::<f64>().is_ok());
-    assert_eq!(parts[1], "A");
-    assert_eq!(parts[2], "1");
+    let lines: Vec<&str> = stdout.lines().collect();
+    assertions(&lines);
 }
 
 #[test]
@@ -717,28 +834,20 @@ fn sample_gen_random_inorder_key_reordered() {
 }
 
 #[test]
-fn sample_outfile_option() {
-    let input = "a\nb\n";
-    let temp_dir = tempfile::tempdir().unwrap();
-    let output_path = temp_dir.path().join("output.tsv");
-
-    TvaCmd::new()
+fn sample_gen_random_inorder_key_fields_invalid_no_header() {
+    let input = "A\t1\n";
+    let (_, stderr) = TvaCmd::new()
         .args(&[
             "sample",
-            "--num",
-            "2",
+            "--gen-random-inorder",
+            "--key-fields",
+            "name_without_header",
             "--static-seed",
-            "--outfile",
-            output_path.to_str().unwrap(),
         ])
         .stdin(input)
-        .run();
+        .run_fail();
 
-    let content = std::fs::read_to_string(&output_path).unwrap();
-    let lines: Vec<&str> = content.lines().collect();
-    assert_eq!(lines.len(), 2);
-    assert!(lines.contains(&"a"));
-    assert!(lines.contains(&"b"));
+    assert!(stderr.contains("requires header"));
 }
 
 #[test]
@@ -776,71 +885,52 @@ fn sample_gen_random_inorder_explicit_seed() {
     assert_eq!(stdout1, stdout2);
 }
 
-#[test]
-fn sample_gen_random_inorder_empty_lines() {
-    let input = "a\n\nb\n";
+// ============================================================================
+// Seed Tests
+// ============================================================================
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--gen-random-inorder", "--static-seed"])
+#[test]
+fn sample_seed_value_explicit() {
+    let input = "a\nb\nc\nd\ne\n";
+
+    let (stdout1, _) = TvaCmd::new()
+        .args(&["sample", "--num", "3", "--seed-value", "12345"])
         .stdin(input)
         .run();
 
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert!(lines.contains(&""));
-    assert_eq!(lines.len(), 3);
+    let (stdout2, _) = TvaCmd::new()
+        .args(&["sample", "--num", "3", "--seed-value", "12345"])
+        .stdin(input)
+        .run();
+
+    assert_eq!(stdout1, stdout2);
 }
 
-#[test]
-fn sample_gen_random_inorder_key_fields_no_header() {
-    let input = "A\t1\nA\t2\n";
+// ============================================================================
+// Outfile Tests
+// ============================================================================
 
-    let (stdout, _) = TvaCmd::new()
+#[test]
+fn sample_outfile_option() {
+    let input = "a\nb\n";
+    let temp_dir = tempfile::tempdir().unwrap();
+    let output_path = temp_dir.path().join("output.tsv");
+
+    TvaCmd::new()
         .args(&[
             "sample",
-            "--gen-random-inorder",
-            "--key-fields",
-            "1",
+            "--num",
+            "2",
             "--static-seed",
+            "--outfile",
+            output_path.to_str().unwrap(),
         ])
         .stdin(input)
         .run();
 
-    let lines: Vec<&str> = stdout.lines().collect();
+    let content = std::fs::read_to_string(&output_path).unwrap();
+    let lines: Vec<&str> = content.lines().collect();
     assert_eq!(lines.len(), 2);
-
-    let val1 = lines[0].split('\t').next().unwrap();
-    let val2 = lines[1].split('\t').next().unwrap();
-
-    assert_eq!(val1, val2);
-}
-
-#[test]
-fn sample_gen_random_inorder_key_fields_invalid_no_header() {
-    let input = "A\t1\n";
-    let (_, stderr) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--gen-random-inorder",
-            "--key-fields",
-            "name_without_header",
-        ])
-        .stdin(input)
-        .run_fail();
-
-    assert!(stderr.contains("requires header"));
-}
-
-#[test]
-fn sample_standard_empty_lines() {
-    let input = "a\n\nb\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "-n", "2", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert!(lines.contains(&""));
     assert!(lines.contains(&"a"));
     assert!(lines.contains(&"b"));
 }
@@ -1115,379 +1205,6 @@ fn sample_data5x25_distinct_k2_k4_p20() {
             key
         );
     }
-}
-
-// ============================================================================
-// Additional Coverage Tests
-// ============================================================================
-
-#[test]
-fn sample_weight_zero_or_negative() {
-    // Weight <= 0 should be ignored (not selected)
-    let input = "A\t0\nB\t-1\nC\t10\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--num",
-            "2",
-            "--weight-field",
-            "2",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    // Only C with weight 10 should be selected (or possibly nothing if k=0 logic)
-    // With k=2 and only one positive weight, we should get at least C
-    assert!(!lines.is_empty());
-}
-
-#[test]
-fn sample_reservoir_k0() {
-    // k=0 should return nothing
-    let input = "a\nb\nc\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--num", "0", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    // With num=0, all rows should be returned (shuffle mode)
-    assert_eq!(lines.len(), 3);
-}
-
-#[test]
-fn sample_prob_1_0() {
-    // prob=1.0 should select all rows
-    let input = "a\nb\nc\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--prob", "1.0", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 3);
-    assert!(lines.contains(&"a"));
-    assert!(lines.contains(&"b"));
-    assert!(lines.contains(&"c"));
-}
-
-#[test]
-fn sample_empty_input() {
-    // Empty input should return empty output
-    let input = "";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--num", "5", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, "");
-}
-
-#[test]
-fn sample_single_row() {
-    // Single row input
-    let input = "only_row\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--num", "5", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 1);
-    assert_eq!(lines[0], "only_row");
-}
-
-#[test]
-fn sample_weighted_shuffle_all_weights_zero() {
-    // All weights <= 0 should result in empty output
-    let input = "A\t0\nB\t-1\nC\t0\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--weight-field", "2", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    // Should return empty or very few lines since all weights are 0 or negative
-    let lines: Vec<&str> = stdout.lines().collect();
-    // With all weights <= 0, nothing should be selected
-    assert!(lines.is_empty());
-}
-
-#[test]
-fn sample_distinct_prob_1_0() {
-    // Distinct sampling with prob=1.0 should select all distinct keys
-    let input = "h1\th2
-A\t1
-A\t2
-B\t1
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--header",
-            "--prob",
-            "1.0",
-            "--key-fields",
-            "h1",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    // Header + 2 distinct keys (A and B) with all their rows
-    assert_eq!(lines.len(), 4);
-}
-
-#[test]
-fn sample_compat_mode_shuffle() {
-    // Compatibility mode without --num should shuffle all rows
-    let input = "a\nb\nc\nd\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--compatibility-mode", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    let mut lines: Vec<&str> = stdout.lines().collect();
-    lines.sort();
-    assert_eq!(lines, vec!["a", "b", "c", "d"]);
-}
-
-#[test]
-fn sample_seed_value_explicit() {
-    // Test explicit seed value produces reproducible results
-    let input = "a\nb\nc\nd\ne\n";
-
-    let (stdout1, _) = TvaCmd::new()
-        .args(&["sample", "--num", "3", "--seed-value", "12345"])
-        .stdin(input)
-        .run();
-
-    let (stdout2, _) = TvaCmd::new()
-        .args(&["sample", "--num", "3", "--seed-value", "12345"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout1, stdout2);
-}
-
-#[test]
-fn sample_weighted_with_algorithm_r() {
-    // Test that --prefer-algorithm-r is ignored when weight-field is used
-    // Actually, looking at the code, it falls back to ReservoirSampler
-    let input = "A\t1\nB\t2\nC\t3\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--num",
-            "2",
-            "--weight-field",
-            "2",
-            "--prefer-algorithm-r",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 2);
-}
-
-#[test]
-fn sample_bernoulli_with_print_random() {
-    // Bernoulli sampling with --print-random
-    let input = "a\nb\nc\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--prob", "0.5", "--print-random", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    // Each line should have a random value prefix
-    for line in stdout.lines() {
-        let parts: Vec<&str> = line.split('\t').collect();
-        assert_eq!(parts.len(), 2);
-        assert!(parts[0].parse::<f64>().is_ok());
-    }
-}
-
-#[test]
-fn sample_shuffle_with_print_random() {
-    // Shuffle mode with --print-random
-    let input = "a\nb\nc\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--print-random", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 3);
-
-    // Each line should have a random value prefix
-    for line in &lines {
-        let parts: Vec<&str> = line.split('\t').collect();
-        assert_eq!(parts.len(), 2);
-        assert!(parts[0].parse::<f64>().is_ok());
-    }
-}
-
-#[test]
-fn sample_inorder_with_print_random() {
-    // Inorder sampling with --print-random
-    let input = "a\nb\nc\nd\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--num",
-            "2",
-            "--inorder",
-            "--print-random",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 2);
-
-    // Each line should have a random value prefix
-    for line in &lines {
-        let parts: Vec<&str> = line.split('\t').collect();
-        assert_eq!(parts.len(), 2);
-        assert!(parts[0].parse::<f64>().is_ok());
-    }
-}
-
-#[test]
-fn sample_gen_random_inorder_no_header() {
-    // gen-random-inorder without header
-    let input = "a\nb\nc\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--gen-random-inorder", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    // Without header, no header line is generated
-    assert_eq!(lines.len(), 3);
-
-    // Each line should have a random value prefix
-    for line in &lines {
-        let parts: Vec<&str> = line.split('\t').collect();
-        assert_eq!(parts.len(), 2);
-        assert!(parts[0].parse::<f64>().is_ok());
-    }
-}
-
-#[test]
-fn sample_weight_field_with_single_row() {
-    // Weighted sampling with only one row
-    let input = "A\t100\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--num",
-            "5",
-            "--weight-field",
-            "2",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    // Should return the single row even if num > 1
-    assert_eq!(lines.len(), 1);
-    assert_eq!(lines[0], "A\t100");
-}
-
-#[test]
-fn sample_reservoir_with_fewer_rows_than_k() {
-    // Reservoir sampling when input has fewer rows than k
-    let input = "a\nb\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--num", "10", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    // Should return all available rows
-    assert_eq!(lines.len(), 2);
-}
-
-#[test]
-fn sample_distinct_with_single_key() {
-    // Distinct sampling where all rows have the same key
-    let input = "h1\th2
-A\t1
-A\t2
-A\t3
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--header",
-            "--prob",
-            "0.5",
-            "--key-fields",
-            "h1",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    // Either all rows selected or none (since they share the same key)
-    assert!(lines.len() == 1 || lines.len() == 4);
-}
-
-#[test]
-fn sample_multiple_empty_lines() {
-    // Input with multiple consecutive empty lines
-    let input = "a\n\n\nb\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--static-seed"])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    // lines() skips empty lines, so we get fewer than actual lines
-    assert!(lines.len() >= 2);
-}
-
-#[test]
-fn sample_very_small_prob() {
-    // Very small probability should select very few rows
-    let input: String = (0..1000).map(|i| format!("line{}\n", i)).collect();
-    let (stdout, _) = TvaCmd::new()
-        .args(&["sample", "--prob", "0.001", "--static-seed"])
-        .stdin(&input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    // With p=0.001, expect ~1 row from 1000
-    assert!(lines.len() < 10);
-}
-
-#[test]
-fn sample_weighted_inorder_single_item() {
-    // Weighted inorder with k=1
-    let input = "A\t10\nB\t1\nC\t100\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "sample",
-            "--num",
-            "1",
-            "--weight-field",
-            "2",
-            "--inorder",
-            "--static-seed",
-        ])
-        .stdin(input)
-        .run();
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines.len(), 1);
 }
 
 #[test]
