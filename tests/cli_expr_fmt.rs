@@ -50,96 +50,67 @@ fn test_fmt_specifiers(expr: &str, expected: &str) {
 // Column References Tests
 // ============================================================================
 
-#[test]
-fn test_fmt_column_ref_by_index() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "expr",
-            "-E",
-            "fmt(\"%(@1) has %(@2) points\")",
-            "-r",
-            "Alice,100",
-        ])
-        .run();
-    assert!(
-        stdout.contains("Alice has 100 points"),
-        "Expected 'Alice has 100 points' in stdout, got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_fmt_column_ref_mixed() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "expr",
-            "-E",
-            "fmt(\"%(): %(@2) points\", @1)",
-            "-r",
-            "Alice,100",
-        ])
-        .run();
-    assert!(
-        stdout.contains("Alice: 100 points"),
-        "Expected 'Alice: 100 points' in stdout, got: {}",
-        stdout
-    );
+#[test_case(
+    &["Alice,100"],
+    "fmt(\"%(@1) has %(@2) points\")",
+    &["Alice has 100 points"]
+    ; "by_index"
+)]
+#[test_case(
+    &["Alice,100"],
+    "fmt(\"%(): %(@2) points\", @1)",
+    &["Alice: 100 points"]
+    ; "mixed"
+)]
+fn test_fmt_column_ref(rows: &[&str], expr: &str, expected: &[&str]) {
+    let mut args = vec!["expr", "-E", expr];
+    for row in rows {
+        args.push("-r");
+        args.push(row);
+    }
+    let (stdout, _) = TvaCmd::new().args(&args).run();
+    for exp in expected {
+        assert!(
+            stdout.contains(exp),
+            "Expected '{}' in stdout, got: {}",
+            exp,
+            stdout
+        );
+    }
 }
 
 // ============================================================================
 // Lambda Variables Tests
 // ============================================================================
 
-#[test]
-fn test_fmt_lambda_variable() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["expr", "-E", "map([1, 2, 3], x => fmt(\"value: %(x)\"))"])
-        .run();
-    assert!(
-        stdout.contains("value: 1"),
-        "Expected 'value: 1' in stdout, got: {}",
-        stdout
-    );
-    assert!(
-        stdout.contains("value: 2"),
-        "Expected 'value: 2' in stdout, got: {}",
-        stdout
-    );
-    assert!(
-        stdout.contains("value: 3"),
-        "Expected 'value: 3' in stdout, got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_fmt_lambda_variable_with_brackets() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["expr", "-E", "map([1, 2, 3], x => fmt(q(value: %[x])))"])
-        .run();
-    assert!(
-        stdout.contains("value: 1"),
-        "Expected 'value: 1' in stdout, got: {}",
-        stdout
-    );
-    assert!(
-        stdout.contains("value: 2"),
-        "Expected 'value: 2' in stdout, got: {}",
-        stdout
-    );
-    assert!(
-        stdout.contains("value: 3"),
-        "Expected 'value: 3' in stdout, got: {}",
-        stdout
-    );
+#[test_case(
+    "map([1, 2, 3], x => fmt(\"value: %(x)\"))",
+    &["value: 1", "value: 2", "value: 3"]
+    ; "basic"
+)]
+#[test_case(
+    "map([1, 2, 3], x => fmt(q(value: %[x])))",
+    &["value: 1", "value: 2", "value: 3"]
+    ; "with_brackets"
+)]
+fn test_fmt_lambda(expr: &str, expected: &[&str]) {
+    let (stdout, _) = TvaCmd::new().args(&["expr", "-E", expr]).run();
+    for exp in expected {
+        assert!(
+            stdout.contains(exp),
+            "Expected '{}' in stdout, got: {}",
+            exp,
+            stdout
+        );
+    }
 }
 
 // ============================================================================
 // Variable References Tests
 // ============================================================================
 
-#[test_case("\"Bob\" as @name; fmt(\"Hello, %(@name)!\")", "Hello, Bob!" ; "variable_basic")]
-#[test_case("3.14159 as @pi; fmt(\"Pi = %(@pi:.2)\")", "Pi = 3.14" ; "variable_with_format")]
+#[test_case("\"Bob\" as @name; fmt(\"Hello, %(@name)!\")", "Hello, Bob!" ; "basic")]
+#[test_case("3.14159 as @pi; fmt(\"Pi = %(@pi:.2)\")", "Pi = 3.14" ; "with_format")]
 fn test_fmt_variable(expr: &str, expected: &str) {
     let (stdout, _) = TvaCmd::new().args(&["expr", "-E", expr]).run();
     assert!(
@@ -175,54 +146,35 @@ fn test_fmt_variable_multiple_formats() {
 // Multi-row Data with Global Variables Tests
 // ============================================================================
 
-#[test]
-fn test_fmt_global_variable_line_index() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "expr",
-            "-r",
-            "Alice,100",
-            "-r",
-            "Bob,200",
-            "-E",
-            "fmt(\"Hello, %(@1)! from line %(@__index)\")",
-        ])
-        .run();
-    assert!(
-        stdout.contains("Hello, Alice! from line 1"),
-        "Expected line 1 output in stdout, got: {}",
-        stdout
-    );
-    assert!(
-        stdout.contains("Hello, Bob! from line 2"),
-        "Expected line 2 output in stdout, got: {}",
-        stdout
-    );
-}
-
-#[test]
-fn test_fmt_global_variable_accumulate() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "expr",
-            "-r",
-            "Alice,100",
-            "-r",
-            "Bob,200",
-            "-E",
-            "default(@__sum, 0) + @2 as @__sum; fmt(\"Hello, %(@1)! sum: %(@__sum)\")",
-        ])
-        .run();
-    assert!(
-        stdout.contains("Hello, Alice! sum: 100"),
-        "Expected Alice sum output in stdout, got: {}",
-        stdout
-    );
-    assert!(
-        stdout.contains("Hello, Bob! sum: 300"),
-        "Expected Bob sum output in stdout, got: {}",
-        stdout
-    );
+#[test_case(
+    &["Alice,100", "Bob,200"],
+    "fmt(\"Hello, %(@1)! from line %(@__index)\")",
+    &["Hello, Alice! from line 1", "Hello, Bob! from line 2"]
+    ; "line_index"
+)]
+#[test_case(
+    &["Alice,100", "Bob,200"],
+    "default(@__sum, 0) + @2 as @__sum; fmt(\"Hello, %(@1)! sum: %(@__sum)\")",
+    &["Hello, Alice! sum: 100", "Hello, Bob! sum: 300"]
+    ; "accumulate"
+)]
+fn test_fmt_global_variable(rows: &[&str], expr: &str, expected: &[&str]) {
+    let mut args = vec!["expr"];
+    for row in rows {
+        args.push("-r");
+        args.push(row);
+    }
+    args.push("-E");
+    args.push(expr);
+    let (stdout, _) = TvaCmd::new().args(&args).run();
+    for exp in expected {
+        assert!(
+            stdout.contains(exp),
+            "Expected '{}' in stdout, got: {}",
+            exp,
+            stdout
+        );
+    }
 }
 
 // ============================================================================

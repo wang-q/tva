@@ -31,16 +31,32 @@ fn rosetta_hello_world() {
     let (stdout, _) = TvaCmd::new()
         .args(&["expr", "-E", "\"Hello world!\""])
         .run();
-    assert!(stdout.contains("Hello world!"), "Expected 'Hello world!' in stdout, got: {}", stdout);
+    assert!(
+        stdout.contains("Hello world!"),
+        "Expected 'Hello world!' in stdout, got: {}",
+        stdout
+    );
 }
 
 #[test]
 fn rosetta_99_bottles_of_beer() {
     let (stdout, _) = TvaCmd::new()
-        .args(&["expr", "-E", "99 ++ \" bottles of beer on the wall,\\n\" ++ 99 ++ \" bottles of beer!\""])
+        .args(&[
+            "expr",
+            "-E",
+            "99 ++ \" bottles of beer on the wall,\\n\" ++ 99 ++ \" bottles of beer!\"",
+        ])
         .run();
-    assert!(stdout.contains("99 bottles of beer on the wall"), "Expected '99 bottles of beer on the wall' in stdout, got: {}", stdout);
-    assert!(stdout.contains("99 bottles of beer!"), "Expected '99 bottles of beer!' in stdout, got: {}", stdout);
+    assert!(
+        stdout.contains("99 bottles of beer on the wall"),
+        "Expected '99 bottles of beer on the wall' in stdout, got: {}",
+        stdout
+    );
+    assert!(
+        stdout.contains("99 bottles of beer!"),
+        "Expected '99 bottles of beer!' in stdout, got: {}",
+        stdout
+    );
 }
 
 // -----------------------------------------------------------------------------
@@ -72,7 +88,12 @@ fn rosetta_99_bottles_of_beer() {
 fn rosetta_fizzbuzz_tests(expr: &str, expected: &[&str]) {
     let (stdout, _) = TvaCmd::new().args(&["expr", "-E", expr]).run();
     for exp in expected {
-        assert!(stdout.contains(exp), "Expected '{}' in stdout, got: {}", exp, stdout);
+        assert!(
+            stdout.contains(exp),
+            "Expected '{}' in stdout, got: {}",
+            exp,
+            stdout
+        );
     }
 }
 
@@ -100,7 +121,12 @@ fn rosetta_fizzbuzz_tests(expr: &str, expected: &[&str]) {
 )]
 fn rosetta_factorial_tests(expr: &str, expected: &str) {
     let (stdout, _) = TvaCmd::new().args(&["expr", "-E", expr]).run();
-    assert!(stdout.contains(expected), "Expected '{}' in stdout, got: {}", expected, stdout);
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in stdout, got: {}",
+        expected,
+        stdout
+    );
 }
 
 // -----------------------------------------------------------------------------
@@ -119,7 +145,12 @@ fn rosetta_factorial_tests(expr: &str, expected: &str) {
 #[test_case("1", "1" ; "fibonacci_1")]
 fn rosetta_fibonacci_tests(expr: &str, expected: &str) {
     let (stdout, _) = TvaCmd::new().args(&["expr", "-E", expr]).run();
-    assert!(stdout.contains(expected), "Expected '{}' in stdout, got: {}", expected, stdout);
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in stdout, got: {}",
+        expected,
+        stdout
+    );
 }
 
 // -----------------------------------------------------------------------------
@@ -146,7 +177,12 @@ fn rosetta_fibonacci_tests(expr: &str, expected: &str) {
 )]
 fn rosetta_palindrome_tests(expr: &str, expected: &str) {
     let (stdout, _) = TvaCmd::new().args(&["expr", "-E", expr]).run();
-    assert!(stdout.contains(expected), "Expected '{}' in stdout, got: {}", expected, stdout);
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in stdout, got: {}",
+        expected,
+        stdout
+    );
 }
 
 // -----------------------------------------------------------------------------
@@ -167,7 +203,12 @@ fn rosetta_palindrome_tests(expr: &str, expected: &str) {
 )]
 fn rosetta_word_frequency_tests(expr: &str, expected: &str) {
     let (stdout, _) = TvaCmd::new().args(&["expr", "-E", expr]).run();
-    assert!(stdout.contains(expected), "Expected '{}' in stdout, got: {}", expected, stdout);
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in stdout, got: {}",
+        expected,
+        stdout
+    );
 }
 
 // -----------------------------------------------------------------------------
@@ -185,7 +226,12 @@ fn rosetta_word_frequency_tests(expr: &str, expected: &str) {
 #[test_case("2 >= 2", "true" ; "2_is_prime")]
 fn rosetta_sieve_tests(expr: &str, expected: &str) {
     let (stdout, _) = TvaCmd::new().args(&["expr", "-E", expr]).run();
-    assert!(stdout.contains(expected), "Expected '{}' in stdout, got: {}", expected, stdout);
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in stdout, got: {}",
+        expected,
+        stdout
+    );
 }
 
 // -----------------------------------------------------------------------------
@@ -212,7 +258,12 @@ fn rosetta_sieve_tests(expr: &str, expected: &str) {
 )]
 fn rosetta_gcd_tests(expr: &str, expected: &str) {
     let (stdout, _) = TvaCmd::new().args(&["expr", "-E", expr]).run();
-    assert!(stdout.contains(expected), "Expected '{}' in stdout, got: {}", expected, stdout);
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in stdout, got: {}",
+        expected,
+        stdout
+    );
 }
 
 // -----------------------------------------------------------------------------
@@ -253,5 +304,10 @@ fn rosetta_gcd_tests(expr: &str, expected: &str) {
 )]
 fn rosetta_basic_tests(expr: &str, expected: &str) {
     let (stdout, _) = TvaCmd::new().args(&["expr", "-E", expr]).run();
-    assert!(stdout.contains(expected), "Expected '{}' in stdout, got: {}", expected, stdout);
+    assert!(
+        stdout.contains(expected),
+        "Expected '{}' in stdout, got: {}",
+        expected,
+        stdout
+    );
 }

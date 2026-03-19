@@ -11,7 +11,6 @@ use test_case::test_case;
 // This file contains tests for expr features documented in docs/expr/
 //
 // Covered documents:
-// - functions.md: Built-in functions (moved to cli_expr_docs_functions.rs)
 // - literals.md: Literals and type system
 // - operators.md: Operators
 // - syntax.md: Syntax guide
