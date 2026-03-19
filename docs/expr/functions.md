@@ -114,6 +114,26 @@ The implementation is selected at runtime based on the first argument type.
 - drop(value, n) -> T: Drop first n elements from string or list
 - concat(value1, value2, ...) -> T: Concatenate strings or lists
 
+```bash
+# Check if string/list is empty
+tva expr -E 'is_empty("")'                # Returns: true
+tva expr -E 'is_empty("hello")'           # Returns: false
+tva expr -E 'is_empty([])'                # Returns: true
+tva expr -E 'is_empty([1, 2, 3])'         # Returns: false
+
+# Take first n elements from string or list
+tva expr -E 'take("hello", 3)'            # Returns: "hel"
+tva expr -E 'take([1, 2, 3, 4, 5], 3)'    # Returns: [1, 2, 3]
+
+# Drop first n elements from string or list
+tva expr -E 'drop("hello", 2)'            # Returns: "llo"
+tva expr -E 'drop([1, 2, 3, 4, 5], 2)'    # Returns: [3, 4, 5]
+
+# Concatenate multiple strings or lists
+tva expr -E 'concat("hello", " ", "world")'  # Returns: "hello world"
+tva expr -E 'concat([1, 2], [3, 4], [5, 6])'   # Returns: [1, 2, 3, 4, 5, 6]
+```
+
 ## Range Generation
 
 - range(upto) -> list: Generate numbers from 0 to upto (exclusive), step 1
@@ -328,6 +348,9 @@ tva expr -E 'regex_replace("hello 123", "\\d+", "XXX")'  # Returns: "hello XXX"
 # MD5 hash
 tva expr -E 'md5("hello")'           # Returns: "5d41402abc4b2a76b9719d911017c592"
 
+# SHA256 hash
+tva expr -E 'sha256("hello")'        # Returns: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+
 # Base64 encoding and decoding
 tva expr -E 'base64("hello")'        # Returns: "aGVsbG8="
 tva expr -E 'unbase64("aGVsbG8=")'   # Returns: "hello"
@@ -342,12 +365,38 @@ tva expr -E 'unbase64("aGVsbG8=")'   # Returns: "hello"
 ```bash
 # Current datetime
 tva expr -E 'now()'                  # Returns: current datetime (e.g., "2026-03-19T10:30:00+08:00")
+
+# Parse datetime from string (requires full datetime format)
+tva expr -E 'strptime("2024-03-15T00:00:00", "%Y-%m-%dT%H:%M:%S")'           # Returns: datetime(2024-03-15T00:00:00)
+tva expr -E 'strptime("15/03/2024 14:30:00", "%d/%m/%Y %H:%M:%S")'  # Returns: datetime(2024-03-15T14:30:00)
+
+# Format datetime to string
+tva expr -E 'strftime(now(), "%Y-%m-%d")'                   # Returns: "2026-03-19"
+tva expr -E 'strftime(now(), "%H:%M:%S")'                   # Returns: "14:30:00"
+tva expr -E 'strftime(strptime("2024-12-25T00:00:00", "%Y-%m-%dT%H:%M:%S"), "%B %d, %Y")'  # Returns: "December 25, 2024"
+
+# Parse and format combined
+tva expr -E 'strptime("2024-03-15T00:00:00", "%Y-%m-%dT%H:%M:%S") | strftime(_, "%d/%m/%Y")'  # Returns: "15/03/2024"
 ```
 
 ## IO
 
 - print(val, ...): Print to stdout, returns last argument
 - eprint(val, ...): Print to stderr, returns last argument
+
+```bash
+# Print to stdout (returns the value, so it can be used in expressions)
+tva expr -E 'print("Hello", "World")'     # Prints: Hello World to stdout, returns: "World"
+tva expr -E 'print(42)'                     # Prints: 42 to stdout, returns: 42
+tva expr -E 'print("Result:", 1 + 2)'       # Prints: Result: 3 to stdout, returns: 3
+
+# Print to stderr (useful for debugging)
+tva expr -E 'eprint("Error message")'       # Prints: Error message to stderr, returns: "Error message"
+tva expr -E 'eprint("Debug:", [1, 2, 3])'   # Prints: Debug: [1, 2, 3] to stderr
+
+# Using print in pipelines
+tva expr -E '[1, 2, 3] | print("List:", _) | len(_)'  # Prints: List: [1, 2, 3], returns: 3
+```
 
 ## Meta Functions
 
