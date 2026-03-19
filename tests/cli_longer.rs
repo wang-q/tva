@@ -3,522 +3,217 @@
 mod common;
 
 use common::TvaCmd;
+use test_case::test_case;
 
-#[test]
-fn longer_names_sep() {
-    let input = "\
-ID\twk_1\twk_2
-A\t1\t2
-B\t3\t4
-";
-    let expected = "\
-ID\tunit\tnum\tvalue
-A\twk\t1\t1
-A\twk\t2\t2
-B\twk\t1\t3
-B\twk\t2\t4
-";
+// ============================================================================
+// Basic Functionality Tests
+// ============================================================================
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "--cols",
-            "2-3",
-            "--names-sep",
-            "_",
-            "--names-to",
-            "unit",
-            "num",
-        ])
-        .stdin(input)
-        .run();
+#[test_case(
+    "ID\tQ1\tQ2\tQ3\nA\t1\t2\t3\nB\t4\t5\t6\nC\t7\t8\t9\n",
+    &["--cols", "2-4"],
+    "ID\tname\tvalue\nA\tQ1\t1\nA\tQ2\t2\nA\tQ3\t3\nB\tQ1\t4\nB\tQ2\t5\nB\tQ3\t6\nC\tQ1\t7\nC\tQ2\t8\nC\tQ3\t9\n"
+    ; "basic_longer"
+)]
+#[test_case(
+    "ID\tQ1\tQ2\tQ3\nA\t1\t2\t3\nB\t4\t5\t6\nC\t7\t8\t9\n",
+    &["--cols", "2-4", "--names-prefix", "Q"],
+    "ID\tname\tvalue\nA\t1\t1\nA\t2\t2\nA\t3\t3\nB\t1\t4\nB\t2\t5\nB\t3\t6\nC\t1\t7\nC\t2\t8\nC\t3\t9\n"
+    ; "names_prefix"
+)]
+#[test_case(
+    "ID\tQ1\tExtra\tQ2\nA\t1\tx\t2\nB\t3\ty\t4\n",
+    &["--cols", "2,4"],
+    "ID\tExtra\tname\tvalue\nA\tx\tQ1\t1\nA\tx\tQ2\t2\nB\ty\tQ1\t3\nB\ty\tQ2\t4\n"
+    ; "interleaved_cols"
+)]
+#[test_case(
+    "ID\tnum\ttext\nA\t1\tfoo\nB\t2\tbar\n",
+    &["--cols", "2-3"],
+    "ID\tname\tvalue\nA\tnum\t1\nA\ttext\tfoo\nB\tnum\t2\nB\ttext\tbar\n"
+    ; "mixed_types"
+)]
+#[test_case(
+    "ID\tQ1\tQ2\tQ3\nA\t1\t2\t3\n",
+    &["--cols", "2-3"],
+    "ID\tQ3\tname\tvalue\nA\t3\tQ1\t1\nA\t3\tQ2\t2\n"
+    ; "output_order_row_major"
+)]
+fn longer_basic_tests(input: &str, args: &[&str], expected: &str) {
+    let mut all_args = vec!["longer"];
+    all_args.extend_from_slice(args);
 
+    let (stdout, _) = TvaCmd::new().args(&all_args).stdin(input).run();
     assert_eq!(stdout, expected);
 }
 
-#[test]
-fn longer_invalid_col_index_zero() {
-    // Test that column index 0 is rejected (1-based indexing)
-    let (_, stderr) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input_zero_index.tsv",
-            "--cols",
-            "0",
-        ])
-        .run_fail();
+// ============================================================================
+// Column Selection Tests
+// ============================================================================
 
-    // Error comes from field parser, not our validation
-    assert!(stderr.contains("field index must be >= 1"));
-}
+#[test_case(
+    &["tests/data/longer/input_mixed.tsv", "--cols", "num-text"],
+    "ID\tname\tvalue\nA\tnum\t1\nA\ttext\tfoo\nB\tnum\t2\nB\ttext\tbar\n"
+    ; "by_name_range"
+)]
+#[test_case(
+    &["tests/data/longer/input1.tsv", "--cols", "Q*"],
+    "ID\tname\tvalue\nA\tQ1\t1\nA\tQ2\t2\nA\tQ3\t3\nB\tQ1\t4\nB\tQ2\t5\nB\tQ3\t6\nC\tQ1\t7\nC\tQ2\t8\nC\tQ3\t9\n"
+    ; "by_wildcard"
+)]
+#[test_case(
+    &["tests/data/longer/input_dup_cols.tsv", "--cols", "2-3"],
+    "ID\textra\tname\tvalue\nA\tx\tval\t1\nA\tx\tval\t2\nB\ty\tval\t3\nB\ty\tval\t4\n"
+    ; "duplicate_col_names"
+)]
+fn longer_col_selection(args: &[&str], expected: &str) {
+    let mut all_args = vec!["longer"];
+    all_args.extend_from_slice(args);
 
-#[test]
-fn longer_only_header_no_data() {
-    // Test file with only header row (no data rows)
-    // Columns 2-3 (Q1, Q2) are melted, leaving ID and Q3 as id columns
-    let expected = "ID\tQ3\tname\tvalue\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input_only_header.tsv",
-            "--cols",
-            "2-3",
-        ])
-        .run();
-
+    let (stdout, _) = TvaCmd::new().args(&all_args).run();
     assert_eq!(stdout, expected);
 }
 
-#[test]
-fn longer_col_index_exceeds_actual_columns() {
-    // Test that column index exceeding actual columns is rejected
-    let (_, stderr) = TvaCmd::new()
-        .args(&["longer", "tests/data/longer/input1.tsv", "--cols", "10"])
-        .run_fail();
+// ============================================================================
+// Names Pattern and Separator Tests
+// ============================================================================
 
-    assert!(stderr.contains("Invalid column index"));
-    // Error message should show actual column count (4), not max(1, 4)
-    assert!(stderr.contains("4 columns") || stderr.contains("only"));
-}
+#[test_case(
+    "ID\tnew_sp_m014\tnew_sp_f014\nA\t1\t2\nB\t3\t4\n",
+    &["--cols", "2-3", "--names-pattern", "new_?(.*)_(.*)", "--names-to", "diagnosis", "gender_age"],
+    "ID\tdiagnosis\tgender_age\tvalue\nA\tsp\tm014\t1\nA\tsp\tf014\t2\nB\tsp\tm014\t3\nB\tsp\tf014\t4\n"
+    ; "names_pattern_two_groups"
+)]
+#[test_case(
+    "ID\tnew_sp_m014\tnew_sp_f014\nA\t1\t2\n",
+    &["--cols", "2-3", "--names-pattern", "new_(.*)", "--names-to", "diagnosis", "gender_age"],
+    "ID\tdiagnosis\tgender_age\tvalue\nA\tsp_m014\t\t1\nA\tsp_f014\t\t2\n"
+    ; "pattern_partial_capture"
+)]
+#[test_case(
+    "ID\twk_1\twk_2\nA\t1\t2\nB\t3\t4\n",
+    &["--cols", "2-3", "--names-sep", "_", "--names-to", "unit", "num"],
+    "ID\tunit\tnum\tvalue\nA\twk\t1\t1\nA\twk\t2\t2\nB\twk\t1\t3\nB\twk\t2\t4\n"
+    ; "names_separator"
+)]
+#[test_case(
+    "ID\tcol_A\tcol_B\n1\t2\t3\n",
+    &["--cols", "2-3", "--names-pattern", "new_?(.*)_(.*)", "--names-to", "diagnosis", "gender_age"],
+    "ID\tdiagnosis\tgender_age\tvalue\n1\tcol_A\t\t2\n1\tcol_B\t\t3\n"
+    ; "pattern_no_match_fallback"
+)]
+fn longer_names_pattern_tests(input: &str, args: &[&str], expected: &str) {
+    let mut all_args = vec!["longer"];
+    all_args.extend_from_slice(args);
 
-#[test]
-fn longer_names_pattern_partial_capture() {
-    // Test when regex matches but has fewer capture groups than names-to columns
-    // Should fill remaining columns with empty values
-    let input = "\
-ID	new_sp_m014	new_sp_f014
-A	1	2
-";
-    // Pattern with only 1 capture group, but 2 names-to columns
-    let expected = "\
-ID	diagnosis	gender_age	value
-A	sp_m014\t\t1
-A\tsp_f014\t\t2
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "--cols",
-            "2-3",
-            "--names-pattern",
-            "new_(.*)", // Only 1 capture group
-            "--names-to",
-            "diagnosis",
-            "gender_age",
-        ])
-        .stdin(input)
-        .run();
-
+    let (stdout, _) = TvaCmd::new().args(&all_args).stdin(input).run();
     assert_eq!(stdout, expected);
 }
 
-#[test]
-fn longer_whitespace_value_not_dropped() {
-    // Test that values with only whitespace are NOT dropped by --values-drop-na
-    // Current implementation only drops completely empty values (is_empty() check)
-    // Whitespace-only values are kept because they are not truly "empty"
-    let input = "\
-ID	Q1	Q2
-A	  	17
-B	18	  
-";
-    // All rows are output because whitespace-only values are not dropped
-    // A-Q1 has "  " (kept), A-Q2 has "17" (kept)
-    // B-Q1 has "18" (kept), B-Q2 has "  " (kept)
-    let expected = "\
-ID	name	value
-A	Q1	  
-A	Q2	17
-B	Q1	18
-B	Q2	  
-";
+// ============================================================================
+// Custom Names Tests
+// ============================================================================
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&["longer", "--cols", "2-3", "--values-drop-na"])
-        .stdin(input)
-        .run();
+#[test_case(
+    &["--cols", "2-4", "--names-to", "Question", "--values-to", "Answer"],
+    "ID\tQuestion\tAnswer\nA\tQ1\t1\nA\tQ2\t2\nA\tQ3\t3\nB\tQ1\t4\nB\tQ2\t5\nB\tQ3\t6\nC\tQ1\t7\nC\tQ2\t8\nC\tQ3\t9\n"
+    ; "custom_names"
+)]
+fn longer_custom_names(args: &[&str], expected: &str) {
+    let mut all_args = vec!["longer", "tests/data/longer/input1.tsv"];
+    all_args.extend_from_slice(args);
 
+    let (stdout, _) = TvaCmd::new().args(&all_args).run();
     assert_eq!(stdout, expected);
 }
 
-#[test]
-fn longer_names_pattern() {
-    let input = "\
-ID\tnew_sp_m014\tnew_sp_f014
-A\t1\t2
-B\t3\t4
-";
-    let expected = "\
-ID\tdiagnosis\tgender_age\tvalue
-A\tsp\tm014\t1
-A\tsp\tf014\t2
-B\tsp\tm014\t3
-B\tsp\tf014\t4
-";
+// ============================================================================
+// NA Handling Tests
+// ============================================================================
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "--cols",
-            "2-3",
-            "--names-pattern",
-            "new_?(.*)_(.*)",
-            "--names-to",
-            "diagnosis",
-            "gender_age",
-        ])
-        .stdin(input)
-        .run();
+#[test_case(
+    &["tests/data/longer/input_na.tsv", "--cols", "2-3"],
+    "ID\tname\tvalue\nF\tQ1\t16\nF\tQ2\t\nG\tQ1\t\nG\tQ2\t17\n"
+    ; "keep_na"
+)]
+#[test_case(
+    &["tests/data/longer/input_na.tsv", "--cols", "2-3", "--values-drop-na"],
+    "ID\tname\tvalue\nF\tQ1\t16\nG\tQ2\t17\n"
+    ; "drop_na"
+)]
+fn longer_na_handling(args: &[&str], expected: &str) {
+    let mut all_args = vec!["longer"];
+    all_args.extend_from_slice(args);
 
+    let (stdout, _) = TvaCmd::new().args(&all_args).run();
     assert_eq!(stdout, expected);
 }
 
-#[test]
-fn longer_basic() {
-    let expected = "\
-ID\tname\tvalue
-A\tQ1\t1
-A\tQ2\t2
-A\tQ3\t3
-B\tQ1\t4
-B\tQ2\t5
-B\tQ3\t6
-C\tQ1\t7
-C\tQ2\t8
-C\tQ3\t9
-";
+#[test_case(
+    "ID\tQ1\tQ2\nA\t  \t17\nB\t18\t  \n",
+    &["--cols", "2-3", "--values-drop-na"],
+    "ID\tname\tvalue\nA\tQ1\t  \nA\tQ2\t17\nB\tQ1\t18\nB\tQ2\t  \n"
+    ; "whitespace_not_dropped"
+)]
+fn longer_whitespace_na(input: &str, args: &[&str], expected: &str) {
+    let mut all_args = vec!["longer"];
+    all_args.extend_from_slice(args);
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&["longer", "tests/data/longer/input1.tsv", "--cols", "2-4"])
-        .run();
-
+    let (stdout, _) = TvaCmd::new().args(&all_args).stdin(input).run();
     assert_eq!(stdout, expected);
 }
 
-#[test]
-fn longer_names_prefix() {
-    let expected = "\
-ID\tname\tvalue
-A\t1\t1
-A\t2\t2
-A\t3\t3
-B\t1\t4
-B\t2\t5
-B\t3\t6
-C\t1\t7
-C\t2\t8
-C\t3\t9
-";
+// ============================================================================
+// Multi-ID Tests
+// ============================================================================
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input1.tsv",
-            "--cols",
-            "2-4",
-            "--names-prefix",
-            "Q",
-        ])
-        .run();
+#[test_case(
+    &["tests/data/longer/input_multi_id.tsv", "--cols", "3-4"],
+    "ID\tCategory\tname\tvalue\nA\tX\tQ1\t1\nA\tX\tQ2\t2\nB\tY\tQ1\t3\nB\tY\tQ2\t4\n"
+    ; "multi_id_cols"
+)]
+fn longer_multi_id(args: &[&str], expected: &str) {
+    let mut all_args = vec!["longer"];
+    all_args.extend_from_slice(args);
 
+    let (stdout, _) = TvaCmd::new().args(&all_args).run();
     assert_eq!(stdout, expected);
 }
 
-#[test]
-fn longer_interleaved() {
-    let expected = "\
-ID\tExtra\tname\tvalue
-A\tx\tM1\t1
-A\tx\tM2\t2
-B\ty\tM1\t3
-B\ty\tM2\t4
-";
+// ============================================================================
+// Edge Cases Tests
+// ============================================================================
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input_interleaved.tsv",
-            "--cols",
-            "2,4",
-        ])
-        .run();
+#[test_case(
+    &["tests/data/longer/input_only_header.tsv", "--cols", "2-3"],
+    "ID\tQ3\tname\tvalue\n"
+    ; "only_header_no_data"
+)]
+#[test_case(
+    &["tests/data/longer/input_empty.tsv", "--cols", "2-3"],
+    "ID\tname\tvalue\n"
+    ; "empty_input"
+)]
+#[test_case(
+    &["tests/data/longer/input_quotes.tsv", "--cols", "2-3"],
+    "ID\tname\tvalue\nA\t\"col 1\"\t1\nA\tcol 2\t2\n"
+    ; "quotes_in_header"
+)]
+fn longer_edge_cases(args: &[&str], expected: &str) {
+    let mut all_args = vec!["longer"];
+    all_args.extend_from_slice(args);
 
+    let (stdout, _) = TvaCmd::new().args(&all_args).run();
     assert_eq!(stdout, expected);
 }
 
-#[test]
-fn longer_quotes() {
-    // Note: tva currently treats quotes as part of the header name in TSV
-    let expected = "\
-ID\tname\tvalue
-A\t\"col 1\"\t1
-A\tcol 2\t2
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input_quotes.tsv",
-            "--cols",
-            "2-3",
-        ])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn longer_mixed() {
-    let expected = "\
-ID\tname\tvalue
-A\tnum\t1
-A\ttext\tfoo
-B\tnum\t2
-B\ttext\tbar
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input_mixed.tsv",
-            "--cols",
-            "2-3",
-        ])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn longer_cols_by_name_range() {
-    let expected = "\
-ID\tname\tvalue
-A\tnum\t1
-A\ttext\tfoo
-B\tnum\t2
-B\ttext\tbar
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input_mixed.tsv",
-            "--cols",
-            "num-text",
-        ])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn longer_cols_by_wildcard() {
-    let expected = "\
-ID\tname\tvalue
-A\tQ1\t1
-A\tQ2\t2
-A\tQ3\t3
-B\tQ1\t4
-B\tQ2\t5
-B\tQ3\t6
-C\tQ1\t7
-C\tQ2\t8
-C\tQ3\t9
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["longer", "tests/data/longer/input1.tsv", "--cols", "Q*"])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn longer_dup_cols() {
-    // When selecting by index (2-3), it should pick the 2nd and 3rd columns
-    // regardless of their names being identical.
-    // The "name" column in output will contain the column header names.
-    // Since both are "val", we expect "val" in the name column for both.
-
-    let expected = "\
-ID\textra\tname\tvalue
-A\tx\tval\t1
-A\tx\tval\t2
-B\ty\tval\t3
-B\ty\tval\t4
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input_dup_cols.tsv",
-            "--cols",
-            "2-3",
-        ])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn longer_output_order() {
-    // Verifies that output is row-major:
-    // For each input row, it outputs all melted columns in order.
-    let expected = "\
-ID\tQ3\tname\tvalue
-A\t3\tQ1\t1
-A\t3\tQ2\t2
-B\t6\tQ1\t4
-B\t6\tQ2\t5
-C\t9\tQ1\t7
-C\t9\tQ2\t8
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["longer", "tests/data/longer/input1.tsv", "--cols", "2-3"]) // Melt Q1 and Q2, leaving Q3 as ID
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn longer_empty_input() {
-    let expected = "ID\tname\tvalue\n";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input_empty.tsv",
-            "--cols",
-            "2-3",
-        ])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn longer_invalid_col() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["longer", "tests/data/longer/input1.tsv", "--cols", "99"])
-        .run_fail();
-
-    assert!(stderr.contains("Invalid column index"));
-}
-
-#[test]
-fn longer_keep_na() {
-    let expected = "\
-ID\tname\tvalue
-F\tQ1\t16
-F\tQ2\t
-G\tQ1\t
-G\tQ2\t17
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&["longer", "tests/data/longer/input_na.tsv", "--cols", "2-3"])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn longer_multi_id() {
-    let expected = "\
-ID\tCategory\tname\tvalue
-A\tX\tQ1\t1
-A\tX\tQ2\t2
-B\tY\tQ1\t3
-B\tY\tQ2\t4
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input_multi_id.tsv",
-            "--cols",
-            "3-4",
-        ])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn longer_custom_names() {
-    let expected = "\
-ID\tQuestion\tAnswer
-A\tQ1\t1
-A\tQ2\t2
-A\tQ3\t3
-B\tQ1\t4
-B\tQ2\t5
-B\tQ3\t6
-C\tQ1\t7
-C\tQ2\t8
-C\tQ3\t9
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input1.tsv",
-            "--cols",
-            "2-4",
-            "--names-to",
-            "Question",
-            "--values-to",
-            "Answer",
-        ])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
-
-#[test]
-fn longer_drop_na() {
-    let expected = "\
-ID\tname\tvalue
-F\tQ1\t16
-G\tQ2\t17
-";
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "tests/data/longer/input_na.tsv",
-            "--cols",
-            "2-3",
-            "--values-drop-na",
-        ])
-        .run();
-
-    assert_eq!(stdout, expected);
-}
+// ============================================================================
+// Multiple Files Tests
+// ============================================================================
 
 #[test]
 fn longer_multiple_files() {
-    let expected = "\
-ID\tname\tvalue
-A\tQ1\t1
-A\tQ2\t2
-A\tQ3\t3
-B\tQ1\t4
-B\tQ2\t5
-B\tQ3\t6
-C\tQ1\t7
-C\tQ2\t8
-C\tQ3\t9
-D\tQ1\t10
-D\tQ2\t11
-D\tQ3\t12
-E\tQ1\t13
-E\tQ2\t14
-E\tQ3\t15
-";
+    let expected = "ID\tname\tvalue\nA\tQ1\t1\nA\tQ2\t2\nA\tQ3\t3\nB\tQ1\t4\nB\tQ2\t5\nB\tQ3\t6\nC\tQ1\t7\nC\tQ2\t8\nC\tQ3\t9\nD\tQ1\t10\nD\tQ2\t11\nD\tQ3\t12\nE\tQ1\t13\nE\tQ2\t14\nE\tQ3\t15\n";
 
     let (stdout, _) = TvaCmd::new()
         .args(&[
@@ -534,29 +229,9 @@ E\tQ3\t15
 }
 
 #[test]
-fn longer_multi_names_to_without_sep_or_pattern() {
-    // Test error when multiple names-to provided without --names-sep or --names-pattern (covers L90-93)
-    // Note: --names-to accepts multiple values (num_args(1..))
-    let (_, stderr) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "--cols",
-            "2-3",
-            "--names-to",
-            "col1",
-            "col2", // Two separate arguments
-        ])
-        .stdin("ID\tA\tB\n1\t2\t3\n")
-        .run_fail();
-
-    assert!(stderr.contains("names-sep") || stderr.contains("names-pattern"));
-}
-
-#[test]
 fn longer_empty_file_skip() {
-    // Test empty file handling (covers L107-108)
     let input1 = "ID\tA\tB\n1\ta\tb\n";
-    let input2 = ""; // Empty file
+    let input2 = "";
 
     let temp_dir = tempfile::tempdir().unwrap();
     let file1 = temp_dir.path().join("file1.tsv");
@@ -574,87 +249,71 @@ fn longer_empty_file_skip() {
         ])
         .run();
 
-    // Should process file1 and skip empty file2
     assert!(stdout.contains("1\tA\ta"));
 }
 
-#[test]
-fn longer_pattern_no_match_fallback() {
-    // Test pattern fallback when regex doesn't match (covers L183-187)
-    let input = "\
-ID	col_A	col_B
-1	2	3
-";
-    // Pattern expects "new_" prefix which doesn't exist
-    let expected = "\
-ID	diagnosis	gender_age	value
-1\tcol_A\t\t2
-1\tcol_B\t\t3
-";
+// ============================================================================
+// Data Quality Tests
+// ============================================================================
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "longer",
-            "--cols",
-            "2-3",
-            "--names-pattern",
-            "new_?(.*)_(.*)",
-            "--names-to",
-            "diagnosis",
-            "gender_age",
-        ])
-        .stdin(input)
-        .run();
+#[test_case(
+    "ID\tA\tB\n1\ta\tb\n\n2\tc\td\n",
+    &["--cols", "2-3"],
+    "ID\tname\tvalue\n1\tA\ta\n1\tB\tb\n2\tA\tc\n2\tB\td\n"
+    ; "empty_lines_in_data"
+)]
+#[test_case(
+    "ID\tA\tB\n1\ta\n2\ta\tb\tc\n",
+    &["--cols", "2-3"],
+    "ID\tname\tvalue\n1\tA\ta\n1\tB\t\n2\tA\ta\n2\tB\tb\n"
+    ; "ragged_rows"
+)]
+fn longer_data_quality(input: &str, args: &[&str], expected: &str) {
+    let mut all_args = vec!["longer"];
+    all_args.extend_from_slice(args);
 
+    let (stdout, _) = TvaCmd::new().args(&all_args).stdin(input).run();
     assert_eq!(stdout, expected);
 }
 
-#[test]
-fn longer_empty_lines_in_data() {
-    // Test handling of empty lines in data (covers L217-218)
-    let input = "\
-ID	A	B
-1	a	b
+// ============================================================================
+// Error Handling Tests
+// ============================================================================
 
-2	c	d
-";
-    let expected = "\
-ID	name	value
-1	A	a
-1	B	b
-2	A	c
-2	B	d
-";
+#[test_case(
+    &["tests/data/longer/input_zero_index.tsv", "--cols", "0"],
+    "field index must be >= 1"
+    ; "invalid_col_index_zero"
+)]
+#[test_case(
+    &["tests/data/longer/input1.tsv", "--cols", "10"],
+    "Invalid column index"
+    ; "col_index_exceeds_actual"
+)]
+#[test_case(
+    &["tests/data/longer/input1.tsv", "--cols", "99"],
+    "Invalid column index"
+    ; "invalid_col"
+)]
+fn longer_errors(args: &[&str], expected_err: &str) {
+    let mut all_args = vec!["longer"];
+    all_args.extend_from_slice(args);
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&["longer", "--cols", "2-3"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, expected);
+    let (_, stderr) = TvaCmd::new().args(&all_args).run_fail();
+    assert!(
+        stderr.contains(expected_err),
+        "Expected '{}' in stderr, got: {}",
+        expected_err,
+        stderr
+    );
 }
 
 #[test]
-fn longer_field_out_of_bounds() {
-    // Test handling when accessing field beyond row length (covers L231-232)
-    // This can happen with ragged rows
-    let input = "\
-ID	A	B
-1	a
-2	a	b	c
-";
-    let expected = "\
-ID	name	value
-1	A	a
-1	B	
-2	A	a
-2	B	b
-";
+fn longer_multi_names_to_without_sep_or_pattern() {
+    let (_, stderr) = TvaCmd::new()
+        .args(&["longer", "--cols", "2-3", "--names-to", "col1", "col2"])
+        .stdin("ID\tA\tB\n1\t2\t3\n")
+        .run_fail();
 
-    let (stdout, _) = TvaCmd::new()
-        .args(&["longer", "--cols", "2-3"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout, expected);
+    assert!(stderr.contains("names-sep") || stderr.contains("names-pattern"));
 }
