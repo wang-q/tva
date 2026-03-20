@@ -6,6 +6,7 @@ use crate::libs::io::map_io_err;
 
 use crate::libs::tsv::fields::Header;
 use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::record::{Row, TsvRow};
 
 pub fn make_subcommand() -> Command {
     Command::new("bin")
@@ -140,37 +141,17 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             ));
         }
 
-        tsv_reader.for_each_line(|record| {
+        tsv_reader.for_each_row(b'\t', |row: &TsvRow| {
             // SAFETY: field_idx is always Some here (validated earlier)
             let idx = field_idx.unwrap();
+            let num_fields = row.field_count();
 
             if new_name.is_some() {
-                writer.write_all(record)?;
+                writer.write_all(row.line)?;
                 writer.write_all(b"\t")?;
 
-                let mut iter = memchr::memchr_iter(b'\t', record);
-                let mut field_bytes = None;
-
-                if idx == 0 {
-                    let end = iter.next().unwrap_or(record.len());
-                    field_bytes = Some(&record[0..end]);
-                } else {
-                    let mut skipped = 0;
-                    for _ in 0..idx - 1 {
-                        // SAFETY: iter always has enough elements (record has at least idx+1 fields)
-                        iter.next().unwrap();
-                        skipped += 1;
-                    }
-                    if skipped == idx - 1 {
-                        if let Some(start_pos) = iter.next() {
-                            let start = start_pos + 1;
-                            let end = iter.next().unwrap_or(record.len());
-                            field_bytes = Some(&record[start..end]);
-                        }
-                    }
-                }
-
-                if let Some(bytes) = field_bytes {
+                // Get field at idx (0-based)
+                if let Some(bytes) = row.get_bytes(idx + 1) {
                     if let Ok(s) = std::str::from_utf8(bytes) {
                         if let Ok(val) = s.parse::<f64>() {
                             let binned = (val - min) / width;
@@ -182,22 +163,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
                 writer.write_all(b"\n")?;
             } else {
-                let mut last_pos = 0;
-                let mut current_col = 0;
-                let mut iter = memchr::memchr_iter(b'\t', record);
-
-                loop {
-                    let (end_pos, is_last) = match iter.next() {
-                        Some(pos) => (pos, false),
-                        None => (record.len(), true),
-                    };
-
-                    if current_col > 0 {
+                for col_idx in 0..num_fields {
+                    if col_idx > 0 {
                         writer.write_all(b"\t")?;
                     }
 
-                    if current_col == idx {
-                        let bytes = &record[last_pos..end_pos];
+                    let bytes = row.get_bytes(col_idx + 1).unwrap_or(b"");
+
+                    if col_idx == idx {
                         let mut written = false;
                         if let Ok(s) = std::str::from_utf8(bytes) {
                             if let Ok(val) = s.parse::<f64>() {
@@ -212,14 +185,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             writer.write_all(bytes)?;
                         }
                     } else {
-                        writer.write_all(&record[last_pos..end_pos])?;
+                        writer.write_all(bytes)?;
                     }
-
-                    if is_last {
-                        break;
-                    }
-                    last_pos = end_pos + 1;
-                    current_col += 1;
                 }
                 writer.write_all(b"\n")?;
             }

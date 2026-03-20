@@ -3,6 +3,7 @@ use crate::libs::tsv::fields;
 use crate::libs::tsv::fields::Header;
 use crate::libs::tsv::header::HeaderConfig;
 use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::record::{Row, TsvRow};
 use clap::*;
 use regex::Regex;
 use std::collections::HashSet;
@@ -246,35 +247,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         };
         let id_indices_ref = id_indices.as_ref().unwrap();
         let name_bytes = melt_name_bytes.as_ref().unwrap();
-        let mut field_buf: Vec<usize> = Vec::with_capacity(64);
 
         // Process remaining rows
-        reader.for_each_line(|line| {
-            if line.is_empty() {
+        reader.for_each_row(b'\t', |row: &TsvRow| {
+            if row.line.is_empty() {
                 return Ok(());
             }
 
-            // Split line into fields (store indices in buffer)
-            field_buf.clear();
-            for pos in memchr::memchr_iter(b'\t', line) {
-                field_buf.push(pos);
-            }
-            let ends = &field_buf;
-            let len = ends.len() + 1;
-
-            // Helper to get field bytes
-            let get_field = |idx: usize| -> &[u8] {
-                if idx >= len {
-                    return b"";
-                }
-                let end = if idx < ends.len() {
-                    ends[idx]
-                } else {
-                    line.len()
-                };
-                let start = if idx == 0 { 0 } else { ends[idx - 1] + 1 };
-                &line[start..end]
-            };
+            // Helper to get field bytes using TsvRow
+            let get_field =
+                |idx: usize| -> &[u8] { row.get_bytes(idx + 1).unwrap_or(b"") };
 
             // Iterate over melt columns
             for (k, &melt_idx) in melt_indices_ref.iter().enumerate() {

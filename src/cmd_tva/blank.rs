@@ -1,6 +1,7 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::tsv::fields::{parse_field_list_with_header_preserve_order, Header};
 use crate::libs::tsv::reader::TsvReader;
+use crate::libs::tsv::record::{Row, TsvRow};
 use clap::*;
 use std::collections::HashMap;
 use std::io::Write;
@@ -150,48 +151,38 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        reader.for_each_line(|record| {
-            let mut first = true;
-            let mut current_col = 0usize;
-            let mut last_pos = 0usize;
-            for (pos, &byte) in record
-                .iter()
-                .enumerate()
-                .chain(std::iter::once((record.len(), &0u8)))
-            {
-                if byte == b'\t' || pos == record.len() {
-                    let cell_bytes = &record[last_pos..pos];
-                    if !first {
-                        writer.write_all(b"\t")?;
-                    }
-                    first = false;
+        reader.for_each_row(b'\t', |row: &TsvRow| {
+            let num_fields = row.field_count();
+            for col_idx in 0..num_fields {
+                if col_idx > 0 {
+                    writer.write_all(b"\t")?;
+                }
 
-                    if let Some(replacement) = col_replacements.get(&current_col) {
-                        // This column is subject to blanking
-                        let should_blank =
-                            if let Some(prev_val) = previous_values.get(&current_col) {
-                                if ignore_case {
-                                    prev_val.eq_ignore_ascii_case(cell_bytes)
-                                } else {
-                                    prev_val.as_slice() == cell_bytes
-                                }
+                let cell_bytes = row.get_bytes(col_idx + 1).unwrap_or(b"");
+
+                if let Some(replacement) = col_replacements.get(&col_idx) {
+                    // This column is subject to blanking
+                    let should_blank =
+                        if let Some(prev_val) = previous_values.get(&col_idx) {
+                            if ignore_case {
+                                prev_val.eq_ignore_ascii_case(cell_bytes)
                             } else {
-                                false // First row of data, never blank
-                            };
-
-                        if should_blank {
-                            writer.write_all(replacement)?;
+                                prev_val.as_slice() == cell_bytes
+                            }
                         } else {
-                            writer.write_all(cell_bytes)?;
-                            // Update previous value
-                            previous_values.insert(current_col, cell_bytes.to_vec());
-                        }
+                            false // First row of data, never blank
+                        };
+
+                    if should_blank {
+                        writer.write_all(replacement)?;
                     } else {
-                        // Not a blanking column, just write through
                         writer.write_all(cell_bytes)?;
+                        // Update previous value
+                        previous_values.insert(col_idx, cell_bytes.to_vec());
                     }
-                    current_col += 1;
-                    last_pos = pos + 1;
+                } else {
+                    // Not a blanking column, just write through
+                    writer.write_all(cell_bytes)?;
                 }
             }
             writer.write_all(b"\n")?;
