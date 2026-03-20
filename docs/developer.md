@@ -138,9 +138,9 @@ cargo build
 
 以下函数尚未实现，可参考 `xan` 添加：
 
-| 函数类别 | 函数名 | 功能 | 优先级 |
-|:--------|:------|:-----|:------|
-| **文件路径** | `abspath`/`dirname`/`basename` | 路径处理 | 低 |
+| 函数类别     | 函数名                            | 功能   | 优先级 |
+|:---------|:-------------------------------|:-----|:----|
+| **文件路径** | `abspath`/`dirname`/`basename` | 路径处理 | 低   |
 
 ## tva 与 xan 命令对比分析
 
@@ -182,7 +182,7 @@ Bar Charts）。
     * **数据模型**: 期望输入包含 `field` (可选), `value` (标签), `count` (数值) 三列。
     * **渲染**: 手动计算每个条形的宽度，使用 `Scale` 进行线性或对数缩放，并处理颜色（Rainbow/Category/Stripes）。
     * **特色功能**: 支持日期补全 (`--dates`)，自动填充缺失的日期并设为 0；支持间隙压缩 (
-  `--compress-gaps`)，隐藏连续的 0 值。
+      `--compress-gaps`)，隐藏连续的 0 值。
 
 ## Arc 优化基准测试结果
 
@@ -193,17 +193,17 @@ Bar Charts）。
 
 **关键发现**:
 
-| 场景 | 当前实现 | Arc 优化 | 加速比 | 结论 |
-|:---:|:---:|:---:|:---:|:---:|
-| String 克隆 | 407 µs | 35 µs | **11.6x** | ✅ 显著提升 |
-| List 克隆 | 399 µs | 36 µs | **11.1x** | ✅ 显著提升 |
-| `take()` 函数 | 48.3 ms | 1.38 ms | **35x** | ✅ 显著提升 |
-| `reverse()` 函数 | 47.2 ms | 1.35 ms | **35x** | ✅ 显著提升 |
-| `slice()` 函数 | 2.67 ms | 2.67 ms | **1x** | ⚠️ 持平 |
-| `sort()` 函数 | 1.33 ms | 64.9 ms | **0.02x** | ❌ 显著下降 |
-| `unique()` 函数 | 3.97 ms | 426 ms | **0.009x** | ❌ 显著下降 |
-| `filter()` 函数 | 1.08 ms | 30.9 ms | **0.035x** | ❌ 显著下降 |
-| `map()` 函数 | 1.49 ms | 77.7 ms | **0.019x** | ❌ 显著下降 |
+|       场景       |  当前实现   | Arc 优化  |    加速比     |   结论   |
+|:--------------:|:-------:|:-------:|:----------:|:------:|
+|   String 克隆    | 407 µs  |  35 µs  | **11.6x**  | ✅ 显著提升 |
+|    List 克隆     | 399 µs  |  36 µs  | **11.1x**  | ✅ 显著提升 |
+|  `take()` 函数   | 48.3 ms | 1.38 ms |  **35x**   | ✅ 显著提升 |
+| `reverse()` 函数 | 47.2 ms | 1.35 ms |  **35x**   | ✅ 显著提升 |
+|  `slice()` 函数  | 2.67 ms | 2.67 ms |   **1x**   | ⚠️ 持平  |
+|  `sort()` 函数   | 1.33 ms | 64.9 ms | **0.02x**  | ❌ 显著下降 |
+| `unique()` 函数  | 3.97 ms | 426 ms  | **0.009x** | ❌ 显著下降 |
+| `filter()` 函数  | 1.08 ms | 30.9 ms | **0.035x** | ❌ 显著下降 |
+|   `map()` 函数   | 1.49 ms | 77.7 ms | **0.019x** | ❌ 显著下降 |
 
 **分析**:
 
@@ -216,27 +216,28 @@ Bar Charts）。
 
 **字符串操作基准测试** (`benches/string_arc.rs`):
 
-| 函数 | 当前实现 | Arc 优化 | 加速比 | 结论 |
-|:---:|:---:|:---:|:---:|:---:|
-| String 克隆 | 407 µs | 35 µs | **11.6x** | ✅ 显著提升 |
-| `split()` | 47.2 ms | 1.35 ms | **35x** | ✅ 显著提升 |
-| `replace()` | 114 µs | 96.6 µs | **1.2x** | ⚠️ 轻微提升 |
-| `concat()` | 4.01 ms | 2.58 ms | **1.6x** | ✅ 一定提升 |
-| `upper()` | 26.2 µs | 22.5 µs | **1.2x** | ⚠️ 轻微提升 |
+|      函数      |  当前实现   | Arc 优化  |    加速比    |   结论    |
+|:------------:|:-------:|:-------:|:---------:|:-------:|
+|  String 克隆   | 407 µs  |  35 µs  | **11.6x** | ✅ 显著提升  |
+|  `split()`   | 47.2 ms | 1.35 ms |  **35x**  | ✅ 显著提升  |
+| `replace()`  | 114 µs  | 96.6 µs | **1.2x**  | ⚠️ 轻微提升 |
+|  `concat()`  | 4.01 ms | 2.58 ms | **1.6x**  | ✅ 一定提升  |
+|  `upper()`   | 26.2 µs | 22.5 µs | **1.2x**  | ⚠️ 轻微提升 |
 | `take_str()` | 1.66 ms | 1.61 ms | **1.03x** | ⚠️ 基本持平 |
-| `substr()` | 1.73 ms | 1.94 ms | **0.89x** | ⚠️ 轻微下降 |
+|  `substr()`  | 1.73 ms | 1.94 ms | **0.89x** | ⚠️ 轻微下降 |
 
 * **字符串操作分析**:
-  * `split()` 受益于 Arc，因为需要频繁克隆参数
-  * `replace()`, `upper()` 主要开销在字符串操作本身，Arc 优势不明显
-  * `take_str()`, `substr()` 主要开销在新字符串分配，Arc 优势被抵消
+    * `split()` 受益于 Arc，因为需要频繁克隆参数
+    * `replace()`, `upper()` 主要开销在字符串操作本身，Arc 优势不明显
+    * `take_str()`, `substr()` 主要开销在新字符串分配，Arc 优势被抵消
 
 **对 `tva` 的启示**:
 
 * 如果 `expr` 命令主要使用 `take`, `first`, `last`, `nth` 等访问操作，`Arc` 优化是有价值的。
 * 如果频繁使用 `sort`, `filter`, `map` 等转换操作，当前实现可能更合适。
 * 字符串操作：`split()` 受益明显，其他操作收益有限。
-* **最终建议**: 考虑到 `tva` 的核心是 TSV 文本处理，当前 `Value` 类型设计已足够高效，暂不引入 `Arc` 增加复杂度。
+* **最终建议**: 考虑到 `tva` 的核心是 TSV 文本处理，当前 `Value` 类型设计已足够高效，暂不引入 `Arc`
+  增加复杂度。
 
 ## 代码结构优化建议
 
@@ -245,6 +246,7 @@ Bar Charts）。
 ### 1. TsvRow 迭代器支持
 
 **现状**: 命令中常见模式：
+
 ```rust
 for col_idx in 0..row.field_count() {
     let bytes = row.get_bytes(col_idx + 1).unwrap_or(b"");
@@ -253,6 +255,7 @@ for col_idx in 0..row.field_count() {
 ```
 
 **建议**: 为 `TsvRow` 添加字段迭代器：
+
 ```rust
 impl TsvRow {
     pub fn iter_fields(&self) -> impl Iterator<Item = &[u8]> + '_ {
@@ -260,81 +263,3 @@ impl TsvRow {
     }
 }
 ```
-
-### 2. Header 处理改进规划 (已完成)
-
-**现状总结**：
-
-Header 处理改进已全部完成。现在的架构清晰分为三个层次：
-
-1. **`HeaderConfig`** - CLI 参数层，配置 header 检测模式
-2. **`HeaderHandler`** - 流式处理层，用于逐行处理 TSV 数据时捕获 header
-3. **`Header`** - 统一 header 结构，包含字段解析能力
-
-**核心数据结构** (`libs/tsv/header.rs`)：
-
-```rust
-/// 统一 header 结构，包含字段解析能力
-pub struct Header {
-    pub lines: Vec<Vec<u8>>,           // 所有 header 行（hash 行、LinesN 行等）
-    pub column_names: Option<Vec<u8>>, // 列名行
-    delimiter: char,
-    index_cache: Option<HashMap<String, usize>>, // 字段名到索引的缓存
-}
-
-impl Header {
-    pub fn from_info(info: HeaderInfo, delimiter: char) -> Self
-    pub fn from_column_names(column_names: Vec<u8>, delimiter: char) -> Self
-    pub fn get_index(&self, name: &str) -> Option<usize>  // 0-based
-    pub fn column_names_list(&self) -> Option<Vec<String>>
-    pub fn column_count(&self) -> Option<usize>
-}
-
-/// 流式 header 处理器
-pub struct HeaderHandler {
-    config: HeaderConfig,
-    captured_header: Option<Vec<u8>>,
-    is_first_file: bool,
-    lines_n_remaining: usize,
-}
-
-impl HeaderHandler {
-    pub fn new(config: HeaderConfig) -> Self
-    pub fn process_first_line(&mut self, line: &[u8]) -> Result<bool>  // true=是header
-    pub fn end_of_file(&mut self)
-    pub fn header(&self) -> Option<&[u8]>
-}
-```
-
-**公共函数**：
-
-```rust
-/// 写入标准 header 格式
-pub fn write_header<W: Write>(
-    writer: &mut W,
-    header: &Header,
-    suffix: Option<&[u8]>,
-) -> io::Result<()>
-
-/// 构建后缀（如 equiv 模式添加的列）
-pub fn build_suffix(items: &[impl AsRef<str>], delimiter: u8) -> Vec<u8>
-```
-
-**`FieldResolver` 整合** (`libs/tsv/fields.rs`)：
-
-```rust
-pub struct FieldResolver {
-    header: Option<Header>,  // 统一使用 header.rs 的 Header
-}
-```
-
-**迁移完成的命令**：
-- `bin.rs`, `check.rs`, `nl.rs`, `reverse.rs`
-- `uniq.rs`, `join.rs`, `stats.rs`, `sort.rs`
-- `slice.rs`, `blank.rs`, `fill.rs`, `wider.rs`
-
-**架构说明**：
-- `HeaderConfig` - 保持不变，作为 CLI 到 Reader 的桥梁
-- `HeaderInfo` - `TsvReader` 的内部类型，命令统一使用 `Header`
-- `HeaderHandler` - 专用于流式处理场景（如 `nl`, `check` 等命令）
-- `Header` - 统一的数据结构，同时用于字段解析和 header 写入
