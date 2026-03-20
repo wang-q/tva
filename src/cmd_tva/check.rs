@@ -2,6 +2,7 @@ use clap::*;
 
 use crate::libs::cli::{build_header_config, header_args};
 use crate::libs::io::map_io_err;
+use crate::libs::tsv::record::TsvRow;
 
 pub fn make_subcommand() -> Command {
     Command::new("check")
@@ -61,21 +62,17 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        reader.for_each_line(|record| {
+        reader.for_each_row(b'\t', |row: &TsvRow| {
             total_lines += 1;
             total_data_lines += 1;
 
-            let fields = if record.is_empty() {
-                0
-            } else {
-                memchr::memchr_iter(b'\t', record).count() + 1
-            };
+            let fields = row.field_count();
 
             if let Some(exp) = expected_fields {
                 if fields != exp {
                     eprintln!("line {} ({} fields):", total_lines, fields);
                     // Lossy conversion for error display is fine
-                    eprintln!("  {}", String::from_utf8_lossy(record));
+                    eprintln!("  {}", String::from_utf8_lossy(row.line));
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::InvalidData,
                         format!(

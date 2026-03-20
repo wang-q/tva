@@ -29,6 +29,20 @@ pub struct TsvRow<'a, 'b> {
     pub ends: &'b [usize],
 }
 
+impl<'a, 'b> TsvRow<'a, 'b> {
+    /// Returns the number of fields in this row.
+    ///
+    /// An empty line has 0 fields. A non-empty line has at least 1 field.
+    #[inline]
+    pub fn field_count(&self) -> usize {
+        if self.line.is_empty() {
+            0
+        } else {
+            self.ends.len()
+        }
+    }
+}
+
 impl<'a, 'b> Row for TsvRow<'a, 'b> {
     fn get_bytes(&self, idx: usize) -> Option<&[u8]> {
         if idx == 0 {
