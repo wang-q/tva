@@ -145,15 +145,6 @@ fn parse_append_field_spec(
     }
 }
 
-/// Count fields in a line.
-fn count_fields(line: &[u8], delimiter: u8) -> usize {
-    if line.is_empty() {
-        0
-    } else {
-        line.iter().filter(|&&b| b == delimiter).count() + 1
-    }
-}
-
 /// Extracts values to append from a TsvRow.
 /// Values are stored as a single byte string with delimiters to avoid Vec<String> overhead.
 fn extract_values(
@@ -473,15 +464,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .expect("data_key_extractor should be initialized");
 
         // Process data records
-        reader.for_each_line(|line| {
-            if line.is_empty() {
+        reader.for_each_row(delimiter, |row: &TsvRow| {
+            if row.line.is_empty() {
                 return Ok(());
             }
 
-            let key = match extractor.extract(line, delimiter) {
+            let key = match extractor.extract_from_row(row, delimiter) {
                 Ok(k) => k,
                 Err(idx) => {
-                    let n = count_fields(line, delimiter);
+                    let n = row.ends.len();
                     eprintln!(
                         "tva join: line has {} fields, but key index {} is out of range",
                         n, idx
@@ -494,14 +485,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             if exclude {
                 if matched.is_none() {
-                    writer.write_all(line)?;
+                    writer.write_all(row.line)?;
                     writer.write_all(b"\n")?;
                     if line_buffered {
                         writer.flush()?;
                     }
                 }
             } else if let Some(values) = matched {
-                writer.write_all(line)?;
+                writer.write_all(row.line)?;
                 if !values.is_empty() {
                     writer.write_all(&[delimiter])?;
                     writer.write_all(values)?;
@@ -511,7 +502,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     writer.flush()?;
                 }
             } else if let Some(ref fill) = write_all_fill {
-                writer.write_all(line)?;
+                writer.write_all(row.line)?;
                 writer.write_all(fill)?;
                 writer.write_all(b"\n")?;
                 if line_buffered {

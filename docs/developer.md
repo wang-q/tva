@@ -388,16 +388,40 @@ src/libs/tsv/simd/
 
 **遗留 API**: `TsvRecord::parse_line()` 仍保留用于测试和特殊场景
 
+#### 阶段 4: 其他命令迁移 ✅ 已完成
+
+**目标**: 将更多命令迁移到 `for_each_row` 以消除二次解析。
+
+**已完成工作**:
+1. `src/cmd_tva/check.rs`: 使用 `for_each_row` + `TsvRow.field_count()`
+2. `src/cmd_tva/fill.rs`: 使用 `for_each_row` + `TsvRow.get_bytes()`
+3. `src/cmd_tva/blank.rs`: 使用 `for_each_row` + `TsvRow.get_bytes()`
+4. `src/cmd_tva/bin.rs`: 使用 `for_each_row` + `TsvRow.get_bytes()`
+5. `src/cmd_tva/longer.rs`: 使用 `for_each_row` + `TsvRow.get_bytes()`
+6. `src/libs/filter/runner.rs`: 使用 `for_each_row` + `TsvRow`（替代手动构建）
+
+**新增 API**: `TsvRow.field_count()` 方法，正确处理空行（返回 0 字段）
+
 #### 遗留 API 说明
 
-以下 API 仍使用二次解析，仅作为兼容保留：
-- `key.rs`: `extract()` 方法 - 内部构建 `TsvRow` 时扫描分隔符
-- `record.rs`: `parse_line()` 方法 - 扫描分隔符解析字段
+以下命令仍使用 `for_each_line`，但不需要迁移（只处理整行，不解析字段）：
+- `nl.rs` - 只加行号
+- `keep_header.rs` - 复制行到子进程
+- `append.rs` - 追加文件
+- `slice.rs` - 按行号切片
+- `split.rs` - 按行数分割文件
+- `to/md.rs` - 转换为 markdown
+- `uniq.rs` - 整行哈希去重
+
+以下命令仍使用二次解析，需要未来迁移：
+- `expr.rs` - 使用 `record.split()` 解析所有字段，需要修改 EvalContext API
+- `sample.rs` - Sampler trait 接收 `&[u8]`，Weighted/Distinct 采样器内部二次解析
 
 ### 实施建议
 
 1. **阶段 1 已完成**: `select` 和 `join` 已优化，收益约 10%
 2. **阶段 2 已完成**: `split.rs` 已删除，`TsvSplitter` 已移除
 3. **阶段 3 已完成**: `transpose`、`sort`、`plot/data` 已迁移到 `for_each_row`
-4. **所有主要命令已优化**: 核心 TSV 处理命令均使用单层扫描
-5. **保持向后兼容**: `TsvRecord::parse_line()` 仍保留用于测试和特殊场景
+4. **阶段 4 已完成**: `check`、`fill`、`blank`、`bin`、`longer` 已迁移到 `for_each_row`
+5. **核心命令已优化**: 主要 TSV 处理命令均使用单层扫描
+6. **保持向后兼容**: `TsvRecord::parse_line()` 仍保留用于测试和特殊场景
