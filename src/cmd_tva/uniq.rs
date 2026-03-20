@@ -319,10 +319,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         }
 
         tsv_reader
-            .for_each_line(|line| {
+            .for_each_row(delimiter as u8, |row| {
                 let subject = {
                     let key_res =
-                        extractor.as_mut().unwrap().extract(line, delimiter as u8);
+                        extractor.as_mut().unwrap().extract_from_row(row, delimiter as u8);
 
                     match key_res {
                         Ok(parsed_key) => rapidhash(parsed_key.as_ref()),
@@ -361,7 +361,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 }
 
                 if is_output {
-                    writer.write_all(line)?;
+                    writer.write_all(row.line)?;
                     if equiv_mode {
                         writer.write_all(&[delimiter as u8])?;
                         writer.write_all(entry.equiv_id.to_string().as_bytes())?;

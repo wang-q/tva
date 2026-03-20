@@ -435,26 +435,26 @@ fn split_randomly(
             crate::libs::tsv::reader::TsvReader::with_capacity(input.reader, 512 * 1024);
         let mut is_first_line_of_file = true;
 
-        reader.for_each_line(|record| {
+        reader.for_each_row(delimiter, |row| {
             // Treat empty lines as data (will be assigned to a file).
-            if !record.is_empty()
+            if !row.line.is_empty()
                 && (header_in_out || header_in_only)
                 && is_first_line_of_file
             {
                 is_first_line_of_file = false;
                 if !global_header_captured {
-                    header_line = Some(record.to_vec());
+                    header_line = Some(row.line.to_vec());
                     global_header_captured = true;
                 }
                 return Ok(());
             }
 
-            if !record.is_empty() {
+            if !row.line.is_empty() {
                 is_first_line_of_file = false;
             }
 
             let idx0 = if let Some(extractor) = key_extractor.as_mut() {
-                let key = extractor.extract(record, delimiter).unwrap_or_else(|_| {
+                let key = extractor.extract_from_row(row, delimiter).unwrap_or_else(|_| {
                     crate::libs::tsv::key::ParsedKey::Ref(b"")
                 });
                 (rapidhash(key.as_ref()) % (num_files as u64)) as usize
@@ -493,7 +493,7 @@ fn split_randomly(
                 )
                 .map_err(|e| std::io::Error::other(e))?;
 
-            writer.write_all(record)?;
+            writer.write_all(row.line)?;
             writer.write_all(b"\n")?;
             Ok(())
         })?;
