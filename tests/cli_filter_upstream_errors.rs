@@ -84,6 +84,7 @@ fn upstream_error_invalid_field_abc() {
         stderr.contains("Field `abc` not found in header")
             || stderr.contains("invalid")
             || stderr.contains("unknown field name")
+            || stderr.contains("Field not found in file header")
     );
 }
 
@@ -132,6 +133,7 @@ fn upstream_error_ff_le_invalid_values() {
         stderr.contains("invalid")
             || stderr.contains("parse")
             || stderr.contains("unknown field name")
+            || stderr.contains("Field not found in file header")
     );
 }
 
@@ -150,6 +152,7 @@ fn upstream_error_ff_le_missing_field() {
         stderr.contains("invalid")
             || stderr.contains("missing")
             || stderr.contains("mismatched field list")
+            || stderr.contains("Field not found in file header")
     );
 }
 

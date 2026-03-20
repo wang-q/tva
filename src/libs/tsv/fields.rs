@@ -247,6 +247,11 @@ fn unescape_name_pattern(token: &str) -> (String, bool) {
     (out, has_unescaped_star)
 }
 
+/// Parses a field list specification with optional header context.
+///
+/// **Deprecated**: Use [`FieldResolver`] instead for new code.
+/// This function is kept for internal use and backward compatibility.
+#[deprecated(since = "0.4.0", note = "Use FieldResolver instead")]
 pub fn parse_field_list_with_header(
     spec: &str,
     header: Option<&Header>,
@@ -347,6 +352,11 @@ pub fn parse_field_list_with_header(
     Ok(indices)
 }
 
+/// Parses a field list specification preserving order and duplicates.
+///
+/// **Deprecated**: Use [`FieldResolver`] instead for new code.
+/// This function is kept for internal use and backward compatibility.
+#[deprecated(since = "0.4.0", note = "Use FieldResolver instead")]
 pub fn parse_field_list_with_header_preserve_order(
     spec: &str,
     header: Option<&Header>,
@@ -576,6 +586,10 @@ impl Header {
 /// Resolves field specifications using column names from raw bytes.
 /// This is a convenience function that combines Header creation and field parsing.
 /// Returns 1-based indices (suitable for use with TsvRow::get_bytes).
+///
+/// **Deprecated**: Use [`FieldResolver`] instead for new code.
+/// This function is kept for internal use and backward compatibility.
+#[deprecated(since = "0.4.0", note = "Use FieldResolver instead")]
 pub fn resolve_fields_from_header(
     spec: &str,
     column_names_bytes: &[u8],

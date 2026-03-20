@@ -1,5 +1,6 @@
 use super::config::{FilterSpecConfig, NumericOp, NumericProp};
 use super::engine::TestKind;
+use crate::libs::tsv::fields::FieldResolver;
 
 pub fn split_spec(spec: &str) -> Result<(String, String), String> {
     if let Some(pos) = spec.rfind(':') {
@@ -16,44 +17,46 @@ pub fn split_spec(spec: &str) -> Result<(String, String), String> {
     }
 }
 
+/// Helper function to resolve field specs using FieldResolver
+fn resolve_fields(
+    spec: &str,
+    header_bytes: Option<&[u8]>,
+    delimiter: char,
+) -> Result<Vec<usize>, String> {
+    let resolver = FieldResolver::new(header_bytes.map(|b| b.to_vec()), delimiter);
+    resolver.resolve(spec)
+}
+
 pub fn build_tests(
-    header: Option<&crate::libs::tsv::fields::Header>,
+    header_bytes: Option<&[u8]>,
     delimiter: char,
     config: FilterSpecConfig,
 ) -> Result<Vec<TestKind>, String> {
     let mut tests = Vec::new();
 
     for spec in config.empty_specs {
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            spec, header, delimiter,
-        )?;
+        let idxs = resolve_fields(spec, header_bytes, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::Empty { fields: vec![idx] });
         }
     }
 
     for spec in config.not_empty_specs {
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            spec, header, delimiter,
-        )?;
+        let idxs = resolve_fields(spec, header_bytes, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::NotEmpty { fields: vec![idx] });
         }
     }
 
     for spec in config.blank_specs {
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            spec, header, delimiter,
-        )?;
+        let idxs = resolve_fields(spec, header_bytes, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::Blank { fields: vec![idx] });
         }
     }
 
     for spec in config.not_blank_specs {
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            spec, header, delimiter,
-        )?;
+        let idxs = resolve_fields(spec, header_bytes, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::NotBlank { fields: vec![idx] });
         }
@@ -61,11 +64,7 @@ pub fn build_tests(
 
     for p in config.numeric_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &field_part,
-            header,
-            delimiter,
-        )?;
+        let idxs = resolve_fields(&field_part, header_bytes, delimiter)?;
         if idxs.is_empty() {
             return Err(format!("field list cannot be empty in `{}`", p.spec));
         }
@@ -90,11 +89,7 @@ pub fn build_tests(
 
     for p in config.str_cmp_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &field_part,
-            header,
-            delimiter,
-        )?;
+        let idxs = resolve_fields(&field_part, header_bytes, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::StrCmp {
                 fields: vec![idx],
@@ -113,11 +108,7 @@ pub fn build_tests(
 
     for p in config.char_len_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &field_part,
-            header,
-            delimiter,
-        )?;
+        let idxs = resolve_fields(&field_part, header_bytes, delimiter)?;
         let value = value_part.parse::<f64>().map_err(|_| {
             format!("invalid length value `{}` in `{}`", value_part, p.spec)
         })?;
@@ -139,11 +130,7 @@ pub fn build_tests(
 
     for p in config.byte_len_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &field_part,
-            header,
-            delimiter,
-        )?;
+        let idxs = resolve_fields(&field_part, header_bytes, delimiter)?;
         let value = value_part.parse::<f64>().map_err(|_| {
             format!("invalid length value `{}` in `{}`", value_part, p.spec)
         })?;
@@ -164,9 +151,7 @@ pub fn build_tests(
     }
 
     for p in config.numeric_prop_specs {
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &p.spec, header, delimiter,
-        )?;
+        let idxs = resolve_fields(&p.spec, header_bytes, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::NumericPropTest {
                 fields: vec![idx],
@@ -182,11 +167,7 @@ pub fn build_tests(
 
     for p in config.str_eq_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &field_part,
-            header,
-            delimiter,
-        )?;
+        let idxs = resolve_fields(&field_part, header_bytes, delimiter)?;
         for idx in idxs {
             if p.negated {
                 tests.push(TestKind::StrNe {
@@ -206,11 +187,7 @@ pub fn build_tests(
 
     for p in config.substr_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &field_part,
-            header,
-            delimiter,
-        )?;
+        let idxs = resolve_fields(&field_part, header_bytes, delimiter)?;
         for idx in idxs {
             tests.push(TestKind::StrIn {
                 fields: vec![idx],
@@ -223,11 +200,7 @@ pub fn build_tests(
 
     for p in config.regex_specs {
         let (field_part, value_part) = split_spec(&p.spec)?;
-        let idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &field_part,
-            header,
-            delimiter,
-        )?;
+        let idxs = resolve_fields(&field_part, header_bytes, delimiter)?;
         let regex = if p.case_insensitive {
             regex::RegexBuilder::new(&value_part)
                 .case_insensitive(true)
@@ -251,12 +224,8 @@ pub fn build_tests(
     for p in config.ff_numeric_specs {
         // spec is "FIELD1:FIELD2"
         let (left, right) = split_spec(&p.spec)?;
-        let left_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &left, header, delimiter,
-        )?;
-        let right_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &right, header, delimiter,
-        )?;
+        let left_idxs = resolve_fields(&left, header_bytes, delimiter)?;
+        let right_idxs = resolve_fields(&right, header_bytes, delimiter)?;
         if left_idxs.len() != right_idxs.len() {
             return Err(format!(
                 "mismatched field list in numeric comparison `{}`: left {} fields, right {} fields",
@@ -281,12 +250,8 @@ pub fn build_tests(
 
     for p in config.ff_str_specs {
         let (left, right) = split_spec(&p.spec)?;
-        let left_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &left, header, delimiter,
-        )?;
-        let right_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &right, header, delimiter,
-        )?;
+        let left_idxs = resolve_fields(&left, header_bytes, delimiter)?;
+        let right_idxs = resolve_fields(&right, header_bytes, delimiter)?;
         if left_idxs.len() != right_idxs.len() {
             return Err(format!(
                 "mismatched field list in string comparison `{}`: left {} fields, right {} fields",
@@ -318,12 +283,8 @@ pub fn build_tests(
             format!("invalid diff value `{}` in `{}`", value_part, p.spec)
         })?;
 
-        let left_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &left, header, delimiter,
-        )?;
-        let right_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &right, header, delimiter,
-        )?;
+        let left_idxs = resolve_fields(&left, header_bytes, delimiter)?;
+        let right_idxs = resolve_fields(&right, header_bytes, delimiter)?;
         if left_idxs.len() != right_idxs.len() {
             return Err(format!(
                 "mismatched field list in absdiff comparison `{}`: left {} fields, right {} fields",
@@ -358,12 +319,8 @@ pub fn build_tests(
             format!("invalid diff value `{}` in `{}`", value_part, p.spec)
         })?;
 
-        let left_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &left, header, delimiter,
-        )?;
-        let right_idxs = crate::libs::tsv::fields::parse_field_list_with_header(
-            &right, header, delimiter,
-        )?;
+        let left_idxs = resolve_fields(&left, header_bytes, delimiter)?;
+        let right_idxs = resolve_fields(&right, header_bytes, delimiter)?;
         if left_idxs.len() != right_idxs.len() {
             return Err(format!(
                 "mismatched field list in reldiff comparison `{}`: left {} fields, right {} fields",

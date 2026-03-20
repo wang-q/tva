@@ -465,4 +465,8 @@ pub fn resolve_fields_with_header(
   - [x] `sample.rs` - 已迁移，108/108 测试通过
   - [x] `join.rs` - 已迁移，81/81 测试通过
   - [x] `stats.rs` - 已迁移，207/207 测试通过
-- [ ] 阶段 4: 清理旧 API
+- [x] 阶段 4: 清理旧 API (已完成)
+  - [x] 标记旧函数为 deprecated: `parse_field_list_with_header`, `parse_field_list_with_header_preserve_order`, `resolve_fields_from_header`
+  - [x] 迁移 `filter/builder.rs` 到 `FieldResolver`
+  - [x] 迁移 `plot/data.rs` 到 `FieldResolver`
+  - [ ] 未来版本移除旧API（仅内部使用保留）

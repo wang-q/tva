@@ -2,10 +2,12 @@ use anyhow::Result;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 
 use crate::libs::io::reader;
+use crate::libs::plot::scatter::{
+    process_scatter_data, render_scatter_chart, ScatterConfig,
+};
 use crate::libs::plot::{
-    axis, build_header, load_scatter_data, parse_chart_dimension, parse_columns,
-    parse_single_column, read_headers, regression, render,
-    scatter::{process_scatter_data, render_scatter_chart, ScatterConfig},
+    axis, load_scatter_data, parse_chart_dimension, parse_columns, parse_single_column,
+    read_headers, regression, render,
 };
 use crate::libs::tsv::reader::TsvReader;
 
@@ -114,23 +116,21 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     let mut tsv_reader: TsvReader<_> = TsvReader::new(input_reader);
 
     // Read headers
-    let headers = read_headers(&mut tsv_reader)?;
-    let header_for_parsing = build_header(&headers);
+    let (headers, header_line) = read_headers(&mut tsv_reader)?;
+    let header_line_ref = header_line.as_deref();
 
     // Parse X column
-    let (x_idx, x_name) =
-        parse_single_column(x_col, header_for_parsing.as_ref(), &headers)?;
+    let (x_idx, x_name) = parse_single_column(x_col, header_line_ref, &headers)?;
 
     // Parse Y columns
-    let y_spec = parse_columns(y_col, header_for_parsing.as_ref(), &headers)?;
+    let y_spec = parse_columns(y_col, header_line_ref, &headers)?;
     let y_indices = y_spec.indices;
     let y_names = y_spec.names;
 
     // Parse color column
     let color_idx = match color_col {
         Some(c) => {
-            let (idx, _) =
-                parse_single_column(c, header_for_parsing.as_ref(), &headers)?;
+            let (idx, _) = parse_single_column(c, header_line_ref, &headers)?;
             Some(idx)
         }
         None => None,

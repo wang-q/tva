@@ -41,13 +41,6 @@ pub fn run_filter<W: Write>(
             if let Some(header_info) = header_result {
                 // Get the column names line for field name resolution
                 if let Some(column_names_bytes) = header_info.column_names_line {
-                    let header_line =
-                        std::str::from_utf8(&column_names_bytes).map_err(map_io_err)?;
-                    let header = crate::libs::tsv::fields::Header::from_line(
-                        header_line,
-                        config.delimiter,
-                    );
-
                     if !header_written && !config.count_only {
                         // Write the column names line (not all header lines for simplicity)
                         if let Some(ref lbl) = config.label_header {
@@ -66,7 +59,7 @@ pub fn run_filter<W: Write>(
                     }
 
                     let tests = build_tests(
-                        Some(&header),
+                        Some(&column_names_bytes),
                         config.delimiter,
                         config.as_spec_config(),
                     )

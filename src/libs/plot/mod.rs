@@ -21,8 +21,8 @@ pub use binning::{compute_bins_2d, Bin2d, Bin2dConfig};
 pub use binning::{freedman_diaconis_bins, sqrt_bins, sturges_bins};
 pub use boxplot::{render_boxplot, BoxPlotConfig, BoxPlotData, BoxStatsRender};
 pub use data::{
-    build_header, load_bin2d_data, load_box_data, load_numeric_column,
-    load_scatter_data, parse_columns, parse_single_column, read_headers, ColumnSpec,
+    load_bin2d_data, load_box_data, load_numeric_column, load_scatter_data,
+    parse_columns, parse_single_column, read_headers, ColumnSpec,
 };
 pub use heatmap::render_heatmap;
 pub use scatter::{

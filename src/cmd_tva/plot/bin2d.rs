@@ -3,7 +3,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 
 use crate::libs::io::reader;
 use crate::libs::plot::{
-    binning::Bin2dConfig, build_header, heatmap::render_heatmap, load_bin2d_data,
+    binning::Bin2dConfig, heatmap::render_heatmap, load_bin2d_data,
     parse_chart_dimension, parse_single_column, read_headers,
 };
 use crate::libs::tsv::reader::TsvReader;
@@ -96,14 +96,12 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     let mut tsv_reader: TsvReader<_> = TsvReader::new(input_reader);
 
     // Read headers
-    let headers = read_headers(&mut tsv_reader)?;
-    let header_for_parsing = build_header(&headers);
+    let (headers, header_line) = read_headers(&mut tsv_reader)?;
+    let header_line_ref = header_line.as_deref();
 
     // Parse columns
-    let (x_idx, x_name) =
-        parse_single_column(x_col, header_for_parsing.as_ref(), &headers)?;
-    let (y_idx, y_name) =
-        parse_single_column(y_col, header_for_parsing.as_ref(), &headers)?;
+    let (x_idx, x_name) = parse_single_column(x_col, header_line_ref, &headers)?;
+    let (y_idx, y_name) = parse_single_column(y_col, header_line_ref, &headers)?;
 
     // Load data
     let (x_values, y_values) =

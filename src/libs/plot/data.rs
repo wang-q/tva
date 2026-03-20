@@ -6,7 +6,7 @@
 use anyhow::Result;
 use indexmap::IndexMap;
 
-use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
+use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRow};
 
@@ -49,10 +49,12 @@ impl ColumnSpec {
 /// Parse column specification from string
 pub fn parse_columns(
     spec: &str,
-    header: Option<&Header>,
+    header_bytes: Option<&[u8]>,
     headers: &[Vec<u8>],
 ) -> Result<ColumnSpec> {
-    let indices = parse_field_list_with_header(spec, header, '\t')
+    let resolver = FieldResolver::new(header_bytes.map(|b| b.to_vec()), '\t');
+    let indices = resolver
+        .resolve(spec)
         .map_err(|e| anyhow::anyhow!("Invalid column spec '{}': {}", spec, e))?;
 
     if indices.is_empty() {
@@ -79,10 +81,10 @@ pub fn parse_columns(
 /// Parse single column specification
 pub fn parse_single_column(
     spec: &str,
-    header: Option<&Header>,
+    header_bytes: Option<&[u8]>,
     headers: &[Vec<u8>],
 ) -> Result<(usize, String)> {
-    let col = parse_columns(spec, header, headers)?;
+    let col = parse_columns(spec, header_bytes, headers)?;
     let idx = col.single()?;
     let name = col.single_name()?.to_string();
     Ok((idx, name))
@@ -415,23 +417,11 @@ pub fn load_bin2d_data<R: std::io::Read>(
     Ok((x_values, y_values))
 }
 
-/// Build header for field parsing from raw headers
-pub fn build_header(headers: &[Vec<u8>]) -> Option<Header> {
-    if headers.is_empty() {
-        None
-    } else {
-        let field_names: Vec<String> = headers
-            .iter()
-            .map(|h| String::from_utf8_lossy(h).to_string())
-            .collect();
-        Some(Header::from_fields(field_names))
-    }
-}
-
 /// Read headers from TSV reader
+/// Returns (header_fields, optional_header_line_bytes)
 pub fn read_headers<R: std::io::Read>(
     reader: &mut TsvReader<R>,
-) -> Result<Vec<Vec<u8>>> {
+) -> Result<(Vec<Vec<u8>>, Option<Vec<u8>>)> {
     let header_line = reader.read_header()?;
     Ok(match header_line {
         Some(line) => {
@@ -445,9 +435,9 @@ pub fn read_headers<R: std::io::Read>(
                 }
             }
             headers.push(line[last_pos..].to_vec());
-            headers
+            (headers, Some(line.to_vec()))
         }
-        None => Vec::new(),
+        None => (Vec::new(), None),
     })
 }
 
@@ -483,19 +473,6 @@ mod tests {
         };
         assert!(spec.single().is_err());
         assert!(spec.single_name().is_err());
-    }
-
-    #[test]
-    fn test_build_header_empty() {
-        let headers: Vec<Vec<u8>> = vec![];
-        assert!(build_header(&headers).is_none());
-    }
-
-    #[test]
-    fn test_build_header_with_data() {
-        let headers = vec![b"name".to_vec(), b"age".to_vec(), b"score".to_vec()];
-        let header = build_header(&headers);
-        assert!(header.is_some());
     }
 
     #[test]
@@ -606,8 +583,8 @@ mod tests {
     #[test]
     fn test_parse_columns_with_header() {
         let headers = vec![b"name".to_vec(), b"age".to_vec(), b"score".to_vec()];
-        let header = build_header(&headers);
-        let result = parse_columns("1-2", header.as_ref(), &headers);
+        let header_line = b"name\tage\tscore";
+        let result = parse_columns("1-2", Some(header_line.as_slice()), &headers);
         assert!(result.is_ok());
         let spec = result.unwrap();
         assert_eq!(spec.indices, vec![0, 1]);
@@ -617,18 +594,18 @@ mod tests {
     #[test]
     fn test_parse_columns_invalid_spec() {
         let headers = vec![b"col1".to_vec()];
-        let header = build_header(&headers);
-        let result = parse_columns("invalid", header.as_ref(), &headers);
+        let header_line = b"col1";
+        let result = parse_columns("invalid", Some(header_line.as_slice()), &headers);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_parse_columns_empty_result() {
         // When headers is empty but we request column 1, it should still work
-        // because parse_field_list_with_header returns 1-based indices
+        // because FieldResolver returns 1-based indices
         let headers: Vec<Vec<u8>> = vec![];
         let result = parse_columns("999", None, &headers);
-        // This will succeed because parse_field_list_with_header doesn't validate
+        // This will succeed because FieldResolver doesn't validate
         // against actual header count when header is None
         assert!(result.is_ok());
         let spec = result.unwrap();
@@ -638,8 +615,8 @@ mod tests {
     #[test]
     fn test_parse_single_column_success() {
         let headers = vec![b"name".to_vec(), b"age".to_vec()];
-        let header = build_header(&headers);
-        let result = parse_single_column("2", header.as_ref(), &headers);
+        let header_line = b"name\tage";
+        let result = parse_single_column("2", Some(header_line.as_slice()), &headers);
         assert!(result.is_ok());
         let (idx, name) = result.unwrap();
         assert_eq!(idx, 1);
@@ -649,8 +626,8 @@ mod tests {
     #[test]
     fn test_parse_single_column_multiple_columns_error() {
         let headers = vec![b"name".to_vec(), b"age".to_vec()];
-        let header = build_header(&headers);
-        let result = parse_single_column("1,2", header.as_ref(), &headers);
+        let header_line = b"name\tage";
+        let result = parse_single_column("1,2", Some(header_line.as_slice()), &headers);
         assert!(result.is_err());
     }
 
@@ -865,17 +842,19 @@ mod tests {
     fn test_read_headers_with_data() {
         let data = b"name\tage\nAlice\t30\n";
         let mut reader = TsvReader::new(&data[..]);
-        let headers = read_headers(&mut reader).unwrap();
+        let (headers, header_line) = read_headers(&mut reader).unwrap();
         assert_eq!(headers.len(), 2);
         assert_eq!(headers[0], b"name");
         assert_eq!(headers[1], b"age");
+        assert_eq!(header_line, Some(b"name\tage".to_vec()));
     }
 
     #[test]
     fn test_read_headers_empty() {
         let data = b"";
         let mut reader = TsvReader::new(&data[..]);
-        let headers = read_headers(&mut reader).unwrap();
+        let (headers, header_line) = read_headers(&mut reader).unwrap();
         assert!(headers.is_empty());
+        assert_eq!(header_line, None);
     }
 }
