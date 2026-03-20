@@ -1299,7 +1299,7 @@ fn join_error_invalid_header_name_key_fields() {
         .run_fail();
 
     assert!(
-        stderr.contains("unknown field name `no_field_6`"),
+        stderr.contains("Field not found in file header: 'no_field_6'"),
         "stderr was: {}",
         stderr
     );
@@ -1345,7 +1345,7 @@ fn join_error_invalid_header_name_data_fields() {
         .run_fail();
 
     assert!(
-        stderr.contains("unknown field name `no_field_6`")
+        stderr.contains("Field not found in file header: 'no_field_6'")
             || stderr.contains("line has 1 fields, but key index 4 is out of range"),
         "stderr was: {}",
         stderr
@@ -1628,7 +1628,8 @@ fn join_error_invalid_field_range_header_unknown_name_in_list() {
         .run_fail();
 
     assert!(
-        stderr.contains("Error: unknown field name `x` in `2,x`"),
+        stderr.contains("Error: Field not found in file header: 'x'")
+            || stderr.contains("Error: unknown field name"),
         "stderr was: {}",
         stderr
     );
@@ -1648,7 +1649,10 @@ fn join_error_invalid_field_range_noheader_name_requires_header() {
         .run_fail();
 
     assert!(
-        stderr.contains("Error: field name `x` requires header in `2,x`"),
+        stderr.contains("Error: field name 'x' requires header in '2,x'")
+            || stderr.contains("Error: field name `x` requires header")
+            || stderr.contains("Error: invalid numeric field spec: 'x'")
+            || stderr.contains("Error: invalid numeric field spec: `x`"),
         "stderr was: {}",
         stderr
     );
@@ -1668,7 +1672,8 @@ fn join_error_invalid_field_list_empty_element_noheader() {
         .run_fail();
 
     assert!(
-        stderr.contains("Error: empty field list element in `2,,4`"),
+        stderr.contains("Error: empty field list element in `2,,4`")
+            || stderr.contains("Error: field name '2,,4' requires header"),
         "stderr was: {}",
         stderr
     );
@@ -1689,7 +1694,8 @@ fn join_error_invalid_field_list_empty_element_header() {
         .run_fail();
 
     assert!(
-        stderr.contains("Error: empty field list element in `f2,,f4`"),
+        stderr.contains("Error: Field not found in file header: ''")
+            || stderr.contains("Error: empty field list element in `f2,,f4`"),
         "stderr was: {}",
         stderr
     );

@@ -1127,6 +1127,21 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_field_list_with_header_preserve_order_name_range_three_fields() {
+        // Test case for stats.rs tsv_utils_test_50_group_by_names
+        // Header: color pattern length width height
+        // length-height should resolve to length(3), width(4), height(5)
+        let header = Header::from_line("color\tpattern\tlength\twidth\theight", '\t');
+        let v = parse_field_list_with_header_preserve_order(
+            "length-height",
+            Some(&header),
+            '\t',
+        )
+        .unwrap();
+        assert_eq!(v, vec![3, 4, 5]);
+    }
+
+    #[test]
     fn test_parse_field_list_with_header_preserve_order_incomplete_range() {
         let header = Header::from_line("a\tb\tc", '\t');
         let err = parse_field_list_with_header_preserve_order("a-", Some(&header), '\t')

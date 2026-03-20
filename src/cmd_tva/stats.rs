@@ -3,8 +3,7 @@ use crate::libs::aggregation::{
 };
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
-use crate::libs::tsv::fields;
-use crate::libs::tsv::fields::Header;
+use crate::libs::tsv::fields::{self, FieldResolver};
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::reader::TsvReader;
 use clap::{Arg, ArgAction, ArgMatches, Command};
@@ -354,13 +353,25 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     let mut use_grouping = false;
 
     // Helper to setup processor
-    let setup_processor = |header_opt: Option<&fields::Header>| -> anyhow::Result<(
+    // Takes header bytes instead of Header reference for FieldResolver compatibility
+    let setup_processor = |header_bytes: Option<&[u8]>| -> anyhow::Result<(
         StatsProcessor,
         Option<KeyExtractor>,
         Vec<String>,
     )> {
         let mut ops = Vec::new();
         let mut output_headers = Vec::new();
+
+        // Create FieldResolver for field parsing
+        let resolver =
+            FieldResolver::new(header_bytes.map(|b| b.to_vec()), delimiter as char);
+
+        // Create Header from bytes for field name lookup (if header available)
+        let header_opt: Option<fields::Header> = header_bytes.and_then(|bytes| {
+            std::str::from_utf8(bytes)
+                .ok()
+                .map(|s| fields::Header::from_line(s, delimiter as char))
+        });
 
         for config in &op_configs {
             if let OpKind::Count = config.kind {
@@ -389,12 +400,9 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                         (spec.as_str(), None)
                     };
 
-                let indices = fields::parse_field_list_with_header(
-                    field_spec,
-                    header_opt,
-                    delimiter as char,
-                )
-                .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
+                let indices = resolver
+                    .resolve(field_spec)
+                    .map_err(|e| anyhow::anyhow!("Error parsing field list: {}", e))?;
 
                 if custom_header_override.is_some() && indices.len() > 1 {
                     return Err(anyhow::anyhow!(
@@ -445,7 +453,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                         } else {
                             format!("{}_{}", custom, idx)
                         }
-                    } else if let Some(h) = header_opt {
+                    } else if let Some(ref h) = header_opt {
                         if field_idx < h.fields.len() {
                             format!("{}{}", h.fields[field_idx], suffix)
                         } else {
@@ -460,12 +468,9 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
         }
 
         let extractor = if let Some(spec) = &group_by_spec {
-            let idxs = fields::parse_field_list_with_header(
-                spec,
-                header_opt,
-                delimiter as char,
-            )
-            .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?;
+            let idxs = resolver
+                .resolve(spec)
+                .map_err(|e| anyhow::anyhow!("Error parsing group-by fields: {}", e))?;
             // .into_iter()
             // .map(|i| i - 1) // KeyExtractor now takes 1-based indices!
             // .collect::<Vec<_>>();
@@ -483,7 +488,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             if let Some(indices) = &extractor.indices {
                 for &idx in indices {
                     // indices are 1-based
-                    if let Some(h) = header_opt {
+                    if let Some(ref h) = header_opt {
                         if idx > 0 && idx <= h.fields.len() {
                             final_headers.push(h.fields[idx - 1].to_string());
                         } else {
@@ -506,7 +511,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader = TsvReader::with_capacity(input.reader, 512 * 1024);
-        let mut header: Option<Header> = None;
+        let mut header_bytes: Option<Vec<u8>> = None;
 
         // If header is enabled, read header according to the configured mode
         if header_config.enabled {
@@ -517,15 +522,14 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             if let Some(header_info) = header_result {
                 // Get column names for field resolution if available
                 if let Some(column_names_bytes) = header_info.column_names_line {
-                    let header_str = std::str::from_utf8(&column_names_bytes)?;
-                    header = Some(Header::from_line(header_str, delimiter as char));
+                    header_bytes = Some(column_names_bytes);
                 }
             }
         }
 
         // Setup processor on first file
         if processor.is_none() {
-            let (proc, extractor, headers) = setup_processor(header.as_ref())?;
+            let (proc, extractor, headers) = setup_processor(header_bytes.as_deref())?;
             processor = Some(proc);
             group_extractor = extractor;
             use_grouping = group_extractor.is_some();

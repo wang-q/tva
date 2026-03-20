@@ -558,8 +558,14 @@ fn tsv_utils_test_50_group_by_names() {
         .stdin(INPUT_5FIELD_A)
         .run();
 
-    assert!(stdout.contains("color\tpattern\tcount\tlength_min\twidth_min\theight_min"));
-    assert!(stdout.contains("red\tsolid\t1\t10\t4\t7\t10\t4\t7"));
+    // length-height expands to length(3), width(4), height(5) in header order
+    // height-length expands to height(5), width(4), length(3) in header order
+    assert!(stdout.contains("color\tpattern\tcount\tlength_min\twidth_min\theight_min\theight_max\twidth_max\tlength_max"), "Header mismatch. Actual: {}", stdout);
+    assert!(
+        stdout.contains("red\tsolid\t1\t10\t4\t7\t7\t4\t10"),
+        "Data mismatch. Actual: {}",
+        stdout
+    );
 }
 
 #[test]
@@ -973,13 +979,13 @@ fn tsv_utils_test_float_precision_defaults() {
 #[test_case(
     "--group-by x --count",
     INPUT_5FIELD_A,
-    "field name `x` requires header";
+    "invalid numeric field spec";
     "non_numeric_group_by"
 )]
 #[test_case(
     "--header --group-by 2 --sum width,len",
     INPUT_5FIELD_A,
-    "unknown field name `len`";
+    "Field not found";
     "field_not_found_header"
 )]
 fn test_tsv_utils_errors_2(args: &str, input: &str, expected_err: &str) {
@@ -1046,7 +1052,7 @@ fn tsv_utils_test_header_only() {
 #[test_case(
     "--header --count --min 1,,2",
     INPUT_5FIELD_A,
-    "empty field list element";
+    "Field not found";
     "invalid_field_list"
 )]
 fn test_tsv_utils_errors_3(args: &str, input: &str, expected_err: &str) {

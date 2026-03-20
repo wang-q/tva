@@ -1,5 +1,5 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
-use crate::libs::tsv::fields::{self, Header};
+use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::TsvRow;
@@ -102,28 +102,31 @@ pub fn make_subcommand() -> Command {
         )
 }
 
-/// Parse field specification for join keys.
+/// Parse field specification for join keys using FieldResolver.
 /// Returns (is_whole_line, field_indices).
+/// Note: Key fields are sorted to ensure consistent key matching.
 fn parse_join_field_spec(
     spec_opt: Option<&str>,
-    header: Option<&Header>,
-    delimiter: char,
+    resolver: &FieldResolver,
 ) -> anyhow::Result<(bool, Option<Vec<usize>>)> {
     let spec = spec_opt.unwrap_or("0");
     let trimmed = spec.trim();
     if trimmed == "0" {
         return Ok((true, None));
     }
-    let indices = fields::parse_field_list_with_header(trimmed, header, delimiter)
+    let mut indices = resolver
+        .resolve(trimmed)
         .map_err(|e| anyhow::anyhow!("{}", e))?;
+    // Sort and deduplicate key fields for consistent key matching
+    indices.sort_unstable();
+    indices.dedup();
     Ok((false, Some(indices)))
 }
 
-/// Parse field specification for append fields.
+/// Parse field specification for append fields using FieldResolver.
 fn parse_append_field_spec(
     spec_opt: Option<&str>,
-    header: Option<&Header>,
-    delimiter: char,
+    resolver: &FieldResolver,
 ) -> anyhow::Result<Option<Vec<usize>>> {
     let spec = match spec_opt {
         Some(s) => s,
@@ -133,9 +136,9 @@ fn parse_append_field_spec(
     if trimmed.is_empty() {
         return Ok(None);
     }
-    let indices =
-        fields::parse_field_list_with_header_preserve_order(trimmed, header, delimiter)
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let indices = resolver
+        .resolve(trimmed)
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
     if indices.is_empty() {
         Ok(None)
     } else {
@@ -177,12 +180,12 @@ fn extract_values(
 /// Build the append header suffix from filter header and append indices.
 fn build_append_header_suffix(
     append_indices: Option<&Vec<usize>>,
-    filter_header: Option<&Header>,
+    resolver: &FieldResolver,
     delimiter: char,
     prefix: &str,
 ) -> Option<String> {
     let idxs = append_indices?;
-    let fh = filter_header?;
+    let column_names = resolver.column_names()?;
 
     let mut s = String::new();
     for idx in idxs {
@@ -190,13 +193,13 @@ fn build_append_header_suffix(
         // Note: Index out of range check is done in extract_values when processing data
         s.push(delimiter);
         if prefix.is_empty() {
-            if pos < fh.fields.len() {
-                s.push_str(&fh.fields[pos]);
+            if pos < column_names.len() {
+                s.push_str(&column_names[pos]);
             }
         } else {
             s.push_str(prefix);
-            if pos < fh.fields.len() {
-                s.push_str(&fh.fields[pos]);
+            if pos < column_names.len() {
+                s.push_str(&column_names[pos]);
             }
         }
     }
@@ -286,30 +289,27 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut filter_reader = TsvReader::new(crate::libs::io::raw_reader(&filter_file)?);
 
     // Read filter file header if enabled
-    let mut filter_header: Option<Header> = None;
+    let mut filter_header_bytes: Option<Vec<u8>> = None;
     if header_config.enabled {
         if let Some(header_info) = filter_reader.read_header_mode(header_config.mode)? {
-            if let Some(ref column_names) = header_info.column_names_line {
-                let header_str = std::str::from_utf8(column_names)?;
-                filter_header = Some(Header::from_line(header_str, delimiter_char));
-            }
+            filter_header_bytes = header_info.column_names_line.clone();
         }
     }
 
+    // Create FieldResolver for filter file
+    let filter_resolver =
+        FieldResolver::new(filter_header_bytes.clone(), delimiter_char);
+
     // Parse filter file field specifications
     let (filter_key_whole_line, filter_key_indices) =
-        parse_join_field_spec(key_fields_spec, filter_header.as_ref(), delimiter_char)?;
-    let append_indices = parse_append_field_spec(
-        append_fields_spec,
-        filter_header.as_ref(),
-        delimiter_char,
-    )?;
+        parse_join_field_spec(key_fields_spec, &filter_resolver)?;
+    let append_indices = parse_append_field_spec(append_fields_spec, &filter_resolver)?;
     let append_count = append_indices.as_ref().map(|v| v.len()).unwrap_or(0);
 
     // Build append header suffix for output
     let append_header_suffix = build_append_header_suffix(
         append_indices.as_ref(),
-        filter_header.as_ref(),
+        &filter_resolver,
         delimiter_char,
         prefix,
     );
@@ -391,15 +391,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if let Some(header_info) = header_result {
                 // Parse data file header for field resolution (for each file, to handle different column orders)
                 if let Some(ref column_names) = header_info.column_names_line {
-                    let header_str = std::str::from_utf8(column_names)?;
-                    let data_header = Header::from_line(header_str, delimiter_char);
+                    let data_resolver =
+                        FieldResolver::new(Some(column_names.clone()), delimiter_char);
                     let effective_data_spec = data_fields_spec.or(key_fields_spec);
 
-                    let (data_key_whole_line, indices) = parse_join_field_spec(
-                        effective_data_spec,
-                        Some(&data_header),
-                        delimiter_char,
-                    )?;
+                    let (data_key_whole_line, indices) =
+                        parse_join_field_spec(effective_data_spec, &data_resolver)?;
 
                     // Validate key lengths match
                     if !filter_key_whole_line && !data_key_whole_line {
@@ -447,8 +444,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // Initialize extractor for headerless files if not set
         if data_key_extractor.is_none() {
             let effective_data_spec = data_fields_spec.or(key_fields_spec);
+            let data_resolver = FieldResolver::new(None, delimiter_char);
             let (data_key_whole_line, indices) =
-                parse_join_field_spec(effective_data_spec, None, delimiter_char)?;
+                parse_join_field_spec(effective_data_spec, &data_resolver)?;
 
             // Validate key lengths match
             if !filter_key_whole_line && !data_key_whole_line {

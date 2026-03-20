@@ -458,11 +458,11 @@ pub fn resolve_fields_with_header(
 
 - [x] 阶段 1: 实现 `FieldResolver` (已完成，包含单元测试)
 - [x] 阶段 2: 试点命令 (`blank.rs`, `fill.rs`, `uniq.rs`) (已完成，所有测试通过)
-- [x] 阶段 3: 全面迁移 (基本完成)
+- [x] 阶段 3: 全面迁移 (已完成)
   - [x] `select.rs` - 已迁移，56/56 测试通过
   - [x] `wider.rs` - 已迁移，52/52 测试通过
   - [x] `longer.rs` - 已迁移，28/28 测试通过
   - [x] `sample.rs` - 已迁移，108/108 测试通过
-  - [ ] `join.rs` - 跳过（需要更多重构）
-  - [ ] `stats.rs` - 跳过（需要更多重构）
+  - [x] `join.rs` - 已迁移，81/81 测试通过
+  - [x] `stats.rs` - 已迁移，207/207 测试通过
 - [ ] 阶段 4: 清理旧 API
