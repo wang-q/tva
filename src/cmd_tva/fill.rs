@@ -1,7 +1,6 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::tsv::fields::{parse_field_list_with_header_preserve_order, Header};
 use crate::libs::tsv::reader::TsvReader;
-use crate::libs::tsv::split::TsvSplitter;
 use clap::*;
 use std::collections::HashMap;
 use std::io::Write;
@@ -154,41 +153,47 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         reader.for_each_line(|record| {
             let mut first = true;
-            for (current_col, cell_bytes) in TsvSplitter::new(record, b'\t').enumerate()
-            {
-                if !first {
-                    writer.write_all(b"\t")?;
-                }
-                first = false;
+            let mut current_col = 0usize;
+            let mut last_pos = 0usize;
+            for (pos, &byte) in record.iter().enumerate().chain(std::iter::once((record.len(), &0u8))) {
+                if byte == b'\t' || pos == record.len() {
+                    let cell_bytes = &record[last_pos..pos];
+                    if !first {
+                        writer.write_all(b"\t")?;
+                    }
+                    first = false;
 
-                // Check if this column is targeted for filling
-                if target_cols.binary_search(&current_col).is_ok() {
-                    let is_na = cell_bytes == na_bytes;
+                    // Check if this column is targeted for filling
+                    if target_cols.binary_search(&current_col).is_ok() {
+                        let is_na = cell_bytes == na_bytes;
 
-                    if is_na {
-                        // Value is missing, try to fill it
-                        if let Some(val) = const_value {
-                            // Strategy: Constant fill
-                            writer.write_all(val.as_bytes())?;
-                        } else if let Some(prev) = last_valid_values.get(&current_col) {
-                            // Strategy: Down fill (LOCF - Last Observation Carried Forward)
-                            writer.write_all(prev)?;
+                        if is_na {
+                            // Value is missing, try to fill it
+                            if let Some(val) = const_value {
+                                // Strategy: Constant fill
+                                writer.write_all(val.as_bytes())?;
+                            } else if let Some(prev) = last_valid_values.get(&current_col) {
+                                // Strategy: Down fill (LOCF - Last Observation Carried Forward)
+                                writer.write_all(prev)?;
+                            } else {
+                                // No previous value available and no constant provided
+                                // Keep the original NA value
+                                writer.write_all(cell_bytes)?;
+                            }
                         } else {
-                            // No previous value available and no constant provided
-                            // Keep the original NA value
+                            // Value is valid (not NA)
+                            // If using 'down' fill, update the last seen valid value for this column
+                            if const_value.is_none() {
+                                last_valid_values.insert(current_col, cell_bytes.to_vec());
+                            }
                             writer.write_all(cell_bytes)?;
                         }
                     } else {
-                        // Value is valid (not NA)
-                        // If using 'down' fill, update the last seen valid value for this column
-                        if const_value.is_none() {
-                            last_valid_values.insert(current_col, cell_bytes.to_vec());
-                        }
+                        // Not a target column, just write through
                         writer.write_all(cell_bytes)?;
                     }
-                } else {
-                    // Not a target column, just write through
-                    writer.write_all(cell_bytes)?;
+                    current_col += 1;
+                    last_pos = pos + 1;
                 }
             }
             writer.write_all(b"\n")?;

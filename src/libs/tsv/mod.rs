@@ -7,7 +7,6 @@
 //! - **Record**: Efficient row representation.
 //! - **Fields**: Parsing of field selection specs (e.g. `1,3-5`).
 //! - **Select**: High-performance field selection logic.
-//! - **Split**: SIMD-accelerated line splitting.
 //! - **Key**: Key extraction for grouping and joining.
 //! - **Header**: Header detection and handling.
 //! - **SIMD**: Hand-written SIMD parsers (SSE2 for x86_64, NEON for aarch64).
@@ -19,7 +18,6 @@ pub mod reader;
 pub mod record;
 pub mod select;
 pub mod simd;
-pub mod split;
 
 // Re-export SIMD modules for backward compatibility
 #[cfg(target_arch = "x86_64")]

@@ -9,7 +9,6 @@ use indexmap::IndexMap;
 use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRecord};
-use crate::libs::tsv::split::TsvSplitter;
 
 /// Column specification for plot commands
 pub struct ColumnSpec {
@@ -447,7 +446,19 @@ pub fn read_headers<R: std::io::Read>(
 ) -> Result<Vec<Vec<u8>>> {
     let header_line = reader.read_header()?;
     Ok(match header_line {
-        Some(line) => TsvSplitter::new(&line, b'\t').map(|s| s.to_vec()).collect(),
+        Some(line) => {
+            // Split line by tabs
+            let mut headers = Vec::new();
+            let mut last_pos = 0usize;
+            for (pos, &byte) in line.iter().enumerate() {
+                if byte == b'\t' {
+                    headers.push(line[last_pos..pos].to_vec());
+                    last_pos = pos + 1;
+                }
+            }
+            headers.push(line[last_pos..].to_vec());
+            headers
+        }
         None => Vec::new(),
     })
 }

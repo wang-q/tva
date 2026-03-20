@@ -341,8 +341,8 @@ src/libs/tsv/simd/
 | `select.rs` | `write_with_rest` 使用 `TsvRow.ends` | ✅ 已完成 | - |
 | `join.rs` | `extract_values` 使用 `TsvRow` | ✅ 已完成 | - |
 | `key.rs` | `extract_from_row` 使用 `TsvRow` | ✅ 已完成 | - |
-| `split.rs` | `TsvSplitter` 使用 `memchr_iter` | 独立扫描 | 🟡 中 |
-| `record.rs` | `TsvRecord::parse_line` 使用 `memchr_iter` | 独立扫描 | 🟡 中 |
+| `split.rs` | ~~`TsvSplitter` 已删除~~ | ✅ 已移除 | - |
+| `record.rs` | `TsvRecord::parse_line` 使用 `memchr_iter` | 独立扫描 | 🟡 低 |
 
 ### 迁移策略
 
@@ -363,19 +363,17 @@ src/libs/tsv/simd/
 
 **实际收益**: `select` 和 `join` 命令性能提升约 **10%**
 
-#### 阶段 2: Split 模块优化 (中优先级)
+#### 阶段 2: ~~Split 模块优化~~ ✅ 已完成
 
-**目标**: 让 `TsvSplitter` 能够复用 `next_row` 的扫描结果。
+**决策**: `TsvSplitter` 已被完全删除。
 
-**当前状态**: `split.rs` 中的 `TsvSplitter` 使用 `memchr_iter` 独立扫描分隔符，存在二次解析。
+**原因**: `TsvRow` 已经可以完全替代 `TsvSplitter` 的功能：
+- `TsvRow.get_bytes(idx)` - 直接访问指定字段
+- `TsvRow.ends` - 遍历所有字段边界
 
-**方案**:
-1. 新增 `TsvRowSplitter` 结构体，从 `TsvRow` 创建，直接复用 `ends` 数组
-2. 或者直接使用 `TsvRow::get_bytes()` 访问字段
+使用 `TsvSplitter` 的场景已改用内联遍历或 `TsvRow`。
 
-**注意**: `split` 命令通常独立使用，优先级较低。
-
-#### 阶段 3: Record 模块优化 (中优先级)
+#### 阶段 3: Record 模块优化 (低优先级)
 
 **目标**: 减少 `TsvRecord::parse_line` 的扫描开销。
 
@@ -394,6 +392,6 @@ src/libs/tsv/simd/
 ### 实施建议
 
 1. **阶段 1 已完成**: `select` 和 `join` 已优化，收益约 10%
-2. **阶段 2/3 待实施**: `split` 和 `record` 模块优化，预计收益有限
-3. **保持向后兼容**: 旧的 API 保留，新增优化版本
-4. **逐步迁移**: 命令逐个迁移，确保稳定性
+2. **阶段 2 已完成**: `split.rs` 已删除，`TsvSplitter` 已移除
+3. **阶段 3 待定**: `record` 模块优化优先级较低，预计收益有限
+4. **保持向后兼容**: 旧的 API 保留，新增优化版本
