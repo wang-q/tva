@@ -1,23 +1,35 @@
 # from xlsx
 
-Reads data from an Excel file (.xlsx) and writes it as TSV.
+Converts Excel (.xlsx/.xls) input to TSV output.
 
-This command converts Excel spreadsheets into TSV format. It supports reading from
-specific sheets and handles basic cell values.
+Behavior:
+
+* Reads data from Excel spreadsheets and converts each row to a TSV line.
+* By default, reads from the first sheet in the workbook.
+* Use `--sheet` to specify a sheet by name.
+* Use `--list-sheets` to list all available sheet names.
+* Cell values are converted to strings:
+    * Empty cells become empty strings.
+    * TAB, newline, and carriage return characters are replaced with spaces.
 
 Input:
 
-* An Excel file path is required.
+* Requires an Excel file path (.xlsx or .xls).
 
 Output:
 
-* Each row in the spreadsheet becomes one TSV line.
+* Each spreadsheet row becomes one TSV line.
 * Cells are joined with TAB characters.
+* By default, output is written to standard output.
+* Use `--outfile` to write to a file instead.
 
 Examples:
 
 1. Convert an Excel file to TSV (first sheet)
-   tva from xlsx data.xlsx > data.tsv
+   `tva from xlsx data.xlsx > data.tsv`
 
-2. Read a specific sheet
-   tva from xlsx --sheet "Sheet2" data.xlsx > data.tsv
+2. Convert a specific sheet by name
+   `tva from xlsx --sheet "Sheet2" data.xlsx`
+
+3. List all sheet names in a workbook
+   `tva from xlsx --list-sheets data.xlsx`

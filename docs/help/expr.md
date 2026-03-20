@@ -33,32 +33,32 @@ Header behavior:
 
 Examples:
 
-1. Simple arithmetic:
+1. Simple arithmetic
    `tva expr -E '2 + 3 * 4'`
 
-2. Calculate total from price and quantity:
+2. Calculate total from price and quantity
    `tva expr -H -E '@price * @qty' data.tsv`
 
-3. Named output column with `as`:
+3. Named output column with `as`
    `tva expr -H -E '@price * @qty as @total' data.tsv`
 
-4. Chain functions with pipe:
+4. Chain functions with pipe
    `tva expr -H -E '@name | trim() | upper()' data.tsv`
 
-5. Conditional expression:
+5. Conditional expression
    `tva expr -H -E 'if(@score >= 70, "pass", "fail")' data.tsv`
 
-6. Add new column(s) to original row:
+6. Add new column(s) to original row
    `tva expr -H -m extend -E '@price * @qty as @total' data.tsv`
 
-7. Mutate (modify) existing column value:
+7. Mutate (modify) existing column value
    `tva expr -H -m mutate -E '@age + 1 as @age' data.tsv`
 
-8. Filter rows by condition:
+8. Filter rows by condition
    `tva expr -H -m filter -E '@age > 25' data.tsv`
 
-9. Skip null results:
+9. Skip null results
    `tva expr -H -m skip-null -E 'if(@score >= 70, @name, null)' data.tsv`
 
-10. Test with inline row data:
+10. Test with inline row data
     `tva expr -n 'price,qty' -r '100,2' -E '@price * @qty'`

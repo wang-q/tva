@@ -2,6 +2,8 @@
 
 Extracts data from HTML files using CSS selectors.
 
+Behavior:
+
 This command converts HTML content into TSV format using three different modes:
 
 1. **Query Mode**: For quick extraction of specific elements.
@@ -41,25 +43,35 @@ This command converts HTML content into TSV format using three different modes:
 
 * Activated by using `--row` and `--col` flags.
 * Designed to extract repetitive structures (like cards, list items) into a TSV table.
-* **--row <selector>**: Defines the container for each record (e.g., `div.product`, `li`).
-* **--col "Name:Selector [Function]"**: Defines a column in the output TSV.
+* `--row <selector>`: Defines the container for each record (e.g., `div.product`, `li`).
+* `--col "Name:Selector [Function]"`: Defines a column in the output TSV.
     * `Name`: The column header name.
     * `Selector`: CSS selector relative to the row element.
     * `Function`: `text{}` (default) or `attr{name}`.
     * Example: `--col "Link:a.title attr{href}"`
     * Missing elements or attributes result in empty TSV cells.
 
-**Examples:**
+Input:
+
+* Reads from files or standard input.
+* Use `stdin` or omit the file argument to read from standard input.
+
+Output:
+
+* By default, output is written to standard output.
+* Use `--outfile` to write to a file instead.
+
+Examples:
 
 1. Extract all links (Query Mode)
-   tva from html -q "a attr{href}" index.html
+   `tva from html -q "a attr{href}" index.html`
 
 2. Extract the first table (Table Mode)
-   tva from html --table data.html
+   `tva from html --table data.html`
 
 3. Extract product list (Struct Mode)
    tva from html --row "div.product-card" \
-   --col "Title: h2.title text{}" \
-   --col "Price: .price" \
-   --col "URL: a.link attr{href}" \
-   products.html
+       --col "Title: h2.title text{}" \
+       --col "Price: .price" \
+       --col "URL: a.link attr{href}" \
+       products.html

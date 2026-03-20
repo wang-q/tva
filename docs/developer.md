@@ -138,11 +138,6 @@ cargo build
     * `unite` (pack): 使用模板或分隔符将多个列合并为单个字符串列。
 * **行拆分 (Row Splitting)**:
     * `separate-rows` (explode): 将包含分隔符的单元格拆分为多行 (e.g. "a,b" -> 2 rows)。
-* **致密化 (Densification)**:
-    * `complete`: 暴露数据因子的缺失组合，并支持填充默认值。
-    * `expand`: 仅生成唯一值的笛卡尔积（Cartesian Product），用于构建参考网格。
-* **行复制 (Row Replication)**:
-    * `uncount`: 根据计数列的值复制行（逆向 `count`）。
 * **缺失值处理 (Missing Values)**:
     * `replace_na`: 将显式 `NA` (空字符串) 替换为指定值。
     * `drop_na`: 丢弃包含缺失值的行。

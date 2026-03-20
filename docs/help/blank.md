@@ -2,19 +2,7 @@
 
 Replaces consecutive identical values in selected columns with a blank string (or a custom value).
 
-Input:
-
-* Reads from files or standard input; multiple files are processed as one stream.
-* Files ending in `.gz` are transparently decompressed.
-
-Header behavior:
-
-* `--header` / `-H`: Treats the first line of the input as a header.
-  The header is written once at the top of the output. Blanking logic starts
-  from the first data row.
-* If no header is specified, the first line is treated as data.
-
-Blanking logic:
+Behavior:
 
 * For each selected column, the current value is compared with the value in the
   previous row.
@@ -25,7 +13,18 @@ Blanking logic:
 * Blanking is stateful across file boundaries when multiple files are provided.
 * Use `-i` / `--ignore-case` to compare values case-insensitively.
 
-Field Syntax:
+Input:
+
+* Reads from files or standard input; multiple files are processed as one stream.
+* Files ending in `.gz` are transparently decompressed.
+
+Header behavior:
+
+* Supports `--header` / `-H` and `--header-hash1` modes.
+* When using header mode with multiple files, only the header from the first file is
+  written; headers from subsequent files are skipped.
+
+Field syntax:
 
 * Use `-f` / `--field` to specify columns to blank.
 * Format: `COL` (blank with empty string) or `COL:REPLACEMENT` (blank with custom string).
@@ -34,15 +33,16 @@ Field Syntax:
 
 Output:
 
-* Writes processed records to standard output or to the file given by `--outfile`.
+* By default, output is written to standard output.
+* Use `--outfile` to write to a file instead.
 
 Examples:
 
-1. Blank the first column:
+1. Blank the first column
    `tva blank -H -f 1 data.tsv`
 
-2. Blank the 'category' column with "---":
+2. Blank the 'category' column with "---"
    `tva blank -H -f category:--- data.tsv`
 
-3. Blank multiple columns:
+3. Blank multiple columns
    `tva blank -H -f 1 -f 2 data.tsv`

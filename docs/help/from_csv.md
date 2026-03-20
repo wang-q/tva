@@ -1,29 +1,34 @@
 # from csv
 
-Reads CSV data from a file or standard input and writes it as TSV.
+Converts CSV (Comma-Separated Values) input to TSV output.
 
-The goal is to provide a simple entry point into the tva toolkit for
-CSV sources. Parsing is delegated to the Rust `csv` crate, so quoted
-fields, embedded delimiters, and newlines are handled according to the
-CSV specification.
+Behavior:
+
+* Parsing is delegated to the Rust `csv` crate, handling quoted fields, embedded
+  delimiters, and newlines according to the CSV specification.
+* TAB and newline characters found inside CSV fields are replaced with the
+  strings specified by `--tab-replacement` and `--newline-replacement` (default: space).
 
 Input:
 
-* If no input file is given, or the input file is 'stdin', data is read
-  from standard input.
+* Reads from files or standard input.
+* Files ending in `.gz` are transparently decompressed.
+* Use `stdin` or omit the file argument to read from standard input.
 
 Output:
 
 * Each CSV record becomes one TSV line.
 * Fields are joined with TAB characters.
+* By default, output is written to standard output.
+* Use `--outfile` to write to a file instead.
 
 Examples:
 
 1. Convert a CSV file to TSV
-   tva from csv data.csv > data.tsv
+   `tva from csv data.csv > data.tsv`
 
 2. Read CSV from stdin and convert to TSV
-   cat data.csv | tva from csv > data.tsv
+   `cat data.csv | tva from csv > data.tsv`
 
-3. Use a custom delimiter
-   tva from csv --delimiter ';' data.csv > data.tsv
+3. Use a custom delimiter (e.g., semicolon)
+   `tva from csv --delimiter ';' data.csv`
