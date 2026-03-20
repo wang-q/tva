@@ -45,7 +45,7 @@ cargo build
 
 * **特性**: datamash 提供大量逐行转换操作，无需分组即可使用：
     * **数值修约**: `trunc`, `frac`。
-    * **文件路径处理**: `dirname`, `basename`, `extname`, `barename`。
+    * **文件路径处理**: `dirname`, `basename`, `extname`, `barename`。abspath
     * **数值提取**: `getnum` 从混合文本中提取数字（如 "zoom-123.45xyz" -> 123.45）。
     * **分箱**: `strbin` (字符串哈希分箱)。
 
@@ -67,13 +67,53 @@ cargo build
 
 #### 1. 并行处理架构 (Parallel Processing)
 
-* **实现**: `cmd/parallel.rs`
-* **机制**: 类似于 Map-Reduce。它不试图让每个命令内部并行化，而是提供一个通用的 `parallel` 子命令。
-    * **Chunking**: 自动将文件分块，或按文件分发任务。
-    * **Shuffle**: 保证输出顺序与输入一致（如果需要）。
-* **对 `tva` 的启示**:
-    * `tva` 目前是单线程流式处理。
-    * **建议**: 实现 `tva parallel` 命令，负责将大文件切分 (利用 `split` 逻辑) 并启动多个子进程/线程处理，最后聚合结果。
+* **实现**: `cmd/parallel.rs` (~1600 行)
+* **核心设计**: 采用 **"External Parallelism"** 模式，不修改单个命令的内部实现，而是通过一个通用的 `parallel` 子命令来并行化任意操作。
+
+**关键机制**:
+
+1. **任务分发策略** (线程分配算法):
+    * 当输入文件数 >= 线程数时：每个文件一个任务
+    * 当线程数 > 文件数时：利用 CSV/BGZF 的 seek 能力将大文件切分为多个 `FileChunk`
+    * 通过 `simd_seeker().segments(t)` 实现基于字节偏移的精确分块
+
+2. **预处理管道** (两种模式):
+    * `-P, --preprocess`: 使用 xan 子命令管道 (如 `"search -s name John | slice -l 10"`)
+    * `-H, --shell-preprocess`: 使用 shell 管道 (`$SHELL -c`)，更灵活但 Windows 不支持
+
+3. **子命令实现**:
+    * `count`: 行数统计 (支持 `--source-column` 输出每个文件的计数)
+    * `cat`: 并行预处理并合并结果 (带缓冲区控制 `--buffer-size`)
+    * `freq`: 并行频率统计，使用 `Counter` 数据结构合并结果
+    * `stats`: 并行统计计算，使用 `Stats` 结构合并
+    * `agg`/`groupby`: 并行聚合，使用 `AggregationProgram`/`GroupAggregationProgram`
+    * `map`: 并行处理并输出到指定模板文件 (如 `'{}_freq.csv'`)
+
+4. **进程管理** (`ProcessManager`):
+    * 使用 `rayon` 线程池进行并行执行
+    * 支持进度条 (`indicatif` 的 `MultiProgress`)
+    * 子进程错误捕获和优雅退出 (通过 `Children` 结构管理)
+
+5. **数据合并模式**:
+    * **计数/求和型**: 使用 `AtomicU64` 或 `Mutex<BTreeMap>` 合并
+    * **频率表型**: `FrequencyTables::merge()` 合并多个 `Counter`
+    * **统计型**: `StatsTables::merge()` 合并 `Stats` 结构
+    * **分组聚合型**: `GroupAggregationProgram::merge()` 合并分组结果
+
+**对 `tva` 的启示**:
+
+* **优势**: 
+    * 无需修改现有命令代码即可并行化
+    * 利用 SIMD CSV 解析器的 seek 能力实现文件分块
+    * 支持 BGZF 索引文件的高效随机访问
+* **挑战**:
+    * 需要处理 header 在分块后的正确传递
+    * 输出顺序控制 (`cat` 命令的 `--buffer-size`)
+    * 错误处理和子进程管理复杂度较高
+* **建议**: 
+    * 第一阶段：实现基于文件粒度的并行 (类似 `xan parallel count *.tsv`)
+    * 第二阶段：结合 `tva split` 实现大文件分块并行
+    * 利用 TSV 无引号特性，可以比 CSV 更简单地实现字节级分块
 
 #### 4. 随机访问与索引 (Random Access & Indexing)
 
@@ -129,18 +169,6 @@ cargo build
     * **替换**: 支持正则替换并输出到新列。
 * **价值**: 在数据清洗（ETL）场景中，批量关键词匹配和替换是刚需。
 * **建议**: 增强 `tva filter` 或新增 `tva search`，集成 `aho-corasick` crate 以支持高性能的多模式匹配。
-
-#### 3. 表达式语言设计 (Moonblade 分析)
-
-`xan` 的 `moonblade` 表达式引擎设计精良，以下是值得 `tva` 借鉴的关键特性：
-
-**3.2 待添加的函数**
-
-以下函数尚未实现，可参考 `xan` 添加：
-
-| 函数类别     | 函数名                            | 功能   | 优先级 |
-|:---------|:-------------------------------|:-----|:----|
-| **文件路径** | `abspath`/`dirname`/`basename` | 路径处理 | 低   |
 
 ## tva 与 xan 命令对比分析
 
