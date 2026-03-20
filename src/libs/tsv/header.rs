@@ -1,6 +1,62 @@
 //! Header detection and handling for TSV data.
 //!
-//! Provides unified header processing logic for all tva commands.
+//! This module provides unified header processing logic for all tva commands.
+//!
+//! # Architecture
+//!
+//! The module provides three main types for different use cases:
+//!
+//! - [`HeaderConfig`]: Configuration for header detection modes (CLI layer)
+//! - [`HeaderHandler`]: Streaming processor for capturing headers during line-by-line processing
+//! - [`Header`]: Unified header structure with field resolution capabilities
+//!
+//! # Usage Examples
+//!
+//! ## Streaming processing with HeaderHandler
+//!
+//! ```rust
+//! use tva::libs::tsv::header::{HeaderConfig, HeaderHandler};
+//!
+//! let config = HeaderConfig::new().enabled().first_line();
+//! let mut handler = HeaderHandler::new(config);
+//!
+//! // Process first line - captures it as header
+//! let is_header = handler.process_first_line(b"col1\tcol2").unwrap();
+//! assert!(is_header);
+//!
+//! // Subsequent lines are data
+//! let is_header = handler.process_first_line(b"val1\tval2").unwrap();
+//! assert!(!is_header);
+//!
+//! // Get captured header
+//! assert_eq!(handler.header(), Some(b"col1\tcol2".as_slice()));
+//! ```
+//!
+//! ## Field resolution with Header
+//!
+//! ```rust
+//! use tva::libs::tsv::header::Header;
+//!
+//! let header = Header::from_column_names(b"name\tage\tcity".to_vec(), '\t');
+//!
+//! // Look up field index by name (0-based)
+//! assert_eq!(header.get_index("age"), Some(1));
+//! assert_eq!(header.get_index("name"), Some(0));
+//! ```
+//!
+//! ## Writing header to output
+//!
+//! ```rust
+//! use tva::libs::tsv::header::{Header, write_header};
+//!
+//! let header = Header::from_column_names(b"col1\tcol2".to_vec(), '\t');
+//! let mut output = Vec::new();
+//! write_header(&mut output, &header, None).unwrap();
+//! assert_eq!(output, b"col1\tcol2\n");
+//! ```
+
+use std::collections::HashMap;
+use std::io::{self, Write};
 
 /// Header detection mode. The four modes are mutually exclusive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,211 +127,60 @@ impl Default for HeaderConfig {
 }
 
 /// Information about a detected header (returned by TsvReader).
+///
+/// This is an internal type used by `TsvReader` to return header detection results.
+/// Commands should use [`Header`] instead for unified header handling.
+///
+/// The relationship between `lines` and `column_names_line`:
+/// - For `FirstLine` mode: `lines` contains 1 line, `column_names_line` is that line
+/// - For `LinesN(n)` mode: `lines` contains n lines, `column_names_line` is the last line
+/// - For `HashLines` mode: `lines` contains hash lines, `column_names_line` is `None`
+/// - For `HashLines1` mode: `lines` contains hash lines + column names, `column_names_line` is the last line
 pub struct HeaderInfo {
     /// All header lines (e.g., comment lines, or first N lines).
-    pub lines: Vec<Vec<u8>>,
+    pub(crate) lines: Vec<Vec<u8>>,
     /// The specific line containing column names (if applicable).
-    pub column_names_line: Option<Vec<u8>>,
-}
-
-/// Result of header detection.
-#[derive(Debug)]
-pub struct DetectedHeader {
-    /// The detected header lines (may be empty if no header).
-    pub lines: Vec<Vec<u8>>,
-    /// Number of bytes consumed from the input.
-    pub bytes_consumed: usize,
-}
-
-impl DetectedHeader {
-    /// Returns true if any header lines were detected.
-    pub fn has_header(&self) -> bool {
-        !self.lines.is_empty()
-    }
-
-    /// Returns the header as a single byte slice (lines joined with '\n').
-    pub fn as_bytes(&self) -> Vec<u8> {
-        if self.lines.is_empty() {
-            return Vec::new();
-        }
-        let mut result = Vec::new();
-        for (i, line) in self.lines.iter().enumerate() {
-            if i > 0 {
-                result.push(b'\n');
-            }
-            result.extend_from_slice(line);
-        }
-        result
-    }
-}
-
-/// Detects header from raw bytes according to the config.
-///
-/// Returns the detected header lines and the number of bytes consumed.
-/// The caller can skip `bytes_consumed` to get to the data section.
-pub fn detect_header(data: &[u8], config: &HeaderConfig) -> DetectedHeader {
-    if !config.enabled {
-        return DetectedHeader {
-            lines: Vec::new(),
-            bytes_consumed: 0,
-        };
-    }
-
-    match config.mode {
-        HeaderMode::FirstLine => detect_first_line_header(data),
-        HeaderMode::LinesN(n) => detect_lines_n_header(data, n),
-        HeaderMode::HashLines => detect_hash_lines_header(data, false),
-        HeaderMode::HashLines1 => detect_hash_lines_header(data, true),
-    }
-}
-
-/// Detects header using FirstLine mode: first line is the header, even if empty.
-fn detect_first_line_header(data: &[u8]) -> DetectedHeader {
-    let mut lines = Vec::new();
-    let mut pos = 0;
-
-    if pos < data.len() {
-        let line_end = find_line_end(data, pos);
-        let line = &data[pos..line_end];
-
-        // Remove trailing '\r' for Windows line endings
-        let line = if line.ends_with(b"\r") {
-            &line[..line.len() - 1]
-        } else {
-            line
-        };
-
-        // Move past this line for next iteration
-        pos = if line_end < data.len() && data[line_end] == b'\n' {
-            line_end + 1
-        } else {
-            line_end
-        };
-
-        // First line is the header (even if empty)
-        lines.push(line.to_vec());
-    }
-
-    DetectedHeader {
-        lines,
-        bytes_consumed: pos,
-    }
-}
-
-/// Detects header using LinesN mode: exactly N lines are the header (including empty lines).
-fn detect_lines_n_header(data: &[u8], n: usize) -> DetectedHeader {
-    let mut lines = Vec::new();
-    let mut pos = 0;
-    let mut line_count = 0;
-
-    // Collect exactly n lines (including empty lines)
-    while line_count < n && pos < data.len() {
-        let line_end = find_line_end(data, pos);
-        let line = &data[pos..line_end];
-
-        // Remove trailing '\r' for Windows line endings
-        let line = if line.ends_with(b"\r") {
-            &line[..line.len() - 1]
-        } else {
-            line
-        };
-
-        lines.push(line.to_vec());
-        line_count += 1;
-
-        // Move past the newline
-        pos = line_end;
-        if pos < data.len() && data[pos] == b'\n' {
-            pos += 1;
-        }
-    }
-
-    DetectedHeader {
-        lines,
-        bytes_consumed: pos,
-    }
-}
-
-/// Detects header using HashLines or HashLinesPlusOne mode.
-///
-/// When `include_next_line` is false: only consecutive '#' lines are the header.
-/// When `include_next_line` is true: consecutive '#' lines + the next line are the header.
-fn detect_hash_lines_header(data: &[u8], include_next_line: bool) -> DetectedHeader {
-    let mut lines = Vec::new();
-    let mut pos = 0;
-
-    loop {
-        if pos >= data.len() {
-            break;
-        }
-
-        let line_end = find_line_end(data, pos);
-        let line = &data[pos..line_end];
-
-        // Remove trailing '\r' for Windows line endings
-        let line = if line.ends_with(b"\r") {
-            &line[..line.len() - 1]
-        } else {
-            line
-        };
-
-        // Move past this line for next iteration
-        let next_pos = if line_end < data.len() && data[line_end] == b'\n' {
-            line_end + 1
-        } else {
-            line_end
-        };
-
-        // Skip leading empty lines - they're not part of hash-based header
-        if line.is_empty() && lines.is_empty() {
-            pos = next_pos;
-            continue;
-        }
-
-        // Check if it's a hash line (starts with '#')
-        let is_hash = line.starts_with(b"#");
-
-        if is_hash {
-            // Collect hash lines as part of header
-            lines.push(line.to_vec());
-            pos = next_pos;
-            // Continue to collect more hash lines
-        } else if include_next_line {
-            // First non-hash line is also part of header (column names)
-            lines.push(line.to_vec());
-            pos = next_pos;
-            break;
-        } else {
-            // Not a hash line and we don't need to collect it
-            break;
-        }
-    }
-
-    DetectedHeader {
-        lines,
-        bytes_consumed: pos,
-    }
-}
-
-/// Finds the end of the current line (position of '\n' or end of data).
-fn find_line_end(data: &[u8], start: usize) -> usize {
-    for i in start..data.len() {
-        if data[i] == b'\n' {
-            return i;
-        }
-    }
-    data.len()
+    pub(crate) column_names_line: Option<Vec<u8>>,
 }
 
 /// Header handler for streaming processing.
 ///
-/// This is useful when processing TSV data line by line, where you need to
+/// This struct is designed for line-by-line TSV processing where you need to
 /// capture the header from the first input file and potentially write it to output.
+///
+/// # Key Features
+///
+/// - Captures header according to the configured [`HeaderMode`]
+/// - Handles multi-file input (only captures header from first file)
+/// - Treats empty lines as data (not header) for robust streaming behavior
+///
+/// # Example
+///
+/// ```rust
+/// use tva::libs::tsv::header::{HeaderConfig, HeaderHandler};
+///
+/// let config = HeaderConfig::new().enabled().hash_lines();
+/// let mut handler = HeaderHandler::new(config);
+///
+/// // Hash lines are captured as header
+/// assert!(handler.process_first_line(b"# Comment").unwrap());
+/// assert!(handler.process_first_line(b"# Another comment").unwrap());
+///
+/// // Non-hash line is data
+/// assert!(!handler.process_first_line(b"col1\tcol2").unwrap());
+///
+/// // Header contains both hash lines joined by '\n'
+/// assert_eq!(handler.header(), Some(b"# Comment\n# Another comment".as_slice()));
+/// ```
 pub struct HeaderHandler {
+    /// Header detection configuration.
     config: HeaderConfig,
+    /// Captured header content (all header lines joined by '\n').
     captured_header: Option<Vec<u8>>,
+    /// Whether we're still processing the first file.
+    /// Header is only captured from the first file.
     is_first_file: bool,
-    /// For LinesN mode: remaining lines to collect as header
+    /// For LinesN mode: tracks remaining lines to collect as header.
     lines_n_remaining: usize,
 }
 
@@ -419,69 +324,103 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_header_disabled() {
-        let config = HeaderConfig::new();
-        let data = b"col1\tcol2\nval1\tval2\n";
-        let result = detect_header(data, &config);
-        assert!(!result.has_header());
-        assert_eq!(result.bytes_consumed, 0);
+    fn test_handler_disabled() {
+        let config = HeaderConfig::new(); // disabled
+        let mut handler = HeaderHandler::new(config);
+
+        assert!(!handler.is_enabled());
+        assert!(!handler.should_output_header());
+        assert!(!handler.process_first_line(b"col1\tcol2").unwrap());
+        assert!(handler.header().is_none());
     }
 
     #[test]
-    fn test_header_lines_n() {
+    fn test_handler_first_line_mode() {
+        let config = HeaderConfig::new().enabled().first_line();
+        let mut handler = HeaderHandler::new(config);
+
+        // First line is header
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(handler.header(), Some(b"col1\tcol2".as_slice()));
+
+        // Second line is data
+        assert!(!handler.process_first_line(b"val1\tval2").unwrap());
+    }
+
+    #[test]
+    fn test_handler_lines_n_mode() {
         let config = HeaderConfig::new().enabled().lines_n(2);
-        let data = b"# comment\ncol1\tcol2\nval1\tval2\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines.len(), 2);
-        assert_eq!(result.lines[0], b"# comment");
-        assert_eq!(result.lines[1], b"col1\tcol2");
+        let mut handler = HeaderHandler::new(config);
+
+        // First two lines are header
+        assert!(handler.process_first_line(b"# comment").unwrap());
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(handler.header(), Some(b"# comment\ncol1\tcol2".as_slice()));
+
+        // Third line is data
+        assert!(!handler.process_first_line(b"val1\tval2").unwrap());
     }
 
     #[test]
-    fn test_header_with_hash_lines() {
-        // HashLines mode: only '#' lines are header
+    fn test_handler_hash_lines_mode() {
         let config = HeaderConfig::new().enabled().hash_lines();
-        let data = b"# comment 1\n# comment 2\ncol1\tcol2\nval1\tval2\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines.len(), 2);
-        assert_eq!(result.lines[0], b"# comment 1");
-        assert_eq!(result.lines[1], b"# comment 2");
+        let mut handler = HeaderHandler::new(config);
+
+        // Hash lines are header
+        assert!(handler.process_first_line(b"# comment 1").unwrap());
+        assert!(handler.process_first_line(b"# comment 2").unwrap());
+        assert_eq!(
+            handler.header(),
+            Some(b"# comment 1\n# comment 2".as_slice())
+        );
+
+        // Non-hash line is data
+        assert!(!handler.process_first_line(b"col1\tcol2").unwrap());
     }
 
     #[test]
-    fn test_header_with_hash_lines1() {
+    fn test_handler_hash_lines1_three_lines() {
         // HashLines1 mode: '#' lines + next line are header (for column names)
         let config = HeaderConfig::new().enabled().hash_lines1();
-        let data = b"# comment 1\n# comment 2\ncol1\tcol2\nval1\tval2\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines.len(), 3);
-        assert_eq!(result.lines[0], b"# comment 1");
-        assert_eq!(result.lines[1], b"# comment 2");
-        assert_eq!(result.lines[2], b"col1\tcol2");
+        let mut handler = HeaderHandler::new(config);
+
+        assert!(handler.process_first_line(b"# comment 1").unwrap());
+        assert!(handler.process_first_line(b"# comment 2").unwrap());
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(
+            handler.header(),
+            Some(b"# comment 1\n# comment 2\ncol1\tcol2".as_slice())
+        );
+
+        // Subsequent line is data
+        assert!(!handler.process_first_line(b"val1\tval2").unwrap());
     }
 
     #[test]
-    fn test_header_auto_detect() {
+    fn test_handler_auto_detect_first_line() {
+        // Default mode (FirstLine) - first line is header
         let config = HeaderConfig::new().enabled();
-        let data = b"col1\tcol2\nval1\tval2\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines.len(), 1);
-        assert_eq!(result.lines[0], b"col1\tcol2");
+        let mut handler = HeaderHandler::new(config);
+
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(handler.header(), Some(b"col1\tcol2".as_slice()));
+
+        // Second line is data
+        assert!(!handler.process_first_line(b"val1\tval2").unwrap());
     }
 
     #[test]
-    fn test_header_first_line_with_empty_lines() {
-        // FirstLine mode now takes the first line even if empty
+    fn test_handler_first_line_empty_skipped() {
+        // HeaderHandler treats empty lines as data (not header)
+        // This differs from detect_header behavior
         let config = HeaderConfig::new().enabled();
-        let data = b"\n\ncol1\tcol2\nval1\tval2\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        // First line is empty
-        assert_eq!(result.lines[0], b"");
+        let mut handler = HeaderHandler::new(config);
+
+        // Empty line is treated as data
+        assert!(!handler.process_first_line(b"").unwrap());
+        // First non-empty line is header
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(handler.header(), Some(b"col1\tcol2".as_slice()));
     }
 
     #[test]
@@ -507,142 +446,125 @@ mod tests {
     }
 
     #[test]
-    fn test_detected_header_as_bytes_single() {
-        let header = DetectedHeader {
-            lines: vec![b"col1\tcol2".to_vec()],
-            bytes_consumed: 10,
-        };
-        assert_eq!(header.as_bytes(), b"col1\tcol2");
-    }
-
-    #[test]
-    fn test_detected_header_as_bytes_multiple() {
-        let header = DetectedHeader {
-            lines: vec![b"# comment".to_vec(), b"col1\tcol2".to_vec()],
-            bytes_consumed: 20,
-        };
-        assert_eq!(header.as_bytes(), b"# comment\ncol1\tcol2");
-    }
-
-    #[test]
-    fn test_detected_header_as_bytes_empty() {
-        let header = DetectedHeader {
-            lines: vec![],
-            bytes_consumed: 0,
-        };
-        assert!(header.as_bytes().is_empty());
-    }
-
-    #[test]
-    fn test_first_line_header_empty_data() {
+    fn test_handler_header_as_bytes_single() {
+        // HeaderHandler stores header as single line
         let config = HeaderConfig::new().enabled().first_line();
-        let data = b"";
-        let result = detect_header(data, &config);
-        assert!(!result.has_header());
-        assert_eq!(result.bytes_consumed, 0);
-    }
-
-    #[test]
-    fn test_first_line_header_only_empty_lines() {
-        // FirstLine mode takes the first line even if empty
-        let config = HeaderConfig::new().enabled().first_line();
-        let data = b"\n\n\n";
-        let result = detect_header(data, &config);
-        // Now we have a header (the first empty line)
-        assert!(result.has_header());
-        assert_eq!(result.lines[0], b""); // First line is empty
-        assert_eq!(result.bytes_consumed, 1); // Only consumed first line
-    }
-
-    #[test]
-    fn test_lines_n_header_with_leading_empty_lines() {
-        // LinesN mode now takes the first N lines (including empty lines)
-        let config = HeaderConfig::new().enabled().lines_n(2);
-        let data = b"\n\n# comment\ncol1\tcol2\ndata\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines.len(), 2);
-        // First two lines are empty
-        assert_eq!(result.lines[0], b"");
-        assert_eq!(result.lines[1], b"");
-    }
-
-    #[test]
-    fn test_lines_n_header_insufficient_lines() {
-        let config = HeaderConfig::new().enabled().lines_n(3);
-        let data = b"line1\nline2\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines.len(), 2); // Only 2 lines available
-    }
-
-    #[test]
-    fn test_hash_lines_no_hash_found() {
-        let config = HeaderConfig::new().enabled().hash_lines();
-        let data = b"col1\tcol2\ndata\n";
-        let result = detect_header(data, &config);
-        assert!(!result.has_header());
-        assert_eq!(result.bytes_consumed, 0);
-    }
-
-    #[test]
-    fn test_hash_lines1_no_data_after_hash() {
-        let config = HeaderConfig::new().enabled().hash_lines1();
-        let data = b"# comment only\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines.len(), 1);
-        assert_eq!(result.lines[0], b"# comment only");
-    }
-
-    #[test]
-    fn test_hash_lines_with_leading_empty() {
-        let config = HeaderConfig::new().enabled().hash_lines();
-        let data = b"\n\n# comment\ndata\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines.len(), 1);
-        assert_eq!(result.lines[0], b"# comment");
-    }
-
-    #[test]
-    fn test_handler_disabled() {
-        let config = HeaderConfig::new(); // disabled
         let mut handler = HeaderHandler::new(config);
 
-        assert!(!handler.is_enabled());
-        assert!(!handler.should_output_header());
-        assert!(!handler.process_first_line(b"col1\tcol2").unwrap());
-        assert!(handler.header().is_none());
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(handler.header(), Some(b"col1\tcol2".as_slice()));
     }
 
     #[test]
-    fn test_handler_empty_line() {
-        let config = HeaderConfig::new().enabled();
-        let mut handler = HeaderHandler::new(config);
-
-        // Empty lines should not be treated as header
-        assert!(!handler.process_first_line(b"").unwrap());
-        assert!(handler.header().is_none());
-    }
-
-    #[test]
-    fn test_handler_hash_lines_mode() {
+    fn test_handler_header_as_bytes_multiple() {
+        // HeaderHandler joins multiple header lines with '\n'
         let config = HeaderConfig::new().enabled().hash_lines();
         let mut handler = HeaderHandler::new(config);
 
-        // First hash line
         assert!(handler.process_first_line(b"# comment 1").unwrap());
-        // Second hash line
         assert!(handler.process_first_line(b"# comment 2").unwrap());
         // Non-hash line is data
         assert!(!handler.process_first_line(b"col1\tcol2").unwrap());
-
-        assert!(handler.should_output_header());
         assert_eq!(
             handler.header(),
             Some(b"# comment 1\n# comment 2".as_slice())
         );
+    }
+
+    #[test]
+    fn test_handler_header_empty() {
+        // No header captured when disabled
+        let config = HeaderConfig::new(); // disabled
+        let handler = HeaderHandler::new(config);
+
+        assert!(handler.header().is_none());
+    }
+
+    #[test]
+    fn test_handler_first_line_empty_data() {
+        // Empty data - no lines processed
+        let config = HeaderConfig::new().enabled().first_line();
+        let handler = HeaderHandler::new(config);
+
+        assert!(handler.header().is_none());
+        assert!(!handler.should_output_header());
+    }
+
+    #[test]
+    fn test_handler_first_line_only_empty_lines() {
+        // HeaderHandler treats empty lines as data, not header
+        let config = HeaderConfig::new().enabled().first_line();
+        let mut handler = HeaderHandler::new(config);
+
+        // Empty lines are skipped
+        assert!(!handler.process_first_line(b"").unwrap());
+        assert!(!handler.process_first_line(b"").unwrap());
+        // First non-empty line is header
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(handler.header(), Some(b"col1\tcol2".as_slice()));
+    }
+
+    #[test]
+    fn test_handler_lines_n_with_leading_empty() {
+        // LinesN mode: empty lines are treated as data (not counted as header)
+        let config = HeaderConfig::new().enabled().lines_n(2);
+        let mut handler = HeaderHandler::new(config);
+
+        // Empty lines are data
+        assert!(!handler.process_first_line(b"").unwrap());
+        assert!(!handler.process_first_line(b"").unwrap());
+        // First two non-empty lines are header
+        assert!(handler.process_first_line(b"# comment").unwrap());
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(handler.header(), Some(b"# comment\ncol1\tcol2".as_slice()));
+    }
+
+    #[test]
+    fn test_handler_lines_n_insufficient_lines() {
+        // LinesN mode with insufficient lines - captures what's available
+        let config = HeaderConfig::new().enabled().lines_n(3);
+        let mut handler = HeaderHandler::new(config);
+
+        assert!(handler.process_first_line(b"line1").unwrap());
+        assert!(handler.process_first_line(b"line2").unwrap());
+        // Only 2 lines available - both captured as header
+        assert_eq!(handler.header(), Some(b"line1\nline2".as_slice()));
+    }
+
+    #[test]
+    fn test_handler_hash_lines_no_hash() {
+        // HashLines mode with no hash lines - no header
+        let config = HeaderConfig::new().enabled().hash_lines();
+        let mut handler = HeaderHandler::new(config);
+
+        // First non-hash line is data
+        assert!(!handler.process_first_line(b"col1\tcol2").unwrap());
+        assert!(handler.header().is_none());
+    }
+
+    #[test]
+    fn test_handler_hash_lines1_only_hash() {
+        // HashLines1 mode with only hash lines
+        let config = HeaderConfig::new().enabled().hash_lines1();
+        let mut handler = HeaderHandler::new(config);
+
+        assert!(handler.process_first_line(b"# comment only").unwrap());
+        // No more lines - header is just the hash line
+        assert_eq!(handler.header(), Some(b"# comment only".as_slice()));
+    }
+
+    #[test]
+    fn test_handler_hash_lines_leading_empty() {
+        // HashLines mode with leading empty lines - empty lines are data
+        let config = HeaderConfig::new().enabled().hash_lines();
+        let mut handler = HeaderHandler::new(config);
+
+        // Empty line is data
+        assert!(!handler.process_first_line(b"").unwrap());
+        assert!(!handler.process_first_line(b"").unwrap());
+        // Hash line is header
+        assert!(handler.process_first_line(b"# comment").unwrap());
+        assert_eq!(handler.header(), Some(b"# comment".as_slice()));
     }
 
     #[test]
@@ -687,45 +609,49 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_header_crlf() {
+    fn test_handler_crlf_first_line() {
+        // HeaderHandler receives lines without \r\n (already split by reader)
+        // So we just test that it handles the line content correctly
         let config = HeaderConfig::new().enabled().first_line();
-        let data = b"col1\tcol2\r\nval1\tval2\r\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines[0], b"col1\tcol2"); // \r removed
+        let mut handler = HeaderHandler::new(config);
+
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(handler.header(), Some(b"col1\tcol2".as_slice()));
     }
 
     #[test]
-    fn test_detect_header_no_final_newline() {
+    fn test_handler_single_line_no_newline() {
+        // HeaderHandler works with single line (no newline needed)
         let config = HeaderConfig::new().enabled().first_line();
-        let data = b"col1\tcol2"; // No newline at end
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines[0], b"col1\tcol2");
+        let mut handler = HeaderHandler::new(config);
+
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(handler.header(), Some(b"col1\tcol2".as_slice()));
     }
 
     #[test]
-    fn test_lines_n_with_crlf() {
-        // Test Windows line endings (\r\n) in LinesN mode
+    fn test_handler_lines_n_crlf_content() {
+        // HeaderHandler receives lines without \r (already stripped by reader)
         let config = HeaderConfig::new().enabled().lines_n(2);
-        let data = b"# comment\r\ncol1\tcol2\r\ndata\r\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines.len(), 2);
-        assert_eq!(result.lines[0], b"# comment"); // \r removed
-        assert_eq!(result.lines[1], b"col1\tcol2"); // \r removed
+        let mut handler = HeaderHandler::new(config);
+
+        assert!(handler.process_first_line(b"# comment").unwrap());
+        assert!(handler.process_first_line(b"col1\tcol2").unwrap());
+        assert_eq!(handler.header(), Some(b"# comment\ncol1\tcol2".as_slice()));
     }
 
     #[test]
-    fn test_hash_lines_with_crlf() {
-        // Test Windows line endings (\r\n) in HashLines mode
+    fn test_handler_hash_lines_crlf_content() {
+        // HeaderHandler receives lines without \r (already stripped by reader)
         let config = HeaderConfig::new().enabled().hash_lines();
-        let data = b"# comment1\r\n# comment2\r\ndata\r\n";
-        let result = detect_header(data, &config);
-        assert!(result.has_header());
-        assert_eq!(result.lines.len(), 2);
-        assert_eq!(result.lines[0], b"# comment1"); // \r removed
-        assert_eq!(result.lines[1], b"# comment2"); // \r removed
+        let mut handler = HeaderHandler::new(config);
+
+        assert!(handler.process_first_line(b"# comment1").unwrap());
+        assert!(handler.process_first_line(b"# comment2").unwrap());
+        assert_eq!(handler.header(), Some(b"# comment1\n# comment2".as_slice()));
+
+        // Non-hash line is data
+        assert!(!handler.process_first_line(b"data").unwrap());
     }
 
     #[test]
@@ -769,24 +695,81 @@ mod tests {
         // Non-hash line is data
         assert!(!handler.process_first_line(b"val1\tval2").unwrap());
     }
-}
 
-use std::collections::HashMap;
-use std::io::{self, Write};
+    #[test]
+    fn test_build_suffix_basic() {
+        let items = vec!["count", "first", "last"];
+        let suffix = build_suffix(&items, b'\t');
+        assert_eq!(suffix, b"\tcount\tfirst\tlast");
+    }
+
+    #[test]
+    fn test_build_suffix_empty() {
+        let items: Vec<&str> = vec![];
+        let suffix = build_suffix(&items, b'\t');
+        assert!(suffix.is_empty());
+    }
+
+    #[test]
+    fn test_build_suffix_single_item() {
+        let items = vec!["n"];
+        let suffix = build_suffix(&items, b'\t');
+        assert_eq!(suffix, b"\tn");
+    }
+
+    #[test]
+    fn test_build_suffix_custom_delimiter() {
+        let items = vec!["a", "b"];
+        let suffix = build_suffix(&items, b',');
+        assert_eq!(suffix, b",a,b");
+    }
+}
 
 /// Unified header structure that combines header metadata with field resolution capabilities.
 ///
-/// This struct replaces both `HeaderInfo` (for storage) and `Header` from `fields.rs` (for field resolution).
-/// It stores all header lines plus an optional column names line, and provides methods for
-/// field name-to-index resolution.
+/// This struct serves as the primary header representation for tva commands. It stores:
+/// - All header lines (hash comments, LinesN lines, etc.)
+/// - The column names line (for field name resolution)
+/// - A cached index mapping for efficient field lookup
+///
+/// # Creating a Header
+///
+/// ## From raw column names
+/// ```rust
+/// use tva::libs::tsv::header::Header;
+///
+/// let header = Header::from_column_names(b"name\tage\tcity".to_vec(), '\t');
+/// ```
+///
+/// ## From TsvReader output
+/// `Header::from_info()` is used internally by commands that work with `TsvReader`.
+/// The `HeaderInfo` struct is created by the reader and passed to commands.
+///
+/// # Field Resolution
+///
+/// The header maintains a cache for efficient field name lookup:
+/// ```rust
+/// use tva::libs::tsv::header::Header;
+///
+/// let header = Header::from_column_names(b"a\tb\tc".to_vec(), '\t');
+///
+/// // 0-based indexing
+/// assert_eq!(header.get_index("a"), Some(0));
+/// assert_eq!(header.get_index("b"), Some(1));
+/// assert_eq!(header.get_index("z"), None); // Not found
+/// ```
 #[derive(Clone, Debug)]
 pub struct Header {
     /// All header lines (e.g., hash comment lines, or first N lines in LinesN mode).
+    /// These are written before the column names line.
     pub lines: Vec<Vec<u8>>,
     /// The specific line containing column names (if applicable).
+    /// This is used for field name resolution.
     pub column_names: Option<Vec<u8>>,
+    /// Field delimiter used for parsing column names.
     delimiter: char,
     /// Cache for field name to index lookup.
+    /// Maps field name -> 0-based column index.
     index_cache: Option<HashMap<String, usize>>,
 }
 
