@@ -1,5 +1,5 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
-use crate::libs::tsv::fields::resolve_fields_from_header;
+use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRow};
 use clap::*;
@@ -132,19 +132,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // Using HashMap<usize, Vec<u8>> where key is 0-based column index
         let mut col_replacements: HashMap<usize, Vec<u8>> = HashMap::new();
 
+        // Create FieldResolver once for all field parsing
+        let resolver = FieldResolver::new(column_names_bytes.clone(), '\t');
+
         for config in &field_configs {
-            // Parse the selector using tsv::fields logic
-            // If no header, only numeric selectors are allowed
-            let indices = if let Some(ref names) = column_names_bytes {
-                resolve_fields_from_header(&config.selector, names, '\t')
-                    .map_err(|e| anyhow::anyhow!(e))?
-            } else {
-                // No header available - use numeric parsing only
-                crate::libs::tsv::fields::parse_numeric_field_list_preserve_order(
-                    &config.selector,
-                )
-                .map_err(|e| anyhow::anyhow!(e))?
-            };
+            // Parse the selector using FieldResolver
+            let indices = resolver
+                .resolve(&config.selector)
+                .map_err(|e| anyhow::anyhow!(e))?;
 
             for idx in indices {
                 // idx is 1-based, convert to 0-based

@@ -260,21 +260,6 @@ Bar Charts）。
 
 基于对25个命令文件的代码分析，以下是改进建议：
 
-### 1. 统一错误处理风格 (已完成)
-
-**修改内容**: 移除了所有命令中的 `arg_error()` 函数，统一使用 `anyhow::bail!`。
-
-**涉及文件**:
-- `src/cmd_tva/select.rs`
-- `src/cmd_tva/join.rs`
-- `src/cmd_tva/filter.rs`
-- `src/cmd_tva/sample.rs`
-- `src/cmd_tva/split.rs`
-- `src/cmd_tva/uniq.rs`
-
-**注意事项**: 错误消息格式从 `tva command: message` 变为 `Error: message`。
-需要更新测试文件中匹配错误消息的断言（将 `stderr.contains("tva command:` 改为 `stderr.contains("`）。
-
 ### 2. 提取 Header 处理公共函数
 
 **现状**: 多个命令重复类似的 header 写入逻辑：
@@ -293,30 +278,6 @@ if let Some(ref column_names) = header_info.column_names_line {
 ```rust
 pub fn write_header_info(writer: &mut dyn Write, info: &HeaderInfo) -> io::Result<()>
 pub fn write_header_with_suffix(writer: &mut dyn Write, info: &HeaderInfo, suffix: Option<&[u8]>) -> io::Result<()>
-```
-
-### 3. 字段解析逻辑统一 (已完成)
-
-**实现**: 在 `libs/tsv/fields.rs` 中添加了 `resolve_fields_from_header` 函数，统一了从 header 字节解析字段列表的逻辑。
-
-**已迁移的命令**:
-- `blank.rs` - 使用新函数解析 blank 字段
-- `fill.rs` - 使用新函数解析 fill 字段  
-- `select.rs` - 使用新函数解析 select/exclude 字段
-- `uniq.rs` - 使用新函数解析去重 key 字段
-- `wider.rs` - 使用新函数解析 names-from/values-from/id-cols 字段
-
-**待迁移的命令** (需要更多重构):
-- `sample.rs` - 使用了中间函数，需要重构函数签名
-- `stats.rs` - 需要 Header 对象来生成输出 header 名称
-
-**函数签名**:
-```rust
-pub fn resolve_fields_from_header(
-    spec: &str,
-    column_names_bytes: &[u8],
-    delimiter: char,
-) -> Result<Vec<usize>, String>
 ```
 
 ### 4. TsvRow 迭代器支持
@@ -338,15 +299,164 @@ impl TsvRow {
 }
 ```
 
-### 5. 优先级建议
+## 字段解析与 Header 处理改进提案
 
-| 优先级 | 改进项 | 影响 |
-|:-------|:-------|:-----|
-| P1 | 统一错误处理风格 | 代码一致性 |
-| P2 | 提取 header 写入辅助函数 | 减少重复代码 (~50行/文件) |
-| P3 | 添加 TsvRow 字段迭代器 | 简化循环代码 |
+### 现状问题分析
 
-### 6. 保持现状的部分
+1. **API 不一致**
+   - `parse_field_list_with_header` 返回 `Result<Vec<usize>, String>`，但需要 `Option<&Header>`
+   - `resolve_fields_from_header` 接受字节，但内部仍创建 `Header` 对象
+   - 命令中需要手动处理 `column_names_bytes` 和 `Header` 的转换
 
-- **`sample.rs`**: 使用 `for_each_line` + 手动 `memchr_iter` 是合理的，因为采样算法需要存储原始行，不适合 `for_each_row` 模式。
-- **`key.rs` 的 `extract()` 方法**: 虽然只被测试使用，但保留它有助于测试 `KeyExtractor` 的基础功能。
+2. **Header 处理的复杂性**
+   - 有 `HeaderInfo`（来自 reader）、`Header`（字段解析）、`HeaderConfig`（CLI 参数）三个相关结构
+   - `select.rs` 中甚至需要手动构建 `TsvRow` 来写 header
+
+3. **字段解析的重复逻辑**
+   - 每个命令都要写类似的模式：
+     ```rust
+     let indices = if let Some(ref names) = column_names_bytes {
+         resolve_fields_from_header(spec, names, '\t')?
+     } else {
+         parse_numeric_field_list(spec)?
+     };
+     ```
+
+4. **--fields 与 header 的耦合问题**
+   - 有些命令需要 header 来解析字段名，有些只需要数字索引
+   - `header_args_with_columns()` 和 `header_args()` 区分不清晰
+
+### 改进方案
+
+#### 统一字段解析 API（推荐）
+
+创建一个统一的 `FieldResolver` 结构，封装所有解析逻辑：
+
+```rust
+// libs/tsv/fields.rs
+pub struct FieldResolver {
+    header_bytes: Option<Vec<u8>>,
+    delimiter: char,
+}
+
+impl FieldResolver {
+    pub fn new(header_bytes: Option<Vec<u8>>, delimiter: char) -> Self {
+        Self { header_bytes, delimiter }
+    }
+    
+    /// 解析字段列表，自动判断是否使用 header
+    pub fn resolve(&self, spec: &str) -> Result<Vec<usize>, String> {
+        match &self.header_bytes {
+            Some(bytes) => resolve_fields_from_header(spec, bytes, self.delimiter),
+            None => parse_numeric_field_list_preserve_order(spec),
+        }
+    }
+    
+    /// 获取 header 字段名（用于生成输出 header）
+    pub fn column_names(&self) -> Option<Vec<String>> {
+        self.header_bytes.as_ref().map(|bytes| {
+            let s = std::str::from_utf8(bytes).ok()?;
+            Some(s.split(self.delimiter).map(|f| f.to_string()).collect())
+        }).flatten()
+    }
+}
+```
+
+**命令中使用：**
+```rust
+// 简化后的命令代码
+let resolver = FieldResolver::new(column_names_bytes, '\t');
+let indices = resolver.resolve(&config.names_from)?;
+let output_name = resolver.column_names()
+    .and_then(|names| names.get(idx).cloned())
+    .unwrap_or_else(|| format!("field{}", idx));
+```
+
+**进阶用法：结合 header 读取**
+
+`FieldResolver` 可以与 header 读取结合，进一步简化命令代码：
+
+```rust
+// libs/cli.rs
+pub fn resolve_fields_with_header(
+    reader: &mut TsvReader,
+    header_config: &HeaderConfig,
+    field_specs: &[String],
+) -> anyhow::Result<(Vec<Vec<usize>>, Option<Vec<u8>>)> {
+    // 读取 header
+    let column_names_bytes = if header_config.enabled {
+        let header_info = reader.read_header_mode(header_config.mode)?;
+        header_info.column_names_line
+    } else {
+        None
+    };
+    
+    // 使用 FieldResolver 解析所有字段规范
+    let resolver = FieldResolver::new(column_names_bytes.clone(), '\t');
+    let all_indices: Vec<Vec<usize>> = field_specs
+        .iter()
+        .map(|spec| resolver.resolve(spec))
+        .collect::<Result<_, _>>()?;
+    
+    Ok((all_indices, column_names_bytes))
+}
+```
+
+### 实施计划
+
+#### 阶段 1: 实现新 API（保留旧 API）
+
+在 `libs/tsv/fields.rs` 中添加 `FieldResolver` 结构（见上方「改进方案」），不修改现有函数。
+
+#### 阶段 2: 试点命令（选择 2-3 个命令试用）
+
+选择结构简单的命令进行试点：
+
+| 命令 | 选择理由 |
+|-----|---------|
+| `blank.rs` | 字段解析逻辑简单，只有 `--field` 一个参数 |
+| `fill.rs` | 与 `blank.rs` 类似，便于对比验证 |
+| `uniq.rs` | 已部分迁移，只需切换到新 API |
+
+**试点步骤**:
+1. 修改命令使用 `FieldResolver`
+2. 运行该命令的所有测试
+3. 验证功能正常
+
+#### 阶段 3: 全面迁移
+
+按以下顺序迁移所有使用字段解析的命令：
+
+| 批次 | 命令 | 复杂度 |
+|-----|------|-------|
+| 1 | `select.rs`, `join.rs` | 中等（已部分优化） |
+| 2 | `wider.rs`, `stats.rs` | 高（需要输出 header 名称） |
+| 3 | `sample.rs`, `split.rs` | 高（特殊解析需求） |
+| 4 | 其他命令 | 低（简单替换） |
+
+#### 阶段 4: 清理旧 API
+
+所有命令迁移完成后：
+
+1. **标记旧函数为 deprecated**:
+   ```rust
+   #[deprecated(since = "0.4.0", note = "Use FieldResolver instead")]
+   pub fn resolve_fields_from_header(...) { ... }
+   ```
+
+2. **一个版本后移除**:
+   - 删除 `resolve_fields_from_header`
+   - 删除 `parse_field_list_with_header`（如果不再内部使用）
+   - 删除 `Header` 结构（如果 `FieldResolver` 完全替代）
+
+3. **更新文档**:
+   - 更新 API 文档
+   - 更新开发者指南
+   - 添加迁移指南
+
+### 当前状态
+
+- [x] 阶段 1: 实现 `FieldResolver` (已完成，包含单元测试)
+- [x] 阶段 2: 试点命令 (`blank.rs`, `fill.rs`, `uniq.rs`) (已完成，所有测试通过)
+- [ ] 阶段 3: 全面迁移
+- [ ] 阶段 4: 清理旧 API

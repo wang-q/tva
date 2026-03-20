@@ -587,6 +587,81 @@ pub fn resolve_fields_from_header(
     parse_field_list_with_header_preserve_order(spec, Some(&header), delimiter)
 }
 
+/// Unified field resolver that handles both numeric and header-based field specifications.
+///
+/// This struct encapsulates the logic for resolving field specifications, automatically
+/// choosing between numeric parsing and header-aware parsing based on available header data.
+///
+/// # Example
+///
+/// ```rust
+/// use tva::libs::tsv::fields::FieldResolver;
+///
+/// // With header - can use field names
+/// let header_bytes = b"name\tage\tcity".to_vec();
+/// let resolver = FieldResolver::new(Some(header_bytes), '\t');
+/// let indices = resolver.resolve("name,city").unwrap();
+/// assert_eq!(indices, vec![1, 3]);
+///
+/// // Without header - only numeric specs
+/// let resolver = FieldResolver::new(None, '\t');
+/// let indices = resolver.resolve("1,3").unwrap();
+/// assert_eq!(indices, vec![1, 3]);
+/// ```
+pub struct FieldResolver {
+    header_bytes: Option<Vec<u8>>,
+    delimiter: char,
+}
+
+impl FieldResolver {
+    /// Creates a new FieldResolver.
+    ///
+    /// # Arguments
+    /// * `header_bytes` - Optional header line bytes containing column names
+    /// * `delimiter` - Field delimiter character
+    pub fn new(header_bytes: Option<Vec<u8>>, delimiter: char) -> Self {
+        Self {
+            header_bytes,
+            delimiter,
+        }
+    }
+
+    /// Resolves a field specification string into 1-based indices.
+    ///
+    /// If header_bytes is available, supports field names and patterns.
+    /// Otherwise, only numeric specifications are allowed.
+    ///
+    /// # Arguments
+    /// * `spec` - Field specification (e.g., "1,3-5", "name,age", "col*")
+    ///
+    /// # Returns
+    /// * `Ok(Vec<usize>)` - 1-based field indices
+    /// * `Err(String)` - Error message if parsing fails
+    pub fn resolve(&self, spec: &str) -> Result<Vec<usize>, String> {
+        match &self.header_bytes {
+            Some(bytes) => resolve_fields_from_header(spec, bytes, self.delimiter),
+            None => parse_numeric_field_list_preserve_order(spec),
+        }
+    }
+
+    /// Returns column names if header is available.
+    ///
+    /// # Returns
+    /// * `Some(Vec<String>)` - Column names parsed from header
+    /// * `None` - If no header was provided
+    pub fn column_names(&self) -> Option<Vec<String>> {
+        self.header_bytes.as_ref().and_then(|bytes| {
+            let s = std::str::from_utf8(bytes).ok()?;
+            Some(s.split(self.delimiter).map(|f| f.to_string()).collect())
+        })
+    }
+
+    /// Returns true if header information is available.
+    pub fn has_header(&self) -> bool {
+        self.header_bytes.is_some()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1082,5 +1157,74 @@ mod tests {
             parse_field_list_with_header_preserve_order("1048577", Some(&header), '\t')
                 .unwrap_err();
         assert!(err.contains("Maximum allowed '--e|exclude' field number is 1048576"));
+    }
+
+    // FieldResolver tests
+    #[test]
+    fn test_field_resolver_with_header() {
+        let header_bytes = b"name\tage\tcity".to_vec();
+        let resolver = FieldResolver::new(Some(header_bytes), '\t');
+
+        // Test field name resolution
+        let indices = resolver.resolve("name,city").unwrap();
+        assert_eq!(indices, vec![1, 3]);
+
+        // Test numeric resolution with header
+        let indices = resolver.resolve("1,3").unwrap();
+        assert_eq!(indices, vec![1, 3]);
+
+        // Test range
+        let indices = resolver.resolve("1-3").unwrap();
+        assert_eq!(indices, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_field_resolver_without_header() {
+        let resolver = FieldResolver::new(None, '\t');
+
+        // Test numeric resolution without header
+        let indices = resolver.resolve("1,3").unwrap();
+        assert_eq!(indices, vec![1, 3]);
+
+        // Test range
+        let indices = resolver.resolve("1-3").unwrap();
+        assert_eq!(indices, vec![1, 2, 3]);
+
+        // Field names should fail without header
+        let result = resolver.resolve("name");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_field_resolver_column_names() {
+        let header_bytes = b"name\tage\tcity".to_vec();
+        let resolver = FieldResolver::new(Some(header_bytes), '\t');
+
+        let names = resolver.column_names().unwrap();
+        assert_eq!(names, vec!["name", "age", "city"]);
+    }
+
+    #[test]
+    fn test_field_resolver_no_column_names() {
+        let resolver = FieldResolver::new(None, '\t');
+        assert!(resolver.column_names().is_none());
+    }
+
+    #[test]
+    fn test_field_resolver_has_header() {
+        let with_header = FieldResolver::new(Some(b"a\tb".to_vec()), '\t');
+        assert!(with_header.has_header());
+
+        let without_header = FieldResolver::new(None, '\t');
+        assert!(!without_header.has_header());
+    }
+
+    #[test]
+    fn test_field_resolver_wildcard() {
+        let header_bytes = b"run\tuser_time\tsystem_time".to_vec();
+        let resolver = FieldResolver::new(Some(header_bytes), '\t');
+
+        let indices = resolver.resolve("*_time").unwrap();
+        assert_eq!(indices, vec![2, 3]);
     }
 }

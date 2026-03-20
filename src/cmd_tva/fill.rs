@@ -1,5 +1,5 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
-use crate::libs::tsv::fields::resolve_fields_from_header;
+use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRow};
 use clap::*;
@@ -135,15 +135,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // Identify which columns need to be filled.
         let mut target_cols: Vec<usize> = Vec::new();
 
+        // Create FieldResolver once for all field parsing
+        let resolver = FieldResolver::new(column_names_bytes.clone(), '\t');
+
         for spec in &field_specs {
-            let indices = if let Some(ref names) = column_names_bytes {
-                resolve_fields_from_header(spec, names, '\t')
-                    .map_err(|e| anyhow::anyhow!(e))?
-            } else {
-                // No header available - use numeric parsing only
-                crate::libs::tsv::fields::parse_numeric_field_list_preserve_order(spec)
-                    .map_err(|e| anyhow::anyhow!(e))?
-            };
+            let indices = resolver.resolve(spec).map_err(|e| anyhow::anyhow!(e))?;
 
             for idx in indices {
                 // idx is 1-based, convert to 0-based

@@ -1,12 +1,69 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
-use crate::libs::tsv::fields::resolve_fields_from_header;
+use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::key::KeyExtractor;
 use crate::libs::tsv::reader::TsvReader;
 use clap::*;
 use rapidhash::rapidhash;
 use std::collections::HashMap;
 use std::io::Write;
+
+/// Builds a KeyExtractor from field specification.
+/// Uses FieldResolver for unified field parsing.
+fn build_extractor(
+    fields_spec: Option<&str>,
+    column_names_bytes: Option<&[u8]>,
+    delimiter: char,
+    ignore_case: bool,
+) -> anyhow::Result<KeyExtractor> {
+    match fields_spec {
+        None => {
+            // Default: whole line
+            Ok(KeyExtractor::new(None, ignore_case, false))
+        }
+        Some(spec) if spec.trim() == "0" => {
+            // Special case: 0 means whole line
+            Ok(KeyExtractor::new(None, ignore_case, false))
+        }
+        Some(spec) => {
+            // Check if spec contains non-numeric tokens that would require header
+            if column_names_bytes.is_none() && contains_field_names(spec) {
+                anyhow::bail!("field name requires header");
+            }
+
+            // Use FieldResolver for field parsing
+            let resolver =
+                FieldResolver::new(column_names_bytes.map(|b| b.to_vec()), delimiter);
+            let indices = resolver.resolve(spec).map_err(|e| anyhow::anyhow!(e))?;
+            Ok(KeyExtractor::new(Some(indices), ignore_case, true))
+        }
+    }
+}
+
+/// Checks if a field specification contains field names (non-numeric tokens).
+/// Returns true if the spec contains tokens that are not purely numeric/ranges.
+fn contains_field_names(spec: &str) -> bool {
+    for part in spec.split(',') {
+        let trimmed = part.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        // Check for range pattern (e.g., "1-3", "col1-col3")
+        if let Some(dash_pos) = trimmed.find('-') {
+            let start = &trimmed[..dash_pos];
+            let end = &trimmed[dash_pos + 1..];
+            // If either side is not a valid usize, it's a field name pattern
+            if start.parse::<usize>().is_err() || end.parse::<usize>().is_err() {
+                return true;
+            }
+        } else if trimmed.parse::<usize>().is_err() {
+            // Single token that is not a number - must be a field name
+            return true;
+        }
+    }
+    false
+}
 
 pub fn make_subcommand() -> Command {
     Command::new("uniq")
@@ -224,32 +281,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 .map_err(map_io_err)?;
 
             if let Some(h_info) = header_result {
-                // Parse header for field resolution if column names are available
+                // Store column names for field resolution
                 if column_names_bytes.is_none() {
-                    if let Some(ref names) = h_info.column_names_line {
-                        column_names_bytes = Some(names.clone());
-                        if let Some(ref spec) = fields_spec {
-                            if spec.trim() == "0" {
-                                extractor =
-                                    Some(KeyExtractor::new(None, ignore_case, false));
-                            } else {
-                                let parsed =
-                                    resolve_fields_from_header(spec, names, delimiter);
-                                match parsed {
-                                    Ok(v) => {
-                                        extractor = Some(KeyExtractor::new(
-                                            Some(v),
-                                            ignore_case,
-                                            true,
-                                        ))
-                                    }
-                                    Err(e) => {
-                                        anyhow::bail!("{}", e);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    column_names_bytes = h_info.column_names_line.clone();
                 }
 
                 // Write header only for the first file
@@ -283,28 +317,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
+        // Build extractor if not already done
         if extractor.is_none() {
-            if let Some(ref spec) = fields_spec {
-                if spec.trim() == "0" {
-                    extractor = Some(KeyExtractor::new(None, ignore_case, false));
-                } else {
-                    let parsed = crate::libs::tsv::fields::parse_field_list_with_header(
-                        spec, None, delimiter,
-                    );
-                    match parsed {
-                        Ok(v) => {
-                            extractor =
-                                Some(KeyExtractor::new(Some(v), ignore_case, true))
-                        }
-                        Err(e) => {
-                            anyhow::bail!("{}", e);
-                        }
-                    }
-                }
-            } else {
-                // Default: whole line
-                extractor = Some(KeyExtractor::new(None, ignore_case, false));
-            }
+            extractor = Some(build_extractor(
+                fields_spec.as_deref(),
+                column_names_bytes.as_deref(),
+                delimiter,
+                ignore_case,
+            )?);
         }
 
         tsv_reader
