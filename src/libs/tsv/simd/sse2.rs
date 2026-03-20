@@ -20,13 +20,13 @@ const SSE2_STEP: usize = 16;
 /// A SIMD-accelerated searcher for TSV delimiters.
 ///
 /// This searcher uses SSE2 instructions to simultaneously search for
-/// tab (`\t`), newline (`\n`), and carriage return (`\r`) characters.
+/// tab (`\t`) and newline (`\n`) characters.
+/// Note: CR (`\r`) is handled separately by checking the byte before newline.
 #[cfg(target_arch = "x86_64")]
 #[derive(Clone, Copy)]
 pub struct Sse2Searcher {
     v_tab: __m128i,
     v_newline: __m128i,
-    v_cr: __m128i,
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -38,18 +38,17 @@ impl Sse2Searcher {
     /// This function is safe to call on any x86_64 platform. It will use
     /// SSE2 instructions which are available on all x86_64 CPUs.
     #[inline]
-    pub unsafe fn new(tab: u8, newline: u8, cr: u8) -> Self {
+    pub unsafe fn new(tab: u8, newline: u8) -> Self {
         Self {
             v_tab: _mm_set1_epi8(tab as i8),
             v_newline: _mm_set1_epi8(newline as i8),
-            v_cr: _mm_set1_epi8(cr as i8),
         }
     }
 
-    /// Creates a searcher with default TSV delimiters (`\t`, `\n`, `\r`).
+    /// Creates a searcher with default TSV delimiters (`\t`, `\n`).
     #[inline]
     pub unsafe fn new_tsv() -> Self {
-        Self::new(b'\t', b'\n', b'\r')
+        Self::new(b'\t', b'\n')
     }
 
     /// Returns an iterator over all delimiter positions in the haystack.
@@ -117,14 +116,12 @@ impl<'a> Sse2Iter<'a> {
                     )
                 };
 
-                // Compare with all three target characters
+                // Compare with both target characters
                 let cmp_tab = unsafe { _mm_cmpeq_epi8(chunk, self.searcher.v_tab) };
                 let cmp_nl = unsafe { _mm_cmpeq_epi8(chunk, self.searcher.v_newline) };
-                let cmp_cr = unsafe { _mm_cmpeq_epi8(chunk, self.searcher.v_cr) };
 
                 // Combine comparisons with OR
                 let cmp = unsafe { _mm_or_si128(cmp_tab, cmp_nl) };
-                let cmp = unsafe { _mm_or_si128(cmp, cmp_cr) };
 
                 // Convert comparison results to bit mask
                 // Each bit represents one byte: 1 if matched, 0 if not
@@ -150,11 +147,10 @@ impl<'a> Sse2Iter<'a> {
         let tab = unsafe { std::mem::transmute::<_, [u8; 16]>(self.searcher.v_tab)[0] };
         let newline =
             unsafe { std::mem::transmute::<_, [u8; 16]>(self.searcher.v_newline)[0] };
-        let cr = unsafe { std::mem::transmute::<_, [u8; 16]>(self.searcher.v_cr)[0] };
 
         while self.pos < self.haystack.len() {
             let byte = self.haystack[self.pos];
-            if byte == tab || byte == newline || byte == cr {
+            if byte == tab || byte == newline {
                 let offset = self.pos;
                 self.pos += 1;
                 return Some(offset);
@@ -221,6 +217,20 @@ pub unsafe fn parse_line_sse2(line: &[u8], seps: &mut Vec<usize>) -> usize {
     seps.push(line.len());
 
     seps.len()
+}
+
+// Implement DelimiterSearcher trait for Sse2Searcher
+#[cfg(target_arch = "x86_64")]
+impl super::DelimiterSearcher for Sse2Searcher {
+    #[inline]
+    unsafe fn new(tab: u8, newline: u8) -> Self {
+        Self::new(tab, newline)
+    }
+
+    #[inline(always)]
+    fn search<'a>(&'a self, haystack: &'a [u8]) -> impl Iterator<Item = usize> {
+        self.search(haystack)
+    }
 }
 
 #[cfg(test)]

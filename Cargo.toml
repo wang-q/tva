@@ -103,5 +103,9 @@ harness = false
 name = "tsv_simd_compare"
 harness = false
 
+[[bench]]
+name = "tsv_next_line"
+harness = false
+
 [profile.release]
 lto = true

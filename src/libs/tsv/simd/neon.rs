@@ -32,12 +32,14 @@ pub fn is_neon_available() -> bool {
 }
 
 /// A SIMD-accelerated searcher for TSV delimiters using ARM NEON instructions.
+///
+/// Note: CR (`\r`) is not searched directly. Instead, when a newline is found,
+/// the caller should check if the preceding byte is CR and handle it accordingly.
 #[cfg(target_arch = "aarch64")]
 #[derive(Clone, Copy)]
 pub struct NeonSearcher {
     v_tab: uint8x16_t,
     v_newline: uint8x16_t,
-    v_cr: uint8x16_t,
 }
 
 #[cfg(target_arch = "aarch64")]
@@ -49,18 +51,17 @@ impl NeonSearcher {
     /// This function is safe to call on aarch64 platforms. NEON is guaranteed
     /// to be available on all aarch64 CPUs.
     #[inline]
-    pub unsafe fn new(tab: u8, newline: u8, cr: u8) -> Self {
+    pub unsafe fn new(tab: u8, newline: u8) -> Self {
         Self {
             v_tab: vdupq_n_u8(tab),
             v_newline: vdupq_n_u8(newline),
-            v_cr: vdupq_n_u8(cr),
         }
     }
 
-    /// Creates a new NEON searcher for TSV format (tab, newline, CR).
+    /// Creates a new NEON searcher for TSV format (tab, newline).
     #[inline]
     pub unsafe fn new_tsv() -> Self {
-        Self::new(b'\t', b'\n', b'\r')
+        Self::new(b'\t', b'\n')
     }
 
     /// Returns an iterator over all delimiter positions in the haystack.
@@ -109,14 +110,12 @@ impl<'a> NeonIter<'a> {
                 // Load 16 bytes from current position (unaligned load)
                 let chunk = unsafe { vld1q_u8(self.haystack.as_ptr().add(self.pos)) };
 
-                // Compare with all three target characters
+                // Compare with both target characters
                 let cmp_tab = unsafe { vceqq_u8(chunk, self.searcher.v_tab) };
                 let cmp_nl = unsafe { vceqq_u8(chunk, self.searcher.v_newline) };
-                let cmp_cr = unsafe { vceqq_u8(chunk, self.searcher.v_cr) };
 
                 // Combine comparisons with OR using vmaxq_u8 (equivalent to OR for equality results)
                 let cmp = unsafe { vmaxq_u8(cmp_tab, cmp_nl) };
-                let cmp = unsafe { vmaxq_u8(cmp, cmp_cr) };
 
                 // Convert comparison results to bit mask
                 // NEON doesn't have a direct movemask instruction, so we use a workaround
@@ -146,14 +145,10 @@ impl<'a> NeonIter<'a> {
             let arr: [u8; 16] = std::mem::transmute(self.searcher.v_newline);
             arr[0]
         };
-        let cr = unsafe {
-            let arr: [u8; 16] = std::mem::transmute(self.searcher.v_cr);
-            arr[0]
-        };
 
         while self.pos < self.haystack.len() {
             let byte = self.haystack[self.pos];
-            if byte == tab || byte == newline || byte == cr {
+            if byte == tab || byte == newline {
                 let pos = self.pos;
                 self.pos += 1;
                 return Some(pos);
@@ -229,6 +224,20 @@ pub fn parse_line_neon(line: &[u8], seps: &mut Vec<usize>) -> usize {
     seps.push(line.len());
 
     seps.len()
+}
+
+// Implement DelimiterSearcher trait for NeonSearcher
+#[cfg(target_arch = "aarch64")]
+impl super::DelimiterSearcher for NeonSearcher {
+    #[inline]
+    unsafe fn new(tab: u8, newline: u8) -> Self {
+        Self::new(tab, newline)
+    }
+
+    #[inline(always)]
+    fn search<'a>(&'a self, haystack: &'a [u8]) -> impl Iterator<Item = usize> {
+        self.search(haystack)
+    }
 }
 
 #[cfg(test)]

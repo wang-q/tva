@@ -19,6 +19,28 @@ pub mod sse2;
 #[cfg(target_arch = "aarch64")]
 pub mod neon;
 
+/// Trait for SIMD delimiter searchers.
+///
+/// This trait abstracts over SSE2 and NEON implementations, allowing
+/// platform-agnostic code to use SIMD acceleration.
+///
+/// Note: CR (`\r`) is not searched directly. Instead, when a newline is found,
+/// the caller should check if the preceding byte is CR and handle it accordingly.
+pub trait DelimiterSearcher {
+    /// Creates a new searcher for the given delimiter characters.
+    ///
+    /// # Safety
+    ///
+    /// This function is safe on platforms where the SIMD implementation
+    /// is supported (SSE2 on x86_64, NEON on aarch64).
+    unsafe fn new(tab: u8, newline: u8) -> Self
+    where
+        Self: Sized;
+
+    /// Returns an iterator over all delimiter positions in the haystack.
+    fn search<'a>(&'a self, haystack: &'a [u8]) -> impl Iterator<Item = usize>;
+}
+
 /// Re-export the appropriate SIMD searcher for the current architecture.
 #[cfg(target_arch = "x86_64")]
 pub use sse2::Sse2Searcher as SimdSearcher;

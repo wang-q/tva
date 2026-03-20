@@ -3,26 +3,65 @@ use std::hint::black_box;
 use std::io::{BufRead, Read};
 use std::time::Duration;
 
-// A small sample of TSV data to repeat
-const DATA: &str = "1\tJohn\tDoe\t30\tNew York\n2\tJane\tSmith\t25\tLos Angeles\n3\tBob\tJohnson\t40\tChicago\n";
+// Test Data 1: Short fields, few columns (5 cols, ~8 bytes/field)
+// This represents typical user data with short text fields.
+const DATA_SHORT: &str = "1\tJohn\tDoe\t30\tNew York\n2\tJane\tSmith\t25\tLos Angeles\n3\tBob\tJohnson\t40\tChicago\n";
+
+// Test Data 2: Wide rows, many columns (20 cols, ~6 bytes/field)
+// This represents wide tables (e.g., genomic data, feature vectors).
+// SIMD benefits are more pronounced here due to more delimiter searches per row.
+const DATA_WIDE: &str = "1\tA\tB\tC\tD\tE\tF\tG\tH\tI\tJ\tK\tL\tM\tN\tO\tP\tQ\tR\tS\n\
+                          2\tA\tB\tC\tD\tE\tF\tG\tH\tI\tJ\tK\tL\tM\tN\tO\tP\tQ\tR\tS\n\
+                          3\tA\tB\tC\tD\tE\tF\tG\tH\tI\tJ\tK\tL\tM\tN\tO\tP\tQ\tR\tS\n";
+
 // Number of repetitions to make the benchmark meaningful
 const REPETITIONS: usize = 1000;
 
-fn create_tsv_data() -> String {
-    let mut s = String::with_capacity(DATA.len() * REPETITIONS);
+fn create_tsv_data_short() -> String {
+    let mut s = String::with_capacity(DATA_SHORT.len() * REPETITIONS);
     for _ in 0..REPETITIONS {
-        s.push_str(DATA);
+        s.push_str(DATA_SHORT);
+    }
+    s
+}
+
+fn create_tsv_data_wide() -> String {
+    let mut s = String::with_capacity(DATA_WIDE.len() * REPETITIONS);
+    for _ in 0..REPETITIONS {
+        s.push_str(DATA_WIDE);
     }
     s
 }
 
 fn benchmark_parsing(c: &mut Criterion) {
-    let data = create_tsv_data();
-    let mut group = c.benchmark_group("tsv_parsing");
-    group.throughput(Throughput::Bytes(data.len() as u64));
-    group.warm_up_time(Duration::from_secs(3));
-    group.measurement_time(Duration::from_secs(8));
+    let data_short = create_tsv_data_short();
+    let data_wide = create_tsv_data_wide();
 
+    // Benchmark Group 1: Short fields, few columns
+    {
+        let mut group = c.benchmark_group("tsv_parsing_short");
+        group.throughput(Throughput::Bytes(data_short.len() as u64));
+        group.warm_up_time(Duration::from_secs(3));
+        group.measurement_time(Duration::from_secs(8));
+
+        run_benchmarks(&mut group, &data_short);
+    }
+
+    // Benchmark Group 2: Wide rows, many columns
+    {
+        let mut group = c.benchmark_group("tsv_parsing_wide");
+        group.throughput(Throughput::Bytes(data_wide.len() as u64));
+        group.warm_up_time(Duration::from_secs(3));
+        group.measurement_time(Duration::from_secs(8));
+
+        run_benchmarks(&mut group, &data_wide);
+    }
+}
+
+fn run_benchmarks(
+    group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
+    data: &str,
+) {
     // 1. csv crate (The Gold Standard for Correctness)
     // Uses a highly optimized DFA state machine.
     // Handles quotes, escapes, etc.
@@ -313,17 +352,16 @@ fn benchmark_parsing(c: &mut Criterion) {
         })
     });
 
-    // 12. TVA TsvReader (Zero-copy, SIMD)
-    // Uses internal buffer + memchr for zero-copy iteration.
-    // Avoids String/Vec allocation per record.
-    // Now uses next_row internally for single-pass scanning with SSE2/NEON.
-    group.bench_function("tva_tsv_reader", |b| {
+    // 12. TVA TsvReader with for_each_line (Two-pass: SIMD for lines, memchr for fields)
+    // Uses SIMD (SSE2/NEON) to find line endings, then memchr to split fields.
+    // This is a common pattern when you need the raw line bytes.
+    group.bench_function("tva_for_each_line_then_memchr", |b| {
         b.iter(|| {
             let cursor = std::io::Cursor::new(data.as_bytes());
             let mut reader = tva::libs::tsv::reader::TsvReader::new(cursor);
             reader
                 .for_each_line(|record| {
-                    // Simulate field processing to be fair with other benchmarks
+                    // Second pass: use memchr to split fields
                     let mut iter = memchr::memchr_iter(b'\t', record);
                     let mut last_pos = 0;
                     loop {
@@ -347,42 +385,10 @@ fn benchmark_parsing(c: &mut Criterion) {
         })
     });
 
-    // 12b. TVA TsvReader Legacy (Two-pass approach)
-    // Uses the old for_each_line_legacy for comparison.
-    group.bench_function("tva_tsv_reader_legacy", |b| {
-        b.iter(|| {
-            let cursor = std::io::Cursor::new(data.as_bytes());
-            let mut reader = tva::libs::tsv::reader::TsvReader::new(cursor);
-            reader
-                .for_each_line_legacy(|record| {
-                    // Simulate field processing to be fair with other benchmarks
-                    let mut iter = memchr::memchr_iter(b'\t', record);
-                    let mut last_pos = 0;
-                    loop {
-                        match iter.next() {
-                            Some(pos) => {
-                                let field =
-                                    unsafe { record.get_unchecked(last_pos..pos) };
-                                black_box(field);
-                                last_pos = pos + 1;
-                            }
-                            None => {
-                                let field = unsafe { record.get_unchecked(last_pos..) };
-                                black_box(field);
-                                break;
-                            }
-                        }
-                    }
-                    Ok(())
-                })
-                .unwrap();
-        })
-    });
-
-    // 13. TVA TsvReader with for_each_row (Single-pass scanning)
-    // Uses memchr2 to scan for both tab and newline in one pass.
-    // This avoids the two-pass overhead of for_each_line + field splitting.
-    group.bench_function("tva_tsv_reader_single_pass", |b| {
+    // 13. TVA TsvReader with for_each_row (True single-pass scanning)
+    // Uses SIMD (SSE2/NEON) to find both tabs and newlines in one pass.
+    // No secondary field splitting needed - field boundaries are pre-calculated.
+    group.bench_function("tva_for_each_row_single_pass", |b| {
         b.iter(|| {
             let cursor = std::io::Cursor::new(data.as_bytes());
             let mut reader = tva::libs::tsv::reader::TsvReader::new(cursor);
@@ -406,8 +412,6 @@ fn benchmark_parsing(c: &mut Criterion) {
                 .unwrap();
         })
     });
-
-    group.finish();
 }
 
 criterion_group!(benches, benchmark_parsing);
