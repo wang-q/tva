@@ -36,7 +36,7 @@ pub enum EvalError {
 /// Context for expression evaluation
 pub struct EvalContext<'a> {
     /// Row data as strings
-    pub row: &'a [String],
+    pub fields: &'a [String],
     /// Optional column name to index mapping
     pub headers: Option<&'a [String]>,
     /// Variable bindings (name -> value)
@@ -54,7 +54,7 @@ pub struct EvalContext<'a> {
 impl<'a> EvalContext<'a> {
     pub fn new(row: &'a [String]) -> Self {
         Self {
-            row,
+            fields: row,
             headers: None,
             variables: HashMap::new(),
             lambda_params: HashMap::new(),
@@ -65,7 +65,7 @@ impl<'a> EvalContext<'a> {
 
     pub fn with_headers(row: &'a [String], headers: &'a [String]) -> Self {
         Self {
-            row,
+            fields: row,
             headers: Some(headers),
             variables: HashMap::new(),
             lambda_params: HashMap::new(),
@@ -77,7 +77,7 @@ impl<'a> EvalContext<'a> {
     /// Clone the context for pipeline evaluation (shares globals, clears last_value)
     pub fn clone_for_pipeline(&self) -> Self {
         Self {
-            row: self.row,
+            fields: self.fields,
             headers: self.headers,
             variables: self.variables.clone(),
             lambda_params: self.lambda_params.clone(),
@@ -108,18 +108,18 @@ impl<'a> EvalContext<'a> {
     /// Get value by 1-based column index
     fn get_by_index(&self, idx: usize) -> Result<Value, EvalError> {
         let zero_based = idx - 1;
-        if zero_based >= self.row.len() {
+        if zero_based >= self.fields.len() {
             return Err(EvalError::ColumnIndexOutOfBounds(idx));
         }
-        Ok(parse_value(&self.row[zero_based]))
+        Ok(parse_value(&self.fields[zero_based]))
     }
 
     /// Get value by column name
     fn get_by_name(&self, name: &str) -> Result<Value, EvalError> {
         if let Some(headers) = self.headers {
             for (i, header) in headers.iter().enumerate() {
-                if header == name && i < self.row.len() {
-                    return Ok(parse_value(&self.row[i]));
+                if header == name && i < self.fields.len() {
+                    return Ok(parse_value(&self.fields[i]));
                 }
             }
         }
@@ -197,7 +197,7 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
             ))),
             ColumnRef::WholeRow => {
                 // Join all columns with tabs
-                let row_str = ctx.row.join("\t");
+                let row_str = ctx.fields.join("\t");
                 Ok(Value::String(row_str))
             }
         },
@@ -327,7 +327,7 @@ pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
                     .collect::<Result<Vec<_>, _>>()?;
                 crate::libs::expr::functions::string::fmt_with_context(
                     &arg_values,
-                    Some(ctx.row),
+                    Some(ctx.fields),
                     Some(&ctx.variables),
                     Some(&ctx.lambda_params),
                     Some(ctx.globals.borrow()),
@@ -493,7 +493,7 @@ fn eval_with_placeholder(
                     .collect::<Result<Vec<_>, _>>()?;
                 crate::libs::expr::functions::string::fmt_with_context(
                     &arg_values,
-                    Some(ctx.row),
+                    Some(ctx.fields),
                     Some(&ctx.variables),
                     Some(&ctx.lambda_params),
                     Some(ctx.globals.borrow()),
@@ -1797,7 +1797,7 @@ mod tests {
         let headers = vec!["name".to_string(), "age".to_string()];
         let ctx = EvalContext::with_headers(&row, &headers);
 
-        assert_eq!(ctx.row.len(), 2);
+        assert_eq!(ctx.fields.len(), 2);
         assert!(ctx.headers.is_some());
         assert_eq!(ctx.headers.unwrap().len(), 2);
     }
@@ -1807,7 +1807,7 @@ mod tests {
         let row = vec!["test".to_string()];
         let ctx = EvalContext::new(&row);
 
-        assert_eq!(ctx.row.len(), 1);
+        assert_eq!(ctx.fields.len(), 1);
         assert!(ctx.headers.is_none());
         assert!(ctx.variables.is_empty());
         assert!(ctx.lambda_params.is_empty());

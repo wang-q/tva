@@ -320,9 +320,8 @@ src/libs/tsv/simd/
 
 | 组件 | 类型 | 用途 | 状态 |
 |:-----|:-----|:-----|:-----|
-| `TsvRow<'a, 'b>` | 零拷贝视图 | `filter`, `select` 等只读操作 | ✅ 已实现 |
-| `TsvSplitter<'a>` | 零分配迭代器 | 字段分割 | ✅ 已实现 |
-| `TsvRecord` | 拥有所有权 | `sample` 等需要存储的场景 | ✅ 已实现 |
+| `TsvRow<'a, 'b>` | 零拷贝视图 | `filter`, `select`, `join`, `expr` 等只读操作 | ✅ 已实现 |
+| `TsvRecord` | 拥有所有权 | `transpose`, `sort`, `sample` 等需要存储的场景 | ✅ 已实现 |
 | `next_row()` | 单层扫描 | 高性能行读取 | ✅ 已实现 |
 
 **保持现状**：当前设计已满足需求，无需大规模重构。
@@ -340,12 +339,14 @@ src/libs/tsv/simd/
 | `select.rs` | `write_excluding_from_bytes` 使用 `TsvRow.ends` | ✅ 已完成 | - |
 | `select.rs` | `write_with_rest` 使用 `TsvRow.ends` | ✅ 已完成 | - |
 | `join.rs` | `extract_values` 使用 `TsvRow` | ✅ 已完成 | - |
+| `join.rs` | 数据记录处理使用 `for_each_row` | ✅ 已完成 | - |
 | `key.rs` | `extract_from_row` 使用 `TsvRow` | ✅ 已完成 | - |
 | `split.rs` | ~~`TsvSplitter` 已删除~~ | ✅ 已移除 | - |
 | `transpose.rs` | 使用 `for_each_row` + `from_row` | ✅ 已完成 | - |
 | `sort.rs` | 使用 `for_each_row` + `from_row` | ✅ 已完成 | - |
 | `plot/data.rs` | 使用 `for_each_row` + `TsvRow` | ✅ 已完成 | - |
 | `record.rs` | `TsvRecord::from_row` 已添加 | ✅ 已完成 | - |
+| `expr.rs` | 使用 `for_each_row` + `TsvRow.ends` | ✅ 已完成 | - |
 
 ### 迁移策略
 
@@ -399,6 +400,8 @@ src/libs/tsv/simd/
 4. `src/cmd_tva/bin.rs`: 使用 `for_each_row` + `TsvRow.get_bytes()`
 5. `src/cmd_tva/longer.rs`: 使用 `for_each_row` + `TsvRow.get_bytes()`
 6. `src/libs/filter/runner.rs`: 使用 `for_each_row` + `TsvRow`（替代手动构建）
+7. `src/cmd_tva/join.rs`: 数据记录处理使用 `for_each_row` + `extractor.extract_from_row()`
+8. `src/cmd_tva/expr.rs`: 使用 `for_each_row` + `TsvRow.ends` 提取字段
 
 **新增 API**: `TsvRow.field_count()` 方法，正确处理空行（返回 0 字段）
 
@@ -414,7 +417,6 @@ src/libs/tsv/simd/
 - `uniq.rs` - 整行哈希去重
 
 以下命令仍使用二次解析，需要未来迁移：
-- `expr.rs` - 使用 `record.split()` 解析所有字段，需要修改 EvalContext API
 - `sample.rs` - Sampler trait 接收 `&[u8]`，Weighted/Distinct 采样器内部二次解析
 
 ### 实施建议
@@ -423,5 +425,6 @@ src/libs/tsv/simd/
 2. **阶段 2 已完成**: `split.rs` 已删除，`TsvSplitter` 已移除
 3. **阶段 3 已完成**: `transpose`、`sort`、`plot/data` 已迁移到 `for_each_row`
 4. **阶段 4 已完成**: `check`、`fill`、`blank`、`bin`、`longer` 已迁移到 `for_each_row`
-5. **核心命令已优化**: 主要 TSV 处理命令均使用单层扫描
-6. **保持向后兼容**: `TsvRecord::parse_line()` 仍保留用于测试和特殊场景
+5. **阶段 5 已完成**: `join` 数据记录处理、`expr` 已迁移到 `for_each_row`
+6. **核心命令已优化**: 主要 TSV 处理命令均使用单层扫描
+7. **保持向后兼容**: `TsvRecord::parse_line()` 仍保留用于测试和特殊场景
