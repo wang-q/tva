@@ -109,7 +109,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let has_header = header_config.enabled;
 
     let opt_delimiter = get_delimiter(args, "delimiter")?;
-    let delim_byte = opt_delimiter;
 
     let mut header_written = false;
     let mut field_indices: Option<Vec<usize>> = None;

@@ -232,7 +232,6 @@ pub fn execute_with_mode(args: &ArgMatches, mode: &str) -> anyhow::Result<()> {
     let has_header = header_config.enabled;
 
     let opt_delimiter = get_delimiter(args, "delimiter")?;
-    let delim_byte = opt_delimiter;
 
     let mut header_written = false;
     let mut headers: Vec<String> = Vec::new();
@@ -315,7 +314,7 @@ pub fn execute_with_mode(args: &ArgMatches, mode: &str) -> anyhow::Result<()> {
         let mutate_target_ref = mutate_target.as_ref();
         let globals_clone = globals.clone();
         let result: std::io::Result<()> =
-            tsv_reader.for_each_row(delim_byte, |row: &TsvRow| {
+            tsv_reader.for_each_row(opt_delimiter, |row: &TsvRow| {
                 // Extract fields from TsvRow using ends array
                 let fields: Vec<String> = (1..=row.ends.len())
                     .map(|idx| {
