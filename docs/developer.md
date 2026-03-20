@@ -342,7 +342,10 @@ src/libs/tsv/simd/
 | `join.rs` | `extract_values` 使用 `TsvRow` | ✅ 已完成 | - |
 | `key.rs` | `extract_from_row` 使用 `TsvRow` | ✅ 已完成 | - |
 | `split.rs` | ~~`TsvSplitter` 已删除~~ | ✅ 已移除 | - |
-| `record.rs` | `TsvRecord::parse_line` 使用 `memchr_iter` | 独立扫描 | 🟡 低 |
+| `transpose.rs` | 使用 `for_each_row` + `from_row` | ✅ 已完成 | - |
+| `sort.rs` | 使用 `for_each_row` + `from_row` | ✅ 已完成 | - |
+| `plot/data.rs` | 使用 `for_each_row` + `TsvRow` | ✅ 已完成 | - |
+| `record.rs` | `TsvRecord::from_row` 已添加 | ✅ 已完成 | - |
 
 ### 迁移策略
 
@@ -373,15 +376,17 @@ src/libs/tsv/simd/
 
 使用 `TsvSplitter` 的场景已改用内联遍历或 `TsvRow`。
 
-#### 阶段 3: Record 模块优化 (低优先级)
+#### 阶段 3: Record 模块优化 ✅ 已完成
 
 **目标**: 减少 `TsvRecord::parse_line` 的扫描开销。
 
-**当前状态**: `record.rs` 中的 `TsvRecord::parse_line` 使用 `memchr_iter` 扫描分隔符，存在二次解析。
+**已完成工作**:
+1. `src/libs/tsv/record.rs`: 新增 `TsvRecord::from_row()` 方法，从 `TsvRow` 创建，直接复用 `ends` 数组
+2. `src/cmd_tva/transpose.rs`: 使用 `for_each_row` + `TsvRecord::from_row()`
+3. `src/cmd_tva/sort.rs`: 使用 `for_each_row` + `TsvRecord::from_row()`
+4. `src/libs/plot/data.rs`: 使用 `for_each_row` + `TsvRow`（无需拥有所有权）
 
-**方案**:
-1. 新增 `TsvRecord::from_row` 构造函数，从 `TsvRow` 创建，直接复用 `ends` 数组
-2. 修改需要存储的场景使用 `for_each_row` + `TsvRecord::from_row`
+**遗留 API**: `TsvRecord::parse_line()` 仍保留用于测试和特殊场景
 
 #### 遗留 API 说明
 
@@ -393,5 +398,6 @@ src/libs/tsv/simd/
 
 1. **阶段 1 已完成**: `select` 和 `join` 已优化，收益约 10%
 2. **阶段 2 已完成**: `split.rs` 已删除，`TsvSplitter` 已移除
-3. **阶段 3 待定**: `record` 模块优化优先级较低，预计收益有限
-4. **保持向后兼容**: 旧的 API 保留，新增优化版本
+3. **阶段 3 已完成**: `transpose`、`sort`、`plot/data` 已迁移到 `for_each_row`
+4. **所有主要命令已优化**: 核心 TSV 处理命令均使用单层扫描
+5. **保持向后兼容**: `TsvRecord::parse_line()` 仍保留用于测试和特殊场景

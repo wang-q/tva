@@ -179,6 +179,18 @@ impl TsvRecord {
         self.ends.push(self.line.len());
     }
 
+    /// Create a TsvRecord from a TsvRow without re-scanning.
+    ///
+    /// This copies the data from the row into owned storage.
+    /// Use this when you need to store records (e.g., for sorting or transposing).
+    #[inline]
+    pub fn from_row(row: &TsvRow<'_, '_>) -> Self {
+        Self {
+            line: row.line.to_vec(),
+            ends: row.ends.to_vec(),
+        }
+    }
+
     /// Returns the number of fields.
     #[inline]
     pub fn len(&self) -> usize {

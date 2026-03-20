@@ -1,6 +1,6 @@
 use crate::libs::cli::{build_header_config, header_args};
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
-use crate::libs::tsv::record::TsvRecord;
+use crate::libs::tsv::record::{TsvRecord, TsvRow};
 use clap::*;
 use intspan::IntSpan;
 use std::cmp::Ordering;
@@ -122,13 +122,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        reader.for_each_line(|record| {
-            if record.is_empty() {
+        reader.for_each_row(delimiter, |row: &TsvRow| {
+            if row.line.is_empty() {
                 rows.push(TsvRecord::new());
             } else {
-                let mut tsv_rec = TsvRecord::new();
-                tsv_rec.parse_line(record, delimiter);
-                rows.push(tsv_rec);
+                rows.push(TsvRecord::from_row(row));
             }
             Ok(())
         })?;

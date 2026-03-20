@@ -155,7 +155,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             let mut first = true;
             let mut current_col = 0usize;
             let mut last_pos = 0usize;
-            for (pos, &byte) in record.iter().enumerate().chain(std::iter::once((record.len(), &0u8))) {
+            for (pos, &byte) in record
+                .iter()
+                .enumerate()
+                .chain(std::iter::once((record.len(), &0u8)))
+            {
                 if byte == b'\t' || pos == record.len() {
                     let cell_bytes = &record[last_pos..pos];
                     if !first {
@@ -172,7 +176,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             if let Some(val) = const_value {
                                 // Strategy: Constant fill
                                 writer.write_all(val.as_bytes())?;
-                            } else if let Some(prev) = last_valid_values.get(&current_col) {
+                            } else if let Some(prev) =
+                                last_valid_values.get(&current_col)
+                            {
                                 // Strategy: Down fill (LOCF - Last Observation Carried Forward)
                                 writer.write_all(prev)?;
                             } else {
@@ -184,7 +190,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             // Value is valid (not NA)
                             // If using 'down' fill, update the last seen valid value for this column
                             if const_value.is_none() {
-                                last_valid_values.insert(current_col, cell_bytes.to_vec());
+                                last_valid_values
+                                    .insert(current_col, cell_bytes.to_vec());
                             }
                             writer.write_all(cell_bytes)?;
                         }

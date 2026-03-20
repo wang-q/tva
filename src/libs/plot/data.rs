@@ -8,7 +8,7 @@ use indexmap::IndexMap;
 
 use crate::libs::tsv::fields::{parse_field_list_with_header, Header};
 use crate::libs::tsv::reader::TsvReader;
-use crate::libs::tsv::record::{Row, TsvRecord};
+use crate::libs::tsv::record::{Row, TsvRow};
 
 /// Column specification for plot commands
 pub struct ColumnSpec {
@@ -101,13 +101,10 @@ pub fn load_scatter_data<R: std::io::Read>(
     ignore_errors: bool,
 ) -> Result<IndexMap<String, Vec<Point>>> {
     let mut data: IndexMap<String, Vec<Point>> = IndexMap::new();
-    let mut record = TsvRecord::new();
 
-    reader.for_each_line(|line| {
-        record.parse_line(line, b'\t');
-
+    reader.for_each_row(b'\t', |row: &TsvRow| {
         // Parse X value
-        let x_bytes = match record.get_bytes(x_idx + 1) {
+        let x_bytes = match row.get_bytes(x_idx + 1) {
             Some(b) => b,
             None => {
                 if ignore_errors {
@@ -138,7 +135,7 @@ pub fn load_scatter_data<R: std::io::Read>(
 
         // Get color group if specified
         let color_group = if let Some(idx) = color_idx {
-            match record.get_bytes(idx + 1) {
+            match row.get_bytes(idx + 1) {
                 Some(b) => Some(String::from_utf8_lossy(b).to_string()),
                 None => {
                     if ignore_errors {
@@ -156,7 +153,7 @@ pub fn load_scatter_data<R: std::io::Read>(
 
         // Parse each Y column
         for (y_idx, y_name) in y_indices.iter().zip(y_names.iter()) {
-            let y_bytes = match record.get_bytes(y_idx + 1) {
+            let y_bytes = match row.get_bytes(y_idx + 1) {
                 Some(b) => b,
                 None => {
                     if ignore_errors {
@@ -215,12 +212,9 @@ pub fn load_numeric_column<R: std::io::Read>(
     ignore_errors: bool,
 ) -> Result<Vec<f64>> {
     let mut values: Vec<f64> = Vec::new();
-    let mut record = TsvRecord::new();
 
-    reader.for_each_line(|line| {
-        record.parse_line(line, b'\t');
-
-        let bytes = match record.get_bytes(col_idx + 1) {
+    reader.for_each_row(b'\t', |row: &TsvRow| {
+        let bytes = match row.get_bytes(col_idx + 1) {
             Some(b) => b,
             None => {
                 if ignore_errors {
@@ -264,14 +258,11 @@ pub fn load_box_data<R: std::io::Read>(
     ignore_errors: bool,
 ) -> Result<IndexMap<String, Vec<f64>>> {
     let mut data: IndexMap<String, Vec<f64>> = IndexMap::new();
-    let mut record = TsvRecord::new();
 
-    reader.for_each_line(|line| {
-        record.parse_line(line, b'\t');
-
+    reader.for_each_row(b'\t', |row: &TsvRow| {
         // Get color group if specified
         let color_group = if let Some(idx) = color_idx {
-            match record.get_bytes(idx + 1) {
+            match row.get_bytes(idx + 1) {
                 Some(b) => Some(String::from_utf8_lossy(b).to_string()),
                 None => {
                     if ignore_errors {
@@ -289,7 +280,7 @@ pub fn load_box_data<R: std::io::Read>(
 
         // Parse each Y column
         for (y_idx, y_name) in y_indices.iter().zip(y_names.iter()) {
-            let y_bytes = match record.get_bytes(y_idx + 1) {
+            let y_bytes = match row.get_bytes(y_idx + 1) {
                 Some(b) => b,
                 None => {
                     if ignore_errors {
@@ -351,13 +342,10 @@ pub fn load_bin2d_data<R: std::io::Read>(
 ) -> Result<(Vec<f64>, Vec<f64>)> {
     let mut x_values: Vec<f64> = Vec::new();
     let mut y_values: Vec<f64> = Vec::new();
-    let mut record = TsvRecord::new();
 
-    reader.for_each_line(|line| {
-        record.parse_line(line, b'\t');
-
+    reader.for_each_row(b'\t', |row: &TsvRow| {
         // Parse X value
-        let x_bytes = match record.get_bytes(x_idx + 1) {
+        let x_bytes = match row.get_bytes(x_idx + 1) {
             Some(b) => b,
             None => {
                 if ignore_errors {
@@ -388,7 +376,7 @@ pub fn load_bin2d_data<R: std::io::Read>(
         };
 
         // Parse Y value
-        let y_bytes = match record.get_bytes(y_idx + 1) {
+        let y_bytes = match row.get_bytes(y_idx + 1) {
             Some(b) => b,
             None => {
                 if ignore_errors {

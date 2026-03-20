@@ -1,6 +1,6 @@
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::reader::TsvReader;
-use crate::libs::tsv::record::TsvRecord;
+use crate::libs::tsv::record::{TsvRecord, TsvRow};
 use clap::*;
 use std::io::Write;
 
@@ -36,17 +36,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut expected_fields: Option<usize> = None;
     let mut line_number: u64 = 0;
 
-    tsv_reader.for_each_line(|line| {
+    tsv_reader.for_each_row(b'\t', |row: &TsvRow| {
         line_number += 1;
 
-        let mut record = TsvRecord::new();
-        record.parse_line(line, b'\t');
+        let record = TsvRecord::from_row(row);
         let field_count = record.len();
 
         if let Some(exp) = expected_fields {
             if field_count != exp {
                 eprintln!("line {} ({} fields):", line_number, field_count);
-                eprintln!("  {}", String::from_utf8_lossy(line));
+                eprintln!("  {}", String::from_utf8_lossy(row.line));
                 eprintln!(
                     "tva transpose: structure check failed: line {} has {} fields (expected {})",
                     line_number, field_count, exp

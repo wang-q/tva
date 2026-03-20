@@ -154,7 +154,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             let mut first = true;
             let mut current_col = 0usize;
             let mut last_pos = 0usize;
-            for (pos, &byte) in record.iter().enumerate().chain(std::iter::once((record.len(), &0u8))) {
+            for (pos, &byte) in record
+                .iter()
+                .enumerate()
+                .chain(std::iter::once((record.len(), &0u8)))
+            {
                 if byte == b'\t' || pos == record.len() {
                     let cell_bytes = &record[last_pos..pos];
                     if !first {
