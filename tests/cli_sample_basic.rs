@@ -382,7 +382,7 @@ fn sample_weight_field_invalid_field_list_reports_error() {
         .stdin(input)
         .run_fail();
 
-    assert!(stderr.contains("tva sample:"));
+    assert!(stderr.contains("Error:"));
 }
 
 // ============================================================================

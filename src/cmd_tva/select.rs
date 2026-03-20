@@ -60,17 +60,13 @@ pub fn make_subcommand() -> Command {
         )
 }
 
-fn arg_error(msg: &str) -> ! {
-    eprintln!("tva select: {}", msg);
-    std::process::exit(1);
-}
-
-fn check_conflicts(selected: &[usize], excluded: &HashSet<usize>) {
+fn check_conflicts(selected: &[usize], excluded: &HashSet<usize>) -> anyhow::Result<()> {
     for idx in selected {
         if excluded.contains(idx) {
-            arg_error(&format!("Field {} is both selected and excluded", idx));
+            anyhow::bail!("Field {} is both selected and excluded", idx);
         }
     }
+    Ok(())
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
@@ -86,7 +82,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let exclude_spec: Option<String> = args.get_one::<String>("exclude").cloned();
 
     if fields_spec.is_none() && exclude_spec.is_none() {
-        arg_error("one of --fields/-f or --exclude/-e is required");
+        anyhow::bail!("one of --fields/-f or --exclude/-e is required");
     }
 
     let rest_arg = args.get_one::<String>("rest").map(|s| s.as_str());
@@ -118,10 +114,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut chars = delimiter_str.chars();
     let delimiter = chars.next().unwrap_or('\t');
     if chars.next().is_some() {
-        arg_error(&format!(
+        anyhow::bail!(
             "delimiter must be a single character, got `{}`",
             delimiter_str
-        ));
+        );
     }
     let delim_byte = delimiter as u8;
 
@@ -198,7 +194,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 // Check conflicts
                 if let (Some(ref f), Some(ref e)) = (&field_indices, &exclude_set) {
-                    check_conflicts(f, e);
+                    check_conflicts(f, e)?;
                 }
 
                 let empty_vec = Vec::new();
@@ -261,7 +257,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         // Ensure conflicts are checked at least once
         if let (Some(ref f), Some(ref e)) = (&field_indices, &exclude_set) {
-            check_conflicts(f, e);
+            check_conflicts(f, e)?;
         }
 
         // Initialize Plan if possible

@@ -102,26 +102,21 @@ pub fn make_subcommand() -> Command {
         )
 }
 
-fn arg_error(msg: &str) -> ! {
-    eprintln!("tva join: {}", msg);
-    std::process::exit(1);
-}
-
 /// Parse field specification for join keys.
 /// Returns (is_whole_line, field_indices).
 fn parse_join_field_spec(
     spec_opt: Option<&str>,
     header: Option<&Header>,
     delimiter: char,
-) -> (bool, Option<Vec<usize>>) {
+) -> anyhow::Result<(bool, Option<Vec<usize>>)> {
     let spec = spec_opt.unwrap_or("0");
     let trimmed = spec.trim();
     if trimmed == "0" {
-        return (true, None);
+        return Ok((true, None));
     }
     let indices = fields::parse_field_list_with_header(trimmed, header, delimiter)
-        .unwrap_or_else(|e| arg_error(&e));
-    (false, Some(indices))
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    Ok((false, Some(indices)))
 }
 
 /// Parse field specification for append fields.
@@ -129,19 +124,22 @@ fn parse_append_field_spec(
     spec_opt: Option<&str>,
     header: Option<&Header>,
     delimiter: char,
-) -> Option<Vec<usize>> {
-    let spec = spec_opt?;
+) -> anyhow::Result<Option<Vec<usize>>> {
+    let spec = match spec_opt {
+        Some(s) => s,
+        None => return Ok(None),
+    };
     let trimmed = spec.trim();
     if trimmed.is_empty() {
-        return None;
+        return Ok(None);
     }
     let indices =
         fields::parse_field_list_with_header_preserve_order(trimmed, header, delimiter)
-            .unwrap_or_else(|e| arg_error(&e));
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
     if indices.is_empty() {
-        None
+        Ok(None)
     } else {
-        Some(indices)
+        Ok(Some(indices))
     }
 }
 
@@ -152,14 +150,14 @@ fn extract_values(
     delimiter: u8,
     plan: &crate::libs::tsv::select::SelectPlan,
     ranges_buf: &mut Vec<Range<usize>>,
-) -> Vec<u8> {
+) -> anyhow::Result<Vec<u8>> {
     if let Err(idx) = plan.extract_ranges(row, ranges_buf) {
         let n = row.ends.len();
-        eprintln!(
-            "tva join: line has {} fields, but append index {} is out of range",
-            n, idx
+        anyhow::bail!(
+            "line has {} fields, but append index {} is out of range",
+            n,
+            idx
         );
-        std::process::exit(1);
     }
 
     let mut values = Vec::with_capacity(row.line.len());
@@ -173,7 +171,7 @@ fn extract_values(
         }
         first = false;
     }
-    values
+    Ok(values)
 }
 
 /// Build the append header suffix from filter header and append indices.
@@ -254,24 +252,24 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let delimiter_char = chars.next().unwrap_or('\t');
     let delimiter = delimiter_char as u8;
     if chars.next().is_some() || delimiter_str.len() > 1 {
-        arg_error(&format!(
+        anyhow::bail!(
             "delimiter must be a single character, got `{}`",
             delimiter_str
-        ));
+        );
     }
 
     // Validate argument combinations
     if exclude && append_fields_spec.is_some() {
-        arg_error("--exclude cannot be used with --append-fields");
+        anyhow::bail!("--exclude cannot be used with --append-fields");
     }
     if exclude && write_all_value.is_some() {
-        arg_error("--write-all cannot be used with --exclude");
+        anyhow::bail!("--write-all cannot be used with --exclude");
     }
     if write_all_value.is_some() && append_fields_spec.is_none() {
-        arg_error("--write-all requires --append-fields");
+        anyhow::bail!("--write-all requires --append-fields");
     }
     if filter_file == "-" && infiles.len() == 1 && infiles[0] == "stdin" {
-        arg_error("data file is required when filter-file is '-'");
+        anyhow::bail!("data file is required when filter-file is '-'");
     }
 
     let prefix = args
@@ -279,7 +277,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .map(|s| s.as_str())
         .unwrap_or("");
     if !header_config.enabled && !prefix.is_empty() {
-        arg_error("--prefix requires --header");
+        anyhow::bail!("--prefix requires --header");
     }
 
     // ============================================================
@@ -300,12 +298,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     // Parse filter file field specifications
     let (filter_key_whole_line, filter_key_indices) =
-        parse_join_field_spec(key_fields_spec, filter_header.as_ref(), delimiter_char);
+        parse_join_field_spec(key_fields_spec, filter_header.as_ref(), delimiter_char)?;
     let append_indices = parse_append_field_spec(
         append_fields_spec,
         filter_header.as_ref(),
         delimiter_char,
-    );
+    )?;
     let append_count = append_indices.as_ref().map(|v| v.len()).unwrap_or(0);
 
     // Build append header suffix for output
@@ -348,15 +346,25 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         let values = if let Some(ref plan) = append_plan {
             ranges_buf.clear();
-            extract_values(row, delimiter, plan, &mut ranges_buf)
+            match extract_values(row, delimiter, plan, &mut ranges_buf) {
+                Ok(v) => v,
+                Err(e) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        e.to_string(),
+                    ));
+                }
+            }
         } else {
             Vec::new()
         };
 
         if let Some(existing) = filter_map.get_mut(key.as_ref()) {
             if !allow_duplicate_keys && *existing != values {
-                eprintln!("tva join: duplicate key with different append values found in filter file");
-                std::process::exit(1);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "duplicate key with different append values found in filter file",
+                ));
             }
             if allow_duplicate_keys {
                 *existing = values;
@@ -391,7 +399,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         effective_data_spec,
                         Some(&data_header),
                         delimiter_char,
-                    );
+                    )?;
 
                     // Validate key lengths match
                     if !filter_key_whole_line && !data_key_whole_line {
@@ -399,11 +407,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             filter_key_indices.as_ref().map(|v| v.len()).unwrap_or(0);
                         let dk_len = indices.as_ref().map(|v| v.len()).unwrap_or(0);
                         if fk_len != dk_len {
-                            eprintln!(
-                                "tva join: different number of key-fields and data-fields in file {}",
+                            anyhow::bail!(
+                                "different number of key-fields and data-fields in file {}",
                                 input.name
                             );
-                            std::process::exit(1);
                         }
                     }
 
@@ -441,17 +448,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         if data_key_extractor.is_none() {
             let effective_data_spec = data_fields_spec.or(key_fields_spec);
             let (data_key_whole_line, indices) =
-                parse_join_field_spec(effective_data_spec, None, delimiter_char);
+                parse_join_field_spec(effective_data_spec, None, delimiter_char)?;
 
             // Validate key lengths match
             if !filter_key_whole_line && !data_key_whole_line {
                 let fk_len = filter_key_indices.as_ref().map(|v| v.len()).unwrap_or(0);
                 let dk_len = indices.as_ref().map(|v| v.len()).unwrap_or(0);
                 if fk_len != dk_len {
-                    eprintln!(
-                        "tva join: different number of key-fields and data-fields"
-                    );
-                    std::process::exit(1);
+                    anyhow::bail!("different number of key-fields and data-fields");
                 }
             }
 

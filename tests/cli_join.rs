@@ -281,7 +281,7 @@ fn join_basic_line_buffered_header_allow_duplicate_keys_append_whole_line() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: field index must be >= 1 in `0`"),
+        stderr.contains("field index must be >= 1 in `0`"),
         "stderr was: {}",
         stderr
     );
@@ -633,7 +633,7 @@ fn join_error_delimiter_must_be_single_char() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: delimiter must be a single character"),
+        stderr.contains("delimiter must be a single character"),
         "stderr was: {}",
         stderr
     );
@@ -755,7 +755,7 @@ fn join_error_duplicate_keys_filter_header_index() {
 
     assert!(
         stderr.contains(
-            "tva join: duplicate key with different append values found in filter file"
+            "Error: duplicate key with different append values found in filter file"
         ),
         "stderr was: {}",
         stderr
@@ -777,7 +777,7 @@ fn join_error_invalid_key_index_header() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: line has 5 fields, but key index 6 is out of range"),
+        stderr.contains("line has 5 fields, but key index 6 is out of range"),
         "stderr was: {}",
         stderr
     );
@@ -799,8 +799,7 @@ fn join_error_invalid_append_index_noheader() {
         .run_fail();
 
     assert!(
-        stderr
-            .contains("tva join: line has 5 fields, but append index 6 is out of range"),
+        stderr.contains("Error: line has 5 fields, but append index 6 is out of range"),
         "stderr was: {}",
         stderr
     );
@@ -823,8 +822,7 @@ fn join_error_invalid_append_index_header_filter_header() {
         .run_fail();
 
     assert!(
-        stderr
-            .contains("tva join: line has 5 fields, but append index 6 is out of range"),
+        stderr.contains("Error: line has 5 fields, but append index 6 is out of range"),
         "stderr was: {}",
         stderr
     );
@@ -845,7 +843,7 @@ fn join_error_write_all_requires_append_fields() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: --write-all requires --append-fields"),
+        stderr.contains("--write-all requires --append-fields"),
         "stderr was: {}",
         stderr
     );
@@ -869,7 +867,7 @@ fn join_error_write_all_cannot_be_used_with_exclude() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: --write-all cannot be used with --exclude"),
+        stderr.contains("--write-all cannot be used with --exclude"),
         "stderr was: {}",
         stderr
     );
@@ -908,7 +906,7 @@ fn join_error_stdin_filter_without_data_header() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: data file is required when filter-file is '-'"),
+        stderr.contains("data file is required when filter-file is '-'"),
         "stderr was: {}",
         stderr
     );
@@ -921,7 +919,7 @@ fn join_error_stdin_filter_without_data_noheader() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: data file is required when filter-file is '-'"),
+        stderr.contains("data file is required when filter-file is '-'"),
         "stderr was: {}",
         stderr
     );
@@ -1301,7 +1299,7 @@ fn join_error_invalid_header_name_key_fields() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: unknown field name `no_field_6`"),
+        stderr.contains("unknown field name `no_field_6`"),
         "stderr was: {}",
         stderr
     );
@@ -1347,10 +1345,8 @@ fn join_error_invalid_header_name_data_fields() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: unknown field name `no_field_6`")
-            || stderr.contains(
-                "tva join: line has 1 fields, but key index 4 is out of range"
-            ),
+        stderr.contains("unknown field name `no_field_6`")
+            || stderr.contains("line has 1 fields, but key index 4 is out of range"),
         "stderr was: {}",
         stderr
     );
@@ -1373,7 +1369,7 @@ fn join_error_different_number_of_keys_and_data_fields_header() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: different number of key-fields and data-fields"),
+        stderr.contains("different number of key-fields and data-fields"),
         "stderr was: {}",
         stderr
     );
@@ -1396,7 +1392,7 @@ fn join_error_different_number_of_keys_and_data_fields_header_name() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: different number of key-fields and data-fields"),
+        stderr.contains("Error: different number of key-fields and data-fields"),
         "stderr was: {}",
         stderr
     );
@@ -1418,7 +1414,7 @@ fn join_error_different_number_of_keys_and_data_fields_noheader() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: different number of key-fields and data-fields"),
+        stderr.contains("Error: different number of key-fields and data-fields"),
         "stderr was: {}",
         stderr
     );
@@ -1441,8 +1437,10 @@ fn join_error_duplicate_keys_header_append_whole_line() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: field index must be >= 1 in `0`")
-            || stderr.contains("tva join: duplicate key with different append values found in filter file"),
+        stderr.contains("Error: field index must be >= 1 in `0`")
+            || stderr.contains(
+                "Error: duplicate key with different append values found in filter file"
+            ),
         "stderr was: {}",
         stderr
     );
@@ -1466,7 +1464,7 @@ fn join_error_duplicate_keys_header_append_index() {
 
     assert!(
         stderr.contains(
-            "tva join: duplicate key with different append values found in filter file"
+            "Error: duplicate key with different append values found in filter file"
         ),
         "stderr was: {}",
         stderr
@@ -1489,8 +1487,10 @@ fn join_error_duplicate_keys_noheader_append_whole_line() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: field index must be >= 1 in `0`")
-            || stderr.contains("tva join: duplicate key with different append values found in filter file"),
+        stderr.contains("Error: field index must be >= 1 in `0`")
+            || stderr.contains(
+                "Error: duplicate key with different append values found in filter file"
+            ),
         "stderr was: {}",
         stderr
     );
@@ -1513,7 +1513,7 @@ fn join_error_duplicate_keys_noheader_append_index() {
 
     assert!(
         stderr.contains(
-            "tva join: duplicate key with different append values found in filter file"
+            "Error: duplicate key with different append values found in filter file"
         ),
         "stderr was: {}",
         stderr
@@ -1536,7 +1536,7 @@ fn join_error_prefix_without_header() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: --prefix requires --header"),
+        stderr.contains("Error: --prefix requires --header"),
         "stderr was: {}",
         stderr
     );
@@ -1560,7 +1560,7 @@ fn join_error_exclude_with_append_fields_header_index() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: --exclude cannot be used with --append-fields"),
+        stderr.contains("Error: --exclude cannot be used with --append-fields"),
         "stderr was: {}",
         stderr
     );
@@ -1583,7 +1583,7 @@ fn join_error_exclude_with_append_fields_noheader_index() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: --exclude cannot be used with --append-fields"),
+        stderr.contains("Error: --exclude cannot be used with --append-fields"),
         "stderr was: {}",
         stderr
     );
@@ -1607,7 +1607,7 @@ fn join_error_exclude_with_append_fields_header_name() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: --exclude cannot be used with --append-fields"),
+        stderr.contains("Error: --exclude cannot be used with --append-fields"),
         "stderr was: {}",
         stderr
     );
@@ -1628,7 +1628,7 @@ fn join_error_invalid_field_range_header_unknown_name_in_list() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: unknown field name `x` in `2,x`"),
+        stderr.contains("Error: unknown field name `x` in `2,x`"),
         "stderr was: {}",
         stderr
     );
@@ -1648,7 +1648,7 @@ fn join_error_invalid_field_range_noheader_name_requires_header() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: field name `x` requires header in `2,x`"),
+        stderr.contains("Error: field name `x` requires header in `2,x`"),
         "stderr was: {}",
         stderr
     );
@@ -1668,7 +1668,7 @@ fn join_error_invalid_field_list_empty_element_noheader() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: empty field list element in `2,,4`"),
+        stderr.contains("Error: empty field list element in `2,,4`"),
         "stderr was: {}",
         stderr
     );
@@ -1689,7 +1689,7 @@ fn join_error_invalid_field_list_empty_element_header() {
         .run_fail();
 
     assert!(
-        stderr.contains("tva join: empty field list element in `f2,,f4`"),
+        stderr.contains("Error: empty field list element in `f2,,f4`"),
         "stderr was: {}",
         stderr
     );

@@ -109,11 +109,6 @@ pub fn make_subcommand() -> Command {
         )
 }
 
-fn arg_error(msg: &str) -> ! {
-    eprintln!("tva uniq: {}", msg);
-    std::process::exit(1);
-}
-
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer =
         crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
@@ -136,10 +131,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut chars = delimiter_str.chars();
     let delimiter = chars.next().unwrap_or('\t');
     if chars.next().is_some() {
-        arg_error(&format!(
+        anyhow::bail!(
             "delimiter must be a single character, got `{}`",
             delimiter_str
-        ));
+        );
     }
 
     let ignore_case = args.get_flag("ignore-case");
@@ -172,15 +167,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     if !equiv_mode {
         if args.get_one::<String>("equiv-header").is_some() {
-            arg_error("--equiv-header requires --equiv");
+            anyhow::bail!("--equiv-header requires --equiv");
         }
         if args.get_one::<String>("equiv-start").is_some() {
-            arg_error("--equiv-start requires --equiv");
+            anyhow::bail!("--equiv-start requires --equiv");
         }
     }
 
     if !number_mode && args.get_one::<String>("number-header").is_some() {
-        arg_error("--number-header requires --number");
+        anyhow::bail!("--number-header requires --number");
     }
 
     let equiv_header = args
@@ -255,7 +250,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                                         ))
                                     }
                                     Err(e) => {
-                                        arg_error(&e);
+                                        anyhow::bail!("{}", e);
                                     }
                                 }
                             }
@@ -308,7 +303,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                                 Some(KeyExtractor::new(Some(v), ignore_case, true))
                         }
                         Err(e) => {
-                            arg_error(&e);
+                            anyhow::bail!("{}", e);
                         }
                     }
                 }

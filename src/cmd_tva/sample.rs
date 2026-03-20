@@ -122,11 +122,6 @@ pub fn make_subcommand() -> Command {
         )
 }
 
-fn arg_error(msg: &str) -> ! {
-    eprintln!("tva sample: {}", msg);
-    std::process::exit(1);
-}
-
 struct SampleConfig {
     infiles: Vec<String>,
     has_header: bool,
@@ -176,43 +171,45 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
     let replace = args.get_flag("replace");
 
     if num_opt > 0 && prob_opt.is_some() && key_fields.is_none() {
-        arg_error("--num/-n and --prob/-p cannot be used together");
+        anyhow::bail!("--num/-n and --prob/-p cannot be used together");
     }
 
     if replace && prob_opt.is_some() {
-        arg_error("--replace/-r cannot be used with --prob/-p");
+        anyhow::bail!("--replace/-r cannot be used with --prob/-p");
     }
 
     if replace && num_opt == 0 {
-        arg_error("--replace/-r requires --num/-n greater than 0");
+        anyhow::bail!("--replace/-r requires --num/-n greater than 0");
     }
 
     if inorder && (prob_opt.is_some() || replace || num_opt == 0) {
-        arg_error("--inorder/-i requires --num/-n without --replace/-r or --prob/-p");
+        anyhow::bail!(
+            "--inorder/-i requires --num/-n without --replace/-r or --prob/-p"
+        );
     }
 
     if weight_field.is_some() && prob_opt.is_some() {
-        arg_error("--weight-field/-w cannot be used with --prob/-p");
+        anyhow::bail!("--weight-field/-w cannot be used with --prob/-p");
     }
 
     if weight_field.is_some() && replace {
-        arg_error("--weight-field/-w cannot be used with --replace/-r");
+        anyhow::bail!("--weight-field/-w cannot be used with --replace/-r");
     }
 
     if key_fields.is_some() && prob_opt.is_none() && !gen_random_inorder {
-        arg_error("--key-fields/-k requires --prob/-p");
+        anyhow::bail!("--key-fields/-k requires --prob/-p");
     }
 
     if key_fields.is_some()
         && (num_opt > 0 || replace || weight_field.is_some() || inorder)
     {
-        arg_error(
-            "--key-fields/-k cannot be used with --num/-n, --replace/-r, --inorder/-i, or --weight-field/-w",
+        anyhow::bail!(
+            "--key-fields/-k cannot be used with --num/-n, --replace/-r, --inorder/-i, or --weight-field/-w"
         );
     }
 
     if print_random && gen_random_inorder {
-        arg_error("--print-random cannot be used with --gen-random-inorder");
+        anyhow::bail!("--print-random cannot be used with --gen-random-inorder");
     }
 
     if gen_random_inorder
@@ -222,19 +219,19 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
             || weight_field.is_some()
             || inorder)
     {
-        arg_error("--gen-random-inorder cannot be combined with sampling options");
+        anyhow::bail!("--gen-random-inorder cannot be combined with sampling options");
     }
 
     if print_random && replace {
-        arg_error("--print-random is not supported with --replace/-r");
+        anyhow::bail!("--print-random is not supported with --replace/-r");
     }
 
     if let Some(p) = prob_opt {
         if !(p > 0.0 && p <= 1.0) {
-            arg_error(&format!(
+            anyhow::bail!(
                 "invalid --prob/-p value {} (must satisfy 0.0 < prob <= 1.0)",
                 p
-            ));
+            );
         }
     }
 

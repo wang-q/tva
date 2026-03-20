@@ -123,11 +123,6 @@ pub fn make_subcommand() -> Command {
         )
 }
 
-fn arg_error(msg: &str) -> ! {
-    eprintln!("tva split: {}", msg);
-    std::process::exit(1);
-}
-
 fn format_index(idx0: usize, digit_width: usize) -> String {
     if digit_width == 0 {
         idx0.to_string()
@@ -201,19 +196,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .unwrap_or(0);
 
     if lines_per_file == 0 && num_files == 0 {
-        arg_error("either --lines-per-file/-l or --num-files/-n must be specified");
+        anyhow::bail!("either --lines-per-file/-l or --num-files/-n must be specified");
     }
 
     if lines_per_file > 0 && num_files > 0 {
-        arg_error("--lines-per-file/-l cannot be used with --num-files/-n");
+        anyhow::bail!("--lines-per-file/-l cannot be used with --num-files/-n");
     }
 
     if lines_per_file > 0 && key_fields_spec.is_some() {
-        arg_error("--key-fields/-k is only supported with --num-files/-n");
+        anyhow::bail!("--key-fields/-k is only supported with --num-files/-n");
     }
 
     if num_files == 0 && key_fields_spec.is_some() {
-        arg_error("--key-fields/-k requires --num-files/-n");
+        anyhow::bail!("--key-fields/-k requires --num-files/-n");
     }
 
     let dir_path = PathBuf::from(&dir_str);
@@ -241,16 +236,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None
     };
 
-    let key_indices = key_fields_spec.and_then(|spec| {
-        if spec.trim().is_empty() {
-            None
-        } else {
-            Some(
-                crate::libs::tsv::fields::parse_numeric_field_list(&spec)
-                    .unwrap_or_else(|e| arg_error(&e)),
-            )
-        }
-    });
+    let key_indices = match key_fields_spec {
+        Some(spec) if !spec.trim().is_empty() => Some(
+            crate::libs::tsv::fields::parse_numeric_field_list(&spec)
+                .map_err(|e| anyhow::anyhow!("{}", e))?,
+        ),
+        _ => None,
+    };
 
     // Create KeyExtractor once for key-based splitting
     let mut key_extractor = key_indices.as_ref().map(|indices| {

@@ -29,7 +29,7 @@ fn split_key_fields_invalid_field_list_reports_error() {
         .stdin("a\t1\nb\t2\n")
         .run_fail();
 
-    assert!(stderr.contains("tva split:"));
+    assert!(stderr.contains("Error:"));
 }
 
 #[test]

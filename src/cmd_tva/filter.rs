@@ -259,11 +259,6 @@ pub fn make_subcommand() -> Command {
     cmd
 }
 
-fn arg_error(msg: &str) -> ! {
-    eprintln!("tva filter: {}", msg);
-    std::process::exit(1);
-}
-
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer =
         crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
@@ -287,14 +282,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if let Some(pos) = v.rfind(':') {
                 (v[..pos].to_string(), v[pos + 1..].to_string())
             } else {
-                arg_error("label-values must be PASS:FAIL");
+                anyhow::bail!("label-values must be PASS:FAIL");
             }
         } else {
             ("1".to_string(), "0".to_string())
         }
     };
     if label_header.is_some() && count_only {
-        arg_error("--label conflicts with --count");
+        anyhow::bail!("--label conflicts with --count");
     }
 
     let delimiter_str = args
@@ -304,10 +299,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut chars = delimiter_str.chars();
     let delimiter = chars.next().unwrap_or('\t');
     if chars.next().is_some() {
-        arg_error(&format!(
+        anyhow::bail!(
             "delimiter must be a single character, got `{}`",
             delimiter_str
-        ));
+        );
     }
 
     // Helper macro for simple string lists

@@ -255,3 +255,87 @@ Bar Charts）。
 | `for_each_line` | 纯行处理 | `nl`, `slice`, `uniq` 等（使用 `0xFF` 技巧避免字段分配） |
 
 **迁移状态**: 所有核心命令已迁移到 `for_each_row`，消除二次解析。`TsvSplitter` 已移除，功能由 `TsvRow` 替代。
+
+## 代码结构优化建议
+
+基于对25个命令文件的代码分析，以下是改进建议：
+
+### 1. 统一错误处理风格 (已完成)
+
+**修改内容**: 移除了所有命令中的 `arg_error()` 函数，统一使用 `anyhow::bail!`。
+
+**涉及文件**:
+- `src/cmd_tva/select.rs`
+- `src/cmd_tva/join.rs`
+- `src/cmd_tva/filter.rs`
+- `src/cmd_tva/sample.rs`
+- `src/cmd_tva/split.rs`
+- `src/cmd_tva/uniq.rs`
+
+**注意事项**: 错误消息格式从 `tva command: message` 变为 `Error: message`。
+需要更新测试文件中匹配错误消息的断言（将 `stderr.contains("tva command:` 改为 `stderr.contains("`）。
+
+### 2. 提取 Header 处理公共函数
+
+**现状**: 多个命令重复类似的 header 写入逻辑：
+```rust
+for line in &header_info.lines {
+    writer.write_all(line)?;
+    writer.write_all(b"\n")?;
+}
+if let Some(ref column_names) = header_info.column_names_line {
+    writer.write_all(column_names)?;
+    writer.write_all(b"\n")?;
+}
+```
+
+**建议**: 在 `libs/tsv/header.rs` 中添加辅助函数：
+```rust
+pub fn write_header_info(writer: &mut dyn Write, info: &HeaderInfo) -> io::Result<()>
+pub fn write_header_with_suffix(writer: &mut dyn Write, info: &HeaderInfo, suffix: Option<&[u8]>) -> io::Result<()>
+```
+
+### 3. 字段解析逻辑统一
+
+**现状**: `select.rs`, `blank.rs`, `fill.rs` 等命令重复解析 header 字段的逻辑。
+
+**建议**: 在 `libs/tsv/fields.rs` 中添加：
+```rust
+pub fn resolve_fields_from_header(
+    spec: &str,
+    column_names_bytes: &[u8],
+    delimiter: char,
+) -> Result<Vec<usize>, String>
+```
+
+### 4. TsvRow 迭代器支持
+
+**现状**: 命令中常见模式：
+```rust
+for col_idx in 0..row.field_count() {
+    let bytes = row.get_bytes(col_idx + 1).unwrap_or(b"");
+    // ...
+}
+```
+
+**建议**: 为 `TsvRow` 添加字段迭代器：
+```rust
+impl TsvRow {
+    pub fn iter_fields(&self) -> impl Iterator<Item = &[u8]> + '_ {
+        // 返回字段迭代器，简化循环代码
+    }
+}
+```
+
+### 5. 优先级建议
+
+| 优先级 | 改进项 | 影响 |
+|:-------|:-------|:-----|
+| P1 | 统一错误处理风格 | 代码一致性 |
+| P2 | 提取 header 写入辅助函数 | 减少重复代码 (~50行/文件) |
+| P3 | 添加 TsvRow 字段迭代器 | 简化循环代码 |
+
+### 6. 保持现状的部分
+
+- **`sample.rs`**: 使用 `for_each_line` + 手动 `memchr_iter` 是合理的，因为采样算法需要存储原始行，不适合 `for_each_row` 模式。
+- **`key.rs` 的 `extract()` 方法**: 虽然只被测试使用，但保留它有助于测试 `KeyExtractor` 的基础功能。

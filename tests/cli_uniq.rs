@@ -361,7 +361,7 @@ fn uniq_error_equiv_start_requires_equiv() {
         ])
         .run_fail();
 
-    assert!(stderr.contains("tva uniq: --equiv-start requires --equiv"));
+    assert!(stderr.contains("Error: --equiv-start requires --equiv"));
 }
 
 #[test]
@@ -377,7 +377,7 @@ fn uniq_error_equiv_header_requires_equiv() {
         ])
         .run_fail();
 
-    assert!(stderr.contains("tva uniq: --equiv-header requires --equiv"));
+    assert!(stderr.contains("Error: --equiv-header requires --equiv"));
 }
 
 #[test]
@@ -393,7 +393,7 @@ fn uniq_error_number_header_requires_number() {
         ])
         .run_fail();
 
-    assert!(stderr.contains("tva uniq: --number-header requires --number"));
+    assert!(stderr.contains("Error: --number-header requires --number"));
 }
 
 #[test]
