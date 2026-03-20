@@ -1,6 +1,5 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
-use crate::libs::tsv::fields;
-use crate::libs::tsv::fields::Header;
+use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::header::HeaderConfig;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRow};
@@ -144,11 +143,17 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         // Initialize indices from the first file (only once)
         if melt_indices.is_none() {
-            let header = Header::from_fields(current_header_fields.clone());
+            // Build header bytes from current_header_fields for FieldResolver
+            let header_bytes = if current_header_fields.is_empty() {
+                None
+            } else {
+                Some(current_header_fields.join("\t").into_bytes())
+            };
+            let resolver = FieldResolver::new(header_bytes, '\t');
 
-            let melt_indices_1based =
-                fields::parse_field_list_with_header(cols_spec, Some(&header), '\t')
-                    .map_err(|e| anyhow::anyhow!(e))?;
+            let melt_indices_1based = resolver
+                .resolve(cols_spec)
+                .map_err(|e| anyhow::anyhow!(e))?;
 
             // Check if any index is out of bounds
             let column_count = current_header_fields.len();

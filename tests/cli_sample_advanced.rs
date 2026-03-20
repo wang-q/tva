@@ -847,7 +847,7 @@ fn sample_gen_random_inorder_key_fields_invalid_no_header() {
         .stdin(input)
         .run_fail();
 
-    assert!(stderr.contains("requires header"));
+    assert!(stderr.contains("require"));
 }
 
 #[test]

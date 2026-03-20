@@ -1,4 +1,5 @@
 use crate::libs::sampling::*;
+use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::reader::TsvReader;
 use ahash::AHashMap;
 use clap::*;
@@ -316,27 +317,58 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
 
 fn parse_key_specs(
     spec: &str,
-    header: Option<&crate::libs::tsv::fields::Header>,
+    header_bytes: Option<&[u8]>,
 ) -> std::io::Result<Vec<usize>> {
     if spec == "0" {
         Ok(Vec::new())
+    } else if header_bytes.is_none() && contains_field_names(spec) {
+        // No header but field names detected - return appropriate error
+        Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "Field name patterns require header (use --header or -H flag)",
+        ))
     } else {
-        crate::libs::tsv::fields::parse_field_list_with_header(spec, header, '\t')
-            .map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e))
-            })
+        let resolver = FieldResolver::new(header_bytes.map(|b| b.to_vec()), '\t');
+        resolver.resolve(spec).map_err(|e| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e))
+        })
     }
+}
+
+/// Checks if a field specification contains field names (non-numeric tokens).
+fn contains_field_names(spec: &str) -> bool {
+    for part in spec.split(',') {
+        let trimmed = part.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        // Check for range pattern (e.g., "1-3", "col1-col3")
+        if let Some(dash_pos) = trimmed.find('-') {
+            let start = &trimmed[..dash_pos];
+            let end = &trimmed[dash_pos + 1..];
+            // If either side is non-empty and not a valid usize, it's a field name pattern
+            if (!start.is_empty() && start.parse::<usize>().is_err())
+                || (!end.is_empty() && end.parse::<usize>().is_err())
+            {
+                return true;
+            }
+        } else if trimmed.parse::<usize>().is_err() {
+            // Single token that is not a number - must be a field name
+            return true;
+        }
+    }
+    false
 }
 
 fn parse_single_weight_field(
     spec: &str,
-    header: Option<&crate::libs::tsv::fields::Header>,
+    header_bytes: Option<&[u8]>,
 ) -> std::io::Result<usize> {
-    let indices =
-        crate::libs::tsv::fields::parse_field_list_with_header(spec, header, '\t')
-            .map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e))
-            })?;
+    let resolver = FieldResolver::new(header_bytes.map(|b| b.to_vec()), '\t');
+    let indices = resolver.resolve(spec).map_err(|e| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e))
+    })?;
 
     if indices.len() != 1 {
         return Err(std::io::Error::new(
@@ -386,16 +418,8 @@ fn run_gen_random_inorder<W: Write>(
                     header_line = Some(record.to_vec());
 
                     if !initialized && distinct_key_spec.is_some() {
-                        use crate::libs::tsv::fields::Header;
-                        let record_str = std::str::from_utf8(record).map_err(|e| {
-                            std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
-                                format!("{}", e),
-                            )
-                        })?;
-                        let header = Header::from_line(record_str, '\t');
                         let spec = distinct_key_spec.unwrap();
-                        key_field_indices = parse_key_specs(spec, Some(&header))?;
+                        key_field_indices = parse_key_specs(spec, Some(record))?;
                         initialized = true;
                     }
 
@@ -616,32 +640,14 @@ fn run_standard_sampling<W: Write>(
                     if !sampler_initialized {
                         match &mut sampler {
                             SamplerEnum::Distinct(s) => {
-                                use crate::libs::tsv::fields::Header;
-                                let record_str =
-                                    std::str::from_utf8(record).map_err(|e| {
-                                        std::io::Error::new(
-                                            std::io::ErrorKind::InvalidData,
-                                            format!("{}", e),
-                                        )
-                                    })?;
-                                let header = Header::from_line(record_str, '\t');
                                 let spec = distinct_key_spec.unwrap();
                                 s.key_field_indices =
-                                    parse_key_specs(spec, Some(&header))?;
+                                    parse_key_specs(spec, Some(record))?;
                             }
                             SamplerEnum::Weighted(s) => {
-                                use crate::libs::tsv::fields::Header;
-                                let record_str =
-                                    std::str::from_utf8(record).map_err(|e| {
-                                        std::io::Error::new(
-                                            std::io::ErrorKind::InvalidData,
-                                            format!("{}", e),
-                                        )
-                                    })?;
-                                let header = Header::from_line(record_str, '\t');
                                 let spec = weighted_weight_spec.unwrap();
                                 s.weight_field_idx =
-                                    parse_single_weight_field(spec, Some(&header))?;
+                                    parse_single_weight_field(spec, Some(record))?;
                             }
                             _ => {}
                         }

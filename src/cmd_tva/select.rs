@@ -4,6 +4,7 @@ use std::ops::Range;
 
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
+use crate::libs::tsv::fields::FieldResolver;
 
 use crate::libs::tsv::record::TsvRow;
 use crate::libs::tsv::select;
@@ -158,30 +159,22 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     }
                 };
 
+                // Create FieldResolver for field parsing
+                let resolver =
+                    FieldResolver::new(Some(column_names_bytes.clone()), delimiter);
+
                 // Resolve fields if not yet resolved
                 if field_indices.is_none() {
                     if let Some(ref spec) = fields_spec {
-                        field_indices = Some(
-                            crate::libs::tsv::fields::resolve_fields_from_header(
-                                spec,
-                                &column_names_bytes,
-                                delimiter,
-                            )
-                            .map_err(map_io_err)?,
-                        );
+                        field_indices =
+                            Some(resolver.resolve(spec).map_err(map_io_err)?);
                     }
                 }
 
                 // Resolve exclude if not yet resolved
                 if exclude_indices.is_none() {
                     if let Some(ref spec) = exclude_spec {
-                        let indices =
-                            crate::libs::tsv::fields::resolve_fields_from_header(
-                                spec,
-                                &column_names_bytes,
-                                delimiter,
-                            )
-                            .map_err(map_io_err)?;
+                        let indices = resolver.resolve(spec).map_err(map_io_err)?;
                         exclude_set = Some(indices.iter().copied().collect());
                         exclude_indices = Some(indices);
                     }
@@ -229,6 +222,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // Fallback resolution if not resolved by header (e.g. no header mode or first file was empty?)
         if fields_spec.is_some() && field_indices.is_none() {
             if let Some(ref spec) = fields_spec {
+                // Check for field names without header
+                if contains_field_names(spec) {
+                    anyhow::bail!("field name requires header");
+                }
                 field_indices = Some(
                     crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
                         spec, None, delimiter,
@@ -240,6 +237,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         if exclude_spec.is_some() && exclude_set.is_none() {
             if let Some(ref spec) = exclude_spec {
+                // Check for field names without header
+                if contains_field_names(spec) {
+                    anyhow::bail!("field name requires header");
+                }
                 let indices =
                     crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
                         spec, None, delimiter,
@@ -296,4 +297,32 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// Checks if a field specification contains field names (non-numeric tokens).
+/// Returns true if the spec contains tokens that are not purely numeric/ranges.
+fn contains_field_names(spec: &str) -> bool {
+    for part in spec.split(',') {
+        let trimmed = part.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        // Check for range pattern (e.g., "1-3", "col1-col3")
+        if let Some(dash_pos) = trimmed.find('-') {
+            let start = &trimmed[..dash_pos];
+            let end = &trimmed[dash_pos + 1..];
+            // Empty start or end is an incomplete range (numeric), not a field name
+            // If either side is non-empty and not a valid usize, it's a field name pattern
+            if (!start.is_empty() && start.parse::<usize>().is_err())
+                || (!end.is_empty() && end.parse::<usize>().is_err())
+            {
+                return true;
+            }
+        } else if trimmed.parse::<usize>().is_err() {
+            // Single token that is not a number - must be a field name
+            return true;
+        }
+    }
+    false
 }
