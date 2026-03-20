@@ -254,179 +254,20 @@ Bar Charts）。
 * 字符串操作：`split()` 受益明显，其他操作收益有限。
 * **最终建议**: 考虑到 `tva` 的核心是 TSV 文本处理，当前 `Value` 类型设计已足够高效，暂不引入 `Arc` 增加复杂度。
 
-## SIMD 规划
+## 已完成的工作
 
-`tva` 使用 SIMD 加速 TSV 解析。当前实现包括 `memchr` 库集成和手写 SIMD searcher。
+### SIMD 优化
 
-### 性能基准
+- **手写 SIMD 实现**: SSE2 (x86_64) 和 NEON (aarch64) 单层扫描，达到 **1.63 GiB/s** 吞吐量
+- **架构设计**: `DelimiterSearcher` trait 统一平台抽象，泛型函数消除重复代码
+- **关键优化**: 仅搜索 `\t` 和 `\n`，CR 后处理减少寄存器压力
 
-#### TsvReader 实现对比 (`benches/tsv_simd_compare.rs`)
+### API 演进
 
-在 x86_64 平台上对比 SSE2 与 memchr2 实现：
+| 组件 | 类型 | 用途 |
+|:-----|:-----|:-----|
+| `TsvRow` | 零拷贝视图 | `filter`, `select`, `join`, `expr` 等只读操作 |
+| `TsvRecord` | 拥有所有权 | `transpose`, `sort` 等需要存储的场景 |
+| `for_each_line` | 纯行处理 | `nl`, `slice`, `uniq` 等（使用 `0xFF` 技巧避免字段分配） |
 
-| 测试场景 | memchr2 | SSE2 | 提升 |
-|:---------|:--------|:-----|:-----|
-| 1000 rows, 5 cols | ~400 µs | ~200 µs | **~100%** |
-| 10000 rows, 5 cols | ~398 µs | ~205 µs | **~94%** |
-| 1000 rows, 50 cols | ~446 µs | ~181 µs | **~146%** |
-| 10000 rows, 50 cols | ~4.77 ms | ~2.00 ms | **~138%** |
-
-**关键发现**：
-- SSE2 比 memchr2 快约 **2 倍**（94% ~ 146% 提升）
-- `auto` 模式正确选择 SSE2 实现，性能与直接调用 SSE2 一致
-- 宽表（50 cols）比窄表（5 cols）提升更明显
-
-#### 各实现吞吐量对比
-
-| 实现 | 吞吐量 | 说明 |
-|:-----|:-------|:-----|
-| 手写 SSE2 SIMD | **2.8~3.3 GiB/s** | x86_64，单层扫描 |
-| 手写 NEON SIMD | **~2.8 GiB/s** | aarch64，单层扫描 |
-| `memchr2` 单层扫描 | 1.3~1.5 GiB/s | 通用实现 |
-| `for_each_line` | 2.01 GiB/s | 两层扫描 |
-
-**关键结论**：
-- 手写 SSE2/NEON 单层扫描比 `memchr2` 快约 **114%**
-- AVX2 (256-bit) 实测比 SSE2 慢，不推荐使用
-- 单层扫描架构是性能提升的关键
-
-### 实现架构
-
-```
-src/libs/tsv/simd/
-├── mod.rs    - 模块入口，条件导出
-├── sse2.rs   - x86_64 SSE2 实现
-└── neon.rs   - aarch64 NEON 实现
-```
-
-**使用方式**：
-- `TsvReader::next_row()` - 自动选择最优实现：
-  - x86_64: 自动使用 SSE2 单层扫描
-  - aarch64: 自动使用 NEON 单层扫描
-  - 其他平台: 使用 `memchr2` 单层扫描
-
-### 优化原理
-
-单层扫描同时搜索 `\t`、 `\n`、 `\r` 三个分隔符，避免两层遍历的开销。手写 SIMD 实现直接操作向量寄存器，比通用库更高效。
-
-### 当前状态
-
-- ✅ SSE2 实现完成 (x86_64)
-- ✅ NEON 实现完成 (aarch64)
-- ✅ 集成到 `TsvReader`
-- ⏳ 缓冲区管理优化（低优先级）
-
-现有架构已具备良好的零拷贝基础：
-
-| 组件 | 类型 | 用途 | 状态 |
-|:-----|:-----|:-----|:-----|
-| `TsvRow<'a, 'b>` | 零拷贝视图 | `filter`, `select`, `join`, `expr` 等只读操作 | ✅ 已实现 |
-| `TsvRecord` | 拥有所有权 | `transpose`, `sort`, `sample` 等需要存储的场景 | ✅ 已实现 |
-| `next_row()` | 单层扫描 | 高性能行读取 | ✅ 已实现 |
-
-**保持现状**：当前设计已满足需求，无需大规模重构。
-
-## TSV API 迁移计划
-
-随着 `TsvReader::next_row()` 提供单层扫描 SIMD 加速，以下模块需要逐步迁移以充分利用性能提升。
-
-### 当前状态分析
-
-| 文件 | 当前实现 | 问题 | 优先级 |
-|:-----|:---------|:-----|:-------|
-| `reader.rs` | `for_each_line` 使用 `next_row` | ✅ 已完成 | - |
-| `select.rs` | `extract_ranges` 使用 `TsvRow.ends` | ✅ 已完成 | - |
-| `select.rs` | `write_excluding_from_bytes` 使用 `TsvRow.ends` | ✅ 已完成 | - |
-| `select.rs` | `write_with_rest` 使用 `TsvRow.ends` | ✅ 已完成 | - |
-| `join.rs` | `extract_values` 使用 `TsvRow` | ✅ 已完成 | - |
-| `join.rs` | 数据记录处理使用 `for_each_row` | ✅ 已完成 | - |
-| `key.rs` | `extract_from_row` 使用 `TsvRow` | ✅ 已完成 | - |
-| `split.rs` | ~~`TsvSplitter` 已删除~~ | ✅ 已移除 | - |
-| `transpose.rs` | 使用 `for_each_row` + `from_row` | ✅ 已完成 | - |
-| `sort.rs` | 使用 `for_each_row` + `from_row` | ✅ 已完成 | - |
-| `plot/data.rs` | 使用 `for_each_row` + `TsvRow` | ✅ 已完成 | - |
-| `record.rs` | `TsvRecord::from_row` 已添加 | ✅ 已完成 | - |
-| `expr.rs` | 使用 `for_each_row` + `TsvRow.ends` | ✅ 已完成 | - |
-
-### 迁移策略
-
-#### 阶段 1: Select 模块优化 ✅ 已完成
-
-**目标**: 让 `select` 命令直接使用 `TsvRow` 的已解析字段边界，避免二次扫描。
-
-**已完成工作**:
-1. `src/libs/tsv/select.rs`: 修改 `extract_ranges` 函数接受 `&TsvRow` 而非 `&[u8]`
-2. `src/libs/tsv/select.rs`: 修改 `write_selected_from_bytes` 函数接受 `&TsvRow`
-3. `src/libs/tsv/select.rs`: 修改 `write_excluding_from_bytes` 函数接受 `&TsvRow`
-4. `src/libs/tsv/select.rs`: 修改 `write_with_rest` 函数接受 `&TsvRow`
-5. `src/cmd_tva/select.rs`: 使用 `for_each_row` 替代 `for_each_line`
-6. `src/cmd_tva/join.rs`: 使用 `for_each_row` 替代 `for_each_line`
-7. `src/libs/tsv/key.rs`: 新增 `extract_from_row` 方法接受 `&TsvRow`
-
-**实现说明**: 直接修改现有函数签名而非新增 `_from_row` 版本，因为 `select` 模块的使用场景单一，且修改范围可控。
-
-**实际收益**: `select` 和 `join` 命令性能提升约 **10%**
-
-#### 阶段 2: ~~Split 模块优化~~ ✅ 已完成
-
-**决策**: `TsvSplitter` 已被完全删除。
-
-**原因**: `TsvRow` 已经可以完全替代 `TsvSplitter` 的功能：
-- `TsvRow.get_bytes(idx)` - 直接访问指定字段
-- `TsvRow.ends` - 遍历所有字段边界
-
-使用 `TsvSplitter` 的场景已改用内联遍历或 `TsvRow`。
-
-#### 阶段 3: Record 模块优化 ✅ 已完成
-
-**目标**: 减少 `TsvRecord::parse_line` 的扫描开销。
-
-**已完成工作**:
-1. `src/libs/tsv/record.rs`: 新增 `TsvRecord::from_row()` 方法，从 `TsvRow` 创建，直接复用 `ends` 数组
-2. `src/cmd_tva/transpose.rs`: 使用 `for_each_row` + `TsvRecord::from_row()`
-3. `src/cmd_tva/sort.rs`: 使用 `for_each_row` + `TsvRecord::from_row()`
-4. `src/libs/plot/data.rs`: 使用 `for_each_row` + `TsvRow`（无需拥有所有权）
-
-**遗留 API**: `TsvRecord::parse_line()` 仍保留用于测试和特殊场景
-
-#### 阶段 4: 其他命令迁移 ✅ 已完成
-
-**目标**: 将更多命令迁移到 `for_each_row` 以消除二次解析。
-
-**已完成工作**:
-1. `src/cmd_tva/check.rs`: 使用 `for_each_row` + `TsvRow.field_count()`
-2. `src/cmd_tva/fill.rs`: 使用 `for_each_row` + `TsvRow.get_bytes()`
-3. `src/cmd_tva/blank.rs`: 使用 `for_each_row` + `TsvRow.get_bytes()`
-4. `src/cmd_tva/bin.rs`: 使用 `for_each_row` + `TsvRow.get_bytes()`
-5. `src/cmd_tva/longer.rs`: 使用 `for_each_row` + `TsvRow.get_bytes()`
-6. `src/libs/filter/runner.rs`: 使用 `for_each_row` + `TsvRow`（替代手动构建）
-7. `src/cmd_tva/join.rs`: 数据记录处理使用 `for_each_row` + `extractor.extract_from_row()`
-8. `src/cmd_tva/expr.rs`: 使用 `for_each_row` + `TsvRow.ends` 提取字段
-
-**新增 API**: `TsvRow.field_count()` 方法，正确处理空行（返回 0 字段）
-
-#### 遗留 API 说明
-
-以下命令仍使用 `for_each_line`，但不需要迁移（只处理整行，不解析字段）：
-- `nl.rs` - 只加行号
-- `keep_header.rs` - 复制行到子进程
-- `append.rs` - 追加文件
-- `slice.rs` - 按行号切片
-- `split.rs` - 按行数分割文件
-- `to/md.rs` - 转换为 markdown
-- `uniq.rs` - 整行哈希去重
-
-以下命令仍使用二次解析，但**暂不迁移**：
-- `sample.rs` - Sampler trait 接收 `&[u8]`，Weighted/Distinct 采样器内部二次解析
-  - **原因**: 仅 2/8 采样器（Weighted/Distinct）需要解析字段，其余只处理整行；修改 Sampler trait 影响面广，收益有限
-  - **未来如需迁移**: 修改 `Sampler` trait 接受 `&TsvRow`，`WeightedReservoirSampler` 使用 `row.get_bytes(weight_field_idx)`，`DistinctBernoulliSampler` 使用 `row.get_bytes(key_field_idx)`
-
-### 实施建议
-
-1. **阶段 1 已完成**: `select` 和 `join` 已优化，收益约 10%
-2. **阶段 2 已完成**: `split.rs` 已删除，`TsvSplitter` 已移除
-3. **阶段 3 已完成**: `transpose`、`sort`、`plot/data` 已迁移到 `for_each_row`
-4. **阶段 4 已完成**: `check`、`fill`、`blank`、`bin`、`longer` 已迁移到 `for_each_row`
-5. **阶段 5 已完成**: `join` 数据记录处理、`expr` 已迁移到 `for_each_row`
-6. **核心命令已优化**: 主要 TSV 处理命令均使用单层扫描
-7. **保持向后兼容**: `TsvRecord::parse_line()` 仍保留用于测试和特殊场景
+**迁移状态**: 所有核心命令已迁移到 `for_each_row`，消除二次解析。`TsvSplitter` 已移除，功能由 `TsvRow` 替代。
