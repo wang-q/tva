@@ -337,11 +337,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             Ok(k) => k,
             Err(idx) => {
                 let n = row.ends.len();
-                eprintln!(
-                    "tva join: line has {} fields, but key index {} is out of range",
-                    n, idx
-                );
-                std::process::exit(1);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!(
+                        "line has {} fields, but key index {} is out of range",
+                        n, idx
+                    ),
+                ));
             }
         };
 
@@ -470,11 +472,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 Ok(k) => k,
                 Err(idx) => {
                     let n = row.ends.len();
-                    eprintln!(
-                        "tva join: line has {} fields, but key index {} is out of range",
-                        n, idx
-                    );
-                    std::process::exit(1);
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "line has {} fields, but key index {} is out of range",
+                            n, idx
+                        ),
+                    ));
                 }
             };
 

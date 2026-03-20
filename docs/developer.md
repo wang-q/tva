@@ -115,6 +115,8 @@ cargo build
     * 第二阶段：结合 `tva split` 实现大文件分块并行
     * 利用 TSV 无引号特性，可以比 CSV 更简单地实现字节级分块
 
+#### par parallel/partition
+
 #### 4. 随机访问与索引 (Random Access & Indexing)
 
 * **实现**: `src/config.rs` & `bgzip`
@@ -291,3 +293,138 @@ impl TsvRow {
     }
 }
 ```
+
+### 3. 字段解析代码重复
+
+**现状**: 多个命令包含类似的字段名检测逻辑：
+
+```rust
+// sample.rs, select.rs, uniq.rs 等均有类似代码
+fn contains_field_names(spec: &str) -> bool {
+    for part in spec.split(',') {
+        let trimmed = part.trim();
+        // ... 重复的逻辑
+    }
+}
+```
+
+**建议**: 将 `contains_field_names` 函数移至 `src/libs/tsv/fields.rs` 的 `FieldResolver` 中，作为公共方法。
+
+### 6. Delimiter 处理不一致
+
+**现状分析**:
+
+| 命令 | 默认值 | 验证方式 | 特殊处理 |
+|-----|-------|---------|---------|
+| `append` | `\t` | 检查单字节 | 无 |
+| `bin` | 无参数 | N/A | 硬编码 `b'\t'` |
+| `blank` | 无参数 | N/A | 硬编码 `b'\t'` |
+| `check` | 无参数 | N/A | 硬编码 `b'\t'` |
+| `expr` | `\t` | 检查单字符 | 支持 `--delimiter` |
+| `fill` | 无参数 | N/A | 硬编码 `b'\t'` |
+| `filter` | `\t` | 检查单字符 | 支持 `--delimiter` |
+| `header` | `\t` | 检查单字节 | 支持 `--delimiter` |
+| `join` | `\t` | 检查单字符 | 支持 `--delimiter` |
+| `longer` | 无参数 | N/A | 硬编码 `b'\t'` |
+| `nl` | `\t` | 无验证 | 支持 `--delimiter` |
+| `select` | `\t` | 检查单字符 | 支持 `--delimiter` |
+| `sort` | `\t` | 检查单字节 | 支持 `--delimiter` |
+| `split` | `\t` | 无验证 | 支持 `\t` 转义 |
+| `stats` | `\t` | 无验证 | 支持 `--delimiter` |
+| `transpose` | 无参数 | N/A | 硬编码 `b'\t'` |
+| `uniq` | `\t` | 检查单字符 | 支持 `--delimiter` |
+| `wider` | 无参数 | N/A | 硬编码 `b'\t'` |
+
+**问题**:
+
+1. 部分命令不支持 `--delimiter` 参数
+2. 验证方式不一致（有些检查单字节，有些检查单字符）
+3. `split` 支持 `\t` 转义，其他命令不支持
+
+**实施步骤**:
+
+1. **在 `src/libs/cli.rs` 添加公共函数**:
+   ```rust
+   /// 创建标准的 delimiter 参数
+   pub fn delimiter_arg() -> Arg {
+       Arg::new("delimiter")
+           .long("delimiter")
+           .short('d')
+           .num_args(1)
+           .default_value("\t")
+           .help("Field delimiter for input files")
+   }
+
+   /// 解析 delimiter 字符串，支持 \t 转义
+   pub fn parse_delimiter(s: &str) -> anyhow::Result<u8> {
+       let bytes = if s == "\\t" {
+           vec![b'\t']
+       } else {
+           s.as_bytes().to_vec()
+       };
+       if bytes.len() != 1 {
+           anyhow::bail!("delimiter must be a single byte, got {:?}", s);
+       }
+       Ok(bytes[0])
+   }
+   ```
+
+2. **替换各命令中的 delimiter 处理**:
+   - 将 `append.rs`, `sort.rs`, `nl.rs` 中的手动验证替换为 `parse_delimiter()`
+   - 将 `split.rs` 中的 `\t` 特殊处理移至 `parse_delimiter()`
+   - 统一 `join.rs`, `uniq.rs`, `select.rs` 的单字符检查为单字节检查
+
+3. **为缺少 `--delimiter` 的命令添加支持**:
+   - `bin.rs`: 当前硬编码 `b'\t'`，应添加参数
+   - `blank.rs`, `check.rs`, `expr.rs`, `fill.rs`, `filter.rs` 等
+
+4. **更新测试**:
+   - 确保所有命令的 delimiter 测试覆盖 `\t` 转义情况
+   - 统一错误消息格式
+
+### 7. 输出刷新策略不一致
+
+**现状**: 部分命令支持 `--line-buffered`，但实现方式略有不同：
+
+**建议**: 统一 line-buffered 处理逻辑，考虑在 `src/libs/io.rs` 中提供包装 writer。
+
+### 9. 代码组织建议
+
+#### 9.2 公共逻辑提取
+
+建议提取以下公共模块：
+
+1. **Header 处理**: 统一 header 读取、写入、跳过逻辑
+2. **字段解析**: 统一字段名/索引解析逻辑
+3. **Delimiter 处理**: 统一 delimiter 参数解析和验证
+4. **RNG 初始化**: 统一随机数生成器初始化
+5. **输出刷新**: 统一 line-buffered 输出处理
+
+### 10. 具体代码改进点
+
+#### 10.5 `expr.rs`
+
+- **问题**: 代码较长（400+ 行），包含多种执行模式
+- **建议**: 考虑将不同模式（eval/extend/mutate/filter）拆分为子模块
+
+#### 10.10 `keep_header.rs`
+
+- **问题**: 代码复杂，使用特殊的文件处理方式
+- **建议**: 考虑简化或重构
+
+#### 10.14 `sample.rs`
+
+- **问题**: 代码较长（700+ 行），包含多种采样算法
+- **建议**: 考虑将采样算法拆分到 `src/libs/sampling/` 的子模块中
+
+#### 10.15 `select.rs`
+
+- **优点**: 代码结构清晰
+- **问题**: 包含 `contains_field_names` 重复逻辑
+- **建议**: 提取到公共模块
+
+#### 10.21 `uniq.rs`
+
+- **优点**: 功能完整，支持多种模式
+- **问题**: 使用 `std::process::exit(1)` 处理错误，包含 `contains_field_names` 重复逻辑
+- **建议**: 统一错误处理，提取公共函数

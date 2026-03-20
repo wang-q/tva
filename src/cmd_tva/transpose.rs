@@ -36,29 +36,31 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut expected_fields: Option<usize> = None;
     let mut line_number: u64 = 0;
 
-    tsv_reader.for_each_row(b'\t', |row: &TsvRow| {
-        line_number += 1;
+    tsv_reader
+        .for_each_row(b'\t', |row: &TsvRow| {
+            line_number += 1;
 
-        let record = TsvRecord::from_row(row);
-        let field_count = record.len();
+            let record = TsvRecord::from_row(row);
+            let field_count = record.len();
 
-        if let Some(exp) = expected_fields {
-            if field_count != exp {
-                eprintln!("line {} ({} fields):", line_number, field_count);
-                eprintln!("  {}", String::from_utf8_lossy(row.line));
-                eprintln!(
-                    "tva transpose: structure check failed: line {} has {} fields (expected {})",
-                    line_number, field_count, exp
-                );
-                std::process::exit(1);
+            if let Some(exp) = expected_fields {
+                if field_count != exp {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                        "structure check failed: line {} has {} fields (expected {})",
+                        line_number, field_count, exp
+                    ),
+                    ));
+                }
+            } else {
+                expected_fields = Some(field_count);
             }
-        } else {
-            expected_fields = Some(field_count);
-        }
 
-        data.push(record);
-        Ok(())
-    }).map_err(map_io_err)?;
+            data.push(record);
+            Ok(())
+        })
+        .map_err(map_io_err)?;
 
     if data.is_empty() {
         return Ok(());
