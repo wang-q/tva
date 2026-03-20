@@ -321,8 +321,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         tsv_reader
             .for_each_row(delimiter as u8, |row| {
                 let subject = {
-                    let key_res =
-                        extractor.as_mut().unwrap().extract_from_row(row, delimiter as u8);
+                    let key_res = extractor
+                        .as_mut()
+                        .unwrap()
+                        .extract_from_row(row, delimiter as u8);
 
                     match key_res {
                         Ok(parsed_key) => rapidhash(parsed_key.as_ref()),
