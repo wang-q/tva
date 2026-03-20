@@ -226,12 +226,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if contains_field_names(spec) {
                     anyhow::bail!("field name requires header");
                 }
-                field_indices = Some(
-                    crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
-                        spec, None, delimiter,
-                    )
-                    .map_err(map_io_err)?,
-                );
+                // Use FieldResolver without header for numeric-only specs
+                let resolver = FieldResolver::new(None, delimiter);
+                field_indices = Some(resolver.resolve(spec).map_err(map_io_err)?);
             }
         }
 
@@ -241,11 +238,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if contains_field_names(spec) {
                     anyhow::bail!("field name requires header");
                 }
-                let indices =
-                    crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
-                        spec, None, delimiter,
-                    )
-                    .map_err(map_io_err)?;
+                // Use FieldResolver without header for numeric-only specs
+                let resolver = FieldResolver::new(None, delimiter);
+                let indices = resolver.resolve(spec).map_err(map_io_err)?;
                 exclude_set = Some(indices.iter().copied().collect());
                 exclude_indices = Some(indices);
             }

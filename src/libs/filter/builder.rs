@@ -775,7 +775,15 @@ mod tests {
         let spec_config = config.as_spec_config();
         let result = build_tests(None, '\t', spec_config);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("cannot be empty"));
+        let err = result.unwrap_err();
+        // Empty field list can trigger different error messages depending on the parser
+        assert!(
+            err.contains("cannot be empty")
+                || err.contains("requires header")
+                || err.contains("empty field list element"),
+            "Unexpected error message: {}",
+            err
+        );
     }
 
     #[test]

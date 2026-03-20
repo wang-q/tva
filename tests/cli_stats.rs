@@ -979,7 +979,7 @@ fn tsv_utils_test_float_precision_defaults() {
 #[test_case(
     "--group-by x --count",
     INPUT_5FIELD_A,
-    "invalid numeric field spec";
+    "requires header";
     "non_numeric_group_by"
 )]
 #[test_case(

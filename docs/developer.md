@@ -469,4 +469,5 @@ pub fn resolve_fields_with_header(
   - [x] 标记旧函数为 deprecated: `parse_field_list_with_header`, `parse_field_list_with_header_preserve_order`, `resolve_fields_from_header`
   - [x] 迁移 `filter/builder.rs` 到 `FieldResolver`
   - [x] 迁移 `plot/data.rs` 到 `FieldResolver`
-  - [ ] 未来版本移除旧API（仅内部使用保留）
+  - [x] 迁移 `select.rs` 到 `FieldResolver`
+  - [x] 移除旧API的 `pub` 和 `#[deprecated]` 属性（转为内部实现）

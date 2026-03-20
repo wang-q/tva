@@ -4,6 +4,8 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use crate::libs::tsv::fields::FieldResolver;
+
 pub fn make_subcommand() -> Command {
     Command::new("split")
         .about("Splits TSV rows into multiple files")
@@ -237,10 +239,15 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let key_indices = match key_fields_spec {
-        Some(spec) if !spec.trim().is_empty() => Some(
-            crate::libs::tsv::fields::parse_numeric_field_list(&spec)
-                .map_err(|e| anyhow::anyhow!("{}", e))?,
-        ),
+        Some(spec) if !spec.trim().is_empty() => {
+            // Use FieldResolver without header for numeric-only key fields
+            let resolver = FieldResolver::new(None, '\t');
+            Some(
+                resolver
+                    .resolve(&spec)
+                    .map_err(|e| anyhow::anyhow!("{}", e))?,
+            )
+        }
         _ => None,
     };
 
