@@ -355,24 +355,35 @@ fn contains_field_names(spec: &str) -> bool {
            .help("Field delimiter for input files")
    }
 
-   /// 解析 delimiter 字符串，支持 \t 转义
-   pub fn parse_delimiter(s: &str) -> anyhow::Result<u8> {
-       let bytes = if s == "\\t" {
-           vec![b'\t']
-       } else {
-           s.as_bytes().to_vec()
-       };
-       if bytes.len() != 1 {
-           anyhow::bail!("delimiter must be a single byte, got {:?}", s);
-       }
-       Ok(bytes[0])
-   }
+   /// 从 ArgMatches 解析 delimiter 参数
+    pub fn get_delimiter(args: &clap::ArgMatches, arg_name: &str) -> anyhow::Result<u8> {
+        let s = args
+            .get_one::<String>(arg_name)
+            .map(|s| s.as_str())
+            .unwrap_or("\t");
+        
+        let bytes = if s == "\\t" {
+            vec![b'\t']
+        } else {
+            s.as_bytes().to_vec()
+        };
+        if bytes.len() != 1 {
+            anyhow::bail!("delimiter must be a single byte, got {:?}", s);
+        }
+        Ok(bytes[0])
+    }
    ```
 
 2. **替换各命令中的 delimiter 处理**:
-   - 将 `append.rs`, `sort.rs`, `nl.rs` 中的手动验证替换为 `parse_delimiter()`
-   - 将 `split.rs` 中的 `\t` 特殊处理移至 `parse_delimiter()`
-   - 统一 `join.rs`, `uniq.rs`, `select.rs` 的单字符检查为单字节检查
+    - 将 `append.rs`, `sort.rs`, `nl.rs` 中的手动验证替换为 `get_delimiter(args, "delimiter")?`
+    - 将 `split.rs` 中的 `\t` 特殊处理移至 `get_delimiter()`
+    - 统一 `join.rs`, `uniq.rs`, `select.rs` 的单字符检查为单字节检查
+    
+    替换示例:
+    ```rust
+    // 修改后
+    let opt_delimiter = crate::libs::cli::get_delimiter(args, "delimiter")?;
+    ```
 
 3. **为缺少 `--delimiter` 的命令添加支持**:
    - `bin.rs`: 当前硬编码 `b'\t'`，应添加参数
