@@ -1,4 +1,5 @@
 use crate::libs::cli::{build_header_config, header_args};
+use crate::libs::tsv::header::{write_header, Header};
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::record::{TsvRecord, TsvRow};
 use clap::*;
@@ -101,7 +102,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
 
     let mut rows: Vec<TsvRecord> = Vec::new();
-    let mut header_info: Option<crate::libs::tsv::header::HeaderInfo> = None;
+    let mut header: Option<Header> = None;
     let mut header_written = false;
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
@@ -114,10 +115,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 .read_header_mode(header_config.mode)
                 .map_err(|e| anyhow::anyhow!(e))?;
 
-            if let Some(h) = header_result {
-                // Store header info from the first file only
-                if header_info.is_none() {
-                    header_info = Some(h);
+            if let Some(h_info) = header_result {
+                // Store header from the first file only
+                if header.is_none() {
+                    header = Some(Header::from_info(h_info, delimiter as char));
                 }
             }
         }
@@ -133,17 +134,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
 
     // Write header (only from the first file)
-    if let Some(ref h) = header_info {
-        // Write all header lines (hash lines, or LinesN lines)
-        for line in &h.lines {
-            writer.write_all(line)?;
-            writer.write_all(b"\n")?;
-        }
-        // For modes that provide column names, also write the column names line
-        if let Some(ref column_names) = h.column_names_line {
-            writer.write_all(column_names)?;
-            writer.write_all(b"\n")?;
-        }
+    if let Some(ref h) = header {
+        write_header(&mut writer, h, None)?;
         header_written = true;
     }
 

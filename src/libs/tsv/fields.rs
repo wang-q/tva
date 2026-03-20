@@ -24,7 +24,6 @@
 
 #[cfg(test)]
 use intspan::IntSpan;
-use std::collections::HashMap;
 
 /// Converts field spec to IntSpan for range operations.
 /// Internal helper used by tests.
@@ -264,7 +263,7 @@ fn unescape_name_pattern(token: &str) -> (String, bool) {
 #[cfg(test)]
 fn parse_field_list_with_header(
     spec: &str,
-    header: Option<&Header>,
+    header: Option<&crate::libs::tsv::header::Header>,
     _delimiter: char,
 ) -> Result<Vec<usize>, String> {
     let trimmed = spec.trim();
@@ -308,7 +307,8 @@ fn parse_field_list_with_header(
                     let (pattern, has_unescaped_star) = unescape_name_pattern(token);
                     if has_unescaped_star {
                         let mut matched = false;
-                        for (idx0, name) in h.fields.iter().enumerate() {
+                        let column_names = h.column_names_list().unwrap_or_default();
+                        for (idx0, name) in column_names.iter().enumerate() {
                             if name_matches_pattern(name, &pattern) {
                                 indices.push(idx0 + 1);
                                 matched = true;
@@ -367,7 +367,7 @@ fn parse_field_list_with_header(
 /// Internal implementation detail used by [`FieldResolver`].
 fn parse_field_list_with_header_preserve_order(
     spec: &str,
-    header: Option<&Header>,
+    header: Option<&crate::libs::tsv::header::Header>,
     _delimiter: char,
 ) -> Result<Vec<usize>, String> {
     if header.is_none() {
@@ -512,7 +512,9 @@ fn parse_field_list_with_header_preserve_order(
                 None => {
                     if has_wildcard {
                         let mut found = false;
-                        for (i, field) in header.fields.iter().enumerate() {
+                        let column_names =
+                            header.column_names_list().unwrap_or_default();
+                        for (i, field) in column_names.iter().enumerate() {
                             if name_matches_pattern(field, &pattern) {
                                 indices.push(i + 1);
                                 found = true;
@@ -555,38 +557,6 @@ fn parse_field_list_with_header_preserve_order(
     Ok(indices)
 }
 
-#[derive(Clone)]
-pub struct Header {
-    pub fields: Vec<String>,
-    pub index_by_name: HashMap<String, usize>,
-}
-
-impl Header {
-    pub fn from_fields(fields: Vec<String>) -> Header {
-        let mut index_by_name = HashMap::new();
-        for (idx, name) in fields.iter().enumerate() {
-            index_by_name.entry(name.clone()).or_insert(idx);
-        }
-        Header {
-            fields,
-            index_by_name,
-        }
-    }
-
-    pub fn from_line(line: &str, delimiter: char) -> Header {
-        let fields: Vec<String> = if line.is_empty() {
-            Vec::new()
-        } else {
-            line.split(delimiter).map(|s| s.to_string()).collect()
-        };
-        Header::from_fields(fields)
-    }
-
-    pub fn get_index(&self, name: &str) -> Option<usize> {
-        self.index_by_name.get(name).copied()
-    }
-}
-
 /// Resolves field specifications using column names from raw bytes.
 /// This is a convenience function that combines Header creation and field parsing.
 /// Returns 1-based indices (suitable for use with TsvRow::get_bytes).
@@ -597,9 +567,8 @@ fn resolve_fields_from_header(
     column_names_bytes: &[u8],
     delimiter: char,
 ) -> Result<Vec<usize>, String> {
-    let header_str = std::str::from_utf8(column_names_bytes)
-        .map_err(|e| format!("invalid UTF-8 in header: {}", e))?;
-    let header = Header::from_line(header_str, delimiter);
+    use crate::libs::tsv::header::Header;
+    let header = Header::from_column_names(column_names_bytes.to_vec(), delimiter);
     parse_field_list_with_header_preserve_order(spec, Some(&header), delimiter)
 }
 
@@ -668,6 +637,7 @@ impl FieldResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::libs::tsv::header::Header;
 
     #[test]
     fn test_parse_numeric_field_list_basic() {
@@ -688,10 +658,10 @@ mod tests {
     }
 
     #[test]
-    fn test_header_from_line_empty() {
-        let h = Header::from_line("", '\t');
-        assert!(h.fields.is_empty());
-        assert!(h.index_by_name.is_empty());
+    fn test_header_from_column_names_empty() {
+        let h = Header::from_column_names(b"".to_vec(), '\t');
+        assert!(h.column_names_list().map(|v| v.is_empty()).unwrap_or(true));
+        assert!(h.get_index("any").is_none());
     }
 
     #[test]
@@ -872,9 +842,9 @@ mod tests {
     }
 
     #[test]
-    fn header_from_line_basic() {
-        let h = Header::from_line("a\tb\tc", '\t');
-        assert_eq!(h.fields, vec!["a", "b", "c"]);
+    fn header_from_column_names_basic() {
+        let h = Header::from_column_names(b"a\tb\tc".to_vec(), '\t');
+        assert_eq!(h.column_names_list().unwrap(), vec!["a", "b", "c"]);
         assert_eq!(h.get_index("a"), Some(0));
         assert_eq!(h.get_index("b"), Some(1));
         assert_eq!(h.get_index("c"), Some(2));
@@ -882,10 +852,10 @@ mod tests {
     }
 
     #[test]
-    fn header_from_line_empty() {
-        let h = Header::from_line("", '\t');
-        assert!(h.fields.is_empty());
-        assert!(h.index_by_name.is_empty());
+    fn header_from_column_names_empty() {
+        let h = Header::from_column_names(b"".to_vec(), '\t');
+        assert!(h.column_names_list().map(|v| v.is_empty()).unwrap_or(true));
+        assert!(h.get_index("any").is_none());
     }
 
     #[test]

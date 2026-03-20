@@ -348,17 +348,18 @@ impl FieldResolver {
 | 4 | 实现 `write_header` | `libs/tsv/header.rs` | ✅ | 提取公共写入逻辑 |
 | 5 | 实现 `build_suffix` | `libs/tsv/header.rs` | ✅ | 辅助函数，用于 equiv/number 模式 |
 | 6 | 更新 `TsvReader` | `libs/tsv/reader.rs` | ⏭️ | 可选：添加返回 `Header` 的方法 |
-| 7 | 迁移 `bin.rs` | `cmd_tva/bin.rs` | ⏭️ | 使用新的 `Header::from_info` + `get_index` |
+| 7 | 迁移 `bin.rs` | `cmd_tva/bin.rs` | ✅ | 使用新的 `Header::from_column_names` + `get_index` |
 | 8 | 迁移简单命令 | `cmd_tva/check.rs`, `nl.rs`, `reverse.rs` | ✅ | 使用新的 `Header` API |
 | 9 | 迁移 `uniq.rs` | `cmd_tva/uniq.rs` | ✅ | 使用 `write_header` 替代手动写入 |
 | 10 | 迁移 `join.rs` | `cmd_tva/join.rs` | ✅ | 使用 `write_header` 替代手动写入 |
 | 11 | 迁移 `stats.rs` | `cmd_tva/stats.rs` | ✅ | 使用新的 `Header` 替代 `fields::Header` |
 | 12 | 迁移其他命令 | `cmd_tva/slice.rs`, `blank.rs`, `fill.rs` | ✅ | 使用 `write_header` 替代手动写入 |
-| 13 | 迁移剩余命令 | `cmd_tva/*.rs` | ⏭️ | 检查并迁移剩余命令（如 `bin.rs`） |
-| 14 | 更新 `FieldResolver` | `libs/tsv/fields.rs` | ⏭️ | 可选：使用 `Header` 替代 `header_bytes` |
-| 15 | 移除旧 `Header` | `libs/tsv/fields.rs` | ⏭️ | 删除旧的 `Header` 结构，统一使用 `header.rs` 的版本 |
+| 13 | 迁移 `sort.rs` | `cmd_tva/sort.rs` | ✅ | 使用 `Header::from_info` + `write_header` 替代 `HeaderInfo` |
+| 14 | 迁移 `wider.rs` | `cmd_tva/wider.rs` | ✅ | 使用新的 `Header::from_column_names` + `column_names_list` |
+| 15 | 更新 `FieldResolver` | `libs/tsv/fields.rs` | ✅ | 使用 `Header` 替代旧的 `fields::Header` |
+| 16 | 移除旧 `Header` | `libs/tsv/fields.rs` | ✅ | 删除旧的 `Header` 结构，统一使用 `header.rs` 的版本 |
 
 **注意事项**：
 - `HeaderConfig` 保持不变，作为 CLI 到 Reader 的桥梁
-- `HeaderInfo` 暂时保留，作为 `TsvReader` 的内部返回类型
+- `HeaderInfo` 已成为 `TsvReader` 的内部类型，命令统一使用 `Header`
 - ✅ 已完成 | ⏭️ 待处理

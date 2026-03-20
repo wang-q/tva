@@ -862,10 +862,14 @@ impl Header {
     /// Returns `None` if no column names are available.
     pub fn column_names_list(&self) -> Option<Vec<String>> {
         self.column_names.as_ref().map(|bytes| {
-            String::from_utf8_lossy(bytes)
-                .split(self.delimiter)
-                .map(|s| s.to_string())
-                .collect()
+            if bytes.is_empty() {
+                Vec::new()
+            } else {
+                String::from_utf8_lossy(bytes)
+                    .split(self.delimiter)
+                    .map(|s| s.to_string())
+                    .collect()
+            }
         })
     }
 

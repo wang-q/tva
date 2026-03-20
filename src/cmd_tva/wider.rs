@@ -2,8 +2,8 @@ use crate::libs::aggregation::OpKind;
 use crate::libs::cell::Cell;
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
-use crate::libs::tsv::fields::{self, FieldResolver};
-use crate::libs::tsv::header::HeaderConfig;
+use crate::libs::tsv::fields::FieldResolver;
+use crate::libs::tsv::header::{Header, HeaderConfig};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::Row;
 use clap::*;
@@ -200,8 +200,8 @@ fn process_file(
     // Get column names from header if available
     let column_names_bytes = header_info.column_names_line.clone();
     let header_fields = if let Some(ref names) = column_names_bytes {
-        let line_str = String::from_utf8_lossy(names);
-        fields::Header::from_line(&line_str, '\t').fields
+        let h = Header::from_column_names(names.clone(), '\t');
+        h.column_names_list().unwrap_or_default()
     } else {
         // No column names available (e.g., LinesN or HashLines mode)
         // We can't resolve field names, so return an error if field names are used

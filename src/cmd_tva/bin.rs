@@ -4,7 +4,7 @@ use std::io::Write;
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
 
-use crate::libs::tsv::fields::Header;
+use crate::libs::tsv::header::Header;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRow};
 
@@ -109,8 +109,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 let column_names_bytes = header_info.column_names_line.unwrap();
 
                 if field_idx.is_none() {
-                    let line_str = String::from_utf8_lossy(&column_names_bytes);
-                    let h = Header::from_line(&line_str, '\t');
+                    let h = Header::from_column_names(column_names_bytes.clone(), '\t');
                     if let Some(pos) = h.get_index(field_str) {
                         field_idx = Some(pos);
                     } else {
