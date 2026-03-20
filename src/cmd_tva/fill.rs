@@ -1,4 +1,6 @@
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{
+    build_header_config, delimiter_arg, get_delimiter, header_args_with_columns,
+};
 use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::header::{write_header, Header};
 use crate::libs::tsv::reader::TsvReader;
@@ -48,6 +50,7 @@ pub fn make_subcommand() -> Command {
                 .default_value("down"),
         )
         .args(header_args_with_columns())
+        .arg(delimiter_arg())
         .arg(
             Arg::new("outfile")
                 .short('o')
@@ -75,6 +78,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     // Build HeaderConfig from arguments
     let header_config =
         build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
+    let delimiter_char = opt_delimiter as char;
 
     let na_str = args
         .get_one::<String>("na")
@@ -113,7 +119,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 // Write header only for the first file
                 if !header_written {
-                    let header = Header::from_info(header_info, '\t');
+                    let header = Header::from_info(header_info, delimiter_char);
                     write_header(&mut writer, &header, None)?;
                     if line_buffered {
                         writer.flush()?;
@@ -129,7 +135,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut target_cols: Vec<usize> = Vec::new();
 
         // Create FieldResolver once for all field parsing
-        let resolver = FieldResolver::new(column_names_bytes.clone(), '\t');
+        let resolver = FieldResolver::new(column_names_bytes.clone(), delimiter_char);
 
         for spec in &field_specs {
             let indices = resolver.resolve(spec).map_err(|e| anyhow::anyhow!(e))?;
@@ -143,7 +149,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         target_cols.sort_unstable();
         target_cols.dedup();
 
-        reader.for_each_row(b'\t', |row: &TsvRow| {
+        reader.for_each_row(opt_delimiter, |row: &TsvRow| {
             // For fill, empty line means 1 empty field (not 0 fields)
             let num_fields = if row.line.is_empty() {
                 1
@@ -152,7 +158,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             };
             for col_idx in 0..num_fields {
                 if col_idx > 0 {
-                    writer.write_all(b"\t")?;
+                    writer.write_all(&[opt_delimiter])?;
                 }
 
                 let cell_bytes = row.get_bytes(col_idx + 1).unwrap_or(b"");

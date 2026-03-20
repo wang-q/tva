@@ -1,7 +1,9 @@
 use clap::*;
 use std::io::Write;
 
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{
+    build_header_config, delimiter_arg, get_delimiter, header_args_with_columns,
+};
 use crate::libs::io::map_io_err;
 
 use crate::libs::tsv::header::Header;
@@ -48,6 +50,7 @@ pub fn make_subcommand() -> Command {
                 .help("Append as new column with this name (instead of replacing)"),
         )
         .args(header_args_with_columns())
+        .arg(delimiter_arg())
         .arg(
             Arg::new("outfile")
                 .long("outfile")
@@ -78,6 +81,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let header_config =
         build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
     let has_header = header_config.enabled;
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
 
     let mut header_written = false;
     let mut field_idx: Option<usize> = None;
@@ -109,7 +113,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 let column_names_bytes = header_info.column_names_line.unwrap();
 
                 if field_idx.is_none() {
-                    let h = Header::from_column_names(column_names_bytes.clone(), '\t');
+                    let h = Header::from_column_names(
+                        column_names_bytes.clone(),
+                        opt_delimiter as char,
+                    );
                     if let Some(pos) = h.get_index(field_str) {
                         field_idx = Some(pos);
                     } else {
@@ -140,7 +147,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             ));
         }
 
-        tsv_reader.for_each_row(b'\t', |row: &TsvRow| {
+        tsv_reader.for_each_row(opt_delimiter, |row: &TsvRow| {
             // SAFETY: field_idx is always Some here (validated earlier)
             let idx = field_idx.unwrap();
             let num_fields = row.field_count();

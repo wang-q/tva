@@ -1,4 +1,4 @@
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{build_header_config, get_delimiter, header_args_with_columns};
 use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::header::{write_header, Header};
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
@@ -248,19 +248,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let line_buffered = args.get_flag("line-buffered");
     let exclude = args.get_flag("exclude");
 
-    let delimiter_str = args
-        .get_one::<String>("delimiter")
-        .map(|s| s.as_str())
-        .unwrap_or("\t");
-    let mut chars = delimiter_str.chars();
-    let delimiter_char = chars.next().unwrap_or('\t');
-    let delimiter = delimiter_char as u8;
-    if chars.next().is_some() || delimiter_str.len() > 1 {
-        anyhow::bail!(
-            "delimiter must be a single character, got `{}`",
-            delimiter_str
-        );
-    }
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
+    let delimiter_char = opt_delimiter as char;
 
     // Validate argument combinations
     if exclude && append_fields_spec.is_some() {
@@ -314,7 +303,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         delimiter_char,
         prefix,
     );
-    let write_all_fill = build_write_all_fill(write_all_value, append_count, delimiter);
+    let write_all_fill =
+        build_write_all_fill(write_all_value, append_count, opt_delimiter);
 
     // Initialize key extractor and append plan
     let mut filter_key_extractor =
@@ -328,12 +318,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         HashMap::with_hasher(RandomState::new());
     let mut ranges_buf: Vec<Range<usize>> = Vec::new();
 
-    filter_reader.for_each_row(delimiter, |row| {
+    filter_reader.for_each_row(opt_delimiter, |row| {
         if row.line.is_empty() {
             return Ok(());
         }
 
-        let key = match filter_key_extractor.extract_from_row(row, delimiter) {
+        let key = match filter_key_extractor.extract_from_row(row, opt_delimiter) {
             Ok(k) => k,
             Err(idx) => {
                 let n = row.ends.len();
@@ -349,7 +339,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
         let values = if let Some(ref plan) = append_plan {
             ranges_buf.clear();
-            match extract_values(row, delimiter, plan, &mut ranges_buf) {
+            match extract_values(row, opt_delimiter, plan, &mut ranges_buf) {
                 Ok(v) => v,
                 Err(e) => {
                     return Err(std::io::Error::new(
@@ -463,12 +453,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             .expect("data_key_extractor should be initialized");
 
         // Process data records
-        reader.for_each_row(delimiter, |row: &TsvRow| {
+        reader.for_each_row(opt_delimiter, |row: &TsvRow| {
             if row.line.is_empty() {
                 return Ok(());
             }
 
-            let key = match extractor.extract_from_row(row, delimiter) {
+            let key = match extractor.extract_from_row(row, opt_delimiter) {
                 Ok(k) => k,
                 Err(idx) => {
                     let n = row.ends.len();
@@ -495,7 +485,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             } else if let Some(values) = matched {
                 writer.write_all(row.line)?;
                 if !values.is_empty() {
-                    writer.write_all(&[delimiter])?;
+                    writer.write_all(&[opt_delimiter])?;
                     writer.write_all(values)?;
                 }
                 writer.write_all(b"\n")?;

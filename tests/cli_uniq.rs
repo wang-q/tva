@@ -433,7 +433,7 @@ fn uniq_error_delimiter_length() {
     let (_, stderr) = TvaCmd::new()
         .args(&["uniq", "--delimiter", "TAB"])
         .run_fail();
-    assert!(stderr.contains("delimiter must be a single character"));
+    assert!(stderr.contains("delimiter must be a single byte"));
 }
 
 #[test]

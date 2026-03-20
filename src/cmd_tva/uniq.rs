@@ -1,4 +1,4 @@
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{build_header_config, get_delimiter, header_args_with_columns};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::header::{write_header, Header};
@@ -183,18 +183,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let header_config =
         build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
 
-    let delimiter_str = args
-        .get_one::<String>("delimiter")
-        .cloned()
-        .unwrap_or_else(|| "\t".to_string());
-    let mut chars = delimiter_str.chars();
-    let delimiter = chars.next().unwrap_or('\t');
-    if chars.next().is_some() {
-        anyhow::bail!(
-            "delimiter must be a single character, got `{}`",
-            delimiter_str
-        );
-    }
+    let opt_delimiter = get_delimiter(args, "delimiter")? as char;
 
     let ignore_case = args.get_flag("ignore-case");
     let repeated = args.get_flag("repeated");
@@ -290,7 +279,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 // Write header only for the first file
                 if !header_written {
                     // Convert to Header and write with suffix for equiv/number mode
-                    let header = Header::from_info(h_info, delimiter);
+                    let header = Header::from_info(h_info, opt_delimiter);
 
                     // Build suffix for additional columns
                     let mut suffix_items: Vec<&str> = Vec::new();
@@ -307,7 +296,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                             suffix_items
                                 .iter()
                                 .flat_map(|s| {
-                                    let mut v = vec![delimiter as u8];
+                                    let mut v = vec![opt_delimiter as u8];
                                     v.extend_from_slice(s.as_bytes());
                                     v
                                 })
@@ -331,18 +320,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             extractor = Some(build_extractor(
                 fields_spec.as_deref(),
                 column_names_bytes.as_deref(),
-                delimiter,
+                opt_delimiter,
                 ignore_case,
             )?);
         }
 
         tsv_reader
-            .for_each_row(delimiter as u8, |row| {
+            .for_each_row(opt_delimiter as u8, |row| {
                 let subject = {
                     let key_res = extractor
                         .as_mut()
                         .unwrap()
-                        .extract_from_row(row, delimiter as u8);
+                        .extract_from_row(row, opt_delimiter as u8);
 
                     match key_res {
                         Ok(parsed_key) => rapidhash(parsed_key.as_ref()),
@@ -383,11 +372,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if is_output {
                     writer.write_all(row.line)?;
                     if equiv_mode {
-                        writer.write_all(&[delimiter as u8])?;
+                        writer.write_all(&[opt_delimiter as u8])?;
                         writer.write_all(entry.equiv_id.to_string().as_bytes())?;
                     }
                     if number_mode {
-                        writer.write_all(&[delimiter as u8])?;
+                        writer.write_all(&[opt_delimiter as u8])?;
                         writer.write_all(entry.count.to_string().as_bytes())?;
                     }
                     writer.write_all(b"\n")?;

@@ -1,6 +1,8 @@
 use crate::libs::aggregation::OpKind;
 use crate::libs::cell::Cell;
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{
+    build_header_config, delimiter_arg, get_delimiter, header_args_with_columns,
+};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::header::{Header, HeaderConfig};
@@ -68,6 +70,7 @@ pub fn make_subcommand() -> Command {
                 .help("Aggregation operation to perform on value column"),
         )
         .args(header_args_with_columns())
+        .arg(delimiter_arg())
 }
 
 struct WiderConfig {
@@ -120,6 +123,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         None => vec!["stdin".to_string()],
     };
 
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
+    let delimiter_char = opt_delimiter as char;
+
     let op_str = args.get_one::<String>("op").unwrap();
     let op = match op_str.as_str() {
         "count" => OpKind::Count,
@@ -170,10 +176,17 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut state = ProcessState::new();
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
-        process_file(input, &config, &mut state, &header_config)?;
+        process_file(
+            input,
+            &config,
+            &mut state,
+            &header_config,
+            opt_delimiter,
+            delimiter_char,
+        )?;
     }
 
-    write_output(&mut writer, &state, &config)?;
+    write_output(&mut writer, &state, &config, opt_delimiter)?;
 
     Ok(())
 }
@@ -183,6 +196,8 @@ fn process_file(
     config: &WiderConfig,
     state: &mut ProcessState,
     header_config: &HeaderConfig,
+    opt_delimiter: u8,
+    delimiter_char: char,
 ) -> anyhow::Result<()> {
     let mut tsv_reader = TsvReader::with_capacity(input.reader, 512 * 1024);
 
@@ -200,7 +215,7 @@ fn process_file(
     // Get column names from header if available
     let column_names_bytes = header_info.column_names_line.clone();
     let header_fields = if let Some(ref names) = column_names_bytes {
-        let h = Header::from_column_names(names.clone(), '\t');
+        let h = Header::from_column_names(names.clone(), delimiter_char);
         h.column_names_list().unwrap_or_default()
     } else {
         // No column names available (e.g., LinesN or HashLines mode)
@@ -210,7 +225,7 @@ fn process_file(
 
     if !state.header_processed {
         // Create FieldResolver for field parsing
-        let resolver = FieldResolver::new(column_names_bytes.clone(), '\t');
+        let resolver = FieldResolver::new(column_names_bytes.clone(), delimiter_char);
 
         // Determine indices
         let n_indices = resolver
@@ -271,12 +286,12 @@ fn process_file(
 
     // Process rows
     tsv_reader
-        .for_each_row(b'\t', |row| {
+        .for_each_row(opt_delimiter, |row| {
             // Extract ID key
             let mut key = Vec::new();
             for (k_i, &idx) in state.id_indices.iter().enumerate() {
                 if k_i > 0 {
-                    key.push(b'\t');
+                    key.push(opt_delimiter);
                 }
                 if let Some(field) = row.get_bytes(idx + 1) {
                     key.extend_from_slice(field);
@@ -314,6 +329,7 @@ fn write_output<W: Write>(
     writer: &mut W,
     state: &ProcessState,
     config: &WiderConfig,
+    opt_delimiter: u8,
 ) -> anyhow::Result<()> {
     // Sort names if requested
     let final_names: Vec<Vec<u8>> = if config.sort_names {
@@ -327,13 +343,13 @@ fn write_output<W: Write>(
     // Write Header
     for (i, col) in state.output_header_prefix.iter().enumerate() {
         if i > 0 {
-            writer.write_all(b"\t")?;
+            writer.write_all(&[opt_delimiter])?;
         }
         writer.write_all(col.as_bytes())?;
     }
     for name in &final_names {
         if !state.output_header_prefix.is_empty() {
-            writer.write_all(b"\t")?;
+            writer.write_all(&[opt_delimiter])?;
         }
         writer.write_all(name)?;
     }
@@ -347,7 +363,7 @@ fn write_output<W: Write>(
         // Write Value cols
         for name in &final_names {
             if !key.is_empty() {
-                writer.write_all(b"\t")?;
+                writer.write_all(&[opt_delimiter])?;
             }
             if let Some(cell) = row_map.get(name) {
                 writer.write_all(cell.result(config.op).as_bytes())?;

@@ -1,4 +1,6 @@
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{
+    build_header_config, delimiter_arg, get_delimiter, header_args_with_columns,
+};
 use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::header::HeaderConfig;
 use crate::libs::tsv::reader::TsvReader;
@@ -68,6 +70,7 @@ pub fn make_subcommand() -> Command {
                 .default_value("stdout")
                 .help("Output filename. [stdout] for screen"),
         )
+        .arg(delimiter_arg())
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
@@ -78,6 +81,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         Some(values) => values.cloned().collect(),
         None => vec!["stdin".to_string()],
     };
+
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
+    let delimiter_char = opt_delimiter as char;
 
     let cols_spec = args.get_one::<String>("cols").unwrap();
     let names_to: Vec<&str> = args
@@ -128,8 +134,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 // Parse column names from header
                 if let Some(ref column_names) = header_info.column_names_line {
                     let header_str = std::str::from_utf8(column_names)?;
-                    current_header_fields =
-                        header_str.split('\t').map(|s| s.to_string()).collect();
+                    current_header_fields = header_str
+                        .split(delimiter_char)
+                        .map(|s| s.to_string())
+                        .collect();
                 }
 
                 // Mark header as written (for longer, we generate a new header)
@@ -147,9 +155,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             let header_bytes = if current_header_fields.is_empty() {
                 None
             } else {
-                Some(current_header_fields.join("\t").into_bytes())
+                Some(
+                    current_header_fields
+                        .join(&delimiter_char.to_string())
+                        .into_bytes(),
+                )
             };
-            let resolver = FieldResolver::new(header_bytes, '\t');
+            let resolver = FieldResolver::new(header_bytes, delimiter_char);
 
             let melt_indices_1based = resolver
                 .resolve(cols_spec)
@@ -193,7 +205,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     new_header_fields.push(name.to_string());
                 }
                 new_header_fields.push(values_to.clone());
-                writeln!(writer, "{}", new_header_fields.join("\t"))?;
+                writeln!(
+                    writer,
+                    "{}",
+                    new_header_fields.join(&delimiter_char.to_string())
+                )?;
             }
 
             // Pre-calculate name column bytes for each melt index
@@ -211,7 +227,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     if let Some(caps) = regex.captures(name_part) {
                         for i in 1..=names_to.len() {
                             if i > 1 {
-                                computed_name.push('\t');
+                                computed_name.push(delimiter_char);
                             }
                             if let Some(m) = caps.get(i) {
                                 computed_name.push_str(m.as_str());
@@ -221,14 +237,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                         // Fallback: write original name in first col, tabs for others
                         computed_name.push_str(name_part);
                         for _ in 1..names_to.len() {
-                            computed_name.push('\t');
+                            computed_name.push(delimiter_char);
                         }
                     }
                 } else if let Some(sep) = names_sep {
                     let parts: Vec<&str> = name_part.split(sep).collect();
                     for i in 0..names_to.len() {
                         if i > 0 {
-                            computed_name.push('\t');
+                            computed_name.push(delimiter_char);
                         }
                         if i < parts.len() {
                             computed_name.push_str(parts[i]);
@@ -254,7 +270,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let name_bytes = melt_name_bytes.as_ref().unwrap();
 
         // Process remaining rows
-        reader.for_each_row(b'\t', |row: &TsvRow| {
+        reader.for_each_row(opt_delimiter, |row: &TsvRow| {
             if row.line.is_empty() {
                 return Ok(());
             }
@@ -274,21 +290,21 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 // Write ID columns
                 for (j, &id_idx) in id_indices_ref.iter().enumerate() {
                     if j > 0 {
-                        writer.write_all(b"\t")?;
+                        writer.write_all(&[opt_delimiter])?;
                     }
                     writer.write_all(get_field(id_idx))?;
                 }
 
                 // If we wrote ID columns, add tab separator
                 if !id_indices_ref.is_empty() {
-                    writer.write_all(b"\t")?;
+                    writer.write_all(&[opt_delimiter])?;
                 }
 
                 // Write name column(s) (pre-calculated)
                 writer.write_all(&name_bytes[k])?;
 
                 // Write value
-                writer.write_all(b"\t")?;
+                writer.write_all(&[opt_delimiter])?;
                 writer.write_all(value)?;
                 writer.write_all(b"\n")?;
             }

@@ -1,7 +1,7 @@
 use crate::libs::aggregation::{
     Aggregator, OpKind, Operation, StatsConfig, StatsProcessor,
 };
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{build_header_config, get_delimiter, header_args_with_columns};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::header::Header;
@@ -187,16 +187,13 @@ struct OpConfig {
 
 pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     // Parameter validation
-    let delimiter_str = matches
-        .get_one::<String>("delimiter")
-        .map(|s| s.as_str())
-        .unwrap_or("\t");
+    let opt_delimiter = get_delimiter(matches, "delimiter")?;
     let values_delimiter_str = matches
         .get_one::<String>("values-delimiter")
         .map(|s| s.as_str())
         .unwrap_or("|");
 
-    if delimiter_str == values_delimiter_str {
+    if opt_delimiter == values_delimiter_str.as_bytes()[0] {
         return Err(anyhow::anyhow!(
             "values delimiter cannot be the same as field delimiter"
         ));
@@ -337,16 +334,6 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
     let replace_missing = matches.get_one::<String>("replace-missing").cloned();
     let count_header = matches.get_one::<String>("count-header").cloned();
 
-    let delimiter = if let Some(d) = matches.get_one::<String>("delimiter") {
-        if let Some(c) = d.chars().next() {
-            c as u8
-        } else {
-            b'\t'
-        }
-    } else {
-        b'\t'
-    };
-
     let mut processor: Option<StatsProcessor> = None;
     let mut aggregator: Option<Aggregator> = None;
     let mut groups: IndexMap<KeyBuffer, Aggregator> = IndexMap::new();
@@ -365,11 +352,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
         // Create FieldResolver for field parsing
         let resolver =
-            FieldResolver::new(header_bytes.map(|b| b.to_vec()), delimiter as char);
+            FieldResolver::new(header_bytes.map(|b| b.to_vec()), opt_delimiter as char);
 
         // Create Header from bytes for field name lookup (if header available)
-        let header_opt: Option<Header> = header_bytes
-            .map(|bytes| Header::from_column_names(bytes.to_vec(), delimiter as char));
+        let header_opt: Option<Header> = header_bytes.map(|bytes| {
+            Header::from_column_names(bytes.to_vec(), opt_delimiter as char)
+        });
 
         for config in &op_configs {
             if let OpKind::Count = config.kind {
@@ -552,12 +540,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
         if let Some(proc) = &processor {
             reader
-                .for_each_row(delimiter, |row| {
+                .for_each_row(opt_delimiter, |row| {
                     if use_grouping {
                         let key_res = group_extractor
                             .as_mut()
                             .unwrap()
-                            .extract_from_row(row, delimiter);
+                            .extract_from_row(row, opt_delimiter);
                         let key = match key_res {
                             Ok(k) => k.into_owned(),
                             Err(_) => KeyBuffer::new(),

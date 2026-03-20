@@ -1,4 +1,4 @@
-use crate::libs::cli::{build_header_config, header_args};
+use crate::libs::cli::{build_header_config, get_delimiter, header_args};
 use crate::libs::tsv::header::{write_header, Header};
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::record::{TsvRecord, TsvRow};
@@ -66,18 +66,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let numeric = args.get_flag("numeric");
     let reverse = args.get_flag("reverse");
 
-    let delimiter_str = args
-        .get_one::<String>("delimiter")
-        .map(|s| s.as_str())
-        .unwrap_or("\t");
-    let delimiter_bytes = delimiter_str.as_bytes();
-    if delimiter_bytes.len() != 1 {
-        return Err(anyhow::anyhow!(
-            "delimiter must be a single byte, got \"{}\"",
-            delimiter_str
-        ));
-    }
-    let delimiter = delimiter_bytes[0];
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
 
     let key_indices: Vec<usize> = if let Some(spec) = args.get_one::<String>("key") {
         match parse_key_indices(spec) {
@@ -118,12 +107,12 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             if let Some(h_info) = header_result {
                 // Store header from the first file only
                 if header.is_none() {
-                    header = Some(Header::from_info(h_info, delimiter as char));
+                    header = Some(Header::from_info(h_info, opt_delimiter as char));
                 }
             }
         }
 
-        reader.for_each_row(delimiter, |row: &TsvRow| {
+        reader.for_each_row(opt_delimiter, |row: &TsvRow| {
             if row.line.is_empty() {
                 rows.push(TsvRecord::new());
             } else {
@@ -210,7 +199,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut keyed_rows: Vec<(KeyBuffer, TsvRecord)> = Vec::with_capacity(rows.len());
 
         for record in rows {
-            let key_res = extractor.extract_from_record(&record, delimiter);
+            let key_res = extractor.extract_from_record(&record, opt_delimiter);
             let key = match key_res {
                 Ok(k) => k.into_owned(),
                 Err(_) => KeyBuffer::new(), // Should not happen with strict=false

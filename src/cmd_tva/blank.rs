@@ -1,4 +1,6 @@
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{
+    build_header_config, delimiter_arg, get_delimiter, header_args_with_columns,
+};
 use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::header::{write_header, Header};
 use crate::libs::tsv::reader::TsvReader;
@@ -40,6 +42,7 @@ pub fn make_subcommand() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("Enable line-buffered output (flush after each line)"),
         )
+        .arg(delimiter_arg())
         .arg(
             Arg::new("outfile")
                 .short('o')
@@ -67,6 +70,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     // Build HeaderConfig from arguments
     let header_config =
         build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
+
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
+    let delimiter_char = opt_delimiter as char;
 
     // Parse field configurations
     let field_specs: Vec<String> = args
@@ -111,7 +117,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 // Write header only for the first file
                 if !header_written {
-                    let header = Header::from_info(header_info, '\t');
+                    let header = Header::from_info(header_info, delimiter_char);
                     write_header(&mut writer, &header, None)?;
                     if line_buffered {
                         writer.flush()?;
@@ -126,7 +132,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut col_replacements: HashMap<usize, Vec<u8>> = HashMap::new();
 
         // Create FieldResolver once for all field parsing
-        let resolver = FieldResolver::new(column_names_bytes.clone(), '\t');
+        let resolver = FieldResolver::new(column_names_bytes.clone(), delimiter_char);
 
         for config in &field_configs {
             // Parse the selector using FieldResolver
@@ -140,11 +146,11 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        reader.for_each_row(b'\t', |row: &TsvRow| {
+        reader.for_each_row(opt_delimiter, |row: &TsvRow| {
             let num_fields = row.field_count();
             for col_idx in 0..num_fields {
                 if col_idx > 0 {
-                    writer.write_all(b"\t")?;
+                    writer.write_all(&[opt_delimiter])?;
                 }
 
                 let cell_bytes = row.get_bytes(col_idx + 1).unwrap_or(b"");

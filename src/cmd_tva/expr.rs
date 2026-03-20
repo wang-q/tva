@@ -1,7 +1,7 @@
 use clap::builder::PossibleValue;
 use clap::*;
 
-use crate::libs::cli::{build_header_config, expr_common_args};
+use crate::libs::cli::{build_header_config, expr_common_args, get_delimiter};
 use crate::libs::expr::runtime;
 use crate::libs::expr::runtime::value::Value;
 use crate::libs::expr::{fold_constants, parse_cached, resolve_columns};
@@ -231,19 +231,8 @@ pub fn execute_with_mode(args: &ArgMatches, mode: &str) -> anyhow::Result<()> {
         build_header_config(args, false).map_err(|e| anyhow::anyhow!(e))?;
     let has_header = header_config.enabled;
 
-    let delimiter_str = args
-        .get_one::<String>("delimiter")
-        .cloned()
-        .unwrap_or_else(|| "\t".to_string());
-    let mut chars = delimiter_str.chars();
-    let delimiter = chars.next().unwrap_or('\t');
-    if chars.next().is_some() {
-        return Err(anyhow::anyhow!(
-            "delimiter must be a single character, got `{}`",
-            delimiter_str
-        ));
-    }
-    let delim_byte = delimiter as u8;
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
+    let delim_byte = opt_delimiter;
 
     let mut header_written = false;
     let mut headers: Vec<String> = Vec::new();
@@ -273,7 +262,7 @@ pub fn execute_with_mode(args: &ArgMatches, mode: &str) -> anyhow::Result<()> {
                         .cloned()
                         .unwrap_or_default();
                     headers = String::from_utf8_lossy(&header_line)
-                        .split(|c| c == delimiter)
+                        .split(|c| c == opt_delimiter as char)
                         .map(|s| s.to_string())
                         .collect();
 

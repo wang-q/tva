@@ -2,7 +2,7 @@ use clap::*;
 use std::collections::HashSet;
 use std::ops::Range;
 
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{build_header_config, get_delimiter, header_args_with_columns};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::fields::FieldResolver;
 
@@ -108,19 +108,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
     let has_header = header_config.enabled;
 
-    let delimiter_str = args
-        .get_one::<String>("delimiter")
-        .cloned()
-        .unwrap_or_else(|| "\t".to_string());
-    let mut chars = delimiter_str.chars();
-    let delimiter = chars.next().unwrap_or('\t');
-    if chars.next().is_some() {
-        anyhow::bail!(
-            "delimiter must be a single character, got `{}`",
-            delimiter_str
-        );
-    }
-    let delim_byte = delimiter as u8;
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
+    let delim_byte = opt_delimiter;
 
     let mut header_written = false;
     let mut field_indices: Option<Vec<usize>> = None;
@@ -160,8 +149,10 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 };
 
                 // Create FieldResolver for field parsing
-                let resolver =
-                    FieldResolver::new(Some(column_names_bytes.clone()), delimiter);
+                let resolver = FieldResolver::new(
+                    Some(column_names_bytes.clone()),
+                    opt_delimiter as char,
+                );
 
                 // Resolve fields if not yet resolved
                 if field_indices.is_none() {
@@ -190,7 +181,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 // Build TsvRow for header - need to compute field ends
                 let mut header_ends = Vec::new();
-                for pos in memchr::memchr_iter(delim_byte, &column_names_bytes) {
+                for pos in memchr::memchr_iter(opt_delimiter, &column_names_bytes) {
                     header_ends.push(pos);
                 }
                 header_ends.push(column_names_bytes.len());
@@ -203,7 +194,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 select::write_with_rest(
                     &mut writer,
                     &header_row,
-                    delim_byte,
+                    opt_delimiter,
                     f_indices,
                     exclude_set.as_ref(),
                     rest_mode,
@@ -227,7 +218,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     anyhow::bail!("field name requires header");
                 }
                 // Use FieldResolver without header for numeric-only specs
-                let resolver = FieldResolver::new(None, delimiter);
+                let resolver = FieldResolver::new(None, opt_delimiter as char);
                 field_indices = Some(resolver.resolve(spec).map_err(map_io_err)?);
             }
         }
@@ -239,7 +230,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     anyhow::bail!("field name requires header");
                 }
                 // Use FieldResolver without header for numeric-only specs
-                let resolver = FieldResolver::new(None, delimiter);
+                let resolver = FieldResolver::new(None, opt_delimiter as char);
                 let indices = resolver.resolve(spec).map_err(map_io_err)?;
                 exclude_set = Some(indices.iter().copied().collect());
                 exclude_indices = Some(indices);
@@ -261,7 +252,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        tsv_reader.for_each_row(delim_byte, |row| {
+        tsv_reader.for_each_row(opt_delimiter, |row| {
             if row.line.is_empty() {
                 return Ok(());
             }
@@ -270,7 +261,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 select::write_selected_from_bytes(
                     &mut writer,
                     row,
-                    delim_byte,
+                    opt_delimiter,
                     plan,
                     &mut output_ranges,
                 )?;
@@ -281,7 +272,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 select::write_with_rest(
                     &mut writer,
                     row,
-                    delim_byte,
+                    opt_delimiter,
                     f_indices,
                     exclude_set.as_ref(),
                     rest_mode,

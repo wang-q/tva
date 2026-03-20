@@ -1,3 +1,5 @@
+use crate::libs::cli::delimiter_arg;
+use crate::libs::cli::get_delimiter;
 use crate::libs::sampling::*;
 use crate::libs::tsv::fields::FieldResolver;
 use crate::libs::tsv::reader::TsvReader;
@@ -121,6 +123,7 @@ pub fn make_subcommand() -> Command {
                 .default_value("stdout")
                 .help("Output filename. [stdout] for screen"),
         )
+        .arg(delimiter_arg())
 }
 
 struct SampleConfig {
@@ -139,6 +142,7 @@ struct SampleConfig {
     static_seed: bool,
     seed_value: u64,
     replace: bool,
+    delimiter: u8,
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
@@ -150,6 +154,8 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
         Some(values) => values.cloned().collect(),
         None => vec!["stdin".to_string()],
     };
+
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
 
     let has_header = args.get_flag("header");
     let num_opt = args.get_one::<u64>("num").cloned().unwrap_or(0);
@@ -252,6 +258,7 @@ fn execute_inner(args: &ArgMatches) -> anyhow::Result<()> {
         static_seed,
         seed_value,
         replace,
+        delimiter: opt_delimiter,
     };
 
     let mut writer =
@@ -318,6 +325,7 @@ fn run_sampling<W: Write>(config: SampleConfig, writer: &mut W) -> anyhow::Resul
 fn parse_key_specs(
     spec: &str,
     header_bytes: Option<&[u8]>,
+    delimiter: char,
 ) -> std::io::Result<Vec<usize>> {
     if spec == "0" {
         Ok(Vec::new())
@@ -328,7 +336,7 @@ fn parse_key_specs(
             "Field name patterns require header (use --header or -H flag)",
         ))
     } else {
-        let resolver = FieldResolver::new(header_bytes.map(|b| b.to_vec()), '\t');
+        let resolver = FieldResolver::new(header_bytes.map(|b| b.to_vec()), delimiter);
         resolver.resolve(spec).map_err(|e| {
             std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e))
         })
@@ -364,8 +372,9 @@ fn contains_field_names(spec: &str) -> bool {
 fn parse_single_weight_field(
     spec: &str,
     header_bytes: Option<&[u8]>,
+    delimiter: char,
 ) -> std::io::Result<usize> {
-    let resolver = FieldResolver::new(header_bytes.map(|b| b.to_vec()), '\t');
+    let resolver = FieldResolver::new(header_bytes.map(|b| b.to_vec()), delimiter);
     let indices = resolver.resolve(spec).map_err(|e| {
         std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{}", e))
     })?;
@@ -419,13 +428,17 @@ fn run_gen_random_inorder<W: Write>(
 
                     if !initialized && distinct_key_spec.is_some() {
                         let spec = distinct_key_spec.unwrap();
-                        key_field_indices = parse_key_specs(spec, Some(record))?;
+                        key_field_indices = parse_key_specs(
+                            spec,
+                            Some(record),
+                            config.delimiter as char,
+                        )?;
                         initialized = true;
                     }
 
                     // Write header immediately
                     writer.write_all(config.random_value_header.as_bytes())?;
-                    writer.write_all(b"\t")?;
+                    writer.write_all(&[config.delimiter])?;
                     writer.write_all(record)?;
                     writer.write_all(b"\n")?;
                     header_written = true;
@@ -436,7 +449,8 @@ fn run_gen_random_inorder<W: Write>(
             // Init if no header
             if !initialized && distinct_key_spec.is_some() {
                 let spec = distinct_key_spec.unwrap();
-                key_field_indices = parse_key_specs(spec, None)?;
+                key_field_indices =
+                    parse_key_specs(spec, None, config.delimiter as char)?;
                 initialized = true;
             }
 
@@ -446,7 +460,7 @@ fn run_gen_random_inorder<W: Write>(
                 if key_field_indices.is_empty() {
                     key_buffer.extend_from_slice(record);
                 } else {
-                    let mut tab_iter = memchr::memchr_iter(b'\t', record);
+                    let mut tab_iter = memchr::memchr_iter(config.delimiter, record);
                     let mut last_pos = 0;
                     let mut field_idx = 1;
                     let mut next_tab = tab_iter.next();
@@ -491,7 +505,7 @@ fn run_gen_random_inorder<W: Write>(
             let mut buffer = ryu::Buffer::new();
             let printed = buffer.format(r);
             writer.write_all(printed.as_bytes())?;
-            writer.write_all(b"\t")?;
+            writer.write_all(&[config.delimiter])?;
             writer.write_all(record)?;
             writer.write_all(b"\n")?;
             Ok(())
@@ -641,13 +655,19 @@ fn run_standard_sampling<W: Write>(
                         match &mut sampler {
                             SamplerEnum::Distinct(s) => {
                                 let spec = distinct_key_spec.unwrap();
-                                s.key_field_indices =
-                                    parse_key_specs(spec, Some(record))?;
+                                s.key_field_indices = parse_key_specs(
+                                    spec,
+                                    Some(record),
+                                    config.delimiter as char,
+                                )?;
                             }
                             SamplerEnum::Weighted(s) => {
                                 let spec = weighted_weight_spec.unwrap();
-                                s.weight_field_idx =
-                                    parse_single_weight_field(spec, Some(record))?;
+                                s.weight_field_idx = parse_single_weight_field(
+                                    spec,
+                                    Some(record),
+                                    config.delimiter as char,
+                                )?;
                             }
                             _ => {}
                         }
@@ -659,7 +679,7 @@ fn run_standard_sampling<W: Write>(
                     {
                         if print_random {
                             writer.write_all(random_value_header.as_bytes())?;
-                            writer.write_all(b"\t")?;
+                            writer.write_all(&[config.delimiter])?;
                         }
                         writer.write_all(record)?;
                         writer.write_all(b"\n")?;
@@ -676,11 +696,16 @@ fn run_standard_sampling<W: Write>(
                 match &mut sampler {
                     SamplerEnum::Distinct(s) => {
                         let spec = distinct_key_spec.unwrap();
-                        s.key_field_indices = parse_key_specs(spec, None)?;
+                        s.key_field_indices =
+                            parse_key_specs(spec, None, config.delimiter as char)?;
                     }
                     SamplerEnum::Weighted(s) => {
                         let spec = weighted_weight_spec.unwrap();
-                        s.weight_field_idx = parse_single_weight_field(spec, None)?;
+                        s.weight_field_idx = parse_single_weight_field(
+                            spec,
+                            None,
+                            config.delimiter as char,
+                        )?;
                     }
                     _ => {}
                 }
@@ -700,7 +725,7 @@ fn run_standard_sampling<W: Write>(
         if let Some(header) = &header_line {
             if print_random {
                 writer.write_all(random_value_header.as_bytes())?;
-                writer.write_all(b"\t")?;
+                writer.write_all(&[config.delimiter])?;
             }
             writer.write_all(header)?;
             writer.write_all(b"\n")?;

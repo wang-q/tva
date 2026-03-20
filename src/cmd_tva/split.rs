@@ -4,6 +4,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use crate::libs::cli::get_delimiter;
 use crate::libs::tsv::fields::FieldResolver;
 
 pub fn make_subcommand() -> Command {
@@ -183,15 +184,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let append = args.get_flag("append");
     let static_seed = args.get_flag("static-seed");
     let seed_value = args.get_one::<u64>("seed-value").cloned().unwrap_or(0);
-    let delimiter_str = args
-        .get_one::<String>("delimiter")
-        .map(|s| s.as_str())
-        .unwrap_or("\t");
-    let delimiter = if delimiter_str == "\\t" {
-        b'\t'
-    } else {
-        delimiter_str.as_bytes()[0]
-    };
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
     let max_open_files = args
         .get_one::<usize>("max-open-files")
         .cloned()
@@ -295,7 +288,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             num_files,
             key_extractor.as_mut(),
             &mut rng,
-            delimiter,
+            opt_delimiter,
             append,
         )?;
     }

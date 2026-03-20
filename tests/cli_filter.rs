@@ -246,7 +246,7 @@ fn filter_error_delimiter_length() {
         .args(&["filter", "--delimiter", "TAB"])
         .stdin("id\n1")
         .run_fail();
-    assert!(stderr.contains("delimiter must be a single character"));
+    assert!(stderr.contains("delimiter must be a single byte"));
 }
 
 #[test]

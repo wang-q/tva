@@ -1,4 +1,4 @@
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{build_header_config, get_delimiter, header_args_with_columns};
 use clap::*;
 use std::io::Write;
 
@@ -79,11 +79,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut line_num: i64 = *args.get_one::<i64>("start-number").unwrap();
     let mut header_written = false;
-    let delimiter = args
-        .get_one::<String>("delimiter")
-        .map(|s| s.as_str())
-        .unwrap_or("\t");
-    let delimiter_bytes = delimiter.as_bytes();
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
     let header_bytes = header_string.as_bytes();
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
@@ -107,7 +103,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     // For modes that provide column names, write the modified header line
                     if let Some(column_names) = header_info.column_names_line {
                         writer.write_all(header_bytes)?;
-                        writer.write_all(delimiter_bytes)?;
+                        writer.write_all(&[opt_delimiter])?;
                         writer.write_all(&column_names)?;
                         writer.write_all(b"\n")?;
                     }
@@ -121,7 +117,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         // Empty files are naturally skipped as for_each_line finds no records
         reader.for_each_line(|line| {
             writer.write_all(line_num.to_string().as_bytes())?;
-            writer.write_all(delimiter_bytes)?;
+            writer.write_all(&[opt_delimiter])?;
             writer.write_all(line)?;
             writer.write_all(b"\n")?;
             if line_buffered {

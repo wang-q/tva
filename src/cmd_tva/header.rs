@@ -2,6 +2,7 @@ use clap::*;
 use std::collections::BTreeMap;
 use std::io::Write;
 
+use crate::libs::cli::get_delimiter;
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::reader::TsvReader;
 
@@ -60,14 +61,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let names_only = args.get_flag("names-only");
     let start_idx = *args.get_one::<usize>("start").unwrap();
-    let delimiter = args.get_one::<String>("delimiter").unwrap().as_bytes();
-    if delimiter.len() != 1 {
-        return Err(anyhow::anyhow!(
-            "delimiter must be a single byte, got {:?}",
-            String::from_utf8_lossy(delimiter)
-        ));
-    }
-    let delimiter_byte = delimiter[0];
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
 
     let mut headers_per_input: Vec<(String, Vec<String>)> =
         Vec::with_capacity(infiles.len());
@@ -98,7 +92,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         &headers_per_input,
         names_only,
         start_idx,
-        delimiter_byte,
+        opt_delimiter,
     )?;
 
     Ok(())

@@ -235,6 +235,44 @@ pub fn build_header_config(
     Ok(config)
 }
 
+/// Creates a standard delimiter CLI argument.
+pub fn delimiter_arg() -> Arg {
+    Arg::new("delimiter")
+        .long("delimiter")
+        .short('d')
+        .num_args(1)
+        .default_value("\t")
+        .help("Field delimiter for input files")
+}
+
+/// Parses delimiter from ArgMatches, supporting \\t escape sequence.
+/// Uses "\t" as the default delimiter if not specified.
+pub fn get_delimiter(args: &clap::ArgMatches, arg_name: &str) -> anyhow::Result<u8> {
+    get_delimiter_with_default(args, arg_name, "\t")
+}
+
+/// Parses delimiter from ArgMatches with a custom default value.
+pub fn get_delimiter_with_default(
+    args: &clap::ArgMatches,
+    arg_name: &str,
+    default: &str,
+) -> anyhow::Result<u8> {
+    let s = args
+        .get_one::<String>(arg_name)
+        .map(|s| s.as_str())
+        .unwrap_or(default);
+
+    let bytes = if s == "\\t" {
+        vec![b'\t']
+    } else {
+        s.as_bytes().to_vec()
+    };
+    if bytes.len() != 1 {
+        anyhow::bail!("delimiter must be a single byte, got {:?}", s);
+    }
+    Ok(bytes[0])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

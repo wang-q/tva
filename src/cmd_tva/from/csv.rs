@@ -1,6 +1,8 @@
 use clap::*;
 use std::io::Write;
 
+use crate::libs::cli::get_delimiter_with_default;
+
 pub fn make_subcommand() -> Command {
     Command::new("csv")
         .about("Converts CSV input to TSV")
@@ -95,18 +97,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
     // Parse delimiter
-    let delimiter_str = args
-        .get_one::<String>("delimiter")
-        .map(|s| s.as_str())
-        .unwrap_or(",");
-    let delimiter_bytes = delimiter_str.as_bytes();
-    if delimiter_bytes.len() != 1 {
-        return Err(anyhow::anyhow!(
-            "delimiter must be a single byte, got \"{}\"",
-            delimiter_str
-        ));
-    }
-    let delimiter = delimiter_bytes[0];
+    let opt_delimiter = get_delimiter_with_default(args, "delimiter", ",")?;
 
     // Parse quote
     let quote_str = args
@@ -133,7 +124,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         .unwrap_or(b" ");
 
     // Validation: Delimiter and Quote cannot be newline
-    if delimiter == b'\n' || delimiter == b'\r' {
+    if opt_delimiter == b'\n' || opt_delimiter == b'\r' {
         return Err(anyhow::anyhow!(
             "CSV field delimiter cannot be newline (--d|delimiter|csv-delim)."
         ));
@@ -143,7 +134,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             "CSV quote character cannot be newline (--q|quote)."
         ));
     }
-    if delimiter == quote {
+    if opt_delimiter == quote {
         return Err(anyhow::anyhow!(
             "CSV quote and CSV field delimiter characters must be different (--q|quote, --d|delimiter)."
         ));
@@ -169,7 +160,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     }
 
     let mut csv_reader = csv::ReaderBuilder::new()
-        .delimiter(delimiter)
+        .delimiter(opt_delimiter)
         .quote(quote)
         .has_headers(false)
         .from_reader(reader);

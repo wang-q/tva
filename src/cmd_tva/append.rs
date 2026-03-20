@@ -2,7 +2,7 @@ use clap::*;
 use std::io::Write;
 use std::path::Path;
 
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{build_header_config, get_delimiter, header_args_with_columns};
 use crate::libs::io::map_io_err;
 
 use crate::libs::tsv::reader::TsvReader;
@@ -108,18 +108,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
     let has_header = header_config.enabled || source_header.is_some();
 
-    let delimiter_str = args
-        .get_one::<String>("delimiter")
-        .map(|s| s.as_str())
-        .unwrap_or("\t");
-    let delimiter_bytes = delimiter_str.as_bytes();
-    if delimiter_bytes.len() != 1 {
-        return Err(anyhow::anyhow!(
-            "delimiter must be a single byte, got \"{}\"",
-            delimiter_str
-        ));
-    }
-    let delimiter = delimiter_bytes[0] as char;
+    let opt_delimiter = get_delimiter(args, "delimiter")? as char;
 
     // Collect inputs respecting command line order
     let mut input_specs: Vec<(usize, InputSpec)> = Vec::new();
@@ -209,7 +198,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 header_written = true;
                 if track_source {
                     writer.write_all(source_header_name.as_bytes())?;
-                    writer.write_all(&[delimiter as u8])?;
+                    writer.write_all(&[opt_delimiter as u8])?;
                     writer.write_all(&column_names_bytes)?;
                     writer.write_all(b"\n")?;
                 } else {
@@ -230,7 +219,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         reader.for_each_line(|record| {
             if track_source {
                 writer.write_all(label_bytes)?;
-                writer.write_all(&[delimiter as u8])?;
+                writer.write_all(&[opt_delimiter as u8])?;
             }
             writer.write_all(record)?;
             writer.write_all(b"\n")?;

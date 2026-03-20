@@ -243,7 +243,7 @@ fn select_invalid_delimiter() {
         .stdin("a\tb\n")
         .run_fail();
 
-    assert!(stderr.contains("delimiter must be a single character"));
+    assert!(stderr.contains("delimiter must be a single byte"));
 }
 
 #[test]

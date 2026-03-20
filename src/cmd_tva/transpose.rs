@@ -1,3 +1,5 @@
+use crate::libs::cli::delimiter_arg;
+use crate::libs::cli::get_delimiter;
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{TsvRecord, TsvRow};
@@ -23,6 +25,7 @@ pub fn make_subcommand() -> Command {
                 .default_value("stdout")
                 .help("Output filename. [stdout] for screen"),
         )
+        .arg(delimiter_arg())
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
@@ -32,12 +35,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut writer =
         crate::libs::io::writer(args.get_one::<String>("outfile").unwrap())?;
 
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
+
     let mut data: Vec<TsvRecord> = Vec::new();
     let mut expected_fields: Option<usize> = None;
     let mut line_number: u64 = 0;
 
     tsv_reader
-        .for_each_row(b'\t', |row: &TsvRow| {
+        .for_each_row(opt_delimiter, |row: &TsvRow| {
             line_number += 1;
 
             let record = TsvRecord::from_row(row);
@@ -71,7 +76,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     for c in 0..cols {
         for (r, row) in data.iter().enumerate() {
             if r > 0 {
-                writer.write_all(b"\t")?;
+                writer.write_all(&[opt_delimiter])?;
             }
             if let Some(field) = row.get(c) {
                 writer.write_all(field)?;

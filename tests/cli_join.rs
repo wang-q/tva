@@ -633,7 +633,7 @@ fn join_error_delimiter_must_be_single_char() {
         .run_fail();
 
     assert!(
-        stderr.contains("delimiter must be a single character"),
+        stderr.contains("delimiter must be a single byte"),
         "stderr was: {}",
         stderr
     );

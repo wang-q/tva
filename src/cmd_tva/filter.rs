@@ -1,6 +1,6 @@
 use clap::*;
 
-use crate::libs::cli::{build_header_config, header_args_with_columns};
+use crate::libs::cli::{build_header_config, get_delimiter, header_args_with_columns};
 use crate::libs::filter::{
     FilterConfig, NumericOp, NumericProp, PendingByteLen, PendingCharLen,
     PendingFieldFieldAbsDiff, PendingFieldFieldNumeric, PendingFieldFieldRelDiff,
@@ -292,18 +292,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         anyhow::bail!("--label conflicts with --count");
     }
 
-    let delimiter_str = args
-        .get_one::<String>("delimiter")
-        .cloned()
-        .unwrap_or_else(|| "\t".to_string());
-    let mut chars = delimiter_str.chars();
-    let delimiter = chars.next().unwrap_or('\t');
-    if chars.next().is_some() {
-        anyhow::bail!(
-            "delimiter must be a single character, got `{}`",
-            delimiter_str
-        );
-    }
+    let opt_delimiter = get_delimiter(args, "delimiter")? as char;
 
     // Helper macro for simple string lists
     macro_rules! collect_simple {
@@ -469,7 +458,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     );
 
     let config = FilterConfig {
-        delimiter,
+        delimiter: opt_delimiter,
         header_config,
         use_or,
         invert,

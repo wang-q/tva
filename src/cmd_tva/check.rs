@@ -1,6 +1,6 @@
 use clap::*;
 
-use crate::libs::cli::{build_header_config, header_args};
+use crate::libs::cli::{build_header_config, delimiter_arg, get_delimiter, header_args};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::header::Header;
 use crate::libs::tsv::record::TsvRow;
@@ -16,6 +16,7 @@ pub fn make_subcommand() -> Command {
                 .help("Input TSV file(s) to check (default: stdin)"),
         )
         .args(header_args())
+        .arg(delimiter_arg())
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
@@ -27,6 +28,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let header_config =
         build_header_config(args, true).map_err(|e| anyhow::anyhow!(e))?;
     let has_header = header_config.enabled;
+
+    let opt_delimiter = get_delimiter(args, "delimiter")?;
 
     let mut total_lines: u64 = 0;
     let mut total_data_lines: u64 = 0;
@@ -43,7 +46,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             if let Some(header_info) = header_result {
                 // Convert to Header for easier handling
-                let header = Header::from_info(header_info, '\t');
+                let header = Header::from_info(header_info, opt_delimiter as char);
 
                 // Count header lines (hash lines or LinesN lines)
                 total_lines += header.lines.len() as u64;
@@ -58,7 +61,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
             }
         }
 
-        reader.for_each_row(b'\t', |row: &TsvRow| {
+        reader.for_each_row(opt_delimiter, |row: &TsvRow| {
             total_lines += 1;
             total_data_lines += 1;
 
