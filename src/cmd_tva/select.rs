@@ -158,18 +158,13 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     }
                 };
 
-                // Parse header for field resolution
-                let line_str = String::from_utf8_lossy(&column_names_bytes);
-                let header =
-                    crate::libs::tsv::fields::Header::from_line(&line_str, delimiter);
-
                 // Resolve fields if not yet resolved
                 if field_indices.is_none() {
                     if let Some(ref spec) = fields_spec {
                         field_indices = Some(
-                            crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
+                            crate::libs::tsv::fields::resolve_fields_from_header(
                                 spec,
-                                Some(&header),
+                                &column_names_bytes,
                                 delimiter,
                             )
                             .map_err(map_io_err)?,
@@ -181,9 +176,9 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 if exclude_indices.is_none() {
                     if let Some(ref spec) = exclude_spec {
                         let indices =
-                            crate::libs::tsv::fields::parse_field_list_with_header_preserve_order(
+                            crate::libs::tsv::fields::resolve_fields_from_header(
                                 spec,
-                                Some(&header),
+                                &column_names_bytes,
                                 delimiter,
                             )
                             .map_err(map_io_err)?;

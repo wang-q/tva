@@ -2,8 +2,7 @@ use crate::libs::aggregation::OpKind;
 use crate::libs::cell::Cell;
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
-use crate::libs::tsv::fields;
-use crate::libs::tsv::fields::Header;
+use crate::libs::tsv::fields::{self, resolve_fields_from_header};
 use crate::libs::tsv::header::HeaderConfig;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::Row;
@@ -199,24 +198,25 @@ fn process_file(
     };
 
     // Get column names from header if available
-    let header = if let Some(ref column_names_bytes) = header_info.column_names_line {
-        let line_str = String::from_utf8_lossy(column_names_bytes);
-        Header::from_line(&line_str, '\t')
+    let column_names_bytes = header_info.column_names_line.clone();
+    let header_fields = if let Some(ref names) = column_names_bytes {
+        let line_str = String::from_utf8_lossy(names);
+        fields::Header::from_line(&line_str, '\t').fields
     } else {
         // No column names available (e.g., LinesN or HashLines mode)
         // We can't resolve field names, so return an error if field names are used
-        Header::from_line("", '\t')
+        Vec::new()
     };
-    let header_fields = &header.fields;
 
     if !state.header_processed {
         // Determine indices
-        let n_indices = fields::parse_field_list_with_header(
-            &config.names_from,
-            Some(&header),
-            '\t',
-        )
-        .map_err(|e| anyhow::anyhow!(e))?;
+        let n_indices = if let Some(ref names) = column_names_bytes {
+            resolve_fields_from_header(&config.names_from, names, '\t')
+                .map_err(|e| anyhow::anyhow!(e))?
+        } else {
+            fields::parse_numeric_field_list(&config.names_from)
+                .map_err(|e| anyhow::anyhow!(e))?
+        };
         if n_indices.len() != 1 {
             return Err(anyhow::anyhow!(
                 "Currently only single column supported for --names-from"
@@ -225,9 +225,13 @@ fn process_file(
         state.names_idx = n_indices[0] - 1;
 
         if let Some(v_spec) = &config.values_from {
-            let v_indices =
-                fields::parse_field_list_with_header(v_spec, Some(&header), '\t')
-                    .map_err(|e| anyhow::anyhow!(e))?;
+            let v_indices = if let Some(ref names) = column_names_bytes {
+                resolve_fields_from_header(v_spec, names, '\t')
+                    .map_err(|e| anyhow::anyhow!(e))?
+            } else {
+                fields::parse_numeric_field_list(v_spec)
+                    .map_err(|e| anyhow::anyhow!(e))?
+            };
             if v_indices.len() != 1 {
                 return Err(anyhow::anyhow!(
                     "Currently only single column supported for --values-from"
@@ -239,9 +243,12 @@ fn process_file(
         }
 
         if let Some(spec) = &config.id_cols {
-            let i_indices =
-                fields::parse_field_list_with_header(spec, Some(&header), '\t')
-                    .map_err(|e| anyhow::anyhow!(e))?;
+            let i_indices = if let Some(ref names) = column_names_bytes {
+                resolve_fields_from_header(spec, names, '\t')
+                    .map_err(|e| anyhow::anyhow!(e))?
+            } else {
+                fields::parse_numeric_field_list(spec).map_err(|e| anyhow::anyhow!(e))?
+            };
             state.id_indices = i_indices.iter().map(|&i| i - 1).collect();
         } else {
             // Default: all except names and values

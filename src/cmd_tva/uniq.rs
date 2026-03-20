@@ -1,5 +1,6 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
+use crate::libs::tsv::fields::resolve_fields_from_header;
 use crate::libs::tsv::key::KeyExtractor;
 use crate::libs::tsv::reader::TsvReader;
 use clap::*;
@@ -201,7 +202,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     let mut header_written = false;
-    let mut header: Option<crate::libs::tsv::fields::Header> = None;
+    let mut column_names_bytes: Option<Vec<u8>> = None;
 
     // Extractor handles key extraction logic
     let mut extractor: Option<KeyExtractor> = None;
@@ -224,23 +225,16 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
             if let Some(h_info) = header_result {
                 // Parse header for field resolution if column names are available
-                if header.is_none() {
-                    if let Some(ref column_names_bytes) = h_info.column_names_line {
-                        let line = String::from_utf8_lossy(column_names_bytes);
-                        header = Some(crate::libs::tsv::fields::Header::from_line(
-                            &line, delimiter,
-                        ));
+                if column_names_bytes.is_none() {
+                    if let Some(ref names) = h_info.column_names_line {
+                        column_names_bytes = Some(names.clone());
                         if let Some(ref spec) = fields_spec {
                             if spec.trim() == "0" {
                                 extractor =
                                     Some(KeyExtractor::new(None, ignore_case, false));
                             } else {
                                 let parsed =
-                                    crate::libs::tsv::fields::parse_field_list_with_header(
-                                        spec,
-                                        header.as_ref(),
-                                        delimiter,
-                                    );
+                                    resolve_fields_from_header(spec, names, delimiter);
                                 match parsed {
                                     Ok(v) => {
                                         extractor = Some(KeyExtractor::new(

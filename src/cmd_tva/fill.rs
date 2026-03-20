@@ -1,5 +1,5 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
-use crate::libs::tsv::fields::{parse_field_list_with_header_preserve_order, Header};
+use crate::libs::tsv::fields::resolve_fields_from_header;
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRow};
 use clap::*;
@@ -98,7 +98,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     for input in crate::libs::io::raw_input_sources(&infiles)? {
         let mut reader = TsvReader::new(input.reader);
-        let mut header: Option<Header> = None;
+        let mut column_names_bytes: Option<Vec<u8>> = None;
 
         // If header is enabled, read header according to the configured mode
         if header_config.enabled {
@@ -125,11 +125,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     header_written = true;
                 }
 
-                // Get column names for field resolution if available
-                if let Some(column_names_bytes) = header_info.column_names_line {
-                    let header_str = std::str::from_utf8(&column_names_bytes)?;
-                    header = Some(Header::from_line(header_str, '\t'));
-                }
+                // Store column names for field resolution
+                column_names_bytes = header_info.column_names_line;
             } else {
                 continue; // Empty file
             }
@@ -139,9 +136,14 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         let mut target_cols: Vec<usize> = Vec::new();
 
         for spec in &field_specs {
-            let indices =
-                parse_field_list_with_header_preserve_order(spec, header.as_ref(), '\t')
-                    .map_err(|e| anyhow::anyhow!(e))?;
+            let indices = if let Some(ref names) = column_names_bytes {
+                resolve_fields_from_header(spec, names, '\t')
+                    .map_err(|e| anyhow::anyhow!(e))?
+            } else {
+                // No header available - use numeric parsing only
+                crate::libs::tsv::fields::parse_numeric_field_list_preserve_order(spec)
+                    .map_err(|e| anyhow::anyhow!(e))?
+            };
 
             for idx in indices {
                 // idx is 1-based, convert to 0-based

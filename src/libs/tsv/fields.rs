@@ -573,6 +573,20 @@ impl Header {
     }
 }
 
+/// Resolves field specifications using column names from raw bytes.
+/// This is a convenience function that combines Header creation and field parsing.
+/// Returns 1-based indices (suitable for use with TsvRow::get_bytes).
+pub fn resolve_fields_from_header(
+    spec: &str,
+    column_names_bytes: &[u8],
+    delimiter: char,
+) -> Result<Vec<usize>, String> {
+    let header_str = std::str::from_utf8(column_names_bytes)
+        .map_err(|e| format!("invalid UTF-8 in header: {}", e))?;
+    let header = Header::from_line(header_str, delimiter);
+    parse_field_list_with_header_preserve_order(spec, Some(&header), delimiter)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

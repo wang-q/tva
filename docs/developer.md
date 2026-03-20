@@ -295,11 +295,22 @@ pub fn write_header_info(writer: &mut dyn Write, info: &HeaderInfo) -> io::Resul
 pub fn write_header_with_suffix(writer: &mut dyn Write, info: &HeaderInfo, suffix: Option<&[u8]>) -> io::Result<()>
 ```
 
-### 3. 字段解析逻辑统一
+### 3. 字段解析逻辑统一 (已完成)
 
-**现状**: `select.rs`, `blank.rs`, `fill.rs` 等命令重复解析 header 字段的逻辑。
+**实现**: 在 `libs/tsv/fields.rs` 中添加了 `resolve_fields_from_header` 函数，统一了从 header 字节解析字段列表的逻辑。
 
-**建议**: 在 `libs/tsv/fields.rs` 中添加：
+**已迁移的命令**:
+- `blank.rs` - 使用新函数解析 blank 字段
+- `fill.rs` - 使用新函数解析 fill 字段  
+- `select.rs` - 使用新函数解析 select/exclude 字段
+- `uniq.rs` - 使用新函数解析去重 key 字段
+- `wider.rs` - 使用新函数解析 names-from/values-from/id-cols 字段
+
+**待迁移的命令** (需要更多重构):
+- `sample.rs` - 使用了中间函数，需要重构函数签名
+- `stats.rs` - 需要 Header 对象来生成输出 header 名称
+
+**函数签名**:
 ```rust
 pub fn resolve_fields_from_header(
     spec: &str,
