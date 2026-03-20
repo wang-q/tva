@@ -1,6 +1,7 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
 use crate::libs::tsv::fields::FieldResolver;
+use crate::libs::tsv::header::{write_header, Header};
 use crate::libs::tsv::key::KeyExtractor;
 use crate::libs::tsv::reader::TsvReader;
 use clap::*;
@@ -288,25 +289,33 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 // Write header only for the first file
                 if !header_written {
-                    // Write all header lines (hash lines, or LinesN lines)
-                    for line in &h_info.lines {
-                        writer.write_all(line)?;
-                        writer.write_all(b"\n")?;
-                    }
-                    // For modes that provide column names, also write the column names line
-                    if let Some(ref column_names) = h_info.column_names_line {
-                        writer.write_all(column_names)?;
+                    // Convert to Header and write with suffix for equiv/number mode
+                    let header = Header::from_info(h_info, delimiter);
 
-                        if equiv_mode {
-                            writer.write_all(&[delimiter as u8])?;
-                            writer.write_all(equiv_header.as_bytes())?;
-                        }
-                        if number_mode {
-                            writer.write_all(&[delimiter as u8])?;
-                            writer.write_all(number_header.as_bytes())?;
-                        }
-                        writer.write_all(b"\n")?;
+                    // Build suffix for additional columns
+                    let mut suffix_items: Vec<&str> = Vec::new();
+                    if equiv_mode {
+                        suffix_items.push(&equiv_header);
                     }
+                    if number_mode {
+                        suffix_items.push(&number_header);
+                    }
+                    let suffix = if suffix_items.is_empty() {
+                        None
+                    } else {
+                        Some(
+                            suffix_items
+                                .iter()
+                                .flat_map(|s| {
+                                    let mut v = vec![delimiter as u8];
+                                    v.extend_from_slice(s.as_bytes());
+                                    v
+                                })
+                                .collect::<Vec<u8>>(),
+                        )
+                    };
+
+                    write_header(&mut writer, &header, suffix.as_deref())?;
                     if line_buffered {
                         writer.flush()?;
                     }

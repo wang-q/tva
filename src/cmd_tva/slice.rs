@@ -1,4 +1,5 @@
 use crate::libs::cli::{build_header_config, header_args};
+use crate::libs::tsv::header::{write_header, Header};
 use clap::*;
 use std::io::Write;
 
@@ -134,16 +135,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
                 // Write header only for the first file
                 if !header_written {
-                    // Write all header lines (hash lines, or LinesN lines)
-                    for line in &header_info.lines {
-                        writer.write_all(line)?;
-                        writer.write_all(b"\n")?;
-                    }
-                    // For modes that provide column names, also write the column names line
-                    if let Some(ref column_names) = header_info.column_names_line {
-                        writer.write_all(column_names)?;
-                        writer.write_all(b"\n")?;
-                    }
+                    let header = Header::from_info(header_info, '\t');
+                    write_header(&mut writer, &header, None)?;
                     header_written = true;
                 }
             }

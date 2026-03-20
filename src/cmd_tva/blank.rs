@@ -1,5 +1,6 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::tsv::fields::FieldResolver;
+use crate::libs::tsv::header::{write_header, Header};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::{Row, TsvRow};
 use clap::*;
@@ -105,26 +106,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 .map_err(|e| anyhow::anyhow!(e))?;
 
             if let Some(header_info) = header_result {
+                // Store column names for field resolution before moving header_info
+                column_names_bytes = header_info.column_names_line.clone();
+
                 // Write header only for the first file
                 if !header_written {
-                    // Write all header lines (hash lines, or LinesN lines)
-                    for line in &header_info.lines {
-                        writer.write_all(line)?;
-                        writer.write_all(b"\n")?;
-                    }
-                    // For modes that provide column names, also write the column names line
-                    if let Some(ref column_names) = header_info.column_names_line {
-                        writer.write_all(column_names)?;
-                        writer.write_all(b"\n")?;
-                    }
+                    let header = Header::from_info(header_info, '\t');
+                    write_header(&mut writer, &header, None)?;
                     if line_buffered {
                         writer.flush()?;
                     }
                     header_written = true;
                 }
-
-                // Store column names for field resolution
-                column_names_bytes = header_info.column_names_line;
             }
         }
 

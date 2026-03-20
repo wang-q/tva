@@ -242,31 +242,7 @@ Bar Charts）。
 
 基于对25个命令文件的代码分析，以下是改进建议：
 
-### 2. 提取 Header 处理公共函数
-
-**现状**: 多个命令重复类似的 header 写入逻辑：
-```rust
-for line in &header_info.lines {
-    writer.write_all(line)?;
-    writer.write_all(b"\n")?;
-}
-if let Some(ref column_names) = header_info.column_names_line {
-    writer.write_all(column_names)?;
-    writer.write_all(b"\n")?;
-}
-```
-
-**建议**: 在 `libs/tsv/header.rs` 中添加辅助函数：
-```rust
-pub fn write_header_info(writer: &mut dyn Write, info: &HeaderInfo) -> io::Result<()>
-pub fn write_header_with_suffix(writer: &mut dyn Write, info: &HeaderInfo, suffix: Option<&[u8]>) -> io::Result<()>
-```
-
-2. **Header 处理的复杂性**
-   - 有 `HeaderInfo`（来自 reader）、`Header`（字段解析）、`HeaderConfig`（CLI 参数）三个相关结构
-   - `select.rs` 中甚至需要手动构建 `TsvRow` 来写 header
-
-### 4. TsvRow 迭代器支持
+### 1. TsvRow 迭代器支持
 
 **现状**: 命令中常见模式：
 ```rust
@@ -284,3 +260,105 @@ impl TsvRow {
     }
 }
 ```
+
+### 2. Header 处理改进规划
+
+**问题分析**：
+- 有 `HeaderInfo`（来自 reader）、`Header`（字段解析）、`HeaderConfig`（CLI 参数）三个相关结构
+- 25 个命令重复 header 写入逻辑：
+  ```rust
+  for line in &header_info.lines {
+      writer.write_all(line)?;
+      writer.write_all(b"\n")?;
+  }
+  if let Some(ref column_names) = header_info.column_names_line {
+      writer.write_all(column_names)?;
+      writer.write_all(b"\n")?;
+  }
+  ```
+- `bin.rs` 仍需手动创建 `Header` 来解析字段名
+
+**改进方案**：
+
+#### 阶段 1：统一 Header 结构
+
+合并 `HeaderInfo` 和 `Header`，并添加字段解析能力：
+
+```rust
+// libs/tsv/header.rs
+pub struct Header {
+    /// 所有 header 行（hash 行、LinesN 行等）
+    pub lines: Vec<Vec<u8>>,
+    /// 列名行（用于字段解析）
+    pub column_names: Option<Vec<u8>>,
+    delimiter: char,
+    /// 字段名到索引的缓存
+    index_cache: Option<HashMap<String, usize>>,
+}
+
+impl Header {
+    /// 从 HeaderInfo 创建
+    pub fn from_info(info: HeaderInfo, delimiter: char) -> Self
+    
+    /// 获取字段索引（替代 Header::get_index）
+    pub fn get_index(&self, name: &str) -> Option<usize>
+    
+    /// 获取列名列表
+    pub fn column_names(&self) -> Option<Vec<String>>
+}
+```
+
+#### 阶段 2：提取公共写入函数
+
+```rust
+/// 写入标准 header 格式（包含 hash/LinesN 行和列名行）
+pub fn write_header<W: Write>(
+    writer: &mut W,
+    header: &Header,
+    suffix: Option<&[u8]>,
+) -> io::Result<()>
+
+/// 为特定模式构建后缀（如 equiv 模式添加的列）
+pub fn build_suffix(
+    items: &[impl AsRef<str>],
+    delimiter: u8,
+) -> Vec<u8>
+```
+
+#### 阶段 3：整合 FieldResolver
+
+```rust
+pub struct FieldResolver {
+    header: Option<Header>,  // 替代 header_bytes
+}
+
+impl FieldResolver {
+    pub fn new(header: Option<Header>) -> Self
+    pub fn resolve(&self, spec: &str) -> Result<Vec<usize>, String>
+}
+```
+
+**实施步骤**：
+
+| 步骤 | 任务 | 文件 | 状态 | 说明 |
+|-----|------|------|------|------|
+| 1 | 更新 `Header` 结构 | `libs/tsv/header.rs` | ✅ | 添加 `column_names`、`delimiter`、`index_cache` 字段 |
+| 2 | 实现 `from_info` | `libs/tsv/header.rs` | ✅ | 从 `HeaderInfo` 创建 `Header`，构建索引缓存 |
+| 3 | 实现 `get_index` | `libs/tsv/header.rs` | ✅ | 替代 `fields.rs` 中的 `Header::get_index` |
+| 4 | 实现 `write_header` | `libs/tsv/header.rs` | ✅ | 提取公共写入逻辑 |
+| 5 | 实现 `build_suffix` | `libs/tsv/header.rs` | ✅ | 辅助函数，用于 equiv/number 模式 |
+| 6 | 更新 `TsvReader` | `libs/tsv/reader.rs` | ⏭️ | 可选：添加返回 `Header` 的方法 |
+| 7 | 迁移 `bin.rs` | `cmd_tva/bin.rs` | ⏭️ | 使用新的 `Header::from_info` + `get_index` |
+| 8 | 迁移简单命令 | `cmd_tva/check.rs`, `nl.rs`, `reverse.rs` | ✅ | 使用新的 `Header` API |
+| 9 | 迁移 `uniq.rs` | `cmd_tva/uniq.rs` | ✅ | 使用 `write_header` 替代手动写入 |
+| 10 | 迁移 `join.rs` | `cmd_tva/join.rs` | ✅ | 使用 `write_header` 替代手动写入 |
+| 11 | 迁移 `stats.rs` | `cmd_tva/stats.rs` | ✅ | 使用新的 `Header` 替代 `fields::Header` |
+| 12 | 迁移其他命令 | `cmd_tva/slice.rs`, `blank.rs`, `fill.rs` | ✅ | 使用 `write_header` 替代手动写入 |
+| 13 | 迁移剩余命令 | `cmd_tva/*.rs` | ⏭️ | 检查并迁移剩余命令（如 `bin.rs`） |
+| 14 | 更新 `FieldResolver` | `libs/tsv/fields.rs` | ⏭️ | 可选：使用 `Header` 替代 `header_bytes` |
+| 15 | 移除旧 `Header` | `libs/tsv/fields.rs` | ⏭️ | 删除旧的 `Header` 结构，统一使用 `header.rs` 的版本 |
+
+**注意事项**：
+- `HeaderConfig` 保持不变，作为 CLI 到 Reader 的桥梁
+- `HeaderInfo` 暂时保留，作为 `TsvReader` 的内部返回类型
+- ✅ 已完成 | ⏭️ 待处理

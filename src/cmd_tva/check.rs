@@ -2,6 +2,7 @@ use clap::*;
 
 use crate::libs::cli::{build_header_config, header_args};
 use crate::libs::io::map_io_err;
+use crate::libs::tsv::header::Header;
 use crate::libs::tsv::record::TsvRow;
 
 pub fn make_subcommand() -> Command {
@@ -41,22 +42,17 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 .map_err(map_io_err)?;
 
             if let Some(header_info) = header_result {
+                // Convert to Header for easier handling
+                let header = Header::from_info(header_info, '\t');
+
                 // Count header lines (hash lines or LinesN lines)
-                total_lines += header_info.lines.len() as u64;
+                total_lines += header.lines.len() as u64;
 
                 // For modes that provide column names, also count the column names line
-                if let Some(ref column_names_line) = header_info.column_names_line {
+                if let Some(count) = header.column_count() {
                     total_lines += 1;
-
-                    // Count fields in column names line
-                    let header_fields = if column_names_line.is_empty() {
-                        0
-                    } else {
-                        memchr::memchr_iter(b'\t', column_names_line).count() + 1
-                    };
-
                     if expected_fields.is_none() {
-                        expected_fields = Some(header_fields);
+                        expected_fields = Some(count);
                     }
                 }
             }

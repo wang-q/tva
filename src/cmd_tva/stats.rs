@@ -3,7 +3,8 @@ use crate::libs::aggregation::{
 };
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::io::map_io_err;
-use crate::libs::tsv::fields::{self, FieldResolver};
+use crate::libs::tsv::fields::FieldResolver;
+use crate::libs::tsv::header::Header;
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::reader::TsvReader;
 use clap::{Arg, ArgAction, ArgMatches, Command};
@@ -367,11 +368,8 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             FieldResolver::new(header_bytes.map(|b| b.to_vec()), delimiter as char);
 
         // Create Header from bytes for field name lookup (if header available)
-        let header_opt: Option<fields::Header> = header_bytes.and_then(|bytes| {
-            std::str::from_utf8(bytes)
-                .ok()
-                .map(|s| fields::Header::from_line(s, delimiter as char))
-        });
+        let header_opt: Option<Header> = header_bytes
+            .map(|bytes| Header::from_column_names(bytes.to_vec(), delimiter as char));
 
         for config in &op_configs {
             if let OpKind::Count = config.kind {
@@ -454,8 +452,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                             format!("{}_{}", custom, idx)
                         }
                     } else if let Some(ref h) = header_opt {
-                        if field_idx < h.fields.len() {
-                            format!("{}{}", h.fields[field_idx], suffix)
+                        if let Some(ref names) = h.column_names_list() {
+                            if field_idx < names.len() {
+                                format!("{}{}", names[field_idx], suffix)
+                            } else {
+                                format!("field{}{}", idx, suffix)
+                            }
                         } else {
                             format!("field{}{}", idx, suffix)
                         }
@@ -489,8 +491,12 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                 for &idx in indices {
                     // indices are 1-based
                     if let Some(ref h) = header_opt {
-                        if idx > 0 && idx <= h.fields.len() {
-                            final_headers.push(h.fields[idx - 1].to_string());
+                        if let Some(ref names) = h.column_names_list() {
+                            if idx > 0 && idx <= names.len() {
+                                final_headers.push(names[idx - 1].to_string());
+                            } else {
+                                final_headers.push(format!("field{}", idx));
+                            }
                         } else {
                             final_headers.push(format!("field{}", idx));
                         }

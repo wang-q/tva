@@ -1,5 +1,6 @@
 use crate::libs::cli::{build_header_config, header_args_with_columns};
 use crate::libs::tsv::fields::FieldResolver;
+use crate::libs::tsv::header::{write_header, Header};
 use crate::libs::tsv::key::{KeyBuffer, KeyExtractor};
 use crate::libs::tsv::reader::TsvReader;
 use crate::libs::tsv::record::TsvRow;
@@ -414,25 +415,19 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                     data_key_extractor = Some(KeyExtractor::new(indices, false, true));
                 }
 
-                // Write header only for the first file
+                // Write header only for the first file (only if there are column names)
                 if !header_written {
-                    // Write all header lines (hash lines, or LinesN lines)
-                    for line in &header_info.lines {
-                        writer.write_all(line)?;
-                        writer.write_all(b"\n")?;
-                    }
-                    // Write column names line with append suffix
                     if let Some(ref column_names) = header_info.column_names_line {
                         if !column_names.is_empty() {
-                            writer.write_all(column_names)?;
-                            if let Some(ref suffix) = append_header_suffix {
-                                writer.write_all(suffix.as_bytes())?;
+                            // Convert to Header and write with optional suffix
+                            let header = Header::from_info(header_info, delimiter_char);
+                            let suffix =
+                                append_header_suffix.as_deref().map(|s| s.as_bytes());
+                            write_header(&mut writer, &header, suffix)?;
+                            if line_buffered {
+                                writer.flush()?;
                             }
-                            writer.write_all(b"\n")?;
                         }
-                    }
-                    if line_buffered {
-                        writer.flush()?;
                     }
                     header_written = true;
                 }

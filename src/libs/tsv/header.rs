@@ -770,3 +770,170 @@ mod tests {
         assert!(!handler.process_first_line(b"val1\tval2").unwrap());
     }
 }
+
+use std::collections::HashMap;
+use std::io::{self, Write};
+
+/// Unified header structure that combines header metadata with field resolution capabilities.
+///
+/// This struct replaces both `HeaderInfo` (for storage) and `Header` from `fields.rs` (for field resolution).
+/// It stores all header lines plus an optional column names line, and provides methods for
+/// field name-to-index resolution.
+#[derive(Clone, Debug)]
+pub struct Header {
+    /// All header lines (e.g., hash comment lines, or first N lines in LinesN mode).
+    pub lines: Vec<Vec<u8>>,
+    /// The specific line containing column names (if applicable).
+    pub column_names: Option<Vec<u8>>,
+    delimiter: char,
+    /// Cache for field name to index lookup.
+    index_cache: Option<HashMap<String, usize>>,
+}
+
+impl Header {
+    /// Creates a new Header from HeaderInfo.
+    ///
+    /// # Arguments
+    /// * `info` - The HeaderInfo returned by TsvReader
+    /// * `delimiter` - Field delimiter character (typically '\t')
+    pub fn from_info(info: HeaderInfo, delimiter: char) -> Self {
+        let index_cache = info.column_names_line.as_ref().and_then(|bytes| {
+            if bytes.is_empty() {
+                // Empty column names line means 0 columns
+                Some(HashMap::new())
+            } else {
+                let line = String::from_utf8_lossy(bytes);
+                Some(
+                    line.split(delimiter)
+                        .enumerate()
+                        .map(|(idx, name)| (name.to_string(), idx))
+                        .collect(),
+                )
+            }
+        });
+
+        Self {
+            lines: info.lines,
+            column_names: info.column_names_line,
+            delimiter,
+            index_cache,
+        }
+    }
+
+    /// Creates a Header from raw column names bytes.
+    ///
+    /// This is useful when you only have column names without other header lines.
+    pub fn from_column_names(column_names: Vec<u8>, delimiter: char) -> Self {
+        let index_cache = if column_names.is_empty() {
+            // Empty column names means 0 columns
+            Some(HashMap::new())
+        } else {
+            let line = String::from_utf8_lossy(&column_names);
+            Some(
+                line.split(delimiter)
+                    .enumerate()
+                    .map(|(idx, name)| (name.to_string(), idx))
+                    .collect(),
+            )
+        };
+
+        Self {
+            lines: Vec::new(),
+            column_names: Some(column_names),
+            delimiter,
+            index_cache,
+        }
+    }
+
+    /// Returns true if this header has column names available.
+    pub fn has_column_names(&self) -> bool {
+        self.column_names.is_some()
+    }
+
+    /// Gets the index of a field by name (0-based).
+    ///
+    /// Returns `Some(index)` if found, `None` otherwise.
+    pub fn get_index(&self, name: &str) -> Option<usize> {
+        self.index_cache.as_ref()?.get(name).copied()
+    }
+
+    /// Returns the column names as a vector of strings.
+    ///
+    /// Returns `None` if no column names are available.
+    pub fn column_names_list(&self) -> Option<Vec<String>> {
+        self.column_names.as_ref().map(|bytes| {
+            String::from_utf8_lossy(bytes)
+                .split(self.delimiter)
+                .map(|s| s.to_string())
+                .collect()
+        })
+    }
+
+    /// Returns the number of columns.
+    ///
+    /// Returns `None` if no column names are available.
+    pub fn column_count(&self) -> Option<usize> {
+        self.index_cache.as_ref().map(|cache| cache.len())
+    }
+}
+
+/// Writes header to output in standard format.
+///
+/// Writes all header lines followed by the column names line (if present).
+/// An optional suffix can be appended to the column names line (e.g., for equiv mode).
+///
+/// # Arguments
+/// * `writer` - Output writer
+/// * `header` - Header to write
+/// * `suffix` - Optional suffix to append to column names line
+///
+/// # Example
+/// ```
+/// use tva::libs::tsv::header::{Header, write_header};
+///
+/// let header = Header::from_column_names(b"col1\tcol2".to_vec(), '\t');
+/// let mut output = Vec::new();
+/// write_header(&mut output, &header, None).unwrap();
+/// assert_eq!(output, b"col1\tcol2\n");
+/// ```
+pub fn write_header<W: Write>(
+    writer: &mut W,
+    header: &Header,
+    suffix: Option<&[u8]>,
+) -> io::Result<()> {
+    // Write all header lines (hash lines, LinesN lines, etc.)
+    for line in &header.lines {
+        writer.write_all(line)?;
+        writer.write_all(b"\n")?;
+    }
+
+    // Write column names line with optional suffix
+    if let Some(ref column_names) = header.column_names {
+        writer.write_all(column_names)?;
+        if let Some(s) = suffix {
+            writer.write_all(s)?;
+        }
+        writer.write_all(b"\n")?;
+    }
+
+    Ok(())
+}
+
+/// Builds a suffix string from items for appending to column names.
+///
+/// This is useful for commands like `uniq --equiv` that add extra columns to the header.
+///
+/// # Arguments
+/// * `items` - Items to include in the suffix
+/// * `delimiter` - Delimiter to use between items
+///
+/// # Returns
+/// A byte vector containing the suffix (starts with delimiter).
+pub fn build_suffix(items: &[impl AsRef<str>], delimiter: u8) -> Vec<u8> {
+    let mut result = Vec::new();
+    for item in items {
+        result.push(delimiter);
+        result.extend_from_slice(item.as_ref().as_bytes());
+    }
+    result
+}
