@@ -232,6 +232,7 @@ hyperfine \
     --warmup 3 \
     --min-runs 50 \
     --export-markdown expr_filter.tmp.md \
+    -n "tsv-filter" "tsv-filter -H --gt carat:1 --str-eq cut:Premium --lt price:3000 docs/data/diamonds.tsv > /dev/null" \
     -n "xan filter" "xan filter 'carat > 1 and cut eq \"Premium\" and price < 3000' docs/data/diamonds.tsv > /dev/null" \
     -n "tva expr -m skip-null" "tva expr -H -m skip-null -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv > /dev/null" \
     -n "tva expr -m filter" "tva expr -H -m filter -E '@carat > 1 and @cut eq q(Premium) and @price < 3000' docs/data/diamonds.tsv > /dev/null" \
@@ -240,10 +241,11 @@ hyperfine \
 
 | Command                 |  Mean [ms] | Min [ms] | Max [ms] |    Relative |
 |:------------------------|-----------:|---------:|---------:|------------:|
-| `xan filter`            | 52.4 ± 0.7 |     50.9 |     54.7 | 3.37 ± 0.21 |
-| `tva expr -m skip-null` | 43.7 ± 1.7 |     41.7 |     50.8 | 2.81 ± 0.20 |
-| `tva expr -m filter`    | 35.4 ± 0.9 |     34.3 |     38.4 | 2.27 ± 0.15 |
-| `tva filter`            | 15.6 ± 1.0 |     14.5 |     20.1 |        1.00 |
+| `tsv-filter`            | 21.0 ± 1.2 |     18.8 |     24.0 |        1.00 |
+| `xan filter`            | 63.3 ± 2.2 |     59.9 |     73.8 | 3.01 ± 0.20 |
+| `tva expr -m skip-null` | 54.5 ± 3.0 |     50.7 |     68.6 | 2.59 ± 0.21 |
+| `tva expr -m filter`    | 42.3 ± 2.2 |     39.5 |     53.9 | 2.01 ± 0.16 |
+| `tva filter`            | 21.0 ± 1.6 |     18.8 |     31.2 | 1.00 ± 0.10 |
 
 * select
 
@@ -252,6 +254,7 @@ hyperfine \
     --warmup 3 \
     --min-runs 50 \
     --export-markdown expr_select.tmp.md \
+    -n "tsv-select" "tsv-select -H -f carat,cut,price docs/data/diamonds.tsv > /dev/null" \
     -n "xan select" "xan select 'carat,cut,price' docs/data/diamonds.tsv > /dev/null" \
     -n "xan select -e" "xan select -e '[carat, cut, price]' docs/data/diamonds.tsv > /dev/null" \
     -n "tva expr -m eval" "tva expr -H -m eval -E '[@carat, @cut, @price]' docs/data/diamonds.tsv > /dev/null" \
@@ -260,7 +263,8 @@ hyperfine \
 
 | Command            |  Mean [ms] | Min [ms] | Max [ms] |    Relative |
 |:-------------------|-----------:|---------:|---------:|------------:|
-| `xan select`       | 47.1 ± 1.8 |     45.5 |     54.7 | 3.26 ± 0.16 |
-| `xan select -e`    | 54.8 ± 0.7 |     53.3 |     57.2 | 3.79 ± 0.13 |
-| `tva expr -m eval` | 46.8 ± 1.1 |     44.6 |     51.3 | 3.24 ± 0.12 |
-| `tva select`       | 14.5 ± 0.4 |     13.6 |     16.0 |        1.00 |
+| `tsv-select`       | 21.0 ± 1.2 |     18.6 |     24.6 | 1.03 ± 0.09 |
+| `xan select`       | 58.8 ± 2.7 |     54.4 |     72.5 | 2.87 ± 0.23 |
+| `xan select -e`    | 69.2 ± 1.8 |     65.8 |     73.2 | 3.38 ± 0.24 |
+| `tva expr -m eval` | 57.3 ± 2.7 |     53.8 |     68.3 | 2.80 ± 0.22 |
+| `tva select`       | 20.5 ± 1.3 |     17.6 |     24.5 |        1.00 |

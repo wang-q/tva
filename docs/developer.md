@@ -416,8 +416,10 @@ src/libs/tsv/simd/
 - `to/md.rs` - 转换为 markdown
 - `uniq.rs` - 整行哈希去重
 
-以下命令仍使用二次解析，需要未来迁移：
+以下命令仍使用二次解析，但**暂不迁移**：
 - `sample.rs` - Sampler trait 接收 `&[u8]`，Weighted/Distinct 采样器内部二次解析
+  - **原因**: 仅 2/8 采样器（Weighted/Distinct）需要解析字段，其余只处理整行；修改 Sampler trait 影响面广，收益有限
+  - **未来如需迁移**: 修改 `Sampler` trait 接受 `&TsvRow`，`WeightedReservoirSampler` 使用 `row.get_bytes(weight_field_idx)`，`DistinctBernoulliSampler` 使用 `row.get_bytes(key_field_idx)`
 
 ### 实施建议
 
