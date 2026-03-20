@@ -22,126 +22,8 @@
 //! assert_eq!(indices, vec![1, 3]);
 //! ```
 
-#[cfg(test)]
-use intspan::IntSpan;
-
-/// Converts field spec to IntSpan for range operations.
-/// Internal helper used by tests.
-#[cfg(test)]
-fn fields_to_ints(s: &str) -> IntSpan {
-    let mut ints = IntSpan::new();
-    for p in tokenize_field_spec(s) {
-        ints.add_runlist(&p);
-    }
-
-    ints
-}
-
-/// Parses a numeric field list, sorting and deduplicating the results.
-///
-/// Internal tool function for cases where sorted, unique indices are needed.
-/// For general field resolution, use [`FieldResolver`] instead.
-#[cfg(test)]
-fn parse_numeric_field_list(spec: &str) -> Result<Vec<usize>, String> {
-    if spec.trim().is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let mut ints: Vec<i32> = Vec::new();
-    for part in tokenize_field_spec(spec) {
-        let mut part = part.trim().to_string();
-        if part.is_empty() {
-            return Err(format!("empty field list element in `{}`", spec));
-        }
-
-        // Handle reverse ranges like "6-4" by swapping them to "4-6"
-        if let Some((s, e)) = part.split_once('-') {
-            if let (Ok(start), Ok(end)) = (s.parse::<usize>(), e.parse::<usize>()) {
-                if start > end {
-                    part = format!("{}-{}", end, start);
-                }
-            }
-        }
-
-        let intspan = IntSpan::from(&part);
-        for e in intspan.elements() {
-            if e <= 0 {
-                return Err(format!("field index must be >= 1 in `{}`", spec));
-            }
-            ints.push(e);
-        }
-    }
-
-    ints.sort_unstable();
-    ints.dedup();
-
-    Ok(ints.iter().map(|e| *e as usize).collect())
-}
-
-/// Parses numeric field list preserving order and duplicates.
-///
-/// Internal implementation detail - only used by tests.
-#[cfg(test)]
-fn parse_numeric_field_list_preserve_order(spec: &str) -> Result<Vec<usize>, String> {
-    if spec.trim().is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let mut ints: Vec<i32> = Vec::new();
-    for part in tokenize_field_spec(spec) {
-        let part = part.trim().to_string();
-        if part.is_empty() {
-            return Err(format!("empty field list element in `{}`", spec));
-        }
-
-        // Handle reverse ranges like "6-4" by swapping them to "4-6" for expansion,
-        // but we might want to support "6,5,4".
-        // Current IntSpan doesn't support order preserving or reverse ranges directly.
-        // If it's a range "start-end":
-        if let Some((s, e)) = part.split_once('-') {
-            if let (Ok(start), Ok(end)) = (s.parse::<i32>(), e.parse::<i32>()) {
-                if start <= 0 || end <= 0 {
-                    return Err(format!("field index must be >= 1 in `{}`", spec));
-                }
-                if start <= end {
-                    for i in start..=end {
-                        ints.push(i);
-                    }
-                } else {
-                    // Reverse range
-                    let mut i = start;
-                    while i >= end {
-                        ints.push(i);
-                        i -= 1;
-                    }
-                }
-                continue;
-            }
-        }
-
-        // Single number?
-        if let Ok(n) = part.parse::<i32>() {
-            if n <= 0 {
-                return Err(format!("field index must be >= 1 in `{}`", spec));
-            }
-            if n > 1048576 {
-                return Err(format!("Maximum allowed field number is 1048576."));
-            }
-            ints.push(n);
-            continue;
-        }
-
-        return Err(format!("invalid numeric field spec: `{}`", part));
-    }
-
-    Ok(ints.iter().map(|e| *e as usize).collect())
-}
-
-/// Convenience function for tests to parse field spec and unwrap.
-#[cfg(test)]
-fn fields_to_idx(spec: &str) -> Vec<usize> {
-    parse_numeric_field_list(spec).unwrap()
-}
+/// Maximum allowed field number to prevent excessive memory allocation.
+const MAX_FIELD_NUMBER: usize = 1_048_576;
 
 pub fn tokenize_field_spec(spec: &str) -> Vec<String> {
     // Split by comma, but respect escaped commas
@@ -264,15 +146,17 @@ fn parse_field_list_with_header_preserve_order(
     header: Option<&crate::libs::tsv::header::Header>,
     _delimiter: char,
 ) -> Result<Vec<usize>, String> {
+    // Handle empty spec - return empty result (consistent with old API)
+    if spec.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
     if header.is_none() {
         // If header is missing, we can only parse numeric indices.
-        // If there are non-numeric tokens, we should error out with "requires header" or similar.
-        // parse_numeric_field_list_preserve_order already handles numeric parsing.
-        // If it encounters non-numeric, it returns "invalid numeric field spec".
-        // We need to catch that and see if it looks like a name.
-        // Or better: iterate tokens here.
+        // Non-numeric tokens will result in a "requires header" error.
         let mut indices = Vec::new();
         for token in tokenize_field_spec(spec) {
+            let token = token.trim();
             if token.is_empty() {
                 return Err(format!("empty field list element in `{}`", spec));
             }
@@ -280,8 +164,11 @@ fn parse_field_list_with_header_preserve_order(
                 if idx == 0 {
                     return Err(format!("field index must be >= 1 in `{}`", spec));
                 }
-                if idx > 1048576 {
-                    return Err(format!("Maximum allowed field number is 1048576."));
+                if idx > MAX_FIELD_NUMBER {
+                    return Err(format!(
+                        "Maximum allowed field number is {}.",
+                        MAX_FIELD_NUMBER
+                    ));
                 }
                 indices.push(idx);
             } else if let Some((start_str, end_str)) = split_name_range_token(&token) {
@@ -343,6 +230,7 @@ fn parse_field_list_with_header_preserve_order(
     let mut indices = Vec::new();
 
     for token in tokenize_field_spec(spec) {
+        let token = token.trim();
         // tokenize_field_spec handles splitting by ',' and respects escaped commas.
         // However, it does not unescape other characters.
 
@@ -351,8 +239,11 @@ fn parse_field_list_with_header_preserve_order(
             if idx == 0 {
                 return Err(format!("field index must be >= 1 in `{}`", spec));
             }
-            if idx > 1048576 {
-                return Err(format!("Maximum allowed field number is 1048576."));
+            if idx > MAX_FIELD_NUMBER {
+                return Err(format!(
+                    "Maximum allowed field number is {}.",
+                    MAX_FIELD_NUMBER
+                ));
             }
             indices.push(idx);
         } else if let Some((start_str, end_str)) = split_name_range_token(&token) {
@@ -533,21 +424,25 @@ mod tests {
     use super::*;
     use crate::libs::tsv::header::Header;
 
+    // FieldResolver preserves order and duplicates by design.
     #[test]
-    fn test_parse_numeric_field_list_basic() {
-        let v = parse_numeric_field_list("1,3-5").unwrap();
+    fn test_field_resolver_numeric_basic() {
+        let resolver = FieldResolver::new(None, '\t');
+        let v = resolver.resolve("1,3-5").unwrap();
         assert_eq!(v, vec![1, 3, 4, 5]);
     }
 
     #[test]
-    fn test_parse_numeric_field_list_whitespace_and_dup() {
-        let v = parse_numeric_field_list(" 2 , 2 , 4-5 ").unwrap();
+    fn test_field_resolver_numeric_whitespace() {
+        let resolver = FieldResolver::new(None, '\t');
+        let v = resolver.resolve(" 2 , 4-5 ").unwrap();
         assert_eq!(v, vec![2, 4, 5]);
     }
 
     #[test]
-    fn test_parse_numeric_field_list_empty() {
-        let v = parse_numeric_field_list("   ").unwrap();
+    fn test_field_resolver_numeric_empty() {
+        let resolver = FieldResolver::new(None, '\t');
+        let v = resolver.resolve("   ").unwrap();
         assert!(v.is_empty());
     }
 
@@ -753,20 +648,22 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_numeric_field_list_error_empty_element() {
-        let err = parse_numeric_field_list("1,,2").unwrap_err();
+    fn test_field_resolver_no_header_error_empty_element() {
+        let resolver = FieldResolver::new(None, '\t');
+        let err = resolver.resolve("1,,2").unwrap_err();
         assert_eq!(err, "empty field list element in `1,,2`");
 
-        let err = parse_numeric_field_list(",").unwrap_err();
+        let err = resolver.resolve(",").unwrap_err();
         assert_eq!(err, "empty field list element in `,`");
     }
 
     #[test]
-    fn test_parse_numeric_field_list_error_zero_index() {
-        let err = parse_numeric_field_list("0").unwrap_err();
+    fn test_field_resolver_no_header_error_zero_index() {
+        let resolver = FieldResolver::new(None, '\t');
+        let err = resolver.resolve("0").unwrap_err();
         assert_eq!(err, "field index must be >= 1 in `0`");
 
-        let err = parse_numeric_field_list("1,0,2").unwrap_err();
+        let err = resolver.resolve("1,0,2").unwrap_err();
         assert_eq!(err, "field index must be >= 1 in `1,0,2`");
     }
 
@@ -843,9 +740,10 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_numeric_field_list_reverse_range() {
-        let v = parse_numeric_field_list("5-3").unwrap();
-        assert_eq!(v, vec![3, 4, 5]);
+    fn test_field_resolver_no_header_reverse_range() {
+        let resolver = FieldResolver::new(None, '\t');
+        let v = resolver.resolve("5-3").unwrap();
+        assert_eq!(v, vec![5, 4, 3]); // Preserves order, unlike sorted API
     }
 
     #[test]
@@ -858,51 +756,45 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_numeric_field_list_preserve_order_basic() {
-        let v = parse_numeric_field_list_preserve_order("1,3-5").unwrap();
+    fn test_field_resolver_no_header_basic() {
+        let resolver = FieldResolver::new(None, '\t');
+        let v = resolver.resolve("1,3-5").unwrap();
         assert_eq!(v, vec![1, 3, 4, 5]);
     }
 
     #[test]
-    fn test_parse_numeric_field_list_preserve_order_reverse() {
-        let v = parse_numeric_field_list_preserve_order("5-3").unwrap();
+    fn test_field_resolver_no_header_reverse() {
+        let resolver = FieldResolver::new(None, '\t');
+        let v = resolver.resolve("5-3").unwrap();
         assert_eq!(v, vec![5, 4, 3]);
     }
 
     #[test]
-    fn test_parse_numeric_field_list_preserve_order_mixed() {
-        let v = parse_numeric_field_list_preserve_order("2,4-5,1").unwrap();
+    fn test_field_resolver_no_header_mixed() {
+        let resolver = FieldResolver::new(None, '\t');
+        let v = resolver.resolve("2,4-5,1").unwrap();
         assert_eq!(v, vec![2, 4, 5, 1]);
     }
 
     #[test]
-    fn test_parse_numeric_field_list_preserve_order_error_zero() {
-        let err = parse_numeric_field_list_preserve_order("0").unwrap_err();
+    fn test_field_resolver_no_header_error_zero() {
+        let resolver = FieldResolver::new(None, '\t');
+        let err = resolver.resolve("0").unwrap_err();
         assert!(err.contains("field index must be >= 1"));
     }
 
     #[test]
-    fn test_parse_numeric_field_list_preserve_order_error_empty() {
-        let err = parse_numeric_field_list_preserve_order(",").unwrap_err();
+    fn test_field_resolver_no_header_error_empty() {
+        let resolver = FieldResolver::new(None, '\t');
+        let err = resolver.resolve(",").unwrap_err();
         assert!(err.contains("empty field list element"));
     }
 
     #[test]
-    fn test_parse_numeric_field_list_preserve_order_error_invalid() {
-        let err = parse_numeric_field_list_preserve_order("a").unwrap_err();
-        assert!(err.contains("invalid numeric field spec"));
-    }
-
-    #[test]
-    fn test_fields_to_ints() {
-        let span = fields_to_ints("1,3-5");
-        assert_eq!(span.to_string(), "1,3-5");
-    }
-
-    #[test]
-    fn test_fields_to_idx() {
-        let v = fields_to_idx("1,3-5");
-        assert_eq!(v, vec![1, 3, 4, 5]);
+    fn test_field_resolver_no_header_error_invalid() {
+        let resolver = FieldResolver::new(None, '\t');
+        let err = resolver.resolve("a").unwrap_err();
+        assert!(err.contains("requires header"));
     }
 
     // FieldResolver tests - migrated from deprecated parse_field_list_with_header_preserve_order tests
@@ -932,7 +824,10 @@ mod tests {
     fn test_field_resolver_preserve_order_limit() {
         let resolver = FieldResolver::new(None, '\t');
         let err = resolver.resolve("1048577").unwrap_err();
-        assert!(err.contains("Maximum allowed field number is 1048576"));
+        assert!(err.contains(&format!(
+            "Maximum allowed field number is {}",
+            MAX_FIELD_NUMBER
+        )));
     }
 
     #[test]
@@ -998,7 +893,10 @@ mod tests {
     fn test_field_resolver_preserve_order_with_header_limit() {
         let resolver = FieldResolver::new(Some(b"a".to_vec()), '\t');
         let err = resolver.resolve("1048577").unwrap_err();
-        assert!(err.contains("Maximum allowed field number is 1048576"));
+        assert!(err.contains(&format!(
+            "Maximum allowed field number is {}",
+            MAX_FIELD_NUMBER
+        )));
     }
 
     // FieldResolver tests
