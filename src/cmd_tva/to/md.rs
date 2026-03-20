@@ -65,20 +65,18 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
         args.get_one::<String>("infile").unwrap(),
     )?);
 
-    let mut opt_center: intspan::IntSpan = if args.contains_id("center") {
-        crate::libs::tsv::fields::fields_to_ints(
-            args.get_one::<String>("center").unwrap(),
-        )
-    } else {
-        intspan::IntSpan::new()
-    };
-    let mut opt_right: intspan::IntSpan = if args.contains_id("right") {
-        crate::libs::tsv::fields::fields_to_ints(
-            args.get_one::<String>("right").unwrap(),
-        )
-    } else {
-        intspan::IntSpan::new()
-    };
+    let mut opt_center: intspan::IntSpan = intspan::IntSpan::new();
+    if args.contains_id("center") {
+        for p in args.get_one::<String>("center").unwrap().split(',') {
+            opt_center.add_runlist(p.trim());
+        }
+    }
+    let mut opt_right: intspan::IntSpan = intspan::IntSpan::new();
+    if args.contains_id("right") {
+        for p in args.get_one::<String>("right").unwrap().split(',') {
+            opt_right.add_runlist(p.trim());
+        }
+    }
     let mut is_num = args.get_flag("num");
     let is_fmt = args.get_flag("fmt");
     if is_fmt {

@@ -350,7 +350,7 @@ fn select_repeated_fields(input: &str, args: &[&str], expected: &str) {
 #[test_case(&["select", "-f", "-2"], "a\tb\n", "unexpected argument" ; "incomplete_range_start")]
 #[test_case(&["select", "-f", "2-"], "a\tb\n", "Incomplete ranges are not supported" ; "incomplete_range_end")]
 #[test_case(&["select", "-f", "1,2"], "a\tb\n1\n", "Not enough fields" ; "not_enough_fields")]
-#[test_case(&["select", "-e", "1048577"], "a\n", "Maximum allowed '--e|exclude' field number is 1048576" ; "exclude_max_field_limit")]
+#[test_case(&["select", "-e", "1048577"], "a\n", "Maximum allowed field number is 1048576" ; "exclude_max_field_limit")]
 #[test_case(&["select", "-H", "-f", "h3"], "h1\th2\n1\t2\n", "Field not found in file header: 'h3'" ; "header_no_such_field")]
 #[test_case(&["select", "-H", "-f", "h1-h3"], "h1\th2\n1\t2\n", "Second field in range not found" ; "header_range_second_missing")]
 fn select_errors(args: &[&str], stdin: &str, expected_err: &str) {

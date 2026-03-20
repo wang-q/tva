@@ -22,10 +22,14 @@
 //! assert_eq!(indices, vec![1, 3]);
 //! ```
 
+#[cfg(test)]
 use intspan::IntSpan;
 use std::collections::HashMap;
 
-pub fn fields_to_ints(s: &str) -> IntSpan {
+/// Converts field spec to IntSpan for range operations.
+/// Internal helper used by tests.
+#[cfg(test)]
+fn fields_to_ints(s: &str) -> IntSpan {
     let mut ints = IntSpan::new();
     for p in tokenize_field_spec(s) {
         ints.add_runlist(&p);
@@ -122,10 +126,7 @@ fn parse_numeric_field_list_preserve_order(spec: &str) -> Result<Vec<usize>, Str
                 return Err(format!("field index must be >= 1 in `{}`", spec));
             }
             if n > 1048576 {
-                // tsv-select limit check
-                return Err(format!(
-                    "Maximum allowed '--e|exclude' field number is 1048576."
-                ));
+                return Err(format!("Maximum allowed field number is 1048576."));
             }
             ints.push(n);
             continue;
@@ -386,9 +387,7 @@ fn parse_field_list_with_header_preserve_order(
                     return Err(format!("field index must be >= 1 in `{}`", spec));
                 }
                 if idx > 1048576 {
-                    return Err(format!(
-                        "Maximum allowed '--e|exclude' field number is 1048576."
-                    ));
+                    return Err(format!("Maximum allowed field number is 1048576."));
                 }
                 indices.push(idx);
             } else if let Some((start_str, end_str)) = split_name_range_token(&token) {
@@ -459,9 +458,7 @@ fn parse_field_list_with_header_preserve_order(
                 return Err(format!("field index must be >= 1 in `{}`", spec));
             }
             if idx > 1048576 {
-                return Err(format!(
-                    "Maximum allowed '--e|exclude' field number is 1048576."
-                ));
+                return Err(format!("Maximum allowed field number is 1048576."));
             }
             indices.push(idx);
         } else if let Some((start_str, end_str)) = split_name_range_token(&token) {
@@ -611,22 +608,7 @@ fn resolve_fields_from_header(
 /// This struct encapsulates the logic for resolving field specifications, automatically
 /// choosing between numeric parsing and header-aware parsing based on available header data.
 ///
-/// # Example
-///
-/// ```rust
-/// use tva::libs::tsv::fields::FieldResolver;
-///
-/// // With header - can use field names
-/// let header_bytes = b"name\tage\tcity".to_vec();
-/// let resolver = FieldResolver::new(Some(header_bytes), '\t');
-/// let indices = resolver.resolve("name,city").unwrap();
-/// assert_eq!(indices, vec![1, 3]);
-///
-/// // Without header - only numeric specs
-/// let resolver = FieldResolver::new(None, '\t');
-/// let indices = resolver.resolve("1,3").unwrap();
-/// assert_eq!(indices, vec![1, 3]);
-/// ```
+/// See module-level documentation for usage examples.
 pub struct FieldResolver {
     header_bytes: Option<Vec<u8>>,
     delimiter: char,
@@ -1086,7 +1068,7 @@ mod tests {
     fn test_field_resolver_preserve_order_limit() {
         let resolver = FieldResolver::new(None, '\t');
         let err = resolver.resolve("1048577").unwrap_err();
-        assert!(err.contains("Maximum allowed '--e|exclude' field number is 1048576"));
+        assert!(err.contains("Maximum allowed field number is 1048576"));
     }
 
     #[test]
@@ -1152,7 +1134,7 @@ mod tests {
     fn test_field_resolver_preserve_order_with_header_limit() {
         let resolver = FieldResolver::new(Some(b"a".to_vec()), '\t');
         let err = resolver.resolve("1048577").unwrap_err();
-        assert!(err.contains("Maximum allowed '--e|exclude' field number is 1048576"));
+        assert!(err.contains("Maximum allowed field number is 1048576"));
     }
 
     // FieldResolver tests
