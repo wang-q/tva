@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
+            window.path_to_searchindex_js = "../searchindex-80e5397d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -207,6 +207,29 @@
 <li><code>a % b</code>: Modulo</li>
 <li><code>a ** b</code>: Power</li>
 </ul>
+<pre><code class="language-bash"># Basic arithmetic
+tva expr -E '10 + 5'                # Returns: 15
+tva expr -E '10 - 5'                # Returns: 5
+tva expr -E '10 * 5'                # Returns: 50
+tva expr -E '10 / 3'                # Returns: 3.333...
+tva expr -E '10 % 3'                # Returns: 1
+
+# Power operator
+tva expr -E '2 ** 10'               # Returns: 1024
+tva expr -E '3 ** 2'                # Returns: 9
+tva expr -E '2 ** 3 + 1'            # Returns: 9 (power before addition)
+tva expr -E '2 ** (3 + 1)'          # Returns: 16 (parentheses change order)
+
+# Negation
+tva expr -E '3 + -5'                # Returns: -2
+# Note: Expressions starting with '-' need special handling
+tva expr -E ' -5 + 3'               # Returns: -2
+tva expr -E='-5 + 3'                # Returns: -2
+
+# Wrong usage
+# tva expr -E '-5 + 3'                # Returns: -2
+# tva expr -E '-(5 + 3)'              # Returns: -8
+</code></pre>
 <h2 id="string-operators"><a class="header" href="#string-operators">String Operators</a></h2>
 <h3 id="concatenation"><a class="header" href="#concatenation">Concatenation</a></h3>
 <p><code>a ++ b</code> - Concatenates two values as strings.</p>

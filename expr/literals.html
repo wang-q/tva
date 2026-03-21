@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
+            window.path_to_searchindex_js = "../searchindex-80e5397d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -327,6 +327,14 @@ tva expr -E "q(it's ok)"            # No need to escape quotes
 
 # Escaping parentheses
 tva expr -E 'q(test \(nested\) parens)'   # Returns: test (nested) parens
+
+# Escaping backslash
+tva expr -E 'q(C:\\Users\\name)'          # Returns: C:\Users\name
+
+# Summary of q() escaping:
+#   \(  -&gt;  (
+#   \)  -&gt;  )
+#   \\  -&gt;  \
 
 tva expr -H -s -E '@cut eq "Premium"' docs/data/diamonds.tsv
 tva expr -H -s -E '@cut eq q(Premium)' docs/data/diamonds.tsv
