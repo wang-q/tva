@@ -15,7 +15,7 @@ Behavior:
 
 Input:
 
-* Reads from files or standard input; multiple files are processed as one stream.
+* Reads from files or standard input.
 * Files ending in `.gz` are transparently decompressed.
 
 Header behavior:

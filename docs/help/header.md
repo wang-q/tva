@@ -18,14 +18,14 @@ Input:
 
 Examples:
 
-1. Display headers of a single file:
+1. Display headers of a single file
    `tva header data.tsv`
 
-2. Show only header names without indices:
+2. Show only header names without indices
    `tva header -n data.tsv`
 
-3. Compare headers across multiple files:
+3. Compare headers across multiple files
    `tva header file1.tsv file2.tsv`
 
-4. Start indices from 0:
+4. Start indices from 0
    `tva header -s 0 data.tsv`

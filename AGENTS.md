@@ -120,42 +120,6 @@ cargo test
     * 对于 CPU 密集型任务 (如复杂 `filter` 或 `stats`)，架构应支持基于 "Chunking" 的数据并行。
     * 利用 TSV `\n` 的唯一性，将大文件切分为多个 `Chunk`，分发给线程池处理，最后聚合结果。
 
-### Hash 算法选择规范
-
-为保证极致性能与安全性的平衡，`tva` 对 Hash 算法的选择有严格规定：
-
-1. **Hash Map (如 `join` 命令)**:
-    * **必须使用**: `ahash::RandomState`。
-    * **原因**: `ahash` 专为 Rust `HashMap` 设计，支持高效的增量哈希 (Incremental Hashing)
-      ，且无需缓冲数据，比一次性哈希更适合 Map 查找场景。同时提供基本的 HashDoS 防护。
-    * **禁止**: 使用默认的 `SipHash` (太慢) 或 `rapidhash` (无原生增量接口，需缓冲，导致 Map
-      性能下降)。
-
-2. **一次性哈希 (One-shot Hashing, 如 `uniq` 命令)**:
-    * **推荐使用**: `rapidhash::rapidhash()`。
-    * **原因**: 在可以一次性获取完整 Key 的场景下（如读取整行），`rapidhash` 是目前最快的非加密哈希算法之一。
-    * **适用场景**: 去重、布隆过滤器、数据指纹计算。
-
-3. **加密/安全哈希**:
-    * **必须使用**: `SipHash` (Rust 默认) 或 `SHA-256`。
-    * **适用场景**: 即使牺牲性能也必须绝对防止 HashDoS 攻击的公共接口，或需要加密签名的场景。
-
-### 架构决策与设计约束 (Architectural Constraints)
-
-1. **TSV 专用假设 (TSV Assumptions)**:
-    * **无引号优化**: 利用 TSV 不支持引号和转义的特性，核心解析逻辑应完全依赖 SIMD (`memchr`)
-      扫描，避免复杂的 CSV 状态机。
-    * **行级并行**: 假设 `\n` 具有唯一记录分隔符语义，架构应支持按行切分数据块进行并行处理。
-
-2. **Join 策略 (Stream-Static Model)**:
-    * **机制**: 采用 "Hash Semi-Join" (Filter + Append) 模式。
-    * **约束**: 仅将 Filter 文件加载到内存 (HashMap)，流式处理 Data 文件。避免像 `xan` 那样全量加载数据以支持 SQL 全连接，保持对大数据集的 O(1) 内存友好性。
-
-3. **内存热点优化 (Hot Path Memory)**:
-    * **Buffer 复用**: 在处理循环中，必须复用 `Vec`/`String` 缓冲区，禁止在循环体内频繁分配/释放堆内存。
-    * **小对象优化**: 对于短 Key (如 ID, Code)，优先使用 `SmallVec<[u8; N]>` (推荐 N=32) 以利用栈内存，避免
-      `malloc` 开销。
-
 ## 帮助文本规范 (Help Text Style Guide)
 
 ### Rust 实现规范 (Implementation)
@@ -206,8 +170,9 @@ cargo test
 
 5. **内容格式**:
     * **列表**: 使用 `* `（星号 + 1 个空格）引导无序列表。
-        * 子项使用 `    * `（4空格缩进 + 星号 + 1 空格）。
+        * 子项使用 `    * `（4空格缩进 + 星号 + 1 个空格）。
     * **代码示例**: 使用缩进（4空格）而非 ` ``` `。
+    * 例外：多行命令示例（如包含 `\` 换行的命令）可使用 ` ``` ` 代码块。
     * **参数引用**: 使用反引号包裹，如 `` `--header` / `-H` ``。
 
 6. **标准描述模板**:
@@ -217,6 +182,7 @@ cargo test
    * Reads from files or standard input.
    * Files ending in `.gz` are transparently decompressed.
    ```
+   *例外：特殊输入源（如 `from xlsx` 需要文件路径，`from html` 支持 stdin）可适当调整描述。*
 
    **Header behavior（仅 `--header`）:**
    ```

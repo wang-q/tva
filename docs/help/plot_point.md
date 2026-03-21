@@ -1,13 +1,13 @@
 # plot point
 
-Draws a scatter plot or line chart in the terminal.
+Draws a scatter plot, line chart, or path chart in the terminal.
 
 Behavior:
 
 * Maps TSV columns to visual aesthetics (position, color).
 * Supports scatter plots (default), line charts (`--line`), or path charts (`--path`).
 * Supports overlaying linear regression lines (`--regression`).
-* Automatically calculates axis ranges from data.
+* `--regression` cannot be used with `--line` or `--path`.
 
 Input:
 
@@ -20,44 +20,33 @@ Output:
 * Renders an ASCII/Unicode chart to standard output.
 * Chart dimensions can be controlled with `--cols` and `--rows`.
 
-Aesthetics:
+Chart types:
 
-* `-x`, `--x`: Column for X-axis position (required).
-* `-y`, `--y`: Column for Y-axis position (required).
-* `--color`: Column for grouping/coloring points by category.
-
-Options:
-
-* `-l`, `--line`: Connect points with lines, sorted by X value (geom_line behavior).
-* `--path`: Connect points with lines, preserving original data order (geom_path behavior).
-* `-r`, `--regression`: Overlay linear regression line (least squares fit). Cannot be used with
-  `--line` or `--path`.
-* `-m`, `--marker`: Marker style - `braille` (default), `dot`, or `block`.
-* `--cols`: Chart width in characters (default: 80).
-* `--rows`: Chart height in characters (default: 24).
-* `--ignore`: Skip rows with non-numeric values in X/Y columns.
-
-Column specification:
-
-* Columns can be specified by 1-based index or header name.
-* Run `tva --help-fields` for field syntax details.
+* Scatter plot (default): Individual points without connecting lines.
+* `--line` / `-l`: Connect points with lines, sorted by X value (good for trends).
+* `--path`: Connect points with lines, preserving original data order (good for trajectories).
+* `--regression` / `-r`: Overlay linear regression line (least squares fit).
+  Cannot be used with `--line` or `--path`.
 
 Examples:
 
-1. Basic scatter plot:
+1. Basic scatter plot
    `tva plot point data.tsv -x age -y income`
 
-2. Grouped by category:
+2. Grouped by category
    `tva plot point iris.tsv -x petal_length -y petal_width --color label`
 
-3. Line chart (sorted by X, good for trends):
+3. Line chart (sorted by X, good for trends)
    `tva plot point timeseries.tsv -x time -y value --line --cols 100 --rows 30`
 
-4. Path chart (preserves data order, good for trajectories):
+4. Path chart (preserves data order, good for trajectories)
    `tva plot point trajectory.tsv -x x -y y --path --cols 100 --rows 30`
 
-5. With regression line (linear fit):
+5. With regression line (linear fit)
    `tva plot point iris.tsv -x sepal_length -y petal_length --regression`
 
-6. Using column indices:
+6. Using column indices
    `tva plot point data.tsv -x 1 -y 3 --color 5`
+
+7. Multiple Y columns
+   `tva plot point data.tsv -x time -y value1,value2`
