@@ -1,6 +1,8 @@
 use clap::*;
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::process::{Command as ProcessCommand, Stdio};
+
+const COPY_BUFFER_SIZE: usize = 128 * 1024; // 128KB
 
 pub fn make_subcommand() -> Command {
     Command::new("keep-header")
@@ -30,6 +32,23 @@ pub fn make_subcommand() -> Command {
                 .required(true)
                 .help("Command to run"),
         )
+}
+
+fn copy_with_buffer<R: Read, W: Write>(
+    reader: &mut R,
+    writer: &mut W,
+    buffer: &mut [u8],
+) -> io::Result<u64> {
+    let mut total = 0u64;
+    loop {
+        let n = reader.read(buffer)?;
+        if n == 0 {
+            break;
+        }
+        writer.write_all(&buffer[..n])?;
+        total += n as u64;
+    }
+    Ok(total)
 }
 
 pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
@@ -66,6 +85,7 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     let mut child_stdin = child.stdin.take().unwrap();
     let mut header_source_used = false;
     let mut stdout = io::stdout();
+    let mut copy_buffer = vec![0u8; COPY_BUFFER_SIZE];
 
     let filenames: Vec<String> = if file_args.is_empty() {
         vec!["-".to_string()]
@@ -101,8 +121,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 current_line += 1;
             }
 
-            // Stream remaining data directly to child stdin
-            io::copy(&mut buf_reader, &mut child_stdin)?;
+            // Stream remaining data directly to child stdin using large buffer
+            copy_with_buffer(&mut buf_reader, &mut child_stdin, &mut copy_buffer)?;
 
             if current_line > 0 {
                 header_source_used = true;
@@ -129,8 +149,8 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
                 skipped += 1;
             }
 
-            // Stream remaining data directly to child stdin
-            io::copy(&mut buf_reader, &mut child_stdin)?;
+            // Stream remaining data directly to child stdin using large buffer
+            copy_with_buffer(&mut buf_reader, &mut child_stdin, &mut copy_buffer)?;
         }
     }
 
