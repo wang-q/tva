@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8432a8e8.js";
+            window.path_to_searchindex_js = "searchindex-d5a81742.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-89bb9ebf.js"></script>
@@ -485,8 +485,7 @@ hyperfine \
     -n "tva reverse" "tva reverse docs/data/diamonds.tsv &gt; /dev/null" \
     -n "tva reverse -H" "tva reverse -H docs/data/diamonds.tsv &gt; /dev/null" \
     -n "tva reverse --no-mmap" "tva reverse --no-mmap docs/data/diamonds.tsv &gt; /dev/null" \
-    -n "tac" "tac docs/data/diamonds.tsv &gt; /dev/null" \
-    -n "keep-header -- tac" "tva keep-header docs/data/diamonds.tsv -- tac &gt; /dev/null"
+    -n "tac" "tac docs/data/diamonds.tsv &gt; /dev/null"
 </code></pre>
 <div class="table-wrapper">
 <table>
@@ -540,23 +539,26 @@ f.read_to_end(&amp;mut buf)?;  // 一次性读入
     -n "tsv-uniq" "tsv-uniq docs/data/diamonds.tsv &gt; /dev/null" \
     -n "tva uniq" "tva uniq docs/data/diamonds.tsv &gt; /dev/null" \
     -n "sort uniq" "sort docs/data/diamonds.tsv | uniq &gt; /dev/null"
-``
-
-| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
-|:---|---:|---:|---:|---:|
-| `tsv-uniq -f carat` | 35.5 ± 11.3 | 23.9 | 64.8 | 1.00 |
-| `tsv-uniq -f 1` | 37.3 ± 11.5 | 26.7 | 86.5 | 1.05 ± 0.46 |
-| `tva uniq -f carat` | 41.3 ± 13.2 | 23.4 | 91.9 | 1.16 ± 0.52 |
-| `tva uniq -f 1` | 44.7 ± 10.5 | 26.4 | 74.1 | 1.26 ± 0.50 |
-| `cut sort uniq` | 175.8 ± 42.4 | 138.4 | 311.1 | 4.96 ± 1.97 |
-| `tsv-uniq` | 64.4 ± 17.8 | 41.4 | 103.0 | 1.81 ± 0.76 |
-| `tva uniq` | 44.2 ± 6.7 | 30.9 | 63.3 | 1.25 ± 0.44 |
-| `sort uniq` | 59.2 ± 11.5 | 47.8 | 96.4 | 1.67 ± 0.62 |
-
-### append
-
-```bash
-hyperfine \
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Command</th><th style="text-align: right">Mean [ms]</th><th style="text-align: right">Min [ms]</th><th style="text-align: right">Max [ms]</th><th style="text-align: right">Relative</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>tsv-uniq -f carat</code></td><td style="text-align: right">35.5 ± 11.3</td><td style="text-align: right">23.9</td><td style="text-align: right">64.8</td><td style="text-align: right">1.00</td></tr>
+<tr><td style="text-align: left"><code>tsv-uniq -f 1</code></td><td style="text-align: right">37.3 ± 11.5</td><td style="text-align: right">26.7</td><td style="text-align: right">86.5</td><td style="text-align: right">1.05 ± 0.46</td></tr>
+<tr><td style="text-align: left"><code>tva uniq -f carat</code></td><td style="text-align: right">41.3 ± 13.2</td><td style="text-align: right">23.4</td><td style="text-align: right">91.9</td><td style="text-align: right">1.16 ± 0.52</td></tr>
+<tr><td style="text-align: left"><code>tva uniq -f 1</code></td><td style="text-align: right">44.7 ± 10.5</td><td style="text-align: right">26.4</td><td style="text-align: right">74.1</td><td style="text-align: right">1.26 ± 0.50</td></tr>
+<tr><td style="text-align: left"><code>cut sort uniq</code></td><td style="text-align: right">175.8 ± 42.4</td><td style="text-align: right">138.4</td><td style="text-align: right">311.1</td><td style="text-align: right">4.96 ± 1.97</td></tr>
+<tr><td style="text-align: left"><code>tsv-uniq</code></td><td style="text-align: right">64.4 ± 17.8</td><td style="text-align: right">41.4</td><td style="text-align: right">103.0</td><td style="text-align: right">1.81 ± 0.76</td></tr>
+<tr><td style="text-align: left"><code>tva uniq</code></td><td style="text-align: right">44.2 ± 6.7</td><td style="text-align: right">30.9</td><td style="text-align: right">63.3</td><td style="text-align: right">1.25 ± 0.44</td></tr>
+<tr><td style="text-align: left"><code>sort uniq</code></td><td style="text-align: right">59.2 ± 11.5</td><td style="text-align: right">47.8</td><td style="text-align: right">96.4</td><td style="text-align: right">1.67 ± 0.62</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="append"><a class="header" href="#append">append</a></h3>
+<pre><code class="language-bash">hyperfine \
     --warmup 3 \
     --min-runs 50 \
     --export-markdown tva_append.tmp.md \
@@ -581,10 +583,10 @@ hyperfine \
     --warmup 3 \
     --min-runs 50 \
     --export-markdown tva_sort.tmp.md \
-    -n "tva sort" "tva sort -H -k 2 docs/data/diamonds.tsv &gt; /dev/null" \
-    -n "sort" "sort -k 2 docs/data/diamonds.tsv &gt; /dev/null" \
-    -n "keep-header -- sort" "keep-header docs/data/diamonds.tsv -- sort -k 2 &gt; /dev/null" \
-    -n "tva keep-header -- sort" "tva keep-header docs/data/diamonds.tsv -- sort -k 2 &gt; /dev/null"
+    -n "tva sort -k 2" "tva sort -H -k 2 docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "sort -k 2" "sort -k 2 docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tva sort" "tva sort docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "sort" "sort docs/data/diamonds.tsv &gt; /dev/null"
 </code></pre>
 <div class="table-wrapper">
 <table>
@@ -596,6 +598,33 @@ hyperfine \
 <tr><td style="text-align: left"><code>sort</code></td><td style="text-align: right">39.5 ± 3.3</td><td style="text-align: right">33.7</td><td style="text-align: right">50.2</td><td style="text-align: right">1.05 ± 0.13</td></tr>
 <tr><td style="text-align: left"><code>keep-header -- sort</code></td><td style="text-align: right">42.8 ± 3.6</td><td style="text-align: right">38.6</td><td style="text-align: right">61.0</td><td style="text-align: right">1.14 ± 0.14</td></tr>
 <tr><td style="text-align: left"><code>tva keep-header -- sort</code></td><td style="text-align: right">74.0 ± 3.3</td><td style="text-align: right">68.8</td><td style="text-align: right">85.7</td><td style="text-align: right">1.97 ± 0.20</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="keep-header"><a class="header" href="#keep-header">keep-header</a></h3>
+<pre><code class="language-bash">hyperfine \
+    --warmup 3 \
+    --min-runs 50 \
+    --export-markdown tva_keep-header.tmp.md \
+    -n "sort" "sort docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "keep-header -- sort" "keep-header docs/data/diamonds.tsv -- sort &gt; /dev/null" \
+    -n "tva keep-header -- sort" "tva keep-header docs/data/diamonds.tsv -- sort &gt; /dev/null" \
+    -n "tac" "tac docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "keep-header -- tac" "keep-header docs/data/diamonds.tsv -- tac &gt; /dev/null" \
+    -n "tva keep-header -- tac" "tva keep-header docs/data/diamonds.tsv -- tac &gt; /dev/null"
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Command</th><th style="text-align: right">Mean [ms]</th><th style="text-align: right">Min [ms]</th><th style="text-align: right">Max [ms]</th><th style="text-align: right">Relative</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>sort</code></td><td style="text-align: right">32.7 ± 1.6</td><td style="text-align: right">29.6</td><td style="text-align: right">37.9</td><td style="text-align: right">1.32 ± 0.12</td></tr>
+<tr><td style="text-align: left"><code>keep-header -- sort</code></td><td style="text-align: right">35.3 ± 2.1</td><td style="text-align: right">33.0</td><td style="text-align: right">46.6</td><td style="text-align: right">1.42 ± 0.14</td></tr>
+<tr><td style="text-align: left"><code>tva keep-header -- sort</code></td><td style="text-align: right">36.4 ± 1.8</td><td style="text-align: right">31.8</td><td style="text-align: right">43.5</td><td style="text-align: right">1.46 ± 0.13</td></tr>
+<tr><td style="text-align: left"><code>tac</code></td><td style="text-align: right">45.8 ± 1.0</td><td style="text-align: right">43.6</td><td style="text-align: right">48.2</td><td style="text-align: right">1.84 ± 0.15</td></tr>
+<tr><td style="text-align: left"><code>keep-header -- tac</code></td><td style="text-align: right">24.9 ± 1.9</td><td style="text-align: right">22.7</td><td style="text-align: right">35.3</td><td style="text-align: right">1.00</td></tr>
+<tr><td style="text-align: left"><code>tva keep-header -- tac</code></td><td style="text-align: right">26.8 ± 1.9</td><td style="text-align: right">23.5</td><td style="text-align: right">38.6</td><td style="text-align: right">1.08 ± 0.11</td></tr>
 </tbody>
 </table>
 </div>
