@@ -150,6 +150,14 @@ tva expr -E "q(it's ok)"            # No need to escape quotes
 # Escaping parentheses
 tva expr -E 'q(test \(nested\) parens)'   # Returns: test (nested) parens
 
+# Escaping backslash
+tva expr -E 'q(C:\\Users\\name)'          # Returns: C:\Users\name
+
+# Summary of q() escaping:
+#   \(  ->  (
+#   \)  ->  )
+#   \\  ->  \
+
 tva expr -H -s -E '@cut eq "Premium"' docs/data/diamonds.tsv
 tva expr -H -s -E '@cut eq q(Premium)' docs/data/diamonds.tsv
 ```

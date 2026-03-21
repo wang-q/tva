@@ -439,3 +439,277 @@ Nary { op: Add, exprs: [a, b, c, d] }
 | 中 | 统一函数/方法调用 | 一致性 |
 | 低 | 模式匹配 | 表达能力 |
 | 低 | 列表推导 | 表达能力 |
+
+---
+
+## 表达式求值递归优化方案
+
+基于对 `src/libs/expr/runtime/mod.rs` 的分析，结合 tva **只有匿名函数（lambda）**且主要用于 TSV 数据处理的特点，以下是实用的优化策略。
+
+### 关键洞察：为什么递归不是主要问题
+
+1. **无具名函数定义**：lambda 无法直接自引用，天然避免了无限递归
+2. **TSV 场景限制**：典型表达式是简单的列运算（`@price * @qty`），而非深层嵌套
+3. **高阶函数替代**：`map`/`filter`/`reduce` 覆盖了 95% 的循环需求
+
+```rust
+// 典型 tva 表达式 - 无需递归
+@data | filter(_, @age > 18) | map(_, @name.upper())
+
+// 聚合用 reduce - 无需递归
+reduce(@nums, 0, (acc, x) => acc + x)
+```
+
+### 1. 真正需要优化的地方
+
+#### 1.1 展平左结合表达式（高优先级）
+
+**问题**：`1+2+3+...+N` 产生 O(N) 嵌套深度
+
+```rust
+// 当前 AST 结构（嵌套）
+Binary {
+    op: Add,
+    left: Binary {
+        op: Add,
+        left: Binary { op: Add, left: 1, right: 2 },
+        right: 3
+    },
+    right: 4
+}
+```
+
+**优化**：在构建阶段展平
+
+```rust
+// ast.rs - 无需新增节点类型，优化 builder 即可
+// builder/binary.rs
+pub fn build_additive(pair: Pair<Rule>) -> Result<Expr, ParseError> {
+    let inner: Vec<Pair<Rule>> = pair.into_inner().collect();
+    let mut exprs: Vec<Expr> = inner
+        .into_iter()
+        .filter(|p| p.as_rule() != Rule::op_add && p.as_rule() != Rule::op_sub)
+        .map(|p| super::build_expr(p))
+        .collect::<Result<Vec<_>, _>>()?;
+    
+    if exprs.len() == 1 {
+        return Ok(exprs.into_iter().next().unwrap());
+    }
+    
+    // 直接构建左折叠的树，但控制深度
+    // 或使用迭代求值的特殊处理
+    Ok(fold_left_iterative(exprs, BinaryOp::Add))
+}
+
+// runtime/mod.rs - 特殊处理长链
+Expr::Binary { op, left, right } => {
+    // 检测是否是长链（可选优化）
+    if should_flatten_eval(op, left) {
+        return eval_binary_chain(op, left, right, ctx);
+    }
+    // 正常递归...
+}
+
+fn eval_binary_chain(
+    op: BinaryOp,
+    left: &Expr,
+    right: &Expr,
+    ctx: &mut EvalContext,
+) -> Result<Value, EvalError> {
+    // 收集链上所有表达式
+    let mut exprs = vec![];
+    collect_chain(left, op, &mut exprs);
+    exprs.push(right.clone());
+    
+    // 迭代求值
+    let mut result = eval(&exprs[0], ctx)?;
+    for expr in &exprs[1..] {
+        let val = eval(expr, ctx)?;
+        result = apply_binary_op(op, result, val)?;
+    }
+    Ok(result)
+}
+```
+
+#### 1.2 列表字面量的迭代构建
+
+```rust
+// 问题：[1,2,3,...,1000] 递归构建列表
+Expr::List(elements) => {
+    let values: Result<Vec<Value>, EvalError> =
+        elements.iter().map(|e| eval(e, ctx)).collect();
+    Ok(Value::List(values?))
+}
+
+// 优化：已经是迭代（map），但可以用 with_capacity 减少分配
+Expr::List(elements) => {
+    let mut values = Vec::with_capacity(elements.len());
+    for e in elements {
+        values.push(eval(e, ctx)?);
+    }
+    Ok(Value::List(values))
+}
+```
+
+### 2. 安全防护（必做）
+
+#### 2.1 递归深度限制
+
+```rust
+use std::cell::RefCell;
+
+thread_local! {
+    static RECURSION_DEPTH: RefCell<usize> = RefCell::new(0);
+}
+
+const MAX_RECURSION_DEPTH: usize = 1000;
+
+pub fn eval(expr: &Expr, ctx: &mut EvalContext) -> Result<Value, EvalError> {
+    RECURSION_DEPTH.with(|depth| {
+        let mut d = depth.borrow_mut();
+        *d += 1;
+        if *d > MAX_RECURSION_DEPTH {
+            *d -= 1;  // 清理
+            return Err(EvalError::RecursionLimitExceeded(MAX_RECURSION_DEPTH));
+        }
+        drop(d);
+        
+        let result = eval_internal(expr, ctx);
+        *depth.borrow_mut() -= 1;
+        result
+    })
+}
+```
+
+#### 2.2 辅助函数迭代化
+
+```rust
+// contains_underscore 改为迭代
+fn contains_underscore(expr: &Expr) -> bool {
+    let mut stack = vec![expr];
+    while let Some(e) = stack.pop() {
+        match e {
+            Expr::Underscore => return true,
+            Expr::Call { args, .. } | Expr::MethodCall { args, .. } => {
+                stack.extend(args.iter());
+            }
+            Expr::List(items) => stack.extend(items.iter()),
+            Expr::Unary { expr, .. } => stack.push(expr),
+            Expr::Binary { left, right, .. } => {
+                stack.push(left);
+                stack.push(right);
+            }
+            Expr::Pipe { left, right } => {
+                stack.push(left);
+                match right.as_ref() {
+                    PipeRight::Call { args, .. } | PipeRight::CallWithPlaceholder { args, .. } => {
+                        stack.extend(args.iter());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+```
+
+### 3. 常量折叠（编译期优化）
+
+```rust
+// builder/constant_fold.rs
+pub fn fold_constants(expr: Expr) -> Expr {
+    match expr {
+        Expr::Binary { op, left, right } => {
+            let left = fold_constants(*left);
+            let right = fold_constants(*right);
+            
+            match (&left, &right) {
+                (Expr::Int(a), Expr::Int(b)) => match op {
+                    BinaryOp::Add => return Expr::Int(a + b),
+                    BinaryOp::Sub => return Expr::Int(a - b),
+                    BinaryOp::Mul => return Expr::Int(a * b),
+                    BinaryOp::Div if *b != 0 => return Expr::Int(a / b),
+                    _ => {}
+                },
+                (Expr::Float(a), Expr::Float(b)) => match op {
+                    BinaryOp::Add => return Expr::Float(a + b),
+                    BinaryOp::Sub => return Expr::Float(a - b),
+                    BinaryOp::Mul => return Expr::Float(a * b),
+                    BinaryOp::Div => return Expr::Float(a / b),
+                    _ => {}
+                },
+                _ => {}
+            }
+            
+            Expr::Binary { 
+                op, 
+                left: Box::new(left), 
+                right: Box::new(right) 
+            }
+        }
+        
+        Expr::Unary { op, expr } => {
+            let expr = fold_constants(*expr);
+            match (&op, &expr) {
+                (UnaryOp::Neg, Expr::Int(n)) => return Expr::Int(-n),
+                (UnaryOp::Neg, Expr::Float(n)) => return Expr::Float(-n),
+                (UnaryOp::Not, Expr::Bool(b)) => return Expr::Bool(!b),
+                _ => {}
+            }
+            Expr::Unary { op, expr: Box::new(expr) }
+        }
+        
+        Expr::List(elements) => {
+            let folded: Vec<Expr> = elements.into_iter()
+                .map(fold_constants)
+                .collect();
+            Expr::List(folded)
+        }
+        
+        _ => expr
+    }
+}
+
+// 在 parse() 后调用
+pub fn parse(input: &str) -> Result<Expr, ParseError> {
+    let expr = parse_raw(input)?;
+    Ok(fold_constants(expr))
+}
+```
+
+### 4. 不需要的优化
+
+| 优化方案 | 不需要的原因 |
+|----------|--------------|
+| 显式栈求值器 | 复杂度太高，TSV 场景用不上 |
+| 尾递归优化 | 无具名函数，lambda 无法自引用 |
+| Y 组合子 | 可以用 `reduce` 替代递归 |
+| Trampolining | 无用户定义的递归函数 |
+
+### 5. 优化优先级
+
+| 优先级 | 方案 | 实现 | 收益 |
+|--------|------|------|------|
+| 高 | 递归深度限制 | 10 行代码 | 安全防护 |
+| 高 | 常量折叠 | 50 行代码 | 编译期加速 |
+| 中 | 展平二元表达式 | 30 行代码 | 长链性能 |
+| 中 | 辅助函数迭代化 | 20 行代码 | 消除栈风险 |
+| 低 | 显式栈求值 | 200+ 行 | 不必要 |
+
+### 6. 核心原则
+
+> **保持简单**：tva 的表达式语言设计目标是**简单高效的数据处理**，不是通用编程语言。
+
+```rust
+// 好的 tva 表达式 - 声明式、无递归
+@data 
+    | filter(_, @age >= 18) 
+    | map(_, @salary * 1.1) 
+    | reduce(@, 0, (sum, x) => sum + x)
+
+// 不需要支持 - 复杂的递归算法
+// fib = n => if(n <= 1, n, fib(n-1) + fib(n-2))  // 不支持！
+```
+
+真正的递归需求（如树遍历）应该在 Rust 层实现为内置函数，而不是让用户用 lambda 写递归。

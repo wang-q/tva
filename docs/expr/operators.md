@@ -27,6 +27,25 @@ TVA provides a comprehensive set of operators for arithmetic, string, comparison
 - `a % b`: Modulo
 - `a ** b`: Power
 
+```bash
+# Basic arithmetic
+tva expr -E '10 + 5'                # Returns: 15
+tva expr -E '10 - 5'                # Returns: 5
+tva expr -E '10 * 5'                # Returns: 50
+tva expr -E '10 / 3'                # Returns: 3.333...
+tva expr -E '10 % 3'                # Returns: 1
+
+# Power operator
+tva expr -E '2 ** 10'               # Returns: 1024
+tva expr -E '3 ** 2'                # Returns: 9
+tva expr -E '2 ** 3 + 1'            # Returns: 9 (power before addition)
+tva expr -E '2 ** (3 + 1)'          # Returns: 16 (parentheses change order)
+
+# Negation
+tva expr -E '-5 + 3'                # Returns: -2
+tva expr -E '-(5 + 3)'              # Returns: -8
+```
+
 ## String Operators
 
 ### Concatenation

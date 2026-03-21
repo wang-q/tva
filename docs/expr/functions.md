@@ -13,8 +13,8 @@ TVA expr engine provides a rich set of built-in functions for data processing.
 - int(val) -> int: Convert to integer, returns null on failure
 - ln(x) -> float: Natural logarithm
 - log10(x) -> float: Common logarithm (base 10)
-- max(a, b, *n) -> number: Maximum value
-- min(a, b, *n) -> number: Minimum value
+- max(a, b, ...) -> number: Maximum value
+- min(a, b, ...) -> number: Minimum value
 - pow(base, exp) -> float: Power operation
 - round(x) -> int: Round to nearest integer
 - sin(x) -> float: Sine (radians)
@@ -209,14 +209,6 @@ tva expr -E 'flatten([[1, 2], 3, [4, 5]])'     # Returns: [1, 2, 3, 4, 5]
 tva expr -E 'zip([1, 2], ["a", "b"])'          # Returns: [[1, "a"], [2, "b"]]
 tva expr -E 'zip([1, 2, 3], ["a", "b"])'       # Returns: [[1, "a"], [2, "b"]] (truncated to shortest)
 
-# Partition list by predicate
-tva expr -E 'partition([1, 2, 3, 4], x -> x % 2 == 0)'   # Returns: [[2, 4], [1, 3]]
-tva expr -E 'partition([1, 2, 3, 4, 5], x -> x > 3)'     # Returns: [[4, 5], [1, 2, 3]]
-
-# Flat map (map then flatten)
-tva expr -E 'flat_map([1, 2], x -> [x, x * 2])'          # Returns: [1, 2, 2, 4]
-tva expr -E 'flat_map(["a", "b"], x -> split(x, ""))'    # Returns: ["a", "b"]
-
 # Group list into chunks
 tva expr -E 'grouped([1, 2, 3, 4, 5], 2)'      # Returns: [[1, 2], [3, 4], [5]]
 tva expr -E 'grouped([1, 2, 3, 4], 2)'         # Returns: [[1, 2], [3, 4]]
@@ -309,13 +301,17 @@ tva expr -E 'filter_index([10, 15, 20, 25, 30], x => x > 18)'
 tva expr -E 'filter_index([1, 2, 3, 4, 5], x => x % 2 == 0)'
 # Returns: [1, 3]
 
-# Concatenate lists
-tva expr -E 'concat([1, 2], [3, 4]) | join(_, ", ")'
-# Returns: "1, 2, 3, 4"
+# Partition list by predicate
+tva expr -E 'partition([1, 2, 3, 4], x => x % 2 == 0)'
+# Returns: [[2, 4], [1, 3]]
 
-# Concatenate strings (alternative to ++ operator)
-tva expr -E 'concat("hello", " ", "world")'
-# Returns: "hello world"
+# Partition by value comparison
+tva expr -E 'partition([1, 2, 3, 4, 5], x => x > 3)'
+# Returns: [[4, 5], [1, 2, 3]]
+
+# Flat map (map then flatten)
+tva expr -E 'flat_map([1, 2], x => [x, x * 2])'          # Returns: [1, 2, 2, 4]
+tva expr -E 'flat_map(["a", "b"], x => split(x, ""))'    # Returns: ["a", "b"]
 ```
 
 ## Regular Expressions
