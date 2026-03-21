@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-80e5397d.js";
+            window.path_to_searchindex_js = "searchindex-8432a8e8.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-89bb9ebf.js"></script>
@@ -962,13 +962,6 @@ hyperfine \
     -n "tva uniq" "tva uniq -H -f 1 hepmass.tsv &gt; /dev/null" \
     -n "tsv-uniq" "tsv-uniq -H -f 1 hepmass.tsv &gt; /dev/null"
 
-# Scenario 7: Sort (Numeric)
-hyperfine \
-    --warmup 2 \
-    --min-runs 3 \
-    --export-csv benchmark_sort.csv \
-    -n "tva sort" "tva sort -H -k 1 -n hepmass.tsv &gt; /dev/null"
-
 # Scenario 8: Slice (Middle of file)
 hyperfine \
     --warmup 3 \
@@ -977,32 +970,14 @@ hyperfine \
     -n "tva slice" "tva slice -r 1000000-2000000 hepmass.tsv &gt; /dev/null" \
     -n "sed" "sed -n '1000000,2000000p' hepmass.tsv &gt; /dev/null"
 
-# Scenario 9: Reverse
-hyperfine \
-    --warmup 2 \
-    --min-runs 5 \
-    --export-csv benchmark_reverse.csv \
-    -n "tva reverse" "tva reverse hepmass.tsv &gt; /dev/null" \
-    -n "tac" "tac hepmass.tsv &gt; /dev/null"
-
-# Scenario 10: Append
-hyperfine \
-    --warmup 2 \
-    --min-runs 5 \
-    --export-csv benchmark_append.csv \
-    -n "tva append" "tva append hepmass.tsv hepmass.tsv &gt; /dev/null" \
-    -n "cat" "cat hepmass.tsv hepmass.tsv &gt; /dev/null"
-
 </code></pre>
 <h2 id="7-expr-对比-专用命令"><a class="header" href="#7-expr-对比-专用命令">7. expr 对比 专用命令</a></h2>
 <p>使用 <code>docs/data/diamonds.tsv</code></p>
-<ul>
-<li>filter</li>
-</ul>
+<h3 id="filter"><a class="header" href="#filter">filter</a></h3>
 <pre><code class="language-bash">hyperfine \
     --warmup 3 \
     --min-runs 50 \
-    --export-markdown expr_filter.tmp.md \
+    --export-markdown tva_filter.tmp.md \
     -n "tsv-filter" "tsv-filter -H --gt carat:1 --str-eq cut:Premium --lt price:3000 docs/data/diamonds.tsv &gt; /dev/null" \
     -n "xan filter" "xan filter 'carat &gt; 1 and cut eq \"Premium\" and price &lt; 3000' docs/data/diamonds.tsv &gt; /dev/null" \
     -n "tva expr -m skip-null" "tva expr -H -m skip-null -E 'if(@carat &gt; 1 and @cut eq q(Premium) and @price &lt; 3000, @0, null)' docs/data/diamonds.tsv &gt; /dev/null" \
@@ -1023,13 +998,11 @@ hyperfine \
 </tbody>
 </table>
 </div>
-<ul>
-<li>select</li>
-</ul>
+<h3 id="select"><a class="header" href="#select">select</a></h3>
 <pre><code class="language-bash">hyperfine \
     --warmup 3 \
     --min-runs 50 \
-    --export-markdown expr_select.tmp.md \
+    --export-markdown tva_select.tmp.md \
     -n "tsv-select" "tsv-select -H -f carat,cut,price docs/data/diamonds.tsv &gt; /dev/null" \
     -n "xan select" "xan select 'carat,cut,price' docs/data/diamonds.tsv &gt; /dev/null" \
     -n "xan select -e" "xan select -e '[carat, cut, price]' docs/data/diamonds.tsv &gt; /dev/null" \
@@ -1047,6 +1020,128 @@ hyperfine \
 <tr><td style="text-align: left"><code>xan select -e</code></td><td style="text-align: right">69.2 ± 1.8</td><td style="text-align: right">65.8</td><td style="text-align: right">73.2</td><td style="text-align: right">3.38 ± 0.24</td></tr>
 <tr><td style="text-align: left"><code>tva expr -m eval</code></td><td style="text-align: right">57.3 ± 2.7</td><td style="text-align: right">53.8</td><td style="text-align: right">68.3</td><td style="text-align: right">2.80 ± 0.22</td></tr>
 <tr><td style="text-align: left"><code>tva select</code></td><td style="text-align: right">20.5 ± 1.3</td><td style="text-align: right">17.6</td><td style="text-align: right">24.5</td><td style="text-align: right">1.00</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="reverse"><a class="header" href="#reverse">reverse</a></h3>
+<pre><code class="language-bash">hyperfine \
+    --warmup 3 \
+    --min-runs 50 \
+    --export-markdown tva_reverse.tmp.md \
+    -n "tva reverse" "tva reverse docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tva reverse -H" "tva reverse -H docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tva reverse --no-mmap" "tva reverse --no-mmap docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tac" "tac docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "keep-header -- tac" "tva keep-header docs/data/diamonds.tsv -- tac &gt; /dev/null"
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Command</th><th style="text-align: right">Mean [ms]</th><th style="text-align: right">Min [ms]</th><th style="text-align: right">Max [ms]</th><th style="text-align: right">Relative</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>tva reverse</code></td><td style="text-align: right">92.0 ± 3.2</td><td style="text-align: right">86.0</td><td style="text-align: right">103.1</td><td style="text-align: right">5.28 ± 0.39</td></tr>
+<tr><td style="text-align: left"><code>tva reverse -H</code></td><td style="text-align: right">94.6 ± 5.2</td><td style="text-align: right">88.6</td><td style="text-align: right">116.8</td><td style="text-align: right">5.43 ± 0.46</td></tr>
+<tr><td style="text-align: left"><code>tva reverse --no-mmap</code></td><td style="text-align: right">17.4 ± 1.1</td><td style="text-align: right">14.6</td><td style="text-align: right">21.6</td><td style="text-align: right">1.00</td></tr>
+<tr><td style="text-align: left"><code>tac</code></td><td style="text-align: right">50.2 ± 3.0</td><td style="text-align: right">47.1</td><td style="text-align: right">66.9</td><td style="text-align: right">2.88 ± 0.26</td></tr>
+<tr><td style="text-align: left"><code>keep-header -- tac</code></td><td style="text-align: right">56.7 ± 3.2</td><td style="text-align: right">52.9</td><td style="text-align: right">69.3</td><td style="text-align: right">3.25 ± 0.28</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>tva reverse</code> 的基准测试显示了一个反直觉的结果：</p>
+<p><strong>分析</strong>:</p>
+<ul>
+<li>mmap 模式比 <code>--no-mmap</code> 慢 <strong>5.3 倍</strong></li>
+<li>甚至低于 <code>tac</code>（2.88x）</li>
+</ul>
+<p><strong>原因</strong>:</p>
+<ol>
+<li><strong>页缓存预读失效</strong>: Linux 内核的预读机制优化顺序读取，反向扫描破坏预读策略</li>
+<li><strong>TLB 抖动</strong>: 随机访问模式导致页表遍历开销增加</li>
+<li><strong>缺页中断</strong>: 小文件（5MB）完全适合内存，<code>read_to_end</code> 一次性读入后连续访问更缓存友好</li>
+</ol>
+<p><strong>代码层面</strong>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// mmap 模式: 反向迭代触发随机访问
+for i in memrchr_iter(b'\n', slice) {  // 反向查找换行符
+    writer.write_all(&amp;slice[i + 1..following_line_start])?;
+}
+
+// --no-mmap 模式: Vec&lt;u8&gt; 连续存储，CPU 缓存友好
+let mut buf = Vec::new();
+f.read_to_end(&amp;mut buf)?;  // 一次性读入
+<span class="boring">}</span></code></pre>
+<p><strong>启示</strong>: 对于小文件（&lt;100MB）或反向/随机访问模式，<code>--no-mmap</code> 显著优于 mmap。</p>
+<h3 id="uniq"><a class="header" href="#uniq">uniq</a></h3>
+<pre><code class="language-bash">hyperfine \
+    --warmup 3 \
+    --min-runs 50 \
+    --export-markdown tva_uniq.tmp.md \
+    -n "tsv-uniq -f carat" "tsv-uniq -H -f carat docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tsv-uniq -f 1" "tsv-uniq -H -f 1 docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tva uniq -f carat" "tva uniq -H -f carat docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tva uniq -f 1" "tva uniq -H -f 1 docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "cut sort uniq" "cut -f 1 docs/data/diamonds.tsv | sort | uniq &gt; /dev/null" \
+    -n "tsv-uniq" "tsv-uniq docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tva uniq" "tva uniq docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "sort uniq" "sort docs/data/diamonds.tsv | uniq &gt; /dev/null"
+``
+
+| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
+|:---|---:|---:|---:|---:|
+| `tsv-uniq -f carat` | 35.5 ± 11.3 | 23.9 | 64.8 | 1.00 |
+| `tsv-uniq -f 1` | 37.3 ± 11.5 | 26.7 | 86.5 | 1.05 ± 0.46 |
+| `tva uniq -f carat` | 41.3 ± 13.2 | 23.4 | 91.9 | 1.16 ± 0.52 |
+| `tva uniq -f 1` | 44.7 ± 10.5 | 26.4 | 74.1 | 1.26 ± 0.50 |
+| `cut sort uniq` | 175.8 ± 42.4 | 138.4 | 311.1 | 4.96 ± 1.97 |
+| `tsv-uniq` | 64.4 ± 17.8 | 41.4 | 103.0 | 1.81 ± 0.76 |
+| `tva uniq` | 44.2 ± 6.7 | 30.9 | 63.3 | 1.25 ± 0.44 |
+| `sort uniq` | 59.2 ± 11.5 | 47.8 | 96.4 | 1.67 ± 0.62 |
+
+### append
+
+```bash
+hyperfine \
+    --warmup 3 \
+    --min-runs 50 \
+    --export-markdown tva_append.tmp.md \
+    -n "tsv-append" "tsv-append docs/data/diamonds.tsv docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "tva append" "tva append docs/data/diamonds.tsv docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "cat" "cat docs/data/diamonds.tsv docs/data/diamonds.tsv &gt; /dev/null"
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Command</th><th style="text-align: right">Mean [ms]</th><th style="text-align: right">Min [ms]</th><th style="text-align: right">Max [ms]</th><th style="text-align: right">Relative</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>tsv-append</code></td><td style="text-align: right">34.3 ± 3.0</td><td style="text-align: right">30.4</td><td style="text-align: right">47.9</td><td style="text-align: right">1.12 ± 0.10</td></tr>
+<tr><td style="text-align: left"><code>tva append</code></td><td style="text-align: right">33.8 ± 1.7</td><td style="text-align: right">31.0</td><td style="text-align: right">38.0</td><td style="text-align: right">1.11 ± 0.06</td></tr>
+<tr><td style="text-align: left"><code>cat</code></td><td style="text-align: right">30.5 ± 0.9</td><td style="text-align: right">28.4</td><td style="text-align: right">33.3</td><td style="text-align: right">1.00</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="sort"><a class="header" href="#sort">sort</a></h3>
+<pre><code class="language-bash">hyperfine \
+    --warmup 3 \
+    --min-runs 50 \
+    --export-markdown tva_sort.tmp.md \
+    -n "tva sort" "tva sort -H -k 2 docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "sort" "sort -k 2 docs/data/diamonds.tsv &gt; /dev/null" \
+    -n "keep-header -- sort" "keep-header docs/data/diamonds.tsv -- sort -k 2 &gt; /dev/null" \
+    -n "tva keep-header -- sort" "tva keep-header docs/data/diamonds.tsv -- sort -k 2 &gt; /dev/null"
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Command</th><th style="text-align: right">Mean [ms]</th><th style="text-align: right">Min [ms]</th><th style="text-align: right">Max [ms]</th><th style="text-align: right">Relative</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>tva sort</code></td><td style="text-align: right">37.6 ± 3.5</td><td style="text-align: right">30.8</td><td style="text-align: right">48.9</td><td style="text-align: right">1.00</td></tr>
+<tr><td style="text-align: left"><code>sort</code></td><td style="text-align: right">39.5 ± 3.3</td><td style="text-align: right">33.7</td><td style="text-align: right">50.2</td><td style="text-align: right">1.05 ± 0.13</td></tr>
+<tr><td style="text-align: left"><code>keep-header -- sort</code></td><td style="text-align: right">42.8 ± 3.6</td><td style="text-align: right">38.6</td><td style="text-align: right">61.0</td><td style="text-align: right">1.14 ± 0.14</td></tr>
+<tr><td style="text-align: left"><code>tva keep-header -- sort</code></td><td style="text-align: right">74.0 ± 3.3</td><td style="text-align: right">68.8</td><td style="text-align: right">85.7</td><td style="text-align: right">1.97 ± 0.20</td></tr>
 </tbody>
 </table>
 </div>
@@ -5059,7 +5154,7 @@ nth(@candidates, @skip_count)
 <li><code>nth()</code> with calculated offset to extract the first matching element</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="select"><a class="header" href="#select">select</a></h1>
+<h1 id="select-1"><a class="header" href="#select-1">select</a></h1>
 <p>Selects and reorders TSV fields.</p>
 <p>Behavior:</p>
 <ul>
@@ -5105,7 +5200,7 @@ ranges (<code>run-user_time</code>), and wildcards (<code>*_time</code>).</li>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="filter"><a class="header" href="#filter">filter</a></h1>
+<h1 id="filter-1"><a class="header" href="#filter-1">filter</a></h1>
 <p>Filters TSV rows by field-based tests.</p>
 <p>Behavior:</p>
 <ul>
@@ -5658,7 +5753,7 @@ written; headers from subsequent files are skipped.</li>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="sort"><a class="header" href="#sort">sort</a></h1>
+<h1 id="sort-1"><a class="header" href="#sort-1">sort</a></h1>
 <p>Sorts TSV records by one or more keys.</p>
 <p>Behavior:</p>
 <ul>
@@ -5709,7 +5804,7 @@ numeric mode.</li>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="reverse"><a class="header" href="#reverse">reverse</a></h1>
+<h1 id="reverse-1"><a class="header" href="#reverse-1">reverse</a></h1>
 <p>Reverses the order of lines (like tac).</p>
 <p>Behavior:</p>
 <ul>
@@ -6036,7 +6131,7 @@ written; headers from subsequent files are skipped.</li>
 </li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="uniq"><a class="header" href="#uniq">uniq</a></h1>
+<h1 id="uniq-1"><a class="header" href="#uniq-1">uniq</a></h1>
 <p>Deduplicates TSV rows from one or more files without sorting.</p>
 <p>Behavior:</p>
 <ul>
