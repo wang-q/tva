@@ -149,81 +149,32 @@ cargo test
 
 所有子命令的帮助文档 (`docs/help/<cmd>.md`) 必须遵循以下统一风格：
 
-1. **标题**:
-    * 以 `# <command>` 开头（小写，与命令名一致）。
-
-2. **简述 (Description)**:
+1. **简述 (Description)**:
     * 标题后紧跟简洁的功能描述，可以比 .about(...) 更详细，但不能超过两行。
 
-3. **分节结构**（按顺序）:
+2. **分节结构**（按顺序）:
     * **Behavior** (可选): 命令的核心行为说明。
     * **Input**: 输入源说明（使用标准格式）。
     * **Output** (如适用): 输出说明。
     * **Header behavior** (如适用): Header 处理说明（使用标准格式）。
-    * **Field syntax** (如适用): 字段语法说明（引用 `tva --help-fields`）。
     * **Examples**: 使用示例。
 
-4. **节标题格式**:
+3. **节标题格式**:
     * 使用 `Section Name:`（首字母大写，后跟冒号）。
     * **不要**使用 Markdown 的 `##`。
     * **不要**包含 `Usage:` 或 `Options:` 小节（由 `clap` 自动生成）。
 
-5. **内容格式**:
+4. **内容格式**:
     * **列表**: 使用 `* `（星号 + 1 个空格）引导无序列表。
         * 子项使用 `    * `（4空格缩进 + 星号 + 1 个空格）。
     * **代码示例**: 使用缩进（4空格）而非 ` ``` `。
     * 例外：多行命令示例（如包含 `\` 换行的命令）可使用 ` ``` ` 代码块。
     * **参数引用**: 使用反引号包裹，如 `` `--header` / `-H` ``。
 
-6. **标准描述模板**:
-
-   **Input:**
-   ```
-   * Reads from files or standard input.
-   * Files ending in `.gz` are transparently decompressed.
-   ```
-   *例外：特殊输入源（如 `from xlsx` 需要文件路径，`from html` 支持 stdin）可适当调整描述。*
-
-   **Header behavior（仅 `--header`）:**
-   ```
-   Header behavior:
-   * `--header` / `-H`: Treats the first line of the input as a header (even if empty).
-     The header is written once at the top of the output.
-   ```
-
-   **Header behavior（所有四种模式）:**
-   ```
-   Header behavior:
-   * Supports all four header modes. See `tva --help-headers` for details.
-   ```
-
-   **Field syntax:**
-   ```
-   Field syntax:
-   * Field lists support 1-based indices, ranges (`1-3,5-7`), header names, name
-     ranges (`run-user_time`), and wildcards (`*_time`).
-   * Run `tva --help-fields` for a full description shared across tva commands.
-   ```
-
-7. **示例 (Examples)**:
+5. **示例 (Examples)**:
     * 使用 `Examples:` 作为标题。
-    * 采用编号列表 (`1. `, `2. `)。
-    * 描述后紧跟缩进的命令示例（4空格缩进）。
-
-## 用户文档工作流
-
-我们使用 [mdBook](https://rust-lang.github.io/mdBook/) 生成文档网站。
-
-* 源目录: `docs/`。
-* 配置: `book.toml`。
-* 本地构建:
-  ```bash
-  bash scripts/build-docs.sh  # 同步 README.md 并运行 mdbook build
-  mdbook serve      # 用于本地预览
-  ```
-* 部署:
-    * GitHub Actions (`.github/workflows/docs.yml`) 会在推送到 `master` 时自动构建并部署到
-      `gh-pages` 分支。
+    * 采用编号列表 (`1. `, `2. `)， 秆尾不要句号或冒号。
+    * 下一行命令示例（3 空格缩进, 用 `` 包裹单行命令）。
 
 ## 开发者文档规范
 
