@@ -22,10 +22,6 @@ Output:
 Header behavior:
 
 * Supports `--header` / `-H` and `--header-hash1` modes.
-* `--header` / `-H`: Treats the first line of the input as a header (even if empty).
-  The header is written once at the top of the output.
-* `--header-hash1`: Treats consecutive '#' lines plus the next line as header.
-  The next line (column names) is written once at the top of the output.
 * In header mode, field names from the header can be used in field lists.
 
 Field syntax:
@@ -36,11 +32,11 @@ Field syntax:
 
 Examples:
 
-1. Select by name:
+1. Select by name
    `tva select input.tsv -H -f Name,Age`
 
-2. Select by index:
+2. Select by index
    `tva select input.tsv -f 1,3`
 
-3. Exclude columns:
+3. Exclude columns
    `tva select input.tsv -H -e Password,SSN`

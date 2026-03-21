@@ -2,11 +2,20 @@
 
 Reverses the order of lines (like tac).
 
-Notes:
+Behavior:
 
 * Reads all lines into memory. Large files may exhaust memory.
 * Supports plain text and gzipped (`.gz`) TSV files.
-* Reads from stdin if no input file is given.
+
+Input:
+
+* Reads from files or standard input.
+* Files ending in `.gz` are transparently decompressed.
+
+Output:
+
+* By default, output is written to standard output.
+* Use `--outfile` to write to a file instead.
 
 Header behavior:
 
@@ -16,11 +25,11 @@ Header behavior:
 
 Examples:
 
-1. Reverse a file:
+1. Reverse a file
    `tva reverse file.tsv`
 
-2. Reverse a file, keeping the header at the top:
+2. Reverse a file, keeping the header at the top
    `tva reverse --header file.tsv`
 
-3. Reverse a file with hash comment lines and column names:
+3. Reverse a file with hash comment lines and column names
    `tva reverse --header-hash1 file.tsv`

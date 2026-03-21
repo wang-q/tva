@@ -1,6 +1,15 @@
-# md
+# to md
 
-Converts a tab-separated values (TSV) file into a markdown table.
+Converts TSV input to a markdown table.
+
+Behavior:
+
+* Outputs a markdown formatted table.
+* Use `--num` to right-align numeric columns automatically.
+* Use `--fmt` to format numeric columns with thousands separators and fixed decimals.
+* Use `--center` / `-c` to specify columns to center-align.
+* Use `--right` / `-r` to specify columns to right-align.
+* Use `--digits` to set the number of decimal digits (default: 0).
 
 Input:
 
@@ -9,21 +18,16 @@ Input:
 
 Output:
 
-* Outputs a markdown formatted table.
 * By default, output is written to standard output.
-
-Formatting:
-
-* `--num`: Right-align numeric columns automatically.
-* `--fmt`: Format numeric columns with thousands separators and fixed decimals.
-* `--digits`: Number of decimal digits to display (default: 0).
-* `--center` / `-c`: Specify columns to center-align.
-* `--right` / `-r`: Specify columns to right-align.
+* Use `--outfile` to write to a file instead.
 
 Examples:
 
-1. Basic markdown table with numeric column right-aligned
-   `tva to md data.tsv --num -c 2`
+1. Basic markdown table with numeric column right-aligned:
+   `tva to md data.tsv --num`
 
-2. Formatted numeric columns with 2 decimal places
+2. Center-align specific columns:
+   `tva to md data.tsv --num --center 2`
+
+3. Formatted numeric columns with 2 decimal places:
    `tva to md data.tsv --fmt --digits 2`
