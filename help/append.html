@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -183,43 +183,47 @@
                         <h1 id="append"><a class="header" href="#append">append</a></h1>
 <p>Concatenates tab-separated values (TSV) files, similar to Unix <code>cat</code>, but with
 header awareness and optional source tracking.</p>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
 <p>Header behavior:</p>
 <ul>
 <li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
-<li><code>--header</code> / <code>-H</code>: Treats the first line of each input as a header.
-Only the header from the first input is written; later headers are skipped.</li>
-<li><code>--header-hash1</code>: Treats consecutive ‘#’ lines plus the next line as header.
-Only the header from the first input is written; later headers are skipped.</li>
-<li>When using multiple files with header mode enabled, the header from the first file is
-used, and headers from subsequent files are skipped.</li>
+<li>When using header mode with multiple files, only the header from the first file is
+written; headers from subsequent files are skipped.</li>
 </ul>
 <p>Source tracking:</p>
 <ul>
-<li>–track-source / -t
-Adds a column containing the source name for each data row. For regular
-files, the source name is the file name without extension. For standard
-input, the source name is <code>stdin</code>.</li>
-<li>–source-header / -s STR
-Sets the header for the source column. Implies –header and –track-source.
-Default header name is <code>file</code>.</li>
-<li>–file / -f LABEL=FILE
-Reads FILE and uses LABEL as the source value. Implies –track-source.</li>
-</ul>
-<p>Delimiter:</p>
-<ul>
-<li>–delimiter / -d CHR
-Field delimiter to use when adding the source column. Default: TAB.</li>
-</ul>
-<p>Input:</p>
-<ul>
-<li>If no input files or –file mappings are given, data is read from stdin.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li><code>--track-source</code> / <code>-t</code>: Adds a column containing the source name for each data row.
+For regular files, the source name is the file name without extension.
+For standard input, the source name is <code>stdin</code>.</li>
+<li><code>--source-header</code> / <code>-s STR</code>: Sets the header for the source column.
+Implies <code>--header</code> and <code>--track-source</code>. Default header name is <code>file</code>.</li>
+<li><code>--file</code> / <code>-f LABEL=FILE</code>: Reads FILE and uses LABEL as the source value.
+Implies <code>--track-source</code>.</li>
 </ul>
 <p>Output:</p>
 <ul>
 <li>By default, output is written to standard output.</li>
-<li>Use –outfile to write to a file instead.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Concatenate multiple files with header
+<code>tva append -H file1.tsv file2.tsv file3.tsv</code></p>
+</li>
+<li>
+<p>Track source file for each row
+<code>tva append -H -t file1.tsv file2.tsv</code></p>
+</li>
+<li>
+<p>Use custom source labels
+<code>tva append -H -f A=file1.tsv -f B=file2.tsv</code></p>
+</li>
+</ol>
 
                     </main>
 

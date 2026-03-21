@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -202,10 +202,6 @@
 <p>Header behavior:</p>
 <ul>
 <li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
-<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header (even if empty).
-The header is written once at the top of the output.</li>
-<li><code>--header-hash1</code>: Treats consecutive ‘#’ lines plus the next line as header.
-The next line (column names) is written once at the top of the output.</li>
 <li>In header mode, field names from the header can be used in field lists.</li>
 </ul>
 <p>Field syntax:</p>
@@ -217,15 +213,15 @@ ranges (<code>run-user_time</code>), and wildcards (<code>*_time</code>).</li>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Select by name:
+<p>Select by name
 <code>tva select input.tsv -H -f Name,Age</code></p>
 </li>
 <li>
-<p>Select by index:
+<p>Select by index
 <code>tva select input.tsv -f 1,3</code></p>
 </li>
 <li>
-<p>Exclude columns:
+<p>Exclude columns
 <code>tva select input.tsv -H -e Password,SSN</code></p>
 </li>
 </ol>

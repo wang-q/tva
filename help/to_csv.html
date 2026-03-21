@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -181,31 +181,37 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="to-csv"><a class="header" href="#to-csv">to csv</a></h1>
-<p>Reads TSV data and writes it as CSV.</p>
-<p>This command converts TSV data into CSV format, ensuring that fields containing
-delimiters, quotes, or newlines are properly escaped and quoted according to the
-CSV specification.</p>
+<p>Converts TSV input to CSV format.</p>
+<p>Behavior:</p>
+<ul>
+<li>Converts TSV data into CSV format.</li>
+<li>Fields containing delimiters, quotes, or newlines are properly escaped
+and quoted according to the CSV specification.</li>
+<li>Use <code>--delimiter</code> to specify a custom CSV field delimiter (default: comma).</li>
+</ul>
 <p>Input:</p>
 <ul>
-<li>TSV data from a file or standard input.</li>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
 </ul>
 <p>Output:</p>
 <ul>
-<li>CSV data where fields are separated by a custom delimiter (default: ,).</li>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
 <p>Convert a TSV file to CSV
-tva to csv data.tsv &gt; data.csv</p>
+<code>tva to csv data.tsv &gt; data.csv</code></p>
 </li>
 <li>
 <p>Read from stdin and convert to CSV
-cat data.tsv | tva to csv &gt; data.csv</p>
+<code>cat data.tsv | tva to csv &gt; data.csv</code></p>
 </li>
 <li>
 <p>Use a custom delimiter
-tva to csv –delimiter ‘;’ data.tsv &gt; data.csv</p>
+<code>tva to csv --delimiter ';' data.tsv &gt; data.csv</code></p>
 </li>
 </ol>
 

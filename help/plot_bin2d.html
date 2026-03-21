@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -180,54 +180,59 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="bin2d"><a class="header" href="#bin2d">bin2d</a></h1>
+                        <h1 id="plot-bin2d"><a class="header" href="#plot-bin2d">plot bin2d</a></h1>
 <p>Creates a 2D binning heatmap (density plot) of two numeric columns.</p>
-<p>Divides the plane into rectangular bins, counts the number of points in
-each bin, and visualizes the density using character intensity.</p>
-<p>Input:</p>
+<p>Behavior:</p>
 <ul>
-<li>Reads from files or standard input.</li>
-<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
-</ul>
-<p>Output:</p>
-<ul>
-<li>Renders a heatmap to the terminal using character density.</li>
+<li>Divides the plane into rectangular bins and counts the number of points in each bin.</li>
+<li>Visualizes the density using character intensity in the terminal.</li>
+<li>Supports automatic bin count strategies or custom bin counts/widths.</li>
 <li>Density scale (low to high):
 <ul>
-<li>· ≥5% (dark grey)</li>
-<li>░ ≥20% (grey)</li>
-<li>▒ ≥40% (white)</li>
-<li>▓ ≥60% (yellow)</li>
-<li>█ ≥80% (red)</li>
+<li><code>·</code> ≥5% (dark grey)</li>
+<li><code>░</code> ≥20% (grey)</li>
+<li><code>▒</code> ≥40% (white)</li>
+<li><code>▓</code> ≥60% (yellow)</li>
+<li><code>█</code> ≥80% (red)</li>
 </ul>
 </li>
 <li>Values below 5% are not shown.</li>
 </ul>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+<li>Assumes the first line is a header row with column names.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Renders a heatmap to the terminal using character density.</li>
+</ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Basic 2D binning:
-tva plot bin2d data.tsv -x age -y income</p>
+<p>Basic 2D binning
+<code>tva plot bin2d data.tsv -x age -y income</code></p>
 </li>
 <li>
-<p>Specify number of bins:
-tva plot bin2d data.tsv -x age -y income –bins 20</p>
+<p>Specify number of bins
+<code>tva plot bin2d data.tsv -x age -y income --bins 20</code></p>
 </li>
 <li>
-<p>Different bins for x and y:
-tva plot bin2d data.tsv -x age -y income –bins 30,10</p>
+<p>Different bins for x and y
+<code>tva plot bin2d data.tsv -x age -y income --bins 30,10</code></p>
 </li>
 <li>
-<p>Use automatic bin count strategy:
-tva plot bin2d data.tsv -x age -y income -S freedman-diaconis</p>
+<p>Use automatic bin count strategy
+<code>tva plot bin2d data.tsv -x age -y income -S freedman-diaconis</code></p>
 </li>
 <li>
-<p>Specify bin width:
-tva plot bin2d data.tsv -x age -y income –binwidth 5</p>
+<p>Specify bin width
+<code>tva plot bin2d data.tsv -x age -y income --binwidth 5</code></p>
 </li>
 <li>
-<p>Custom chart size:
-tva plot bin2d data.tsv -x age -y income –cols 100 –rows 30</p>
+<p>Custom chart size
+<code>tva plot bin2d data.tsv -x age -y income --cols 100 --rows 30</code></p>
 </li>
 </ol>
 

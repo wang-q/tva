@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -181,27 +181,44 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="from-xlsx"><a class="header" href="#from-xlsx">from xlsx</a></h1>
-<p>Reads data from an Excel file (.xlsx) and writes it as TSV.</p>
-<p>This command converts Excel spreadsheets into TSV format. It supports reading from
-specific sheets and handles basic cell values.</p>
+<p>Converts Excel (.xlsx/.xls) input to TSV output.</p>
+<p>Behavior:</p>
+<ul>
+<li>Reads data from Excel spreadsheets and converts each row to a TSV line.</li>
+<li>By default, reads from the first sheet in the workbook.</li>
+<li>Use <code>--sheet</code> to specify a sheet by name.</li>
+<li>Use <code>--list-sheets</code> to list all available sheet names.</li>
+<li>Cell values are converted to strings:
+<ul>
+<li>Empty cells become empty strings.</li>
+<li>TAB, newline, and carriage return characters are replaced with spaces.</li>
+</ul>
+</li>
+</ul>
 <p>Input:</p>
 <ul>
-<li>An Excel file path is required.</li>
+<li>Requires an Excel file path (.xlsx or .xls).</li>
 </ul>
 <p>Output:</p>
 <ul>
-<li>Each row in the spreadsheet becomes one TSV line.</li>
+<li>Each spreadsheet row becomes one TSV line.</li>
 <li>Cells are joined with TAB characters.</li>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
 <p>Convert an Excel file to TSV (first sheet)
-tva from xlsx data.xlsx &gt; data.tsv</p>
+<code>tva from xlsx data.xlsx &gt; data.tsv</code></p>
 </li>
 <li>
-<p>Read a specific sheet
-tva from xlsx –sheet “Sheet2” data.xlsx &gt; data.tsv</p>
+<p>Convert a specific sheet by name
+<code>tva from xlsx --sheet "Sheet2" data.xlsx</code></p>
+</li>
+<li>
+<p>List all sheet names in a workbook
+<code>tva from xlsx --list-sheets data.xlsx</code></p>
 </li>
 </ol>
 

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -198,34 +198,36 @@ continuous data.</p>
 <p>Header behavior:</p>
 <ul>
 <li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
-<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header (even if empty).
-The header is written once at the top of the output.</li>
-<li><code>--header-hash1</code>: Treats consecutive ‘#’ lines plus the next line as header.
-The next line (column names) is written once at the top of the output.</li>
-<li>When using multiple files with header mode enabled, the header from the first file is
-used, and headers from subsequent files are skipped.</li>
+<li>When using header mode with multiple files, only the header from the first file is
+written; headers from subsequent files are skipped.</li>
 </ul>
 <p>Field syntax:</p>
 <ul>
 <li>The <code>--field</code> argument accepts a 1-based index or a header name (when using
 <code>--header</code>).</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Bin a numeric column with width 10:
+<p>Bin a numeric column with width 10
 <code>tva bin --width 10 --field 2 file.tsv</code></p>
 </li>
 <li>
-<p>Bin a column, aligning bins to start at 5:
+<p>Bin a column, aligning bins to start at 5
 <code>tva bin --width 10 --min 5 --field 2 file.tsv</code></p>
 </li>
 <li>
-<p>Bin a named column (requires header):
+<p>Bin a named column (requires header)
 <code>tva bin --header --width 0.5 --field score file.tsv</code></p>
 </li>
 <li>
-<p>Bin a column and append as new column:
+<p>Bin a column and append as new column
 <code>tva bin --header --width 10 --field Price --new-name Price_bin file.tsv</code></p>
 </li>
 </ol>

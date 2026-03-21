@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -217,43 +217,43 @@
 <p>Examples:</p>
 <ol>
 <li>
-<p>Simple arithmetic:
+<p>Simple arithmetic
 <code>tva expr -E '2 + 3 * 4'</code></p>
 </li>
 <li>
-<p>Calculate total from price and quantity:
+<p>Calculate total from price and quantity
 <code>tva expr -H -E '@price * @qty' data.tsv</code></p>
 </li>
 <li>
-<p>Named output column with <code>as</code>:
+<p>Named output column with <code>as</code>
 <code>tva expr -H -E '@price * @qty as @total' data.tsv</code></p>
 </li>
 <li>
-<p>Chain functions with pipe:
+<p>Chain functions with pipe
 <code>tva expr -H -E '@name | trim() | upper()' data.tsv</code></p>
 </li>
 <li>
-<p>Conditional expression:
+<p>Conditional expression
 <code>tva expr -H -E 'if(@score &gt;= 70, "pass", "fail")' data.tsv</code></p>
 </li>
 <li>
-<p>Add new column(s) to original row:
+<p>Add new column(s) to original row
 <code>tva expr -H -m extend -E '@price * @qty as @total' data.tsv</code></p>
 </li>
 <li>
-<p>Mutate (modify) existing column value:
+<p>Mutate (modify) existing column value
 <code>tva expr -H -m mutate -E '@age + 1 as @age' data.tsv</code></p>
 </li>
 <li>
-<p>Filter rows by condition:
+<p>Filter rows by condition
 <code>tva expr -H -m filter -E '@age &gt; 25' data.tsv</code></p>
 </li>
 <li>
-<p>Skip null results:
+<p>Skip null results
 <code>tva expr -H -m skip-null -E 'if(@score &gt;= 70, @name, null)' data.tsv</code></p>
 </li>
 <li>
-<p>Test with inline row data:
+<p>Test with inline row data
 <code>tva expr -n 'price,qty' -r '100,2' -E '@price * @qty'</code></p>
 </li>
 </ol>

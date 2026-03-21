@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -181,37 +181,55 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="stats"><a class="header" href="#stats">stats</a></h1>
-<p>Calculates summary statistics (like tsv-summarize).</p>
+<p>Calculates summary statistics for TSV data.</p>
+<p>Behavior:</p>
+<ul>
+<li>Supports various statistical operations: count, sum, mean, median, min, max,
+stdev, variance, mode, quantiles, and more.</li>
+<li>Use <code>--group-by</code> to calculate statistics per group.</li>
+<li>Multiple operations can be specified in a single command.</li>
+</ul>
 <p>Input:</p>
 <ul>
-<li>If no input files are given, or an input file is ‘stdin’, data is read
-from standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
 </ul>
-<p>Grouping:</p>
+<p>Output:</p>
 <ul>
-<li>Supports grouping by one or multiple fields using <code>--group-by</code>.</li>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--write-header</code> to write an output header even if there is no input header.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
+<li>In header mode, field names from the header can be used in field lists.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li><code>--group-by</code>/<code>-g</code> and all operation flags accept 1-based field indices,
+ranges, header names, and wildcards.</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Calculate basic stats for a column:
+<p>Calculate basic stats for a column
 <code>tva stats docs/data/us_rent_income.tsv --header --mean estimate --max estimate</code></p>
 </li>
 <li>
-<p>Group by a column:
+<p>Group by a column
 <code>tva stats docs/data/us_rent_income.tsv -H --group-by variable --mean estimate</code></p>
 </li>
 <li>
-<p>Count rows per group:
+<p>Count rows per group
 <code>tva stats docs/data/us_rent_income.tsv -H --group-by NAME --count</code></p>
 </li>
 <li>
-<p>List unique values in a group:
+<p>List unique values in a group
 <code>tva stats docs/data/us_rent_income.tsv -H --group-by variable --unique estimate</code></p>
 </li>
 <li>
-<p>Pick a random value from a group:
+<p>Pick a random value from a group
 <code>tva stats docs/data/us_rent_income.tsv -H --group-by variable --rand estimate</code></p>
 </li>
 </ol>

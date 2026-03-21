@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -184,43 +184,89 @@
 <p>Reshapes a table from wide to long format by gathering multiple columns into
 key-value pairs. This command is useful for “tidying” data where some column
 names are actually values of a variable.</p>
+<p>Behavior:</p>
+<ul>
+<li>Converts wide-format data to long format by melting specified columns.</li>
+<li>ID columns (those not specified in <code>--cols</code>) are preserved and repeated for each melted row.</li>
+<li>The first line is always treated as a header.</li>
+<li>When multiple files are provided, the first file’s header determines the schema.</li>
+<li>Subsequent files must have the same column structure; their headers are skipped.</li>
+<li>Output is produced in row-major order (all melted rows for each input row are output together).</li>
+</ul>
 <p>Input:</p>
 <ul>
 <li>Reads from one or more TSV files or standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
 <li>The first line is ALWAYS treated as a header.</li>
 <li>When multiple files are provided, the first file’s header determines the
 schema (columns to reshape). Subsequent files must have the same column
 structure; their headers are skipped.</li>
 </ul>
-<p>Reshaping behavior:</p>
+<p>Output:</p>
 <ul>
-<li><code>--cols</code> / <code>-c</code>: Specifies which columns to reshape (melt). Can be column
-names, indices (1-based), or ranges (e.g., ‘3-5’).</li>
-<li><code>--names-to</code>: The name of the new column that will contain the original
-column headers.</li>
-<li><code>--values-to</code>: The name of the new column that will contain the data values.</li>
-<li><code>--values-drop-na</code>: If set, rows where the value is empty will be omitted
-from the output.</li>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> / <code>-o</code> to write to a file instead.</li>
+<li>Output columns: ID columns + name column(s) + value column.</li>
+</ul>
+<p>Column selection:</p>
+<ul>
+<li><code>--cols</code> / <code>-c</code>: Specifies which columns to reshape (melt).</li>
+<li>Columns can be specified by 1-based indices, ranges (e.g., <code>3-5</code>), or names (with wildcards like <code>Q*</code>).</li>
+<li>All columns not specified in <code>--cols</code> become ID columns and are preserved.</li>
+</ul>
+<p>Names transformation:</p>
+<ul>
+<li><code>--names-to</code>: The name(s) of the new column(s) that will contain the original column headers.
+Multiple names can be specified when using <code>--names-sep</code> or <code>--names-pattern</code>.</li>
+<li><code>--values-to</code>: The name of the new column that will contain the data values (default: “value”).</li>
 <li><code>--names-prefix</code>: A string to remove from the start of each variable name.</li>
+<li><code>--names-sep</code>: A separator to split column names into multiple columns.</li>
+<li><code>--names-pattern</code>: A regex with capture groups to extract parts of column names into separate columns.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li>Field lists support 1-based indices, ranges (<code>1-3,5-7</code>), header names, name
+ranges (<code>run-user_time</code>), and wildcards (<code>*_time</code>).</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Missing values:</p>
+<ul>
+<li><code>--values-drop-na</code>: If set, rows where the value is empty will be omitted from the output.</li>
+<li>Note: Whitespace-only values are not considered empty and will not be dropped.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Reshape columns 3, 4, and 5 into default “name” and “value” columns:
+<p>Reshape columns 3, 4, and 5 into default “name” and “value” columns
 <code>tva longer data.tsv --cols 3-5</code></p>
 </li>
 <li>
-<p>Reshape columns starting with “wk”, specifying new column names:
+<p>Reshape columns starting with “wk”, specifying new column names
 <code>tva longer data.tsv --cols "wk*" --names-to week --values-to rank</code></p>
 </li>
 <li>
-<p>Reshape all columns except the first two:
+<p>Reshape all columns except the first two
 <code>tva longer data.tsv --cols 3-</code></p>
 </li>
 <li>
-<p>Process multiple files and save to output:
+<p>Process multiple files and save to output
 <code>tva longer data1.tsv data2.tsv --cols 2-5 --outfile result.tsv</code></p>
+</li>
+<li>
+<p>Split column names into multiple columns using separator
+<code>tva longer data.tsv --cols 2-5 --names-sep "_" --names-to type num</code></p>
+</li>
+<li>
+<p>Extract parts of column names using regex pattern
+<code>tva longer data.tsv --cols 2-3 --names-pattern "new_?(.*)_(.*)" --names-to diag gender</code></p>
+</li>
+<li>
+<p>Remove prefix from column names before using as values
+<code>tva longer data.tsv --cols 2-4 --names-prefix "Q" --names-to question</code></p>
+</li>
+<li>
+<p>Drop rows with empty values
+<code>tva longer data.tsv --cols 2-5 --values-drop-na</code></p>
 </li>
 </ol>
 

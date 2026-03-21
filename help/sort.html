@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -181,33 +181,55 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="sort"><a class="header" href="#sort">sort</a></h1>
-<p>Sorts TSV/CSV records by one or more keys.</p>
-<p>Input:</p>
-<ul>
-<li>If no input files are given, or an input file is ‘stdin’, data is read from
-standard input.</li>
-<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
-</ul>
-<p>Keys:</p>
-<ul>
-<li>Use <code>-k</code>/<code>--key</code> to specify 1-based field indices or ranges (for example:
-<code>2</code>, <code>4-5</code>).</li>
-<li>Multiple keys are supported and are applied in the order given.</li>
-</ul>
+<p>Sorts TSV records by one or more keys.</p>
 <p>Behavior:</p>
 <ul>
 <li>By default, comparisons are lexicographic.</li>
 <li>With <code>-n</code>/<code>--numeric</code>, comparisons are numeric (floating point).</li>
 <li>With <code>-r</code>/<code>--reverse</code>, the final ordering is reversed.</li>
-<li>For an MxN table, the output contains the same rows sorted by the selected
-key fields.</li>
 <li>Empty fields compare as empty strings in lexicographic mode and as 0 in
 numeric mode.</li>
 </ul>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
 <p>Output:</p>
 <ul>
-<li>Writes sorted records to standard output or to the file given by <code>--outfile</code>.</li>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports all four header modes. See <code>tva --help-headers</code> for details.</li>
+<li>When header is enabled, header lines are preserved at the top of the output.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li>Use <code>-k</code>/<code>--key</code> to specify 1-based field indices or ranges (e.g., <code>2</code>, <code>4-5</code>).</li>
+<li>Multiple keys are supported and are applied in the order given.</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
+</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Sort by first column
+<code>tva sort -k 1 file.tsv</code></p>
+</li>
+<li>
+<p>Sort numerically by second column
+<code>tva sort -k 2 -n file.tsv</code></p>
+</li>
+<li>
+<p>Sort by multiple columns
+<code>tva sort -k 1,2 file.tsv</code></p>
+</li>
+<li>
+<p>Sort in reverse order
+<code>tva sort -k 1 -r file.tsv</code></p>
+</li>
+</ol>
 
                     </main>
 

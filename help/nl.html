@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -181,57 +181,68 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="nl"><a class="header" href="#nl">nl</a></h1>
-<p>Reads TSV data from files or standard input and writes each line preceded
-by a line number. This is a simplified, TSV-aware version of the Unix
-<code>nl</code> program and adds support for treating the first input line as a
-header.</p>
-<p>Supports plain text and gzipped (.gz) files. When multiple files are
-given, lines are numbered continuously across files.</p>
+<p>Adds line numbers to TSV rows. This is a simplified, TSV-aware version of the Unix
+<code>nl</code> program with support for treating the first input line as a header.</p>
+<p>Behavior:</p>
+<ul>
+<li>Prepends a line number column to each row of input data.</li>
+<li>Line numbers increase by 1 for each data line, continuously across all input files.</li>
+<li>Header lines are never numbered.</li>
+<li>Completely empty files are skipped and do not consume line numbers.</li>
+<li>Supports custom delimiters between the line number and line content.</li>
+</ul>
 <p>Input:</p>
 <ul>
-<li>If no input files are given, or an input file is ‘stdin’, data is read
-from standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
-<li>Completely empty files (only blank lines) are skipped and do not consume
-line numbers.</li>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+<li>When multiple files are given, lines are numbered continuously across files.</li>
+<li>Empty files (including files with only blank lines) are skipped.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> / <code>-o</code> to write to a file instead.</li>
+<li>Each output line starts with the line number, followed by a delimiter, then the original line content.</li>
 </ul>
 <p>Header behavior:</p>
 <ul>
-<li>–header / -H
-Treats the first line of each file as a header. Only the header from
-the first non-empty file is written; later header lines are skipped
-and not numbered.</li>
-<li>–header-string / -s
-Sets the header text for the line number column (default: ‘line’) and
-implies –header.</li>
+<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header. The header is
+written once at the top of the output with the line number column header prepended.</li>
+<li><code>--header-string</code> / <code>-s</code>: Sets the header text for the line number column (default: “line”).
+This option implies <code>--header</code>.</li>
+<li>When using header mode with multiple files, only the header from the first non-empty
+file is written; subsequent header lines are skipped and not numbered.</li>
 </ul>
 <p>Numbering:</p>
 <ul>
-<li>Line numbers start from –start-number / -n (default: 1, can be negative).</li>
-<li>Numbers increase by 1 for each data line, across all input files.</li>
-<li>Header lines are never numbered.</li>
+<li><code>--start-number</code> / <code>-n</code>: The number to use for the first line (default: 1, can be negative).</li>
+<li>Numbers increase by 1 for each data line across all input files.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
 <p>Number lines of a TSV file
-tva nl tests/genome/ctg.tsv</p>
+<code>tva nl data.tsv</code></p>
 </li>
 <li>
 <p>Number lines with a header for the line number column
-tva nl –header –header-string LINENUM tests/genome/ctg.tsv</p>
+<code>tva nl --header --header-string LINENUM data.tsv</code></p>
 </li>
 <li>
 <p>Number lines starting from 100
-tva nl –start-number 100 tests/genome/ctg.tsv</p>
+<code>tva nl --start-number 100 data.tsv</code></p>
 </li>
 <li>
 <p>Number multiple files, preserving continuous line numbers
-tva nl input1.tsv input2.tsv</p>
+<code>tva nl input1.tsv input2.tsv</code></p>
 </li>
 <li>
 <p>Read from stdin
-cat input1.tsv | tva nl</p>
+<code>cat input1.tsv | tva nl</code></p>
+</li>
+<li>
+<p>Use a custom delimiter
+<code>tva nl --delimiter ":" data.tsv</code></p>
 </li>
 </ol>
 

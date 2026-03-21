@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -181,13 +181,13 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="plot-point"><a class="header" href="#plot-point">plot point</a></h1>
-<p>Draws a scatter plot or line chart in the terminal.</p>
+<p>Draws a scatter plot, line chart, or path chart in the terminal.</p>
 <p>Behavior:</p>
 <ul>
 <li>Maps TSV columns to visual aesthetics (position, color).</li>
 <li>Supports scatter plots (default), line charts (<code>--line</code>), or path charts (<code>--path</code>).</li>
 <li>Supports overlaying linear regression lines (<code>--regression</code>).</li>
-<li>Automatically calculates axis ranges from data.</li>
+<li><code>--regression</code> cannot be used with <code>--line</code> or <code>--path</code>.</li>
 </ul>
 <p>Input:</p>
 <ul>
@@ -200,53 +200,43 @@
 <li>Renders an ASCII/Unicode chart to standard output.</li>
 <li>Chart dimensions can be controlled with <code>--cols</code> and <code>--rows</code>.</li>
 </ul>
-<p>Aesthetics:</p>
+<p>Chart types:</p>
 <ul>
-<li><code>-x</code>, <code>--x</code>: Column for X-axis position (required).</li>
-<li><code>-y</code>, <code>--y</code>: Column for Y-axis position (required).</li>
-<li><code>--color</code>: Column for grouping/coloring points by category.</li>
-</ul>
-<p>Options:</p>
-<ul>
-<li><code>-l</code>, <code>--line</code>: Connect points with lines, sorted by X value (geom_line behavior).</li>
-<li><code>--path</code>: Connect points with lines, preserving original data order (geom_path behavior).</li>
-<li><code>-r</code>, <code>--regression</code>: Overlay linear regression line (least squares fit). Cannot be used with
-<code>--line</code> or <code>--path</code>.</li>
-<li><code>-m</code>, <code>--marker</code>: Marker style - <code>braille</code> (default), <code>dot</code>, or <code>block</code>.</li>
-<li><code>--cols</code>: Chart width in characters (default: 80).</li>
-<li><code>--rows</code>: Chart height in characters (default: 24).</li>
-<li><code>--ignore</code>: Skip rows with non-numeric values in X/Y columns.</li>
-</ul>
-<p>Column specification:</p>
-<ul>
-<li>Columns can be specified by 1-based index or header name.</li>
-<li>Run <code>tva --help-fields</code> for field syntax details.</li>
+<li>Scatter plot (default): Individual points without connecting lines.</li>
+<li><code>--line</code> / <code>-l</code>: Connect points with lines, sorted by X value (good for trends).</li>
+<li><code>--path</code>: Connect points with lines, preserving original data order (good for trajectories).</li>
+<li><code>--regression</code> / <code>-r</code>: Overlay linear regression line (least squares fit).
+Cannot be used with <code>--line</code> or <code>--path</code>.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Basic scatter plot:
+<p>Basic scatter plot
 <code>tva plot point data.tsv -x age -y income</code></p>
 </li>
 <li>
-<p>Grouped by category:
+<p>Grouped by category
 <code>tva plot point iris.tsv -x petal_length -y petal_width --color label</code></p>
 </li>
 <li>
-<p>Line chart (sorted by X, good for trends):
+<p>Line chart (sorted by X, good for trends)
 <code>tva plot point timeseries.tsv -x time -y value --line --cols 100 --rows 30</code></p>
 </li>
 <li>
-<p>Path chart (preserves data order, good for trajectories):
+<p>Path chart (preserves data order, good for trajectories)
 <code>tva plot point trajectory.tsv -x x -y y --path --cols 100 --rows 30</code></p>
 </li>
 <li>
-<p>With regression line (linear fit):
+<p>With regression line (linear fit)
 <code>tva plot point iris.tsv -x sepal_length -y petal_length --regression</code></p>
 </li>
 <li>
-<p>Using column indices:
+<p>Using column indices
 <code>tva plot point data.tsv -x 1 -y 3 --color 5</code></p>
+</li>
+<li>
+<p>Multiple Y columns
+<code>tva plot point data.tsv -x time -y value1,value2</code></p>
 </li>
 </ol>
 

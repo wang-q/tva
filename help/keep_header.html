@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -186,33 +186,58 @@ input file is treated as a header. The first header line is written to standard
 output unchanged. All remaining lines (from all files) are sent to the given
 command via standard input, excluding header lines from subsequent files. The
 output produced by the command is appended after the initial header line.</p>
-<p>Usage:
-tva keep-header [file…] – program [args…]</p>
-<p>Notes:</p>
+<p>Behavior:</p>
 <ul>
+<li>Preserves the specified number of header lines from the first non-empty input file.</li>
+<li>Header lines from subsequent files are skipped (only data lines are processed).</li>
+<li>The command is run with its standard input connected to the concatenated data lines
+(all lines after the header lines from each file).</li>
+<li>The command’s standard output and standard error are passed through to this process.</li>
 <li>If no input files are given, data is read from standard input.</li>
-<li>The number of header lines to preserve from the first non-empty input can be
-configured with –lines / -n (default: 1).</li>
-<li>A double dash (–) separates input files from the command to run, similar
-to how the pipe operator (|) separates commands in a shell pipeline.</li>
-<li>The command is run with its standard input connected to the concatenated
-data lines (all lines after the first header line of each file).</li>
-<li>The command’s standard output and standard error are passed through to
-this process.</li>
+</ul>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+<li>Use <code>-</code> to explicitly read from standard input.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Header lines are written directly to standard output.</li>
+<li>Command output is appended after the header.</li>
+<li>Command exit code is propagated (non-zero exit codes are passed through).</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li><code>--lines</code> / <code>-n</code>: Number of header lines to preserve from the first non-empty input (default: 1).</li>
+<li>If set to 0, it defaults to 1.</li>
+</ul>
+<p>Command execution:</p>
+<ul>
+<li>Usage: <code>tva keep-header [OPTIONS] [FILE...] -- &lt;COMMAND&gt; [ARGS...]</code></li>
+<li>A double dash (<code>--</code>) <strong>must</strong> be used to separate input files from the command to run,
+similar to how the pipe operator (<code>|</code>) separates commands in a shell pipeline.</li>
+<li>The command is required and must be specified after <code>--</code>.</li>
+<li>The command receives all data lines (excluding headers) on its standard input.</li>
+<li>The command’s standard output and standard error streams are passed through unchanged.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
 <p>Sort a file while keeping the header line first
-tva keep-header data.tsv – sort</p>
+<code>tva keep-header data.tsv -- sort</code></p>
 </li>
 <li>
 <p>Sort multiple TSV files numerically on field 2, preserving one header
-tva keep-header data1.tsv data2.tsv – sort -t $‘\t’ -k2,2n</p>
+<code>tva keep-header data1.tsv data2.tsv -- sort -t $'\t' -k2,2n</code></p>
 </li>
 <li>
 <p>Read from stdin, filter with grep, and keep the original header
-cat data.tsv | tva keep-header – grep red</p>
+<code>cat data.tsv | tva keep-header -- grep red</code></p>
+</li>
+<li>
+<p>Preserve multiple header lines
+<code>tva keep-header --lines 2 data.tsv -- sort</code></p>
 </li>
 </ol>
 

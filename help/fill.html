@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -183,19 +183,7 @@
                         <h1 id="fill"><a class="header" href="#fill">fill</a></h1>
 <p>Fills missing values in selected columns using the last non-missing value (down/LOCF) or a constant
 value.</p>
-<p>Input:</p>
-<ul>
-<li>Reads from files or standard input; multiple files are processed as one stream.</li>
-<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
-</ul>
-<p>Header behavior:</p>
-<ul>
-<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header.
-The header is written once at the top of the output. Filling logic starts
-from the first data row.</li>
-<li>If no header is specified, the first line is treated as data.</li>
-</ul>
-<p>Filling logic:</p>
+<p>Behavior:</p>
 <ul>
 <li>Down (LOCF): By default, missing values are replaced with the most recent non-missing value in
 the same column.</li>
@@ -205,7 +193,18 @@ string.</li>
 <code>--na</code> (default: empty string).</li>
 <li>Filling is stateful across file boundaries when multiple files are provided.</li>
 </ul>
-<p>Field Syntax:</p>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
+<li>When using header mode with multiple files, only the header from the first file is
+written; headers from subsequent files are skipped.</li>
+</ul>
+<p>Field syntax:</p>
 <ul>
 <li>Use <code>-f</code> / <code>--field</code> to specify columns to fill.</li>
 <li>Columns can be specified by 1-based index or, if <code>-H</code> is used, by header name.</li>
@@ -213,24 +212,25 @@ string.</li>
 </ul>
 <p>Output:</p>
 <ul>
-<li>Writes processed records to standard output or to the file given by <code>--outfile</code>.</li>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Fill missing values in column 1 downwards:
+<p>Fill missing values in column 1 downwards
 <code>tva fill -H -f 1 data.tsv</code></p>
 </li>
 <li>
-<p>Fill missing values in columns ‘category’ and ‘type’ downwards:
+<p>Fill missing values in columns ‘category’ and ‘type’ downwards
 <code>tva fill -H -f category -f type data.tsv</code></p>
 </li>
 <li>
-<p>Fill missing values in column 2 with “0”:
+<p>Fill missing values in column 2 with “0”
 <code>tva fill -H -f 2 -v "0" data.tsv</code></p>
 </li>
 <li>
-<p>Treat “NA” as missing and fill downwards:
+<p>Treat “NA” as missing and fill downwards
 <code>tva fill -H -f 1 --na "NA" data.tsv</code></p>
 </li>
 </ol>

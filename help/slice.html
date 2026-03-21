@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -181,66 +181,54 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="slice"><a class="header" href="#slice">slice</a></h1>
-<p>Slice rows by index (1-based). Can be used to select specific rows (Keep Mode)
-or exclude them (Drop Mode).</p>
-<p>Notes:</p>
+<p>Slice rows by index (keep or drop).</p>
+<p>Behavior:</p>
 <ul>
-<li>Supports plain text and gzipped (<code>.gz</code>) TSV files.</li>
-<li>Reads from stdin if no input file is given.</li>
-<li>Row indices are 1-based.</li>
-<li>Multiple ranges can be specified with multiple <code>-r</code>/<code>--rows</code> flags.</li>
-</ul>
-<p>Range syntax:</p>
+<li>Selects specific rows by 1-based index (Keep Mode) or excludes them (Drop Mode).</li>
+<li>Row indices refer to absolute line numbers (including header lines when header mode is enabled).</li>
+<li>Range syntax:
 <ul>
-<li><code>N</code> - Single row (e.g., <code>5</code> means row 5).</li>
+<li><code>N</code> - Single row (e.g., <code>5</code>).</li>
 <li><code>N-M</code> - Row range from N to M (e.g., <code>10-20</code>).</li>
 <li><code>N-</code> - From row N to end of file (e.g., <code>10-</code>).</li>
 <li><code>-M</code> - From row 1 to row M (e.g., <code>-5</code> is equivalent to <code>1-5</code>).</li>
 </ul>
+</li>
+<li>Multiple ranges can be specified with multiple <code>-r</code>/<code>--rows</code> flags.</li>
+<li>Use <code>--invert</code> to drop selected rows instead of keeping them.</li>
+</ul>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
+</ul>
 <p>Header behavior:</p>
 <ul>
 <li>Supports all four header modes. See <code>tva --help-headers</code> for details.</li>
-<li>When header is enabled, header lines are preserved in the output and row
-indices refer to absolute line numbers (including header lines).</li>
-<li>For example, with <code>--header-lines 3</code>, the first data row is row 4.</li>
+<li>When header is enabled, header lines are preserved in the output.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Keep rows 10 to 20:
+<p>Keep rows 10 to 20
 <code>tva slice -r 10-20 file.tsv</code></p>
 </li>
 <li>
-<p>Keep rows 1-5 and 10-15:
-<code>tva slice -r 1-5 -r 10-15 file.tsv</code></p>
-</li>
-<li>
-<p>Keep first 5 rows (shorthand):
+<p>Keep first 5 rows
 <code>tva slice -r -5 file.tsv</code></p>
 </li>
 <li>
-<p>Keep from row 10 to end:
-<code>tva slice -r 10- file.tsv</code></p>
-</li>
-<li>
-<p>Drop row 5 (exclude it):
+<p>Drop row 5 (exclude it)
 <code>tva slice -r 5 --invert file.tsv</code></p>
 </li>
 <li>
-<p>Drop rows 1-5 (exclude header and first 4 data rows):
-<code>tva slice -r 1-5 --invert file.tsv</code></p>
-</li>
-<li>
-<p>Drop rows 2-5 but keep header (row 1):
-<code>tva slice -H -r 2-5 --invert file.tsv</code></p>
-</li>
-<li>
-<p>Preview with header (Keep rows 100-110 plus header):
+<p>Preview with header (keep rows 100-110 plus header)
 <code>tva slice -H -r 100-110 file.tsv</code></p>
-</li>
-<li>
-<p>Keep rows with multi-line header (first 3 lines are header):
-<code>tva slice --header-lines 3 -r 5-10 file.tsv</code></p>
 </li>
 </ol>
 

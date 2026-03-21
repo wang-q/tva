@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -182,11 +182,20 @@
                     <main>
                         <h1 id="reverse"><a class="header" href="#reverse">reverse</a></h1>
 <p>Reverses the order of lines (like tac).</p>
-<p>Notes:</p>
+<p>Behavior:</p>
 <ul>
 <li>Reads all lines into memory. Large files may exhaust memory.</li>
 <li>Supports plain text and gzipped (<code>.gz</code>) TSV files.</li>
-<li>Reads from stdin if no input file is given.</li>
+</ul>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
 <p>Header behavior:</p>
 <ul>
@@ -197,15 +206,15 @@ See <code>tva --help-headers</code> for details.</li>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Reverse a file:
+<p>Reverse a file
 <code>tva reverse file.tsv</code></p>
 </li>
 <li>
-<p>Reverse a file, keeping the header at the top:
+<p>Reverse a file, keeping the header at the top
 <code>tva reverse --header file.tsv</code></p>
 </li>
 <li>
-<p>Reverse a file with hash comment lines and column names:
+<p>Reverse a file with hash comment lines and column names
 <code>tva reverse --header-hash1 file.tsv</code></p>
 </li>
 </ol>

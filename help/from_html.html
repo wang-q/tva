@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -182,6 +182,7 @@
                     <main>
                         <h1 id="from-html"><a class="header" href="#from-html">from html</a></h1>
 <p>Extracts data from HTML files using CSS selectors.</p>
+<p>Behavior:</p>
 <p>This command converts HTML content into TSV format using three different modes:</p>
 <ol>
 <li><strong>Query Mode</strong>: For quick extraction of specific elements.</li>
@@ -224,8 +225,8 @@
 <ul>
 <li>Activated by using <code>--row</code> and <code>--col</code> flags.</li>
 <li>Designed to extract repetitive structures (like cards, list items) into a TSV table.</li>
-<li><strong>–row <selector></selector></strong>: Defines the container for each record (e.g., <code>div.product</code>, <code>li</code>).</li>
-<li><strong>–col “Name:Selector [Function]”</strong>: Defines a column in the output TSV.
+<li><code>--row &lt;selector&gt;</code>: Defines the container for each record (e.g., <code>div.product</code>, <code>li</code>).</li>
+<li><code>--col "Name:Selector [Function]"</code>: Defines a column in the output TSV.
 <ul>
 <li><code>Name</code>: The column header name.</li>
 <li><code>Selector</code>: CSS selector relative to the row element.</li>
@@ -235,15 +236,25 @@
 </ul>
 </li>
 </ul>
-<p><strong>Examples:</strong></p>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Use <code>stdin</code> or omit the file argument to read from standard input.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
+</ul>
+<p>Examples:</p>
 <ol>
 <li>
 <p>Extract all links (Query Mode)
-tva from html -q “a attr{href}” index.html</p>
+<code>tva from html -q "a attr{href}" index.html</code></p>
 </li>
 <li>
 <p>Extract the first table (Table Mode)
-tva from html –table data.html</p>
+<code>tva from html --table data.html</code></p>
 </li>
 <li>
 <p>Extract product list (Struct Mode)

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -182,19 +182,7 @@
                     <main>
                         <h1 id="blank"><a class="header" href="#blank">blank</a></h1>
 <p>Replaces consecutive identical values in selected columns with a blank string (or a custom value).</p>
-<p>Input:</p>
-<ul>
-<li>Reads from files or standard input; multiple files are processed as one stream.</li>
-<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
-</ul>
-<p>Header behavior:</p>
-<ul>
-<li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header.
-The header is written once at the top of the output. Blanking logic starts
-from the first data row.</li>
-<li>If no header is specified, the first line is treated as data.</li>
-</ul>
-<p>Blanking logic:</p>
+<p>Behavior:</p>
 <ul>
 <li>For each selected column, the current value is compared with the value in the
 previous row.</li>
@@ -205,7 +193,18 @@ reference for subsequent rows.</li>
 <li>Blanking is stateful across file boundaries when multiple files are provided.</li>
 <li>Use <code>-i</code> / <code>--ignore-case</code> to compare values case-insensitively.</li>
 </ul>
-<p>Field Syntax:</p>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
+<li>When using header mode with multiple files, only the header from the first file is
+written; headers from subsequent files are skipped.</li>
+</ul>
+<p>Field syntax:</p>
 <ul>
 <li>Use <code>-f</code> / <code>--field</code> to specify columns to blank.</li>
 <li>Format: <code>COL</code> (blank with empty string) or <code>COL:REPLACEMENT</code> (blank with custom string).</li>
@@ -214,20 +213,21 @@ reference for subsequent rows.</li>
 </ul>
 <p>Output:</p>
 <ul>
-<li>Writes processed records to standard output or to the file given by <code>--outfile</code>.</li>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Blank the first column:
+<p>Blank the first column
 <code>tva blank -H -f 1 data.tsv</code></p>
 </li>
 <li>
-<p>Blank the ‘category’ column with “—”:
+<p>Blank the ‘category’ column with “—”
 <code>tva blank -H -f category:--- data.tsv</code></p>
 </li>
 <li>
-<p>Blank multiple columns:
+<p>Blank multiple columns
 <code>tva blank -H -f 1 -f 2 data.tsv</code></p>
 </li>
 </ol>

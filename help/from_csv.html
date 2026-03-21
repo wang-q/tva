@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -181,34 +181,40 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="from-csv"><a class="header" href="#from-csv">from csv</a></h1>
-<p>Reads CSV data from a file or standard input and writes it as TSV.</p>
-<p>The goal is to provide a simple entry point into the tva toolkit for
-CSV sources. Parsing is delegated to the Rust <code>csv</code> crate, so quoted
-fields, embedded delimiters, and newlines are handled according to the
-CSV specification.</p>
+<p>Converts CSV (Comma-Separated Values) input to TSV output.</p>
+<p>Behavior:</p>
+<ul>
+<li>Parsing is delegated to the Rust <code>csv</code> crate, handling quoted fields, embedded
+delimiters, and newlines according to the CSV specification.</li>
+<li>TAB and newline characters found inside CSV fields are replaced with the
+strings specified by <code>--tab-replacement</code> and <code>--newline-replacement</code> (default: space).</li>
+</ul>
 <p>Input:</p>
 <ul>
-<li>If no input file is given, or the input file is ‘stdin’, data is read
-from standard input.</li>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+<li>Use <code>stdin</code> or omit the file argument to read from standard input.</li>
 </ul>
 <p>Output:</p>
 <ul>
 <li>Each CSV record becomes one TSV line.</li>
 <li>Fields are joined with TAB characters.</li>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
 <p>Convert a CSV file to TSV
-tva from csv data.csv &gt; data.tsv</p>
+<code>tva from csv data.csv &gt; data.tsv</code></p>
 </li>
 <li>
 <p>Read CSV from stdin and convert to TSV
-cat data.csv | tva from csv &gt; data.tsv</p>
+<code>cat data.csv | tva from csv &gt; data.tsv</code></p>
 </li>
 <li>
-<p>Use a custom delimiter
-tva from csv –delimiter ‘;’ data.csv &gt; data.tsv</p>
+<p>Use a custom delimiter (e.g., semicolon)
+<code>tva from csv --delimiter ';' data.csv</code></p>
 </li>
 </ol>
 

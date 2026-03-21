@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -180,9 +180,11 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="box"><a class="header" href="#box">box</a></h1>
-<p>Draw a box plot (box-and-whisker plot) showing the distribution of a continuous variable.</p>
-<p>A box plot visualizes five summary statistics:</p>
+                        <h1 id="plot-box"><a class="header" href="#plot-box">plot box</a></h1>
+<p>Draws a box plot (box-and-whisker plot) showing the distribution of continuous variable(s).</p>
+<p>Behavior:</p>
+<ul>
+<li>Visualizes five summary statistics for each group:
 <ul>
 <li><strong>Min</strong>: Lower whisker (smallest non-outlier value)</li>
 <li><strong>Q1</strong>: First quartile (25th percentile) - bottom of the box</li>
@@ -190,29 +192,36 @@
 <li><strong>Q3</strong>: Third quartile (75th percentile) - top of the box</li>
 <li><strong>Max</strong>: Upper whisker (largest non-outlier value)</li>
 </ul>
-<p>Outliers are values beyond 1.5 * IQR (inter-quartile range) from the quartiles.</p>
+</li>
+<li>Outliers are values beyond 1.5 * IQR (inter-quartile range) from the quartiles.</li>
+</ul>
+<p>Input:</p>
 <ul>
-<li><code>-y, --y &lt;columns&gt;</code>: Y axis column(s) to plot (1-based index or column name). Required.</li>
-<li><code>--color &lt;column&gt;</code>: Color grouping column for categorical box plots.</li>
-<li><code>--outliers</code>: Show outlier points beyond the whiskers.</li>
-<li><code>--cols &lt;width&gt;</code>: Chart width in characters or ratio (default: 1.0).</li>
-<li><code>--rows &lt;height&gt;</code>: Chart height in characters or ratio (default: 1.0).</li>
-<li><code>--ignore</code>: Ignore rows with non-numeric values.</li>
-<li><code>&lt;infile&gt;</code>: Input TSV file (default: stdin).</li>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+<li>Assumes the first line is a header row with column names.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>Renders a box plot to the terminal.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Draw a simple box plot:
-tva plot box -y age data.tsv</p>
+<p>Draw a simple box plot
+<code>tva plot box -y age data.tsv</code></p>
 </li>
 <li>
-<p>Draw box plots by category:
-tva plot box -y age –color species data.tsv</p>
+<p>Draw box plots by category
+<code>tva plot box -y age --color species data.tsv</code></p>
 </li>
 <li>
-<p>Show outliers:
-tva plot box -y age –outliers data.tsv</p>
+<p>Show outliers beyond the whiskers
+<code>tva plot box -y age --outliers data.tsv</code></p>
+</li>
+<li>
+<p>Plot multiple columns
+<code>tva plot box -y value1,value2 data.tsv</code></p>
 </li>
 </ol>
 

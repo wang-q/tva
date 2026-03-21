@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -182,12 +182,7 @@
                     <main>
                         <h1 id="filter"><a class="header" href="#filter">filter</a></h1>
 <p>Filters TSV rows by field-based tests.</p>
-<p>Input:</p>
-<ul>
-<li>Reads from files or standard input; multiple files are processed as one stream.</li>
-<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
-</ul>
-<p>Tests and logic:</p>
+<p>Behavior:</p>
 <ul>
 <li>Multiple tests can be specified. By default, all tests must pass (logical AND).</li>
 <li>Use <code>--or</code> to require that at least one test passes (logical OR).</li>
@@ -201,6 +196,17 @@
 <li>When no tests are specified, all rows are considered passing.</li>
 <li>This is useful for adding a constant column to all rows.</li>
 </ul>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
+<li>When using header mode with multiple files, only the header from the first file is
+written; headers from subsequent files are skipped.</li>
+</ul>
 <p>Field syntax:</p>
 <ul>
 <li>All tests that take a <code>&lt;field-list&gt;</code> argument accept the same field list
@@ -208,18 +214,23 @@ syntax as other tva commands: 1-based indices, ranges, header names, name
 ranges, and wildcards.</li>
 <li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
 </ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
+</ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Filter rows where column 2 is greater than 100:
+<p>Filter rows where column 2 is greater than 100
 <code>tva filter data.tsv --gt 2:100</code></p>
 </li>
 <li>
-<p>Add a ‘year’ column with value ‘2021’ to all rows:
+<p>Add a ‘year’ column with value ‘2021’ to all rows
 <code>tva filter data.tsv -H --label year --label-values 2021:any</code></p>
 </li>
 <li>
-<p>Label rows as ‘pass’/‘fail’ based on filter tests:
+<p>Label rows as ‘pass’/‘fail’ based on filter tests
 <code>tva filter data.tsv -H --label status --label-values pass:fail --gt score:60</code></p>
 </li>
 </ol>

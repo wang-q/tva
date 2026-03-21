@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -183,7 +183,7 @@
                         <h1 id="sample"><a class="header" href="#sample">sample</a></h1>
 <p>Samples or shuffles tab-separated values (TSV) rows using simple random
 algorithms.</p>
-<p>Modes:</p>
+<p>Behavior:</p>
 <ul>
 <li>Default shuffle: With no sampling options, all input data rows are read and
 written in random order.</li>
@@ -192,23 +192,29 @@ and writes them in random order.</li>
 <li>Bernoulli sampling (<code>--prob</code>/<code>-p</code>): For each data row, independently
 includes the row in the output with probability PROB (0.0 &lt; PROB &lt;= 1.0).
 Row order is preserved.</li>
+<li>Weighted sampling: Use <code>--weight-field</code> to specify a column containing
+positive weights for weighted sampling.</li>
+<li>Distinct sampling: Use <code>--key-fields</code> with <code>--prob</code> for distinct Bernoulli
+sampling where all rows with the same key are included or excluded together.</li>
+<li>Random value printing: Use <code>--print-random</code> to prepend a random value column
+to sampled rows. Use <code>--gen-random-inorder</code> to generate random values for
+all rows without changing input order.</li>
+</ul>
+<p>Input:</p>
+<ul>
+<li>Reads from files or standard input.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
+</ul>
+<p>Output:</p>
+<ul>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
 <p>Header behavior:</p>
 <ul>
 <li><code>--header</code> / <code>-H</code>: Treats the first line of the input as a header.
 The header is always written once at the top of the output. Sampling and
 shuffling are applied only to the remaining data rows.</li>
-</ul>
-<p>Input:</p>
-<ul>
-<li>If no input files are given, or an input file is ‘stdin’, data is read from
-standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
-</ul>
-<p>Output:</p>
-<ul>
-<li>By default, output is written to standard output.</li>
-<li>Use <code>--outfile</code> to write to a file instead.</li>
 </ul>
 <p>Field syntax:</p>
 <ul>
@@ -217,12 +223,25 @@ syntax as other tva commands: 1-based indices, ranges, header names, name
 ranges, and wildcards.</li>
 <li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
 </ul>
-<p>Random value printing:</p>
-<ul>
-<li>Use <code>--print-random</code> to prepend a random value column to sampled rows.</li>
-<li>Use <code>--gen-random-inorder</code> to generate random values for all rows without
-changing input order.</li>
-</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Shuffle all rows randomly
+<code>tva sample data.tsv</code></p>
+</li>
+<li>
+<p>Select a random sample of 100 rows
+<code>tva sample --num 100 data.tsv</code></p>
+</li>
+<li>
+<p>Sample with 10% probability per row
+<code>tva sample --prob 0.1 data.tsv</code></p>
+</li>
+<li>
+<p>Keep header and sample 50 rows
+<code>tva sample --header --num 50 data.tsv</code></p>
+</li>
+</ol>
 
                     </main>
 

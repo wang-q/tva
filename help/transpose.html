@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -188,23 +188,35 @@
 <li>Uses the number of fields in the first line as the expected width.</li>
 <li>All subsequent lines must have the same number of fields.</li>
 <li>On mismatch, an error is printed and the command exits with non-zero status.</li>
+<li>This command only operates in strict mode; non-rectangular tables are rejected.</li>
 </ul>
 <p>Input:</p>
 <ul>
-<li>If no input file is given, or the input file is ‘stdin’, data is read from
-standard input.</li>
+<li>Reads from files or standard input.</li>
 <li>Files ending in <code>.gz</code> are transparently decompressed.</li>
 </ul>
 <p>Output:</p>
 <ul>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> / <code>-o</code> to write to a file instead.</li>
 <li>For an MxN matrix (M lines, N fields), writes an NxM matrix.</li>
 <li>If the input is empty, no output is produced.</li>
 </ul>
-<p>Notes:</p>
-<ul>
-<li>This command only operates in strict mode; non-rectangular tables are
-rejected.</li>
-</ul>
+<p>Examples:</p>
+<ol>
+<li>
+<p>Transpose a TSV file
+<code>tva transpose data.tsv</code></p>
+</li>
+<li>
+<p>Transpose and save to a file
+<code>tva transpose data.tsv -o output.tsv</code></p>
+</li>
+<li>
+<p>Transpose with custom delimiter
+<code>tva transpose --delimiter "," data.csv</code></p>
+</li>
+</ol>
 
                     </main>
 

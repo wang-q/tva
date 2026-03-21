@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -182,47 +182,71 @@
                     <main>
                         <h1 id="wider"><a class="header" href="#wider">wider</a></h1>
 <p>Reshapes a table from long to wide format by spreading a key-value pair across
-multiple columns. This is the inverse of ‘longer’ and similar to ‘crosstab’.</p>
+multiple columns. This is the inverse of <code>longer</code> and similar to <code>crosstab</code>.</p>
+<p>Behavior:</p>
+<ul>
+<li>Converts long-format data to wide format by spreading columns.</li>
+<li>ID columns (specified by <code>--id-cols</code>) are preserved and identify each row.</li>
+<li>The <code>--names-from</code> column values become the new column headers.</li>
+<li>The <code>--values-from</code> column values populate the new columns.</li>
+<li>When multiple values map to the same cell, an aggregation operation is performed.</li>
+<li>Missing cells are filled with the value specified by <code>--values-fill</code> (default: empty).</li>
+</ul>
 <p>Input:</p>
 <ul>
 <li>Reads from one or more TSV files or standard input.</li>
-<li>Files ending in ‘.gz’ are transparently decompressed.</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
 <li>The first line is ALWAYS treated as a header.</li>
-<li>When multiple files are provided, they must have the SAME column structure.</li>
+<li>When multiple files are provided, they must have the same column structure.</li>
 </ul>
-<p>Reshaping behavior:</p>
+<p>Output:</p>
 <ul>
-<li><code>--names-from</code>: Column(s) containing the new column headers.</li>
-<li><code>--values-from</code>: Column(s) containing the data values. Required unless op is
-‘count’.</li>
-<li><code>--id-cols</code>: Columns that identify each row. If omitted, all columns except
-‘names-from’ and ‘values-from’ are used.</li>
-<li><code>--values-fill</code>: Value to use for missing cells (default: empty).</li>
-<li><code>--names-sort</code>: Sort the resulting column headers alphabetically.</li>
-<li><code>--op</code>: Aggregation operation to perform when multiple values fall into the
-same cell. Default is ‘last’ (last value wins).</li>
+<li>By default, output is written to standard output.</li>
+<li>Use <code>--outfile</code> / <code>-o</code> to write to a file instead.</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li>Supports <code>--header</code> / <code>-H</code> and <code>--header-hash1</code> modes.</li>
+<li>The first line is always treated as a header to resolve column names.</li>
+</ul>
+<p>Field syntax:</p>
+<ul>
+<li>Use <code>--names-from</code> to specify the column containing new column headers.</li>
+<li>Use <code>--values-from</code> to specify the column containing data values.</li>
+<li>Use <code>--id-cols</code> to specify columns that identify each row.</li>
+<li>Field lists support 1-based indices, ranges (<code>1-3,5-7</code>), header names, name
+ranges (<code>run-user_time</code>), and wildcards (<code>*_time</code>).</li>
+<li>Run <code>tva --help-fields</code> for a full description shared across tva commands.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
-<p>Spread ‘key’ and ‘value’ columns back into wide format:
-<code>tva wider --names-from key --values-from value</code></p>
+<p>Spread <code>key</code> and <code>value</code> columns back into wide format
+tva wider –names-from key –values-from value data.tsv</p>
 </li>
 <li>
-<p>Spread ‘measurement’ column, using ‘result’ as values:
-<code>tva wider --names-from measurement --values-from result</code></p>
+<p>Spread <code>measurement</code> column, using <code>result</code> as values
+tva wider –names-from measurement –values-from result data.tsv</p>
 </li>
 <li>
-<p>Specify ID columns explicitly (dropping others):
-<code>tva wider --names-from key --values-from val --id-cols id date</code></p>
+<p>Specify ID columns explicitly (dropping others)
+tva wider –names-from key –values-from val –id-cols id,date data.tsv</p>
 </li>
 <li>
-<p>Count occurrences (crosstab):
-<code>tva wider --names-from category --id-cols region --op count</code></p>
+<p>Count occurrences (crosstab)
+tva wider –names-from category –id-cols region –op count data.tsv</p>
 </li>
 <li>
-<p>Calculate sum of values:
-<code>tva wider --names-from category --values-from amount --id-cols region --op sum</code></p>
+<p>Calculate sum of values
+tva wider –names-from category –values-from amount –id-cols region –op sum data.tsv</p>
+</li>
+<li>
+<p>Fill missing values with custom string
+tva wider –names-from key –values-from val –values-fill “NA” data.tsv</p>
+</li>
+<li>
+<p>Sort resulting column headers alphabetically
+tva wider –names-from key –values-from val –names-sort data.tsv</p>
 </li>
 </ol>
 

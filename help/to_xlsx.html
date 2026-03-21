@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7b4e38c.js";
+            window.path_to_searchindex_js = "../searchindex-6c7c0833.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -181,26 +181,47 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="to-xlsx"><a class="header" href="#to-xlsx">to xlsx</a></h1>
-<p>Reads TSV data and writes it as an Excel file (.xlsx).</p>
-<p>This command allows you to create an Excel spreadsheet from TSV data. It writes
-all input rows into a single sheet named “Sheet1”.</p>
+<p>Converts TSV input to Excel (.xlsx) format.</p>
+<p>Behavior:</p>
+<ul>
+<li>Creates an Excel spreadsheet from TSV data.</li>
+<li>Writes all input rows into a single sheet.</li>
+<li>Supports conditional formatting with <code>--le</code>, <code>--ge</code>, <code>--bt</code>, and <code>--str-in-fld</code>.</li>
+<li>Numeric fields are written as numbers; non-numeric fields are written as strings.</li>
+</ul>
 <p>Input:</p>
 <ul>
-<li>TSV data from a file or standard input.</li>
+<li>Reads from files (stdin is not supported for binary xlsx output).</li>
+<li>Files ending in <code>.gz</code> are transparently decompressed.</li>
 </ul>
 <p>Output:</p>
 <ul>
-<li>An Excel (.xlsx) file containing the data.</li>
+<li>An Excel (.xlsx) file.</li>
+<li>Use <code>--outfile</code> to specify the output filename (default: <code>&lt;infile&gt;.xlsx</code>).</li>
+<li>Use <code>--sheet</code> to specify the sheet name (default: input file basename).</li>
+</ul>
+<p>Header behavior:</p>
+<ul>
+<li><code>--header</code> / <code>-H</code>: Treats the first non-empty row as header and styles it.</li>
+<li>When header is enabled, the header row is frozen in the output.</li>
 </ul>
 <p>Examples:</p>
 <ol>
 <li>
 <p>Convert a TSV file to Excel
-tva to xlsx data.tsv &gt; data.xlsx</p>
+<code>tva to xlsx data.tsv</code></p>
 </li>
 <li>
-<p>Read from stdin and convert to Excel
-cat data.tsv | tva to xlsx &gt; data.xlsx</p>
+<p>Specify output filename
+<code>tva to xlsx data.tsv --outfile output.xlsx</code></p>
+</li>
+<li>
+<p>Specify sheet name and header
+<code>tva to xlsx data.tsv --sheet "MyData" --header</code></p>
+</li>
+<li>
+<p>Apply conditional formatting
+<code>tva to xlsx data.tsv --header --le "2:100" --ge "3:50"</code></p>
 </li>
 </ol>
 
