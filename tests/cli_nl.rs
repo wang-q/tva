@@ -335,7 +335,7 @@ fn nl_only_newlines() {
 #[test]
 fn nl_help_displays_usage() {
     let (stdout, _) = TvaCmd::new().args(&["nl", "--help"]).run();
-    assert!(stdout.contains("Reads TSV data from files or standard input"));
+    assert!(stdout.contains("Reads from files or standard input"));
 }
 
 #[test]
