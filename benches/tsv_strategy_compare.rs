@@ -6,10 +6,9 @@
 //! 3. memchr two-pass (memchr + memchr_iter)
 //! 4. Current TsvReader implementations
 
-use criterion::{
-    black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput,
-};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use memchr::{memchr, memchr2, memchr_iter};
+use std::hint::black_box;
 
 // ============================================================================
 // Hand-written SSE2 SIMD Searcher (adapted from simd-csv)
@@ -424,7 +423,6 @@ fn parse_two_pass_memchr(data: &[u8]) -> usize {
 fn parse_single_pass_memchr2(data: &[u8]) -> usize {
     let mut count = 0;
     let mut pos = 0;
-    let mut line_start = 0;
     let mut field_start = 0;
 
     loop {
@@ -453,7 +451,6 @@ fn parse_single_pass_memchr2(data: &[u8]) -> usize {
                     black_box(&data[field_start..abs_pos]);
                     count += 1;
                     pos = abs_pos + 1;
-                    line_start = pos;
                     field_start = pos;
                 }
             }
@@ -683,7 +680,6 @@ fn parse_two_pass_sse2(data: &[u8]) -> usize {
     unsafe {
         let searcher = Sse2Searcher::new(b'\t', b'\n', b'\r');
         let mut iter = searcher.search(data);
-        let mut last_offset = 0;
 
         while let Some(offset) = iter.next() {
             let byte = data[offset];
@@ -706,7 +702,6 @@ fn parse_two_pass_sse2(data: &[u8]) -> usize {
                 count += 1;
 
                 line_start = offset + 1;
-                last_offset = offset;
             }
         }
 
