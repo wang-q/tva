@@ -1,5 +1,5 @@
 use clap::*;
-use std::io::{self, Write};
+use std::io::{self, BufRead, BufReader, Write};
 use std::process::{Command as ProcessCommand, Stdio};
 
 pub fn make_subcommand() -> Command {
@@ -26,7 +26,7 @@ pub fn make_subcommand() -> Command {
             Arg::new("command")
                 .value_name("COMMAND")
                 .num_args(1..)
-                .last(true) // Requires -- before these args
+                .last(true)
                 .required(true)
                 .help("Command to run"),
         )
@@ -65,8 +65,6 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
 
     let mut child_stdin = child.stdin.take().unwrap();
     let mut header_source_used = false;
-
-    // Use line buffering for stdout to ensure headers appear before child output where possible
     let mut stdout = io::stdout();
 
     let filenames: Vec<String> = if file_args.is_empty() {
@@ -76,89 +74,69 @@ pub fn execute(args: &ArgMatches) -> anyhow::Result<()> {
     };
 
     for input in crate::libs::io::raw_input_sources(&filenames)? {
-        let mut reader = crate::libs::tsv::reader::TsvReader::new(input.reader);
+        let reader = input.reader;
 
         if !header_source_used {
-            let mut current_file_records = 0;
+            // First file: extract header lines, then stream the rest
+            let mut buf_reader = BufReader::new(reader);
+            let mut current_line = 0;
 
-            // Read line by line until we satisfy header_lines
-            let res = reader.for_each_line(|line| {
-                current_file_records += 1;
+            // Read and output header lines
+            loop {
+                if current_line >= header_lines {
+                    break;
+                }
 
-                if current_file_records <= header_lines {
-                    stdout.write_all(line)?;
-                    stdout.write_all(b"\n")?;
-                    stdout.flush()?;
-                } else {
-                    // We found the first body line.
-                    // Write it, then interrupt iteration to switch to block copy.
-                    child_stdin.write_all(line)?;
-                    child_stdin.write_all(b"\n")?;
-                    return Err(io::Error::new(
-                        io::ErrorKind::Interrupted,
-                        "Switch to block copy",
-                    ));
-                }
-                Ok(())
-            });
+                let mut line = Vec::new();
+                let bytes_read = buf_reader.read_until(b'\n', &mut line)?;
 
-            // Handle the result of for_each_line
-            match res {
-                Ok(_) => {
-                    // Reached EOF before finding body lines (or exactly at end of header).
-                    // If file was empty, current_file_records is 0.
-                    if current_file_records > 0 {
-                        header_source_used = true;
-                    }
+                if bytes_read == 0 {
+                    // EOF before reading all header lines
+                    break;
                 }
-                Err(e) if e.kind() == io::ErrorKind::Interrupted => {
-                    // We found body lines and interrupted.
-                    // Copy the rest of the file efficiently.
-                    header_source_used = true;
-                    reader.copy_remainder_to(&mut child_stdin)?;
-                }
-                Err(e) => return Err(e.into()),
+
+                // Output header to stdout
+                stdout.write_all(&line)?;
+                stdout.flush()?;
+                current_line += 1;
+            }
+
+            // Stream remaining data directly to child stdin
+            io::copy(&mut buf_reader, &mut child_stdin)?;
+
+            if current_line > 0 {
+                header_source_used = true;
             }
         } else {
+            // Subsequent files: skip header lines, stream the rest
+            let mut buf_reader = BufReader::new(reader);
             let mut skipped = 0;
-            // Skip header lines
-            let res = reader.for_each_line(|line| {
-                if skipped < header_lines {
-                    skipped += 1;
-                } else {
-                    // Found body line. Interrupt to switch to block copy.
-                    // The current line is ALREADY read into buffer and passed as slice.
-                    // We need to write THIS line, then copy remainder.
-                    // If we return Interrupted, `for_each_line` advances `pos` past this line.
-                    // So we must write THIS line here.
-                    child_stdin.write_all(line)?;
-                    child_stdin.write_all(b"\n")?;
-                    return Err(io::Error::new(
-                        io::ErrorKind::Interrupted,
-                        "Switch to block copy",
-                    ));
-                }
-                Ok(())
-            });
 
-            match res {
-                Ok(_) => {
-                    // EOF reached while skipping headers or just after.
+            // Skip header lines
+            loop {
+                if skipped >= header_lines {
+                    break;
                 }
-                Err(e) if e.kind() == io::ErrorKind::Interrupted => {
-                    // Switched to block copy
-                    reader.copy_remainder_to(&mut child_stdin)?;
+
+                let mut line = Vec::new();
+                let bytes_read = buf_reader.read_until(b'\n', &mut line)?;
+
+                if bytes_read == 0 {
+                    // EOF before skipping all header lines
+                    break;
                 }
-                Err(e) => return Err(e.into()),
+
+                skipped += 1;
             }
+
+            // Stream remaining data directly to child stdin
+            io::copy(&mut buf_reader, &mut child_stdin)?;
         }
     }
 
     drop(child_stdin);
 
     let status = child.wait()?;
-
-    // Final flush not strictly needed as child has finished and we are exiting, but good practice.
     stdout.flush()?;
 
     if !status.success() {
