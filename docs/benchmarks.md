@@ -188,13 +188,6 @@ hyperfine \
     -n "tva uniq" "tva uniq -H -f 1 hepmass.tsv > /dev/null" \
     -n "tsv-uniq" "tsv-uniq -H -f 1 hepmass.tsv > /dev/null"
 
-# Scenario 7: Sort (Numeric)
-hyperfine \
-    --warmup 2 \
-    --min-runs 3 \
-    --export-csv benchmark_sort.csv \
-    -n "tva sort" "tva sort -H -k 1 -n hepmass.tsv > /dev/null"
-
 # Scenario 8: Slice (Middle of file)
 hyperfine \
     --warmup 3 \
@@ -202,14 +195,6 @@ hyperfine \
     --export-csv benchmark_slice.csv \
     -n "tva slice" "tva slice -r 1000000-2000000 hepmass.tsv > /dev/null" \
     -n "sed" "sed -n '1000000,2000000p' hepmass.tsv > /dev/null"
-
-# Scenario 10: Append
-hyperfine \
-    --warmup 2 \
-    --min-runs 5 \
-    --export-csv benchmark_append.csv \
-    -n "tva append" "tva append hepmass.tsv hepmass.tsv > /dev/null" \
-    -n "cat" "cat hepmass.tsv hepmass.tsv > /dev/null"
 
 ```
 
@@ -336,3 +321,42 @@ hyperfine \
 | `tsv-uniq` | 64.4 ± 17.8 | 41.4 | 103.0 | 1.81 ± 0.76 |
 | `tva uniq` | 44.2 ± 6.7 | 30.9 | 63.3 | 1.25 ± 0.44 |
 | `sort uniq` | 59.2 ± 11.5 | 47.8 | 96.4 | 1.67 ± 0.62 |
+
+### append
+
+```bash
+hyperfine \
+    --warmup 3 \
+    --min-runs 50 \
+    --export-markdown tva_append.tmp.md \
+    -n "tsv-append" "tsv-append docs/data/diamonds.tsv docs/data/diamonds.tsv > /dev/null" \
+    -n "tva append" "tva append docs/data/diamonds.tsv docs/data/diamonds.tsv > /dev/null" \
+    -n "cat" "cat docs/data/diamonds.tsv docs/data/diamonds.tsv > /dev/null"
+```
+
+| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
+|:---|---:|---:|---:|---:|
+| `tsv-append` | 34.3 ± 3.0 | 30.4 | 47.9 | 1.12 ± 0.10 |
+| `tva append` | 33.8 ± 1.7 | 31.0 | 38.0 | 1.11 ± 0.06 |
+| `cat` | 30.5 ± 0.9 | 28.4 | 33.3 | 1.00 |
+
+
+### sort
+
+```bash
+hyperfine \
+    --warmup 3 \
+    --min-runs 50 \
+    --export-markdown tva_sort.tmp.md \
+    -n "tva sort" "tva sort -H -k 2 docs/data/diamonds.tsv > /dev/null" \
+    -n "sort" "sort -k 2 docs/data/diamonds.tsv > /dev/null" \
+    -n "keep-header -- sort" "keep-header docs/data/diamonds.tsv -- sort -k 2 > /dev/null" \
+    -n "tva keep-header -- sort" "tva keep-header docs/data/diamonds.tsv -- sort -k 2 > /dev/null"
+```
+
+| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
+|:---|---:|---:|---:|---:|
+| `tva sort` | 37.6 ± 3.5 | 30.8 | 48.9 | 1.00 |
+| `sort` | 39.5 ± 3.3 | 33.7 | 50.2 | 1.05 ± 0.13 |
+| `keep-header -- sort` | 42.8 ± 3.6 | 38.6 | 61.0 | 1.14 ± 0.14 |
+| `tva keep-header -- sort` | 74.0 ± 3.3 | 68.8 | 85.7 | 1.97 ± 0.20 |
