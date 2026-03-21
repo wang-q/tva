@@ -203,14 +203,6 @@ hyperfine \
     -n "tva slice" "tva slice -r 1000000-2000000 hepmass.tsv > /dev/null" \
     -n "sed" "sed -n '1000000,2000000p' hepmass.tsv > /dev/null"
 
-# Scenario 9: Reverse
-hyperfine \
-    --warmup 2 \
-    --min-runs 5 \
-    --export-csv benchmark_reverse.csv \
-    -n "tva reverse" "tva reverse hepmass.tsv > /dev/null" \
-    -n "tac" "tac hepmass.tsv > /dev/null"
-
 # Scenario 10: Append
 hyperfine \
     --warmup 2 \
@@ -225,7 +217,7 @@ hyperfine \
 
 使用 `docs/data/diamonds.tsv`
 
-* filter
+### filter
 
 ```bash
 hyperfine \
@@ -247,7 +239,7 @@ hyperfine \
 | `tva expr -m filter`    | 42.3 ± 2.2 |     39.5 |     53.9 | 2.01 ± 0.16 |
 | `tva filter`            | 21.0 ± 1.6 |     18.8 |     31.2 | 1.00 ± 0.10 |
 
-* select
+### select
 
 ```bash
 hyperfine \
@@ -269,7 +261,7 @@ hyperfine \
 | `tva expr -m eval` | 57.3 ± 2.7 |     53.8 |     68.3 | 2.80 ± 0.22 |
 | `tva select`       | 20.5 ± 1.3 |     17.6 |     24.5 |        1.00 |
 
-* reverse
+### reverse
 
 ```bash
 hyperfine \
@@ -290,3 +282,57 @@ hyperfine \
 | `tva reverse --no-mmap` | 17.4 ± 1.1 | 14.6 | 21.6 | 1.00 |
 | `tac` | 50.2 ± 3.0 | 47.1 | 66.9 | 2.88 ± 0.26 |
 | `keep-header -- tac` | 56.7 ± 3.2 | 52.9 | 69.3 | 3.25 ± 0.28 |
+
+`tva reverse` 的基准测试显示了一个反直觉的结果：
+
+**分析**:
+- mmap 模式比 `--no-mmap` 慢 **5.3 倍**
+- 甚至低于 `tac`（2.88x）
+
+**原因**:
+1. **页缓存预读失效**: Linux 内核的预读机制优化顺序读取，反向扫描破坏预读策略
+2. **TLB 抖动**: 随机访问模式导致页表遍历开销增加
+3. **缺页中断**: 小文件（5MB）完全适合内存，`read_to_end` 一次性读入后连续访问更缓存友好
+
+**代码层面**:
+```rust
+// mmap 模式: 反向迭代触发随机访问
+for i in memrchr_iter(b'\n', slice) {  // 反向查找换行符
+    writer.write_all(&slice[i + 1..following_line_start])?;
+}
+
+// --no-mmap 模式: Vec<u8> 连续存储，CPU 缓存友好
+let mut buf = Vec::new();
+f.read_to_end(&mut buf)?;  // 一次性读入
+```
+
+**启示**: 对于小文件（<100MB）或反向/随机访问模式，`--no-mmap` 显著优于 mmap。
+
+### uniq
+
+
+```bash
+hyperfine \
+    --warmup 3 \
+    --min-runs 50 \
+    --export-markdown tva_uniq.tmp.md \
+    -n "tsv-uniq -f carat" "tsv-uniq -H -f carat docs/data/diamonds.tsv > /dev/null" \
+    -n "tsv-uniq -f 1" "tsv-uniq -H -f 1 docs/data/diamonds.tsv > /dev/null" \
+    -n "tva uniq -f carat" "tva uniq -H -f carat docs/data/diamonds.tsv > /dev/null" \
+    -n "tva uniq -f 1" "tva uniq -H -f 1 docs/data/diamonds.tsv > /dev/null" \
+    -n "cut sort uniq" "cut -f 1 docs/data/diamonds.tsv | sort | uniq > /dev/null" \
+    -n "tsv-uniq" "tsv-uniq docs/data/diamonds.tsv > /dev/null" \
+    -n "tva uniq" "tva uniq docs/data/diamonds.tsv > /dev/null" \
+    -n "sort uniq" "sort docs/data/diamonds.tsv | uniq > /dev/null"
+``
+
+| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
+|:---|---:|---:|---:|---:|
+| `tsv-uniq -f carat` | 35.5 ± 11.3 | 23.9 | 64.8 | 1.00 |
+| `tsv-uniq -f 1` | 37.3 ± 11.5 | 26.7 | 86.5 | 1.05 ± 0.46 |
+| `tva uniq -f carat` | 41.3 ± 13.2 | 23.4 | 91.9 | 1.16 ± 0.52 |
+| `tva uniq -f 1` | 44.7 ± 10.5 | 26.4 | 74.1 | 1.26 ± 0.50 |
+| `cut sort uniq` | 175.8 ± 42.4 | 138.4 | 311.1 | 4.96 ± 1.97 |
+| `tsv-uniq` | 64.4 ± 17.8 | 41.4 | 103.0 | 1.81 ± 0.76 |
+| `tva uniq` | 44.2 ± 6.7 | 30.9 | 63.3 | 1.25 ± 0.44 |
+| `sort uniq` | 59.2 ± 11.5 | 47.8 | 96.4 | 1.67 ± 0.62 |
