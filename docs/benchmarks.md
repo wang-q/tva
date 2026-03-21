@@ -256,8 +256,7 @@ hyperfine \
     -n "tva reverse" "tva reverse docs/data/diamonds.tsv > /dev/null" \
     -n "tva reverse -H" "tva reverse -H docs/data/diamonds.tsv > /dev/null" \
     -n "tva reverse --no-mmap" "tva reverse --no-mmap docs/data/diamonds.tsv > /dev/null" \
-    -n "tac" "tac docs/data/diamonds.tsv > /dev/null" \
-    -n "keep-header -- tac" "tva keep-header docs/data/diamonds.tsv -- tac > /dev/null"
+    -n "tac" "tac docs/data/diamonds.tsv > /dev/null"
 ```
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
@@ -309,7 +308,7 @@ hyperfine \
     -n "tsv-uniq" "tsv-uniq docs/data/diamonds.tsv > /dev/null" \
     -n "tva uniq" "tva uniq docs/data/diamonds.tsv > /dev/null" \
     -n "sort uniq" "sort docs/data/diamonds.tsv | uniq > /dev/null"
-``
+```
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
@@ -340,7 +339,6 @@ hyperfine \
 | `tva append` | 33.8 ± 1.7 | 31.0 | 38.0 | 1.11 ± 0.06 |
 | `cat` | 30.5 ± 0.9 | 28.4 | 33.3 | 1.00 |
 
-
 ### sort
 
 ```bash
@@ -350,8 +348,6 @@ hyperfine \
     --export-markdown tva_sort.tmp.md \
     -n "tva sort -k 2" "tva sort -H -k 2 docs/data/diamonds.tsv > /dev/null" \
     -n "sort -k 2" "sort -k 2 docs/data/diamonds.tsv > /dev/null" \
-    -n "keep-header -- sort" "keep-header docs/data/diamonds.tsv -- sort -k 2 > /dev/null" \
-    -n "tva keep-header -- sort" "tva keep-header docs/data/diamonds.tsv -- sort -k 2 > /dev/null" \
     -n "tva sort" "tva sort docs/data/diamonds.tsv > /dev/null" \
     -n "sort" "sort docs/data/diamonds.tsv > /dev/null"
 ```
@@ -362,3 +358,27 @@ hyperfine \
 | `sort` | 39.5 ± 3.3 | 33.7 | 50.2 | 1.05 ± 0.13 |
 | `keep-header -- sort` | 42.8 ± 3.6 | 38.6 | 61.0 | 1.14 ± 0.14 |
 | `tva keep-header -- sort` | 74.0 ± 3.3 | 68.8 | 85.7 | 1.97 ± 0.20 |
+
+### keep-header
+
+```bash
+hyperfine \
+    --warmup 3 \
+    --min-runs 50 \
+    --export-markdown tva_keep-header.tmp.md \
+    -n "sort" "sort docs/data/diamonds.tsv > /dev/null" \
+    -n "keep-header -- sort" "keep-header docs/data/diamonds.tsv -- sort > /dev/null" \
+    -n "tva keep-header -- sort" "tva keep-header docs/data/diamonds.tsv -- sort > /dev/null" \
+    -n "tac" "tac docs/data/diamonds.tsv > /dev/null" \
+    -n "keep-header -- tac" "keep-header docs/data/diamonds.tsv -- tac > /dev/null" \
+    -n "tva keep-header -- tac" "tva keep-header docs/data/diamonds.tsv -- tac > /dev/null"
+```
+
+| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
+|:---|---:|---:|---:|---:|
+| `sort` | 32.2 ± 1.6 | 28.5 | 37.2 | 1.30 ± 0.12 |
+| `keep-header -- sort` | 34.5 ± 2.4 | 31.5 | 45.0 | 1.39 ± 0.15 |
+| `tva keep-header -- sort` | 66.9 ± 2.8 | 62.7 | 76.8 | 2.70 ± 0.24 |
+| `tac` | 45.4 ± 1.7 | 41.9 | 56.2 | 1.83 ± 0.16 |
+| `keep-header -- tac` | 24.8 ± 2.0 | 22.3 | 36.2 | 1.00 |
+| `tva keep-header -- tac` | 52.7 ± 3.1 | 46.3 | 63.8 | 2.12 ± 0.21 |
