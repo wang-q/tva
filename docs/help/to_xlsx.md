@@ -27,14 +27,14 @@ Header behavior:
 
 Examples:
 
-1. Convert a TSV file to Excel:
+1. Convert a TSV file to Excel
    `tva to xlsx data.tsv`
 
-2. Specify output filename:
+2. Specify output filename
    `tva to xlsx data.tsv --outfile output.xlsx`
 
-3. Specify sheet name and header:
+3. Specify sheet name and header
    `tva to xlsx data.tsv --sheet "MyData" --header`
 
-4. Apply conditional formatting:
+4. Apply conditional formatting
    `tva to xlsx data.tsv --header --le "2:100" --ge "3:50"`

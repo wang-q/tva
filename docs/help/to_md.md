@@ -23,11 +23,11 @@ Output:
 
 Examples:
 
-1. Basic markdown table with numeric column right-aligned:
+1. Basic markdown table with numeric column right-aligned
    `tva to md data.tsv --num`
 
-2. Center-align specific columns:
+2. Center-align specific columns
    `tva to md data.tsv --num --center 2`
 
-3. Formatted numeric columns with 2 decimal places:
+3. Formatted numeric columns with 2 decimal places
    `tva to md data.tsv --fmt --digits 2`

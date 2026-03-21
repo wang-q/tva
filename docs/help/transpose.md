@@ -8,19 +8,27 @@ Behavior:
 * Uses the number of fields in the first line as the expected width.
 * All subsequent lines must have the same number of fields.
 * On mismatch, an error is printed and the command exits with non-zero status.
+* This command only operates in strict mode; non-rectangular tables are rejected.
 
 Input:
 
-* If no input file is given, or the input file is 'stdin', data is read from
-  standard input.
+* Reads from files or standard input.
 * Files ending in `.gz` are transparently decompressed.
 
 Output:
 
+* By default, output is written to standard output.
+* Use `--outfile` / `-o` to write to a file instead.
 * For an MxN matrix (M lines, N fields), writes an NxM matrix.
 * If the input is empty, no output is produced.
 
-Notes:
+Examples:
 
-* This command only operates in strict mode; non-rectangular tables are
-  rejected.
+1. Transpose a TSV file
+   `tva transpose data.tsv`
+
+2. Transpose and save to a file
+   `tva transpose data.tsv -o output.tsv`
+
+3. Transpose with custom delimiter
+   `tva transpose --delimiter "," data.csv`
