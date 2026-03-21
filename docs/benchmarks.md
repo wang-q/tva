@@ -231,7 +231,7 @@ hyperfine \
 hyperfine \
     --warmup 3 \
     --min-runs 50 \
-    --export-markdown expr_filter.tmp.md \
+    --export-markdown tva_filter.tmp.md \
     -n "tsv-filter" "tsv-filter -H --gt carat:1 --str-eq cut:Premium --lt price:3000 docs/data/diamonds.tsv > /dev/null" \
     -n "xan filter" "xan filter 'carat > 1 and cut eq \"Premium\" and price < 3000' docs/data/diamonds.tsv > /dev/null" \
     -n "tva expr -m skip-null" "tva expr -H -m skip-null -E 'if(@carat > 1 and @cut eq q(Premium) and @price < 3000, @0, null)' docs/data/diamonds.tsv > /dev/null" \
@@ -253,7 +253,7 @@ hyperfine \
 hyperfine \
     --warmup 3 \
     --min-runs 50 \
-    --export-markdown expr_select.tmp.md \
+    --export-markdown tva_select.tmp.md \
     -n "tsv-select" "tsv-select -H -f carat,cut,price docs/data/diamonds.tsv > /dev/null" \
     -n "xan select" "xan select 'carat,cut,price' docs/data/diamonds.tsv > /dev/null" \
     -n "xan select -e" "xan select -e '[carat, cut, price]' docs/data/diamonds.tsv > /dev/null" \
@@ -268,3 +268,25 @@ hyperfine \
 | `xan select -e`    | 69.2 ± 1.8 |     65.8 |     73.2 | 3.38 ± 0.24 |
 | `tva expr -m eval` | 57.3 ± 2.7 |     53.8 |     68.3 | 2.80 ± 0.22 |
 | `tva select`       | 20.5 ± 1.3 |     17.6 |     24.5 |        1.00 |
+
+* reverse
+
+```bash
+hyperfine \
+    --warmup 3 \
+    --min-runs 50 \
+    --export-markdown tva_reverse.tmp.md \
+    -n "tva reverse" "tva reverse docs/data/diamonds.tsv > /dev/null" \
+    -n "tva reverse -H" "tva reverse -H docs/data/diamonds.tsv > /dev/null" \
+    -n "tva reverse --no-mmap" "tva reverse --no-mmap docs/data/diamonds.tsv > /dev/null" \
+    -n "tac" "tac docs/data/diamonds.tsv > /dev/null" \
+    -n "keep-header -- tac" "tva keep-header docs/data/diamonds.tsv -- tac > /dev/null"
+```
+
+| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
+|:---|---:|---:|---:|---:|
+| `tva reverse` | 92.0 ± 3.2 | 86.0 | 103.1 | 5.28 ± 0.39 |
+| `tva reverse -H` | 94.6 ± 5.2 | 88.6 | 116.8 | 5.43 ± 0.46 |
+| `tva reverse --no-mmap` | 17.4 ± 1.1 | 14.6 | 21.6 | 1.00 |
+| `tac` | 50.2 ± 3.0 | 47.1 | 66.9 | 2.88 ± 0.26 |
+| `keep-header -- tac` | 56.7 ± 3.2 | 52.9 | 69.3 | 3.25 ± 0.28 |
