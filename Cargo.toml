@@ -84,10 +84,6 @@ name = "arc_optimization"
 harness = false
 
 [[bench]]
-name = "tsv_strategy_compare"
-harness = false
-
-[[bench]]
 name = "tsv_reader"
 harness = false
 
