@@ -348,10 +348,12 @@ hyperfine \
     --warmup 3 \
     --min-runs 50 \
     --export-markdown tva_sort.tmp.md \
-    -n "tva sort" "tva sort -H -k 2 docs/data/diamonds.tsv > /dev/null" \
-    -n "sort" "sort -k 2 docs/data/diamonds.tsv > /dev/null" \
+    -n "tva sort -k 2" "tva sort -H -k 2 docs/data/diamonds.tsv > /dev/null" \
+    -n "sort -k 2" "sort -k 2 docs/data/diamonds.tsv > /dev/null" \
     -n "keep-header -- sort" "keep-header docs/data/diamonds.tsv -- sort -k 2 > /dev/null" \
-    -n "tva keep-header -- sort" "tva keep-header docs/data/diamonds.tsv -- sort -k 2 > /dev/null"
+    -n "tva keep-header -- sort" "tva keep-header docs/data/diamonds.tsv -- sort -k 2 > /dev/null" \
+    -n "tva sort" "tva sort docs/data/diamonds.tsv > /dev/null" \
+    -n "sort" "sort docs/data/diamonds.tsv > /dev/null"
 ```
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
