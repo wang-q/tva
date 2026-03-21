@@ -42,8 +42,14 @@ tva expr -E '2 ** 3 + 1'            # Returns: 9 (power before addition)
 tva expr -E '2 ** (3 + 1)'          # Returns: 16 (parentheses change order)
 
 # Negation
-tva expr -E '-5 + 3'                # Returns: -2
-tva expr -E '-(5 + 3)'              # Returns: -8
+tva expr -E '3 + -5'                # Returns: -2
+# Note: Expressions starting with '-' need special handling
+tva expr -E ' -5 + 3'               # Returns: -2
+tva expr -E='-5 + 3'                # Returns: -2
+
+# Wrong usage
+# tva expr -E '-5 + 3'                # Returns: -2
+# tva expr -E '-(5 + 3)'              # Returns: -8
 ```
 
 ## String Operators
