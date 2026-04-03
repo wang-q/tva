@@ -4,15 +4,15 @@ Literals represent constant values in expressions. TVA supports integers, floats
 
 ## Literal Syntax
 
-| Type | Syntax | Examples |
-|:-----|:-------|:---------|
-| Integer | Digit sequence | `42`, `-10` |
-| Float | Decimal point or exponent | `3.14`, `-0.5`, `1e10` |
-| String | Single or double quotes | `"hello"`, `'world'` |
-| Boolean | `true` / `false` | `true`, `false` |
-| Null | `null` | `null` |
-| List | Square brackets | `[1, 2, 3]`, `["a", "b"]` |
-| Lambda | Arrow function | `x => x + 1`, `(x, y) => x + y` |
+| Type    | Syntax                    | Examples                        |
+| :------ | :------------------------ | :------------------------------ |
+| Integer | Digit sequence            | `42`, `-10`                     |
+| Float   | Decimal point or exponent | `3.14`, `-0.5`, `1e10`          |
+| String  | Single or double quotes   | `"hello"`, `'world'`            |
+| Boolean | `true` / `false`          | `true`, `false`                 |
+| Null    | `null`                    | `null`                          |
+| List    | Square brackets           | `[1, 2, 3]`, `["a", "b"]`       |
+| Lambda  | Arrow function            | `x => x + 1`, `(x, y) => x + y` |
 
 ```bash
 # Integer and float literals
@@ -43,16 +43,16 @@ TVA uses a dynamic type system with automatic type recognition at runtime. Since
 data as strings, TVA automatically converts values to appropriate types during expression
 evaluation:
 
-| Type | Description | Conversion Rules |
-|:-----|:------------|:---------------|
-| `Int` | 64-bit signed integer | Returns `null` on string parse failure |
-| `Float` | 64-bit floating point | Integers automatically promoted to float |
-| `String` | UTF-8 string | Numbers/booleans can be explicitly converted |
-| `Bool` | Boolean value | Empty string, 0, `null` are falsy |
-| `Null` | Null value | Represents missing or invalid data |
-| `List` | Heterogeneous list | Elements can be any type |
-| `DateTime` | UTC datetime | Used by datetime functions |
-| `Lambda` | Anonymous function | Used with higher-order functions |
+| Type       | Description           | Conversion Rules                             |
+| :--------- | :-------------------- | :------------------------------------------- |
+| `Int`      | 64-bit signed integer | Returns `null` on string parse failure       |
+| `Float`    | 64-bit floating point | Integers automatically promoted to float     |
+| `String`   | UTF-8 string          | Numbers/booleans can be explicitly converted |
+| `Bool`     | Boolean value         | Empty string, 0, `null` are falsy            |
+| `Null`     | Null value            | Represents missing or invalid data           |
+| `List`     | Heterogeneous list    | Elements can be any type                     |
+| `DateTime` | UTC datetime          | Used by datetime functions                   |
+| `Lambda`   | Anonymous function    | Used with higher-order functions             |
 
 ### Type Conversion
 
@@ -79,12 +79,12 @@ because `null` behaves differently from `""` in expressions.
 
 **Key behaviors:**
 
-| Expression | Empty Field (`null`) | Non-Empty Field (`"text"`) |
-|:-----------|:---------------------|:---------------------------|
-| `@col == ""` | `false` | `false` |
-| `@col == null` | `true` | `false` |
-| `not @col` | `true` | `false` |
-| `len(@col)` | `0` | length of string |
+| Expression     | Empty Field (`null`) | Non-Empty Field (`"text"`) |
+| :------------- | :------------------- | :------------------------- |
+| `@col == ""`   | `false`              | `false`                    |
+| `@col == null` | `true`               | `false`                    |
+| `not @col`     | `true`               | `false`                    |
+| `len(@col)`    | `0`                  | length of string           |
 
 **How to check for empty values:**
 
@@ -116,20 +116,19 @@ tva expr -E "'hello'"              # Single quotes (in shell)
 
 In regular quoted strings, these escape sequences are recognized:
 
-| Escape | Meaning | Example |
-|:-------|:--------|:--------|
-| `\n` | Newline | `"line1\nline2"` |
-| `\t` | Tab | `"col1\tcol2"` |
-| `\r` | Carriage return | `"\r\n"` (Windows line ending) |
-| `\\` | Backslash | `"C:\\Users\\name"` |
-| `\"` | Double quote | `q(say "hello")` (or `"say \"hello\""` in code) |
-| `\'` | Single quote | `q(it's ok)` (or `'it\'s ok'` in code) |
+| Escape | Meaning         | Example                                         |
+| :----- | :-------------- | :---------------------------------------------- |
+| `\n`   | Newline         | `"line1\nline2"`                                |
+| `\t`   | Tab             | `"col1\tcol2"`                                  |
+| `\r`   | Carriage return | `"\r\n"` (Windows line ending)                  |
+| `\\`   | Backslash       | `"C:\\Users\\name"`                             |
+| `\"`   | Double quote    | `q(say "hello")` (or `"say \"hello\""` in code) |
+| `\'`   | Single quote    | `q(it's ok)` (or `'it\'s ok'` in code)          |
 
 ```bash
 # Using escape sequences
 tva expr -E '"line1\nline2"'        # Contains newline
 tva expr -E '"col1\tcol2"'          # Contains tab
-
 ```
 
 ### The `q()` string
@@ -256,3 +255,4 @@ tva expr -E 'map([1, 2, 3], x => x + 1)'
 # Multiple parameters
 tva expr -E 'reduce([1, 2, 3], 0, (acc, x) => acc + x)'
 ```
+

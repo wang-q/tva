@@ -121,7 +121,6 @@ range(0, 11)
 )
 .join("\n")
 '
-
 ```
 
 This demonstrates:
@@ -333,3 +332,4 @@ This demonstrates:
 - `take_while()` to skip non-divisors until finding the GCD
 - `reverse()` to search from largest to smallest for efficiency
 - `nth()` with calculated offset to extract the first matching element
+

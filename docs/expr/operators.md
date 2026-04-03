@@ -72,14 +72,14 @@ Both operands are converted to strings before concatenation.
 
 Compare numbers. Returns boolean.
 
-| Operator | Description | Example |
-|:---------|:------------|:--------|
-| `==` | Equal | `5 == 5` → `true` |
-| `!=` | Not equal | `5 != 3` → `true` |
-| `<` | Less than | `3 < 5` → `true` |
-| `<=` | Less than or equal | `5 <= 5` → `true` |
-| `>` | Greater than | `5 > 3` → `true` |
-| `>=` | Greater than or equal | `5 >= 3` → `true` |
+| Operator | Description           | Example           |
+| :------- | :-------------------- | :---------------- |
+| `==`     | Equal                 | `5 == 5` → `true` |
+| `!=`     | Not equal             | `5 != 3` → `true` |
+| `<`      | Less than             | `3 < 5` → `true`  |
+| `<=`     | Less than or equal    | `5 <= 5` → `true` |
+| `>`      | Greater than          | `5 > 3` → `true`  |
+| `>=`     | Greater than or equal | `5 >= 3` → `true` |
 
 ```bash
 tva expr -E '5 == 5'                # Returns: true
@@ -98,14 +98,14 @@ tva expr -E '5 == 5.0'              # Returns: true (numeric comparison)
 
 Lexicographic string comparison. Returns boolean.
 
-| Operator | Description | Example |
-|:---------|:------------|:--------|
-| `eq` | String equal | `"a" eq "a"` → `true` |
-| `ne` | String not equal | `"a" ne "b"` → `true` |
-| `lt` | String less than | `"a" lt "b"` → `true` |
-| `le` | String less than or equal | `"a" le "a"` → `true` |
-| `gt` | String greater than | `"b" gt "a"` → `true` |
-| `ge` | String greater than or equal | `"b" ge "a"` → `true` |
+| Operator | Description                  | Example               |
+| :------- | :--------------------------- | :-------------------- |
+| `eq`     | String equal                 | `"a" eq "a"` → `true` |
+| `ne`     | String not equal             | `"a" ne "b"` → `true` |
+| `lt`     | String less than             | `"a" lt "b"` → `true` |
+| `le`     | String less than or equal    | `"a" le "a"` → `true` |
+| `gt`     | String greater than          | `"b" gt "a"` → `true` |
+| `ge`     | String greater than or equal | `"b" ge "a"` → `true` |
 
 ```bash
 tva expr -E '"apple" lt "banana"'   # Returns: true
@@ -273,3 +273,4 @@ tva expr -E '1 + 2 | int()'         # Returns: 3
 2. **Prefer string operators for strings**: Use `eq` instead of `==` for string comparison
 3. **Use short-circuit for safety**: `not @col or expensive_operation()`
 4. **Chain with pipes**: `@data | trim() | lower()` is more readable than `lower(trim(@data))`
+

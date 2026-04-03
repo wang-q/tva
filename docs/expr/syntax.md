@@ -7,19 +7,19 @@ pipelines, lambda expressions, and multi-expression evaluation.
 
 TVA expressions are composed of the following atomic elements:
 
-| Element | Syntax | Description |
-|:--------|:-------|:------------|
-| **Column Reference** | `@1`, `@col_name` | Reference input data columns |
-| **Variable** | `@var_name` | Variables bound via `as` |
-| **Literal** | `42`, `"hello"`, `true`, `null`, `[1, 2, 3]` | Constant values |
-| **Function Call** | `func(args...)` | Built-in functions |
-| **Lambda** | `x => x + 1` | Anonymous functions |
+| Element              | Syntax                                       | Description                  |
+| :------------------- | :------------------------------------------- | :--------------------------- |
+| **Column Reference** | `@1`, `@col_name`                            | Reference input data columns |
+| **Variable**         | `@var_name`                                  | Variables bound via `as`     |
+| **Literal**          | `42`, `"hello"`, `true`, `null`, `[1, 2, 3]` | Constant values              |
+| **Function Call**    | `func(args...)`                              | Built-in functions           |
+| **Lambda**           | `x => x + 1`                                 | Anonymous functions          |
 
 ## Evaluation Rules
 
-* Expressions are evaluated left-to-right according to operator precedence
-* The pipe operator `|` has the lowest precedence, used to connect multiple processing steps
-* The last expression's value is the result
+- Expressions are evaluated left-to-right according to operator precedence
+- The pipe operator `|` has the lowest precedence, used to connect multiple processing steps
+- The last expression's value is the result
 
 ## Function Call Syntax
 
@@ -76,10 +76,10 @@ tva expr -E '"hello" | replace(_, "l", "x")'    # Returns: "hexxo"
 
 Expressions can be combined in several ways:
 
-* **Operator Composition**: `@a + @b`, `@x > 10 and @y < 20`
-* **Pipe Composition**: `@name | trim() | upper()`
-* **Variable Binding**: `expr as @var; @var + 1`
-* **Function Nesting**: `if(@age > 18, "adult", "minor")`
+- **Operator Composition**: `@a + @b`, `@x > 10 and @y < 20`
+- **Pipe Composition**: `@name | trim() | upper()`
+- **Variable Binding**: `expr as @var; @var + 1`
+- **Function Nesting**: `if(@age > 18, "adult", "minor")`
 
 ## Lambda Expressions
 
@@ -88,9 +88,9 @@ Lambda expressions create anonymous functions, primarily used with higher-order 
 
 ### Syntax
 
-| Form | Syntax | Example |
-|:-----|:-------|:--------|
-| Single parameter | `param => expr` | `x => x + 1` |
+| Form                | Syntax                  | Example           |
+| :------------------ | :---------------------- | :---------------- |
+| Single parameter    | `param => expr`         | `x => x + 1`      |
 | Multiple parameters | `(p1, p2, ...) => expr` | `(x, y) => x + y` |
 
 **Note**: Lambda parameters are **lexically scoped** and do not use the `@` prefix. This
@@ -222,14 +222,14 @@ tva expr -n "price,qty" -r "10,5" -E '
 
 Expression evaluation can produce several types of errors:
 
-| Error | Example | Description |
-|:------|:--------|:------------|
-| Column not found | `@nonexistent` | Column name doesn't exist in headers |
-| Column index out of bounds | `@100` | Index exceeds number of columns |
-| Type error | `"hello" + 5` | Invalid operation for type |
-| Division by zero | `10 / 0` | Cannot divide by zero |
-| Unknown function | `unknown()` | Function not defined |
-| Wrong arity | `substr("a")` | Wrong number of arguments |
+| Error                      | Example        | Description                          |
+| :------------------------- | :------------- | :----------------------------------- |
+| Column not found           | `@nonexistent` | Column name doesn't exist in headers |
+| Column index out of bounds | `@100`         | Index exceeds number of columns      |
+| Type error                 | `"hello" + 5`  | Invalid operation for type           |
+| Division by zero           | `10 / 0`       | Cannot divide by zero                |
+| Unknown function           | `unknown()`    | Function not defined                 |
+| Wrong arity                | `substr("a")`  | Wrong number of arguments            |
 
 ## Best Practices
 
@@ -238,3 +238,4 @@ Expression evaluation can produce several types of errors:
 3. **Bind intermediate results**: Complex expressions benefit from variable binding
 4. **Use comments**: Explain non-obvious logic with `//` comments
 5. **Handle nulls explicitly**: Use `default()` or `if()` for null handling
+

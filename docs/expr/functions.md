@@ -216,8 +216,7 @@ tva expr -E 'grouped([1, 2, 3, 4], 2)'         # Returns: [[1, 2], [3, 4]]
 
 ## Logic & Control
 
-- if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (
-  or null)
+- if(cond, then, else?) -> T: Conditional expression, returns then if cond is true, else otherwise (or null)
 - default(val, fallback) -> T: Returns fallback if val is null or empty
 
 ```bash
@@ -237,7 +236,7 @@ tva expr -E 'default(null, "fallback")'     # Returns: "fallback"
 - reduce(list, init, lambda) -> value: Reduce list to single value
 - sort_by(list, lambda) -> list: Sort list by lambda expression
 - take_while(list, lambda) -> list: Take elements while lambda is true
-- partition(list, lambda) -> list: Partition list into [satisfying, not_satisfying]
+- partition(list, lambda) -> list: Partition list into \[satisfying, not_satisfying\]
 - flat_map(list, lambda) -> list: Map and flatten result by one level
 
 ```bash
@@ -397,7 +396,7 @@ tva expr -E '[1, 2, 3] | print("List:", _) | len(_)'  # Prints: List: [1, 2, 3],
 ## Meta Functions
 
 - type(value) -> string: Returns the type name of the value
-  - Returns: "int", "float", "string", "bool", "null", or "list"
+    - Returns: "int", "float", "string", "bool", "null", or "list"
 - is_null(value) -> bool: Returns true if value is null
 - is_int(value) -> bool: Returns true if value is an integer
 - is_float(value) -> bool: Returns true if value is a float
@@ -405,13 +404,12 @@ tva expr -E '[1, 2, 3] | print("List:", _) | len(_)'  # Prints: List: [1, 2, 3],
 - is_string(value) -> bool: Returns true if value is a string
 - is_bool(value) -> bool: Returns true if value is a boolean
 - is_list(value) -> bool: Returns true if value is a list
-
 - env(name) -> string: Get environment variable value
-  - Returns `null` if variable not set
+    - Returns `null` if variable not set
 - cwd() -> string: Returns the current working directory
 - version() -> string: Returns the TVA version
 - platform() -> string: Returns the operating system name
-  - Returns: "windows", "macos", "linux", or "unknown"
+    - Returns: "windows", "macos", "linux", or "unknown"
 
 ```bash
 # type() examples
@@ -444,5 +442,5 @@ tva expr -E 'platform()'         # Returns: "windows" / "macos" / "linux"
 
 # cwd() example
 tva expr -E 'cwd()'              # Returns: "/path/to/current/dir"
-
 ```
+

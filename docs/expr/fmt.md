@@ -16,13 +16,13 @@ The `fmt` function uses `%` as the prefix for placeholders and supports three ty
 
 ## Placeholder Forms
 
-| Form | Description | Example |
-|:-----|:------------|:--------|
-| `%()` | Next positional argument | `fmt("%() %()", a, b)` |
-| `%(n)` | nth positional argument (1-based) | `fmt("%(2) %(1)", a, b)` |
-| `%(var)` | Lambda parameter reference | `fmt("%(name)")` |
-| `%(@n)` | Column by index | `fmt("%(@1) and %(@2)")` |
-| `%(@var)` | Variable reference | `fmt("%(@name)")` |
+| Form      | Description                       | Example                  |
+| :-------- | :-------------------------------- | :----------------------- |
+| `%()`     | Next positional argument          | `fmt("%() %()", a, b)`   |
+| `%(n)`    | nth positional argument (1-based) | `fmt("%(2) %(1)", a, b)` |
+| `%(var)`  | Lambda parameter reference        | `fmt("%(name)")`         |
+| `%(@n)`   | Column by index                   | `fmt("%(@1) and %(@2)")` |
+| `%(@var)` | Variable reference                | `fmt("%(@name)")`        |
 
 ## Format Specifiers
 
@@ -35,26 +35,26 @@ Format specifiers follow the colon `:` after the placeholder content:
 ### Fill and Align
 
 | Align | Description | Example `%(:*<10)` |
-|:------|:------------|:-------------------|
-| `<` | Left align | `hello*****` |
-| `>` | Right align | `*****hello` |
-| `^` | Center | `**hello***` |
+| :---- | :---------- | :----------------- |
+| `<`   | Left align  | `hello*****`       |
+| `>`   | Right align | `*****hello`       |
+| `^`   | Center      | `**hello***`       |
 
 ### Sign
 
-| Sign | Description | Example |
-|:-----|:------------|:--------|
-| `-` | Only negative (default) | `-42` |
-| `+` | Always show sign | `+42`, `-42` |
+| Sign | Description             | Example      |
+| :--- | :---------------------- | :----------- |
+| `-`  | Only negative (default) | `-42`        |
+| `+`  | Always show sign        | `+42`, `-42` |
 
 ### Alternative Form (`#`)
 
-| Type | Effect | Example `%(:#x)` |
-|:-----|:-------|:-----------------|
-| `x` | Add `0x` prefix | `0xff` |
-| `X` | Add `0X` prefix | `0XFF` |
-| `b` | Add `0b` prefix | `0b1010` |
-| `o` | Add `0o` prefix | `0o77` |
+| Type | Effect          | Example `%(:#x)` |
+| :--- | :-------------- | :--------------- |
+| `x`  | Add `0x` prefix | `0xff`           |
+| `X`  | Add `0X` prefix | `0XFF`           |
+| `b`  | Add `0b` prefix | `0b1010`         |
+| `o`  | Add `0o` prefix | `0o77`           |
 
 ### Width and Precision
 
@@ -63,13 +63,13 @@ Format specifiers follow the colon `:` after the placeholder content:
 
 ### Type Specifiers
 
-| Type | Description | Example |
-|:-----|:------------|:--------|
-| (omit) | Default | Auto-select by type |
-| `b` | Binary | `1010` |
-| `o` | Octal | `77` |
-| `x` / `X` | Hexadecimal | `ff` / `FF` |
-| `e` / `E` | Scientific notation | `1.23e+04` |
+| Type      | Description         | Example             |
+| :-------- | :------------------ | :------------------ |
+| (omit)    | Default             | Auto-select by type |
+| `b`       | Binary              | `1010`              |
+| `o`       | Octal               | `77`                |
+| `x` / `X` | Hexadecimal         | `ff` / `FF`         |
+| `e` / `E` | Scientific notation | `1.23e+04`          |
 
 ## Basic Examples
 
@@ -114,7 +114,6 @@ tva expr -E 'fmt("%(@1): %(@2) points")' -r "Alice,100"
 # Output: Alice: 100 points
 
 tva expr -E 'fmt("%(): %(@2) points", @1)' -r "Alice,100"
-
 ```
 
 ## Lambda Variables
@@ -207,15 +206,15 @@ parallel 'tva expr -E '"'"'fmt("File: %(1)", {})'"'"'' ::: *.txt
 
 ## Comparison with Rust format!
 
-| Feature | Rust | tva fmt |
-|:--------|:-----|:--------|
-| Placeholder | `{}` | `%()` / `%[]` / `%{}` |
-| Position index | 0-based | 1-based |
-| Named parameters | `format!("{name}", name="val")` | Use `%(var)` with lambda |
-| Dynamic width | `format!("{:>1$}", x, width)` | Not supported |
-| Dynamic precision | `format!("{:.1$}", x, prec)` | Not supported |
-| Debug format (`?`) | `{:?}` | Not supported |
-| Argument counting | Compile-time check | Runtime check |
+| Feature            | Rust                            | tva fmt                  |
+| :----------------- | :------------------------------ | :----------------------- |
+| Placeholder        | `{}`                            | `%()` / `%[]` / `%{}`    |
+| Position index     | 0-based                         | 1-based                  |
+| Named parameters   | `format!("{name}", name="val")` | Use `%(var)` with lambda |
+| Dynamic width      | `format!("{:>1$}", x, width)`   | Not supported            |
+| Dynamic precision  | `format!("{:.1$}", x, prec)`    | Not supported            |
+| Debug format (`?`) | `{:?}`                          | Not supported            |
+| Argument counting  | Compile-time check              | Runtime check            |
 
 ## Escape Sequences
 
@@ -224,3 +223,4 @@ Use `%%` to output a literal percent sign:
 ```bash
 tva expr -E 'fmt("100%% complete")'   # "100% complete"
 ```
+

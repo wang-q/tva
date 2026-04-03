@@ -6,12 +6,12 @@ TVA expressions support two kinds of `@`-prefixed identifiers: column references
 
 Use `@` prefix to reference columns, avoiding conflicts with Shell variables:
 
-| Syntax | Description | Example |
-|:-------|:------------|:--------|
-| `@0` | Entire row content (all columns joined with tabs) | `@0` |
-| `@1`, `@2` | 1-based column index | `@1` is the first column |
-| `@col_name` | Column name reference | `@price` references the price column |
-| `@"col name"` or `@'col name'` | Column name with spaces | `@"user name"` references column "user name" |
+| Syntax                         | Description                                       | Example                                      |
+| :----------------------------- | :------------------------------------------------ | :------------------------------------------- |
+| `@0`                           | Entire row content (all columns joined with tabs) | `@0`                                         |
+| `@1`, `@2`                     | 1-based column index                              | `@1` is the first column                     |
+| `@col_name`                    | Column name reference                             | `@price` references the price column         |
+| `@"col name"` or `@'col name'` | Column name with spaces                           | `@"user name"` references column "user name" |
 
 **Design rationale**:
 
@@ -124,6 +124,7 @@ Global variables start with `@__` and persist across rows. They are useful for a
 - `@__xxx` - User-defined variables, initial value is `null` (use `default()` to initialize)
 
 **Global variables vs regular variables:**
+
 - Regular variables (`as @var`) are cleared for each new row
 - Global variables (`@__xxx`) persist across rows within the same file
 
@@ -160,6 +161,7 @@ tva expr -E '
 ```
 
 Lambda parameters:
+
 - Do not use `@` prefix (distinguishes from columns/variables)
 - Are lexically scoped
 - Can capture variables from outer scope
@@ -197,3 +199,4 @@ tva expr -n "price,qty,discount" -r "100,5,0.1" -E '
 # Avoid: unclear one-letter names
 tva expr -n "price,qty,discount" -r "100,5,0.1" -E '@price * @qty as @a; @a * (1 - @discount)'
 ```
+
