@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d5a81742.js";
+            window.path_to_searchindex_js = "../searchindex-44dc40fe.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-89bb9ebf.js"></script>
@@ -381,8 +381,7 @@ tva expr -E 'grouped([1, 2, 3, 4], 2)'         # Returns: [[1, 2], [3, 4]]
 </code></pre>
 <h2 id="logic--control"><a class="header" href="#logic--control">Logic &amp; Control</a></h2>
 <ul>
-<li>if(cond, then, else?) -&gt; T: Conditional expression, returns then if cond is true, else otherwise (
-or null)</li>
+<li>if(cond, then, else?) -&gt; T: Conditional expression, returns then if cond is true, else otherwise (or null)</li>
 <li>default(val, fallback) -&gt; T: Returns fallback if val is null or empty</li>
 </ul>
 <pre><code class="language-bash"># Conditional expressions
@@ -548,47 +547,26 @@ tva expr -E '[1, 2, 3] | print("List:", _) | len(_)'  # Prints: List: [1, 2, 3],
 </code></pre>
 <h2 id="meta-functions"><a class="header" href="#meta-functions">Meta Functions</a></h2>
 <ul>
-<li>
-<p>type(value) -&gt; string: Returns the type name of the value</p>
+<li>type(value) -&gt; string: Returns the type name of the value
 <ul>
 <li>Returns: “int”, “float”, “string”, “bool”, “null”, or “list”</li>
 </ul>
 </li>
-<li>
-<p>is_null(value) -&gt; bool: Returns true if value is null</p>
-</li>
-<li>
-<p>is_int(value) -&gt; bool: Returns true if value is an integer</p>
-</li>
-<li>
-<p>is_float(value) -&gt; bool: Returns true if value is a float</p>
-</li>
-<li>
-<p>is_numeric(value) -&gt; bool: Returns true if value is int or float</p>
-</li>
-<li>
-<p>is_string(value) -&gt; bool: Returns true if value is a string</p>
-</li>
-<li>
-<p>is_bool(value) -&gt; bool: Returns true if value is a boolean</p>
-</li>
-<li>
-<p>is_list(value) -&gt; bool: Returns true if value is a list</p>
-</li>
-<li>
-<p>env(name) -&gt; string: Get environment variable value</p>
+<li>is_null(value) -&gt; bool: Returns true if value is null</li>
+<li>is_int(value) -&gt; bool: Returns true if value is an integer</li>
+<li>is_float(value) -&gt; bool: Returns true if value is a float</li>
+<li>is_numeric(value) -&gt; bool: Returns true if value is int or float</li>
+<li>is_string(value) -&gt; bool: Returns true if value is a string</li>
+<li>is_bool(value) -&gt; bool: Returns true if value is a boolean</li>
+<li>is_list(value) -&gt; bool: Returns true if value is a list</li>
+<li>env(name) -&gt; string: Get environment variable value
 <ul>
 <li>Returns <code>null</code> if variable not set</li>
 </ul>
 </li>
-<li>
-<p>cwd() -&gt; string: Returns the current working directory</p>
-</li>
-<li>
-<p>version() -&gt; string: Returns the TVA version</p>
-</li>
-<li>
-<p>platform() -&gt; string: Returns the operating system name</p>
+<li>cwd() -&gt; string: Returns the current working directory</li>
+<li>version() -&gt; string: Returns the TVA version</li>
+<li>platform() -&gt; string: Returns the operating system name
 <ul>
 <li>Returns: “windows”, “macos”, “linux”, or “unknown”</li>
 </ul>
@@ -624,7 +602,6 @@ tva expr -E 'platform()'         # Returns: "windows" / "macos" / "linux"
 
 # cwd() example
 tva expr -E 'cwd()'              # Returns: "/path/to/current/dir"
-
 </code></pre>
 
                     </main>

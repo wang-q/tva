@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d5a81742.js";
+            window.path_to_searchindex_js = "searchindex-44dc40fe.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-89bb9ebf.js"></script>
@@ -3538,7 +3538,6 @@ tva expr -E "'hello'"              # Single quotes (in shell)
 <pre><code class="language-bash"># Using escape sequences
 tva expr -E '"line1\nline2"'        # Contains newline
 tva expr -E '"col1\tcol2"'          # Contains tab
-
 </code></pre>
 <h3 id="the-q-string"><a class="header" href="#the-q-string">The <code>q()</code> string</a></h3>
 <p>For strings containing both single and double quotes, use the <code>q()</code> operator
@@ -4238,8 +4237,7 @@ tva expr -E 'grouped([1, 2, 3, 4], 2)'         # Returns: [[1, 2], [3, 4]]
 </code></pre>
 <h2 id="logic--control"><a class="header" href="#logic--control">Logic &amp; Control</a></h2>
 <ul>
-<li>if(cond, then, else?) -&gt; T: Conditional expression, returns then if cond is true, else otherwise (
-or null)</li>
+<li>if(cond, then, else?) -&gt; T: Conditional expression, returns then if cond is true, else otherwise (or null)</li>
 <li>default(val, fallback) -&gt; T: Returns fallback if val is null or empty</li>
 </ul>
 <pre><code class="language-bash"># Conditional expressions
@@ -4405,47 +4403,26 @@ tva expr -E '[1, 2, 3] | print("List:", _) | len(_)'  # Prints: List: [1, 2, 3],
 </code></pre>
 <h2 id="meta-functions"><a class="header" href="#meta-functions">Meta Functions</a></h2>
 <ul>
-<li>
-<p>type(value) -&gt; string: Returns the type name of the value</p>
+<li>type(value) -&gt; string: Returns the type name of the value
 <ul>
 <li>Returns: “int”, “float”, “string”, “bool”, “null”, or “list”</li>
 </ul>
 </li>
-<li>
-<p>is_null(value) -&gt; bool: Returns true if value is null</p>
-</li>
-<li>
-<p>is_int(value) -&gt; bool: Returns true if value is an integer</p>
-</li>
-<li>
-<p>is_float(value) -&gt; bool: Returns true if value is a float</p>
-</li>
-<li>
-<p>is_numeric(value) -&gt; bool: Returns true if value is int or float</p>
-</li>
-<li>
-<p>is_string(value) -&gt; bool: Returns true if value is a string</p>
-</li>
-<li>
-<p>is_bool(value) -&gt; bool: Returns true if value is a boolean</p>
-</li>
-<li>
-<p>is_list(value) -&gt; bool: Returns true if value is a list</p>
-</li>
-<li>
-<p>env(name) -&gt; string: Get environment variable value</p>
+<li>is_null(value) -&gt; bool: Returns true if value is null</li>
+<li>is_int(value) -&gt; bool: Returns true if value is an integer</li>
+<li>is_float(value) -&gt; bool: Returns true if value is a float</li>
+<li>is_numeric(value) -&gt; bool: Returns true if value is int or float</li>
+<li>is_string(value) -&gt; bool: Returns true if value is a string</li>
+<li>is_bool(value) -&gt; bool: Returns true if value is a boolean</li>
+<li>is_list(value) -&gt; bool: Returns true if value is a list</li>
+<li>env(name) -&gt; string: Get environment variable value
 <ul>
 <li>Returns <code>null</code> if variable not set</li>
 </ul>
 </li>
-<li>
-<p>cwd() -&gt; string: Returns the current working directory</p>
-</li>
-<li>
-<p>version() -&gt; string: Returns the TVA version</p>
-</li>
-<li>
-<p>platform() -&gt; string: Returns the operating system name</p>
+<li>cwd() -&gt; string: Returns the current working directory</li>
+<li>version() -&gt; string: Returns the TVA version</li>
+<li>platform() -&gt; string: Returns the operating system name
 <ul>
 <li>Returns: “windows”, “macos”, “linux”, or “unknown”</li>
 </ul>
@@ -4481,7 +4458,6 @@ tva expr -E 'platform()'         # Returns: "windows" / "macos" / "linux"
 
 # cwd() example
 tva expr -E 'cwd()'              # Returns: "/path/to/current/dir"
-
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="string-formatting-fmt"><a class="header" href="#string-formatting-fmt">String Formatting (fmt)</a></h1>
@@ -4610,7 +4586,6 @@ tva expr -E 'fmt("%(@1): %(@2) points")' -r "Alice,100"
 # Output: Alice: 100 points
 
 tva expr -E 'fmt("%(): %(@2) points", @1)' -r "Alice,100"
-
 </code></pre>
 <h2 id="lambda-variables"><a class="header" href="#lambda-variables">Lambda Variables</a></h2>
 <p>Reference lambda parameters within <code>fmt</code>:</p>
@@ -5008,7 +4983,6 @@ range(0, 11)
 )
 .join("\n")
 '
-
 </code></pre>
 <p>This demonstrates:</p>
 <ul>
