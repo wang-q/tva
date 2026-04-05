@@ -2,6 +2,35 @@
 
 ## Unreleased - ReleaseDate
 
+### Added
+
+#### Expr Language (`expr` command)
+- **`fmt` function**: New string formatting function with context support
+- **Polymorphic functions**: Added `concat` and other polymorphic operations for strings and lists
+- **`filter_index` function**: New function for list operations
+
+#### TSV Core
+- **SIMD support**: Added SSE2-accelerated TSV parser for x86_64 and SIMD support for aarch64 platforms
+- **FieldResolver**: Introduced unified field parsing system
+- **Performance optimizations**: SIMD delimiter search, record iteration, and parsing optimizations
+- **`TsvRow` improvements**: Added `field_count` method and optimized parsing with `from_row`
+
+#### Performance
+- **`keep-header`**: Optimized IO performance with buffered copying
+
+#### Documentation
+- **Expr documentation**: Updated with examples and clarifications, including new `fmt.md`
+- **Command documentation**: Improved examples and details across multiple commands
+- **Benchmark results**: Updated with new performance data
+
+### Changed
+
+#### Refactoring
+- **TSV processing**: Migrated commands to use new Header API and `FieldResolver`
+- **Error handling**: Unified error handling with `anyhow::bail!`
+- **CLI**: Centralized delimiter handling with new utility functions
+- **Tests**: Reorganized and consolidated test cases using `test_case` macro
+
 ## 0.3.1 - 2026-03-17
 
 ### Added
