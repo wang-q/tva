@@ -43,22 +43,22 @@ cargo build
 
 #### 5. 逐行转换操作 (Per-Line Operations)
 
-* **特性**: datamash 提供大量逐行转换操作，无需分组即可使用：
-    * **数值修约**: `trunc`, `frac`。
-    * **文件路径处理**: `dirname`, `basename`, `extname`, `barename`。abspath
-    * **数值提取**: `getnum` 从混合文本中提取数字（如 "zoom-123.45xyz" -> 123.45）。
-    * **分箱**: `strbin` (字符串哈希分箱)。
+- **特性**: datamash 提供大量逐行转换操作，无需分组即可使用：
+    - **数值修约**: `trunc`, `frac`。
+    - **文件路径处理**: `dirname`, `basename`, `extname`, `barename`。abspath
+    - **数值提取**: `getnum` 从混合文本中提取数字（如 "zoom-123.45xyz" -> 123.45）。
+    - **分箱**: `strbin` (字符串哈希分箱)。
 
 #### 6. 示例文件组织
 
-* **特性**: datamash 的 `examples/` 目录包含：
-    * `scores.txt` / `scores_h.txt`: 成对的无表头/有表头示例。
-    * `genes.txt` / `genes_h.txt`: 真实生物信息学数据（UCSC Genome Browser）。
-    * `readme.md`: 详细解释每个示例的用法和场景。
-* **借鉴**:
-    * 为 `tva` 的 `docs/data/` 提供成对的示例文件（有/无表头）。
-    * 添加真实领域数据：金融数据、日志数据、科学数据。
-    * 编写 `docs/data/README.md` 详细说明示例用途。
+- **特性**: datamash 的 `examples/` 目录包含：
+    - `scores.txt` / `scores_h.txt`: 成对的无表头/有表头示例。
+    - `genes.txt` / `genes_h.txt`: 真实生物信息学数据（UCSC Genome Browser）。
+    - `readme.md`: 详细解释每个示例的用法和场景。
+- **借鉴**:
+    - 为 `tva` 的 `docs/data/` 提供成对的示例文件（有/无表头）。
+    - 添加真实领域数据：金融数据、日志数据、科学数据。
+    - 编写 `docs/data/README.md` 详细说明示例用途。
 
 ### 参考项目: xan
 
@@ -67,92 +67,86 @@ cargo build
 
 #### 1. 并行处理架构 (Parallel Processing)
 
-* **实现**: `cmd/parallel.rs` (~1600 行)
-* **核心设计**: 采用 **"External Parallelism"** 模式，不修改单个命令的内部实现，而是通过一个通用的 `parallel` 子命令来并行化任意操作。
+- **实现**: `cmd/parallel.rs` (~1600 行)
+- **核心设计**: 采用 **"External Parallelism"** 模式，不修改单个命令的内部实现，而是通过一个通用的`parallel` 子命令来并行化任意操作。
 
 **关键机制**:
 
 1. **任务分发策略** (线程分配算法):
-    * 当输入文件数 >= 线程数时：每个文件一个任务
-    * 当线程数 > 文件数时：利用 CSV/BGZF 的 seek 能力将大文件切分为多个 `FileChunk`
-    * 通过 `simd_seeker().segments(t)` 实现基于字节偏移的精确分块
-
+    - 当输入文件数 >= 线程数时：每个文件一个任务
+    - 当线程数 > 文件数时：利用 CSV/BGZF 的 seek 能力将大文件切分为多个 `FileChunk`
+    - 通过 `simd_seeker().segments(t)` 实现基于字节偏移的精确分块
 2. **预处理管道** (两种模式):
-    * `-P, --preprocess`: 使用 xan 子命令管道 (如 `"search -s name John | slice -l 10"`)
-    * `-H, --shell-preprocess`: 使用 shell 管道 (`$SHELL -c`)，更灵活但 Windows 不支持
-
+    - `-P, --preprocess`: 使用 xan 子命令管道 (如 `"search -s name John | slice -l 10"`)
+    - `-H, --shell-preprocess`: 使用 shell 管道 (`$SHELL -c`)，更灵活但 Windows 不支持
 3. **子命令实现**:
-    * `count`: 行数统计 (支持 `--source-column` 输出每个文件的计数)
-    * `cat`: 并行预处理并合并结果 (带缓冲区控制 `--buffer-size`)
-    * `freq`: 并行频率统计，使用 `Counter` 数据结构合并结果
-    * `stats`: 并行统计计算，使用 `Stats` 结构合并
-    * `agg`/`groupby`: 并行聚合，使用 `AggregationProgram`/`GroupAggregationProgram`
-    * `map`: 并行处理并输出到指定模板文件 (如 `'{}_freq.csv'`)
-
+    - `count`: 行数统计 (支持 `--source-column` 输出每个文件的计数)
+    - `cat`: 并行预处理并合并结果 (带缓冲区控制 `--buffer-size`)
+    - `freq`: 并行频率统计，使用 `Counter` 数据结构合并结果
+    - `stats`: 并行统计计算，使用 `Stats` 结构合并
+    - `agg`/`groupby`: 并行聚合，使用 `AggregationProgram`/`GroupAggregationProgram`
+    - `map`: 并行处理并输出到指定模板文件 (如 `'{}_freq.csv'`)
 4. **进程管理** (`ProcessManager`):
-    * 使用 `rayon` 线程池进行并行执行
-    * 支持进度条 (`indicatif` 的 `MultiProgress`)
-    * 子进程错误捕获和优雅退出 (通过 `Children` 结构管理)
-
+    - 使用 `rayon` 线程池进行并行执行
+    - 支持进度条 (`indicatif` 的 `MultiProgress`)
+    - 子进程错误捕获和优雅退出 (通过 `Children` 结构管理)
 5. **数据合并模式**:
-    * **计数/求和型**: 使用 `AtomicU64` 或 `Mutex<BTreeMap>` 合并
-    * **频率表型**: `FrequencyTables::merge()` 合并多个 `Counter`
-    * **统计型**: `StatsTables::merge()` 合并 `Stats` 结构
-    * **分组聚合型**: `GroupAggregationProgram::merge()` 合并分组结果
+    - **计数/求和型**: 使用 `AtomicU64` 或 `Mutex<BTreeMap>` 合并
+    - **频率表型**: `FrequencyTables::merge()` 合并多个 `Counter`
+    - **统计型**: `StatsTables::merge()` 合并 `Stats` 结构
+    - **分组聚合型**: `GroupAggregationProgram::merge()` 合并分组结果
 
 **对 `tva` 的启示**:
 
-* **优势**: 
-    * 无需修改现有命令代码即可并行化
-    * 利用 SIMD CSV 解析器的 seek 能力实现文件分块
-    * 支持 BGZF 索引文件的高效随机访问
-* **挑战**:
-    * 需要处理 header 在分块后的正确传递
-    * 输出顺序控制 (`cat` 命令的 `--buffer-size`)
-    * 错误处理和子进程管理复杂度较高
-* **建议**: 
-    * 第一阶段：实现基于文件粒度的并行 (类似 `xan parallel count *.tsv`)
-    * 第二阶段：结合 `tva split` 实现大文件分块并行
-    * 利用 TSV 无引号特性，可以比 CSV 更简单地实现字节级分块
+- **优势**:
+    - 无需修改现有命令代码即可并行化
+    - 利用 SIMD CSV 解析器的 seek 能力实现文件分块
+    - 支持 BGZF 索引文件的高效随机访问
+- **挑战**:
+    - 需要处理 header 在分块后的正确传递
+    - 输出顺序控制 (`cat` 命令的 `--buffer-size`)
+    - 错误处理和子进程管理复杂度较高
+- **建议**:
+    - 第一阶段：实现基于文件粒度的并行 (类似 `xan parallel count *.tsv`)
+    - 第二阶段：结合 `tva split` 实现大文件分块并行
+    - 利用 TSV 无引号特性，可以比 CSV 更简单地实现字节级分块
 
 #### par parallel/partition
 
 #### 4. 随机访问与索引 (Random Access & Indexing)
 
-* **实现**: `src/config.rs` & `bgzip`
-* **机制**: 利用 `.gzi` 索引文件（BGZF 格式），支持不解压整个文件的情况下 Seek 到 Gzip 中间。
-* **对 `tva` 的启示**:
-    * 对于大文件（GB/TB 级）的并行处理至关重要。
-    * **建议**: 处理超大压缩 TSV 时，支持 BGZF 索引是实现并行切片 (`slice`) 和随机采样 (`sample`)
-      的基础。
+- **实现**: `src/config.rs` & `bgzip`
+- **机制**: 利用 `.gzi` 索引文件（BGZF 格式），支持不解压整个文件的情况下 Seek 到 Gzip 中间。
+- **对 `tva` 的启示**:
+    - 对于大文件（GB/TB 级）的并行处理至关重要。
+    - **建议**: 处理超大压缩 TSV 时，支持 BGZF 索引是实现并行切片 (`slice`) 和随机采样 (`sample`)的基础。
 
 ## 计划中的功能
 
 ### 数据重塑 (Data Reshaping) - Tidyr 对等功能
 
-* **多度量透视 (Multi-measure Pivoting)**:
-    * `longer`: 支持在 `--names-to` 中使用 `.value` 哨兵，同时透视到多个值列。
-    * `wider`: 允许 `--values-from` 接受多个列。
-* **列拆分/合并 (Column Splitting/Merging)**:
-    * `separate` (unpack): 使用分隔符或正则将单个字符串列拆分为多个列。
-    * `unite` (pack): 使用模板或分隔符将多个列合并为单个字符串列。
-* **行拆分 (Row Splitting)**:
-    * `separate-rows` (explode): 将包含分隔符的单元格拆分为多行 (e.g. "a,b" -> 2 rows)。
-* **缺失值处理 (Missing Values)**:
-    * `replace_na`: 将显式 `NA` (空字符串) 替换为指定值。
-    * `drop_na`: 丢弃包含缺失值的行。
+- **多度量透视 (Multi-measure Pivoting)**:
+    - `longer`: 支持在 `--names-to` 中使用 `.value` 哨兵，同时透视到多个值列。
+    - `wider`: 允许 `--values-from` 接受多个列。
+- **列拆分/合并 (Column Splitting/Merging)**:
+    - `separate` (unpack): 使用分隔符或正则将单个字符串列拆分为多个列。
+    - `unite` (pack): 使用模板或分隔符将多个列合并为单个字符串列。
+- **行拆分 (Row Splitting)**:
+    - `separate-rows` (explode): 将包含分隔符的单元格拆分为多行 (e.g. "a,b" -> 2 rows)。
+- **缺失值处理 (Missing Values)**:
+    - `replace_na`: 将显式 `NA` (空字符串) 替换为指定值。
+    - `drop_na`: 丢弃包含缺失值的行。
 
 ### 数据操作 (Data Manipulation) - dplyr 核心模式
 
-* **安全连接 (Safe Joins)**:
-    * 行动: 添加 `--relationship` 标志（例如 `one-to-one`, `many-to-one`）在连接时验证键。
-* **Tidy Selection DSL**:
-    * 行动: 增强 `src/libs/fields.rs` 以支持正则 (`matches('^date_')`)、谓词 (`where(is_numeric)`)
-      和集合操作 (`-colA`)。
-* **窗口函数 (Window Functions)**:
-    * 行动: 为 `filter` 和 `stats` 实现滑动窗口逻辑（例如，组内 `filter --expr "val > mean(val)"`）。
-* **高强度测试 (Torture Testing)**:
-    * 行动: 创建 `tests/torture/` 用于模糊测试输入，确保零 panic。
+- **安全连接 (Safe Joins)**:
+    - 行动: 添加 `--relationship` 标志（例如 `one-to-one`, `many-to-one`）在连接时验证键。
+- **Tidy Selection DSL**:
+    - 行动: 增强 `src/libs/fields.rs` 以支持正则 (`matches('^date_')`)、谓词 (`where(is_numeric)`)和集合操作 (`-colA`)。
+- **窗口函数 (Window Functions)**:
+    - 行动: 为 `filter` 和 `stats` 实现滑动窗口逻辑（例如，组内 `filter --expr "val > mean(val)"`）。
+- **高强度测试 (Torture Testing)**:
+    - 行动: 创建 `tests/torture/` 用于模糊测试输入，确保零 panic。
 
 ### 借鉴 xan 的未来演进路线 (Future Roadmap: Lessons from xan)
 
@@ -160,12 +154,12 @@ cargo build
 
 #### 2. Search (高级搜索)
 
-* **功能**: `xan search` 远超简单的 `grep`。它支持：
-    * **多模式匹配**: 同时搜索数千个关键词（基于 Aho-Corasick 算法）。
-    * **模糊匹配**: `xan fuzzy-join` 和搜索支持基于 Levenshtein 距离的匹配。
-    * **替换**: 支持正则替换并输出到新列。
-* **价值**: 在数据清洗（ETL）场景中，批量关键词匹配和替换是刚需。
-* **建议**: 增强 `tva filter` 或新增 `tva search`，集成 `aho-corasick` crate 以支持高性能的多模式匹配。
+- **功能**: `xan search` 远超简单的 `grep`。它支持：
+    - **多模式匹配**: 同时搜索数千个关键词（基于 Aho-Corasick 算法）。
+    - **模糊匹配**: `xan fuzzy-join` 和搜索支持基于 Levenshtein 距离的匹配。
+    - **替换**: 支持正则替换并输出到新列。
+- **价值**: 在数据清洗（ETL）场景中，批量关键词匹配和替换是刚需。
+- **建议**: 增强 `tva filter` 或新增 `tva search`，集成 `aho-corasick` crate 以支持高性能的多模式匹配。
 
 ## tva 与 xan 命令对比分析
 
@@ -173,41 +167,39 @@ cargo build
 
 ### 高优先级（建议尽快实现）
 
-| 命令            | xan 对应   | 功能描述  | 价值                     |
-|:--------------|:---------|:------|:-----------------------|
+| 命令          | xan 对应 | 功能描述   | 价值                                 |
+| :------------ | :------- | :--------- | :----------------------------------- |
 | **frequency** | `freq`   | 频次统计表 | 快速了解数据分布，配合 `hist` 可视化 |
-| **rename**    | `rename` | 重命名列  | 数据清洗基础功能               |
+| **rename**    | `rename` | 重命名列   | 数据清洗基础功能                     |
 
 ### 低优先级（特定场景）
 
-| 命令           | xan 对应     | 功能描述                | 价值             |
-|:-------------|:-----------|:--------------------|:---------------|
-| **progress** | `progress` | 显示处理进度              | 大文件用户体验        |
-| **search**   | `search`   | 多模式搜索（Aho-Corasick） | 高性能关键词搜索       |
+| 命令         | xan 对应   | 功能描述                   | 价值               |
+| :----------- | :--------- | :------------------------- | :----------------- |
+| **progress** | `progress` | 显示处理进度               | 大文件用户体验     |
+| **search**   | `search`   | 多模式搜索（Aho-Corasick） | 高性能关键词搜索   |
 | **separate** | `separate` | 使用正则拆分列             | 比 `unpack` 更灵活 |
-| **window**   | `window`   | 滑动窗口计算              | 时间序列分析         |
+| **window**   | `window`   | 滑动窗口计算               | 时间序列分析       |
 
 ### 暂不推荐实现
 
-| 命令         | xan 对应     | 原因            |
-|:-----------|:-----------|:--------------|
+| 命令       | xan 对应   | 原因                       |
+| :--------- | :--------- | :------------------------- |
 | `input`    | `input`    | 功能简单，可用其他方式替代 |
-| `parallel` | `parallel` | 架构复杂，可后期考虑    |
+| `parallel` | `parallel` | 架构复杂，可后期考虑       |
 
 ### Hist (直方图) 补充分析
 
 除了 `plot`，`xan` 还提供了一个专门的 `hist` 命令 (`xan/src/cmd/hist.rs`)，用于绘制水平条形图（Horizontal
 Bar Charts）。
 
-* **定位差异**:
-    * `plot`: 通用绘图工具，支持散点图、折线图、垂直条形图，基于 `ratatui`，交互性强，适合复杂数据探索。
-    * `hist`: 专注于**频次分布可视化**，通常配合 `freq` 或 `bins` 命令使用。它不使用 `ratatui`，而是直接通过
-      Unicode 字符（如 `█`, `▌`）在标准输出打印，更轻量，适合管道操作。
-* **核心逻辑**:
-    * **数据模型**: 期望输入包含 `field` (可选), `value` (标签), `count` (数值) 三列。
-    * **渲染**: 手动计算每个条形的宽度，使用 `Scale` 进行线性或对数缩放，并处理颜色（Rainbow/Category/Stripes）。
-    * **特色功能**: 支持日期补全 (`--dates`)，自动填充缺失的日期并设为 0；支持间隙压缩 (
-      `--compress-gaps`)，隐藏连续的 0 值。
+- **定位差异**:
+    - `plot`: 通用绘图工具，支持散点图、折线图、垂直条形图，基于 `ratatui`，交互性强，适合复杂数据探索。
+    - `hist`: 专注于**频次分布可视化**，通常配合 `freq` 或 `bins` 命令使用。它不使用 `ratatui`，而是直接通过Unicode 字符（如 `█`, `▌`）在标准输出打印，更轻量，适合管道操作。
+- **核心逻辑**:
+    - **数据模型**: 期望输入包含 `field` (可选), `value` (标签), `count` (数值) 三列。
+    - **渲染**: 手动计算每个条形的宽度，使用 `Scale` 进行线性或对数缩放，并处理颜色（Rainbow/Category/Stripes）。
+    - **特色功能**: 支持日期补全 (`--dates`)，自动填充缺失的日期并设为 0；支持间隙压缩 (`--compress-gaps`)，隐藏连续的 0 值。
 
 ## Arc 优化基准测试结果
 
@@ -218,51 +210,46 @@ Bar Charts）。
 
 **关键发现**:
 
-|       场景       |  当前实现   | Arc 优化  |    加速比     |   结论   |
-|:--------------:|:-------:|:-------:|:----------:|:------:|
-|   String 克隆    | 407 µs  |  35 µs  | **11.6x**  | ✅ 显著提升 |
-|    List 克隆     | 399 µs  |  36 µs  | **11.1x**  | ✅ 显著提升 |
-|  `take()` 函数   | 48.3 ms | 1.38 ms |  **35x**   | ✅ 显著提升 |
-| `reverse()` 函数 | 47.2 ms | 1.35 ms |  **35x**   | ✅ 显著提升 |
-|  `slice()` 函数  | 2.67 ms | 2.67 ms |   **1x**   | ⚠️ 持平  |
-|  `sort()` 函数   | 1.33 ms | 64.9 ms | **0.02x**  | ❌ 显著下降 |
-| `unique()` 函数  | 3.97 ms | 426 ms  | **0.009x** | ❌ 显著下降 |
-| `filter()` 函数  | 1.08 ms | 30.9 ms | **0.035x** | ❌ 显著下降 |
-|   `map()` 函数   | 1.49 ms | 77.7 ms | **0.019x** | ❌ 显著下降 |
+|       场景       | 当前实现 | Arc 优化 |   加速比   |    结论     |
+| :--------------: | :------: | :------: | :--------: | :---------: |
+|   String 克隆    |  407 µs  |  35 µs   | **11.6x**  | ✅ 显著提升 |
+|    List 克隆     |  399 µs  |  36 µs   | **11.1x**  | ✅ 显著提升 |
+|  `take()` 函数   | 48.3 ms  | 1.38 ms  |  **35x**   | ✅ 显著提升 |
+| `reverse()` 函数 | 47.2 ms  | 1.35 ms  |  **35x**   | ✅ 显著提升 |
+|  `slice()` 函数  | 2.67 ms  | 2.67 ms  |   **1x**   |   ⚠️ 持平   |
+|  `sort()` 函数   | 1.33 ms  | 64.9 ms  | **0.02x**  | ❌ 显著下降 |
+| `unique()` 函数  | 3.97 ms  |  426 ms  | **0.009x** | ❌ 显著下降 |
+| `filter()` 函数  | 1.08 ms  | 30.9 ms  | **0.035x** | ❌ 显著下降 |
+|   `map()` 函数   | 1.49 ms  | 77.7 ms  | **0.019x** | ❌ 显著下降 |
 
 **分析**:
 
-* **Arc 有优势的场景**: 纯克隆操作（不修改数据）和频繁参数传递的场景。
-  `Arc` 仅递增引用计数（O(1)），而直接克隆需要深拷贝（O(n)）。
-
-* **Arc 无优势的场景**: 需要遍历并创建新列表的操作（`sort`, `filter`, `map`, `unique`）。
-  这些操作需要 `list.iter().cloned().collect()`，比直接 `list.clone()` 慢得多。
-  此外，`Arc<Vec<T>>` 无法直接获取可变引用，需要 `Arc::make_mut` 或重新分配 Vec。
+- **Arc 有优势的场景**: 纯克隆操作（不修改数据）和频繁参数传递的场景。`Arc` 仅递增引用计数（O(1)），而直接克隆需要深拷贝（O(n)）。
+- **Arc 无优势的场景**: 需要遍历并创建新列表的操作（`sort`, `filter`, `map`, `unique`）。这些操作需要 `list.iter().cloned().collect()`，比直接 `list.clone()` 慢得多。此外，`Arc<Vec<T>>` 无法直接获取可变引用，需要 `Arc::make_mut` 或重新分配 Vec。
 
 **字符串操作基准测试** (`benches/string_arc.rs`):
 
-|      函数      |  当前实现   | Arc 优化  |    加速比    |   结论    |
-|:------------:|:-------:|:-------:|:---------:|:-------:|
-|  String 克隆   | 407 µs  |  35 µs  | **11.6x** | ✅ 显著提升  |
-|  `split()`   | 47.2 ms | 1.35 ms |  **35x**  | ✅ 显著提升  |
-| `replace()`  | 114 µs  | 96.6 µs | **1.2x**  | ⚠️ 轻微提升 |
-|  `concat()`  | 4.01 ms | 2.58 ms | **1.6x**  | ✅ 一定提升  |
-|  `upper()`   | 26.2 µs | 22.5 µs | **1.2x**  | ⚠️ 轻微提升 |
-| `take_str()` | 1.66 ms | 1.61 ms | **1.03x** | ⚠️ 基本持平 |
-|  `substr()`  | 1.73 ms | 1.94 ms | **0.89x** | ⚠️ 轻微下降 |
+|     函数     | 当前实现 | Arc 优化 |  加速比   |    结论     |
+| :----------: | :------: | :------: | :-------: | :---------: |
+| String 克隆  |  407 µs  |  35 µs   | **11.6x** | ✅ 显著提升 |
+|  `split()`   | 47.2 ms  | 1.35 ms  |  **35x**  | ✅ 显著提升 |
+| `replace()`  |  114 µs  | 96.6 µs  | **1.2x**  | ⚠️ 轻微提升 |
+|  `concat()`  | 4.01 ms  | 2.58 ms  | **1.6x**  | ✅ 一定提升 |
+|  `upper()`   | 26.2 µs  | 22.5 µs  | **1.2x**  | ⚠️ 轻微提升 |
+| `take_str()` | 1.66 ms  | 1.61 ms  | **1.03x** | ⚠️ 基本持平 |
+|  `substr()`  | 1.73 ms  | 1.94 ms  | **0.89x** | ⚠️ 轻微下降 |
 
-* **字符串操作分析**:
-    * `split()` 受益于 Arc，因为需要频繁克隆参数
-    * `replace()`, `upper()` 主要开销在字符串操作本身，Arc 优势不明显
-    * `take_str()`, `substr()` 主要开销在新字符串分配，Arc 优势被抵消
+- **字符串操作分析**:
+    - `split()` 受益于 Arc，因为需要频繁克隆参数
+    - `replace()`, `upper()` 主要开销在字符串操作本身，Arc 优势不明显
+    - `take_str()`, `substr()` 主要开销在新字符串分配，Arc 优势被抵消
 
 **对 `tva` 的启示**:
 
-* 如果 `expr` 命令主要使用 `take`, `first`, `last`, `nth` 等访问操作，`Arc` 优化是有价值的。
-* 如果频繁使用 `sort`, `filter`, `map` 等转换操作，当前实现可能更合适。
-* 字符串操作：`split()` 受益明显，其他操作收益有限。
-* **最终建议**: 考虑到 `tva` 的核心是 TSV 文本处理，当前 `Value` 类型设计已足够高效，暂不引入 `Arc`
-  增加复杂度。
+- 如果 `expr` 命令主要使用 `take`, `first`, `last`, `nth` 等访问操作，`Arc` 优化是有价值的。
+- 如果频繁使用 `sort`, `filter`, `map` 等转换操作，当前实现可能更合适。
+- 字符串操作：`split()` 受益明显，其他操作收益有限。
+- **最终建议**: 考虑到 `tva` 的核心是 TSV 文本处理，当前 `Value` 类型设计已足够高效，暂不引入 `Arc`增加复杂度。
 
 ## 代码结构优化建议
 
@@ -274,8 +261,8 @@ Bar Charts）。
 
 ```rust
 for col_idx in 0..row.field_count() {
-    let bytes = row.get_bytes(col_idx + 1).unwrap_or(b"");
-    // ...
+let bytes = row.get_bytes(col_idx + 1).unwrap_or(b"");
+// ...
 }
 ```
 
@@ -283,7 +270,7 @@ for col_idx in 0..row.field_count() {
 
 ```rust
 impl TsvRow {
-    pub fn iter_fields(&self) -> impl Iterator<Item = &[u8]> + '_ {
+    pub fn iter_fields(&self) -> impl Iterator<Item=&[u8]> + '_ {
         // 返回字段迭代器，简化循环代码
     }
 }
@@ -311,8 +298,6 @@ fn contains_field_names(spec: &str) -> bool {
 
 **建议**: 统一 line-buffered 处理逻辑，考虑在 `src/libs/io.rs` 中提供包装 writer。
 
----
-
 ## 表达式语言设计建议
 
 基于对 `src/libs/expr/` 表达式引擎的深入分析，以下是语言设计层面的改进建议：
@@ -328,69 +313,13 @@ fn contains_field_names(spec: &str) -> bool {
 
 **建议**: 为幂运算单独实现右结合构建函数。
 
-### 2. 管道操作符扩展
-
-**当前设计**:
-```rust
-expr | func()           // 等价于 func(expr)
-expr | func(_, arg)     // 等价于 func(expr, arg)
-```
-
-**建议**: 支持更多占位符位置，实现多参数管道：
-```rust
-@sep | replace(_, "-", _)   // replace(@sep, "-", @sep)
-```
-
-### 3. 字符串插值
-
-**当前**: 字符串拼接需要 `++` 操作符： `"Hello, " ++ @name ++ "!"`
-
-**建议**: 添加字符串插值语法：
-```rust
-// JavaScript/Python f-string 风格
-`Hello, ${@name}!`
-// 或 Ruby 风格
-"Hello, #{@name}!"
-```
-
-### 4. 空值处理（Null Safety）
-
-**建议**: 引入空值传播操作符，避免显式空值检查：
-```rust
-// 类似 JavaScript 的 ?. 和 ??
-@user?.name ?? "Anonymous"
-
-// 或链式空值传播
-@a?.b?.c  // 如果 @a 或 @a.b 为 null，整个表达式为 null
-```
-
-### 5. 模式匹配（高级特性）
-
-**建议**: 为复杂数据处理添加轻量级模式匹配：
-```rust
-match @status {
-    "active" => @score * 2,
-    "pending" => @score,
-    _ => 0
-}
-```
-
-### 6. 类型转换明确化
-
-**建议**: 提供显式转换函数，同时保留隐式转换作为默认行为：
-```rust
-@value::int      // 显式转整数
-@value::float    // 显式转浮点
-@value::string   // 显式转字符串
-@value::parse()  // 自动解析（当前行为）
-```
-
 ### 7. 错误处理改进
 
 **当前**: `Bare` 标识符在解析时创建，但延迟到运行时报错。
 
 **建议**: 在解析阶段就拒绝裸标识符，提供更清晰的错误信息：
-```rust
+
+```
 // 当前：解析成功，运行时失败
 price + 1   // Parse OK → Runtime Error
 
@@ -401,17 +330,19 @@ price + 1   // Parse Error: Unknown identifier 'price', did you mean '@price'?
 ### 8. 函数调用统一化
 
 **建议**: 统一函数调用和方法调用语法，支持字面量方法调用：
-```rust
+
+```
 // 所有调用都是方法调用风格
 upper(@name)            // 可以写成 @name | upper()
 5.abs()                 // 字面量也支持方法调用
-[1,2,3].len()           // 列表支持方法调用
+[1, 2, 3].len()           // 列表支持方法调用
 ```
 
 ### 9. 列表推导式
 
 **建议**: 添加类似 Python 的列表推导语法：
-```rust
+
+```
 [x * 2 for x in @nums if x > 0]
 // 或 SQL 风格
 @nums | filter(_, @it > 0) | map(_, @it * 2)
@@ -420,6 +351,7 @@ upper(@name)            // 可以写成 @name | upper()
 ### 10. 性能优化建议
 
 **建议**: 对于可交换/可结合的操作，考虑展平为 n-ary 节点，减少递归开销：
+
 ```rust
 // 当前: 嵌套 Binary 节点
 ((a + b) + c) + d
@@ -430,21 +362,20 @@ Nary { op: Add, exprs: [a, b, c, d] }
 
 ### 优先级汇总
 
-| 优先级 | 建议 | 影响 |
-|--------|------|------|
-| 高 | 修复 `**` 右结合性 | 正确性 |
-| 高 | 解析期拒绝裸标识符 | 用户体验 |
-| 中 | 字符串插值 | 易用性 |
-| 中 | 空值传播 | 健壮性 |
-| 中 | 统一函数/方法调用 | 一致性 |
-| 低 | 模式匹配 | 表达能力 |
-| 低 | 列表推导 | 表达能力 |
-
----
+| 优先级 | 建议               | 影响     |
+| ------ | ------------------ | -------- |
+| 高     | 修复 `**` 右结合性 | 正确性   |
+| 高     | 解析期拒绝裸标识符 | 用户体验 |
+| 中     | 字符串插值         | 易用性   |
+| 中     | 空值传播           | 健壮性   |
+| 中     | 统一函数/方法调用  | 一致性   |
+| 低     | 模式匹配           | 表达能力 |
+| 低     | 列表推导           | 表达能力 |
 
 ## 表达式求值递归优化方案
 
-基于对 `src/libs/expr/runtime/mod.rs` 的分析，结合 tva **只有匿名函数（lambda）**且主要用于 TSV 数据处理的特点，以下是实用的优化策略。
+基于对 `src/libs/expr/runtime/mod.rs` 的分析，结合 tva **只有匿名函数（lambda）**且主要用于 TSV
+数据处理的特点，以下是实用的优化策略。
 
 ### 关键洞察：为什么递归不是主要问题
 
@@ -454,35 +385,30 @@ Nary { op: Add, exprs: [a, b, c, d] }
 
 ### 不需要的优化（避免过度设计）
 
-| 优化方案 | 原因 |
-|:---------|:-----|
-| 显式栈求值器 | 代码复杂度高（200+行），收益有限 |
-| 尾递归优化 | 无具名函数，无法写递归 |
-| Y 组合子/Z 组合子 | 过于复杂，不适合 TSV 场景 |
-| Trampolining | 增加运行时开销，不必要 |
+| 优化方案          | 原因                             |
+| :---------------- | :------------------------------- |
+| 显式栈求值器      | 代码复杂度高（200+行），收益有限 |
+| 尾递归优化        | 无具名函数，无法写递归           |
+| Y 组合子/Z 组合子 | 过于复杂，不适合 TSV 场景        |
+| Trampolining      | 增加运行时开销，不必要           |
 
 ### 优化优先级
 
-| 优先级 | 优化项 | 代码量 | 预期收益 |
-|:------:|:-------|:------:|:---------|
-| 高 | 递归深度限制 | 10行 | 安全防护 |
-| 高 | 常量折叠 | 50行 | 减少运行时计算 |
-| 中 | 左结合表达式展平 | 30行 | 支持超长表达式链 |
-| 低 | 列表字面量预分配 | 5行 | 减少内存分配 |
+| 优先级 | 优化项           | 代码量 | 预期收益         |
+| :----: | :--------------- | :----: | :--------------- |
+|   高   | 递归深度限制     |  10行  | 安全防护         |
+|   高   | 常量折叠         |  50行  | 减少运行时计算   |
+|   中   | 左结合表达式展平 |  30行  | 支持超长表达式链 |
+|   低   | 列表字面量预分配 |  5行   | 减少内存分配     |
 
 ### 核心原则
 
 > **保持简单**：tva 的表达式语言设计目标是**简单高效的数据处理**，不是通用编程语言。
 
 ```rust
-// 好的 tva 表达式 - 声明式、无递归
-@data 
-    | filter(_, @age >= 18) 
-    | map(_, @salary * 1.1) 
-    | reduce(@, 0, (sum, x) => sum + x)
-
 // 不需要支持 - 复杂的递归算法
 // fib = n => if(n <= 1, n, fib(n-1) + fib(n-2))  // 不支持！
 ```
 
 真正的递归需求（如树遍历）应该在 Rust 层实现为内置函数，而不是让用户用 lambda 写递归。
+
