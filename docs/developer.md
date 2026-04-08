@@ -152,7 +152,8 @@ cargo build
     - 行动: 添加 `--relationship` 标志（例如 `one-to-one`, `many-to-one`）
       在连接时验证键。
 - **Tidy Selection DSL**:
-    - 行动: 增强 `src/libs/fields.rs` 以支持正则 (`matches('^date_')`)、谓词 (`where(is_numeric)`)和集合操作 (`-colA`)。
+    - 行动: 增强 `src/libs/fields.rs` 以支持正则 (`matches('^date_')`)、谓词 (`where(is_numeric)`)
+      和集合操作 (`-colA`)。
 - **窗口函数 (Window Functions)**:
     - 行动: 为 `filter` 和 `stats` 实现滑动窗口逻辑（例如，组内 `filter --expr "val > mean(val)"`）。
 - **高强度测试 (Torture Testing)**:
@@ -203,7 +204,8 @@ cargo build
 
 ### Hist (直方图) 补充分析
 
-除了 `plot`，`xan` 还提供了一个专门的 `hist` 命令 (`xan/src/cmd/hist.rs`)，用于绘制水平条形图（Horizontal Bar Charts）。
+除了 `plot`，`xan` 还提供了一个专门的 `hist` 命令 (`xan/src/cmd/hist.rs`)，
+用于绘制水平条形图（Horizontal Bar Charts）。
 
 - **定位差异**:
     - `plot`: 通用绘图工具，支持散点图、折线图、垂直条形图，
@@ -214,7 +216,8 @@ cargo build
 - **核心逻辑**:
     - **数据模型**: 期望输入包含 `field` (可选),
       `value` (标签),`count` (数值) 三列。
-    - **渲染**: 手动计算每个条形的宽度，使用 `Scale` 进行线性或对数缩放，并处理颜色（Rainbow/Category/Stripes）。
+    - **渲染**: 手动计算每个条形的宽度，使用 `Scale` 进行线性或对数缩放，
+      并处理颜色（Rainbow/Category/Stripes）。
     - **特色功能**: 支持日期补全 (`--dates`)，自动填充缺失的日期并设为
       0；支持间隙压缩 (`--compress-gaps`)，隐藏连续的 0 值。
 
@@ -241,7 +244,8 @@ cargo build
 
 **分析**:
 
-- **Arc 有优势的场景**: 纯克隆操作（不修改数据）和频繁参数传递的场景。`Arc` 仅递增引用计数（O(1)），而直接克隆需要深拷贝（O(n)）。
+- **Arc 有优势的场景**: 纯克隆操作（不修改数据）和频繁参数传递的场景。`Arc`
+  仅递增引用计数（O(1)），而直接克隆需要深拷贝（O(n)）。
 - **Arc 无优势的场景**: 需要遍历并创建新列表的操作（`sort`, `filter`, `map`,
   `unique`）。这些操作需要 `list.iter().cloned().collect()`，比直接 `list.clone()`
   慢得多。此外，`Arc<Vec<T>>`
@@ -427,7 +431,8 @@ Nary { op: Add, exprs: [a, b, c, d] }
 
 ### 核心原则
 
-> **保持简单**：tva 的表达式语言设计目标是**简单高效的数据处理**，不是通用编程语言。
+> **保持简单**：tva 的表达式语言设计目标是**简单高效的数据处理**，
+> 不是通用编程语言。
 
 ```rust
 // 不需要支持 - 复杂的递归算法
