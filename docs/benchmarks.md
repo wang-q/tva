@@ -6,8 +6,7 @@
 ## 1. 基准工具
 
 - [tsv-utils](https://github.com/eBay/tsv-utils) (D): 主要性能对标目标。
-- [qsv](https://github.com/jqnatividad/qsv) (Rust): xsv 的活跃分支，
-  功能超级强大。
+- [qsv](https://github.com/jqnatividad/qsv) (Rust): xsv 的活跃分支， 功能超级强大。
 - [GNU datamash](https://www.gnu.org/software/datamash/) (C): 统计操作的标准。
 - [GNU awk](https://www.gnu.org/software/gawk/) / [mawk](https://invisible-island.net/mawk/) (C):
   行过滤和基本处理的基准。
@@ -42,24 +41,20 @@
 
 - **数值行过滤 (Numeric Filter)**:
     - 逻辑: 多列数值比较 (例如 `col4 > 0.000025 && col16 > 0.3`)。
-    - 基准:`tva filter` vs `awk` (mawk/gawk) vs `tsv-filter` (D) vs `qsv search` (
-      Rust)。
+    - 基准:`tva filter` vs `awk` (mawk/gawk) vs `tsv-filter` (D) vs `qsv search` (Rust)。
     - 目的: 测试数值解析和比较的效率。
 - **正则行过滤 (Regex Filter)**:
     - 逻辑: 针对特定文本列的正则匹配 (例如 `[RD].*(ION[0-2])`)。
-    - 基准:`tva filter --regex` vs `grep` / `awk` / `ripgrep`
-      (如果适用) vs `tsv-filter` vs`qsv search`。
+    - 基准:`tva filter --regex` vs `grep` / `awk` / `ripgrep` (如果适用) vs `tsv-filter` vs`qsv search`。
     - 注意: 区分全行匹配与特定字段匹配。
 - **列选择 (Column Selection)**:
     - 逻辑: 提取分散的列 (例如 1, 8, 19)。
     - 基准:`tva select` vs `cut` vs `tsv-select` vs `qsv select` vs `csvtk cut`。
-    - 注意: 测试不同文件大小。GNU`cut` 在小文件上通常非常快，
-      但在大文件上可能不如流式优化工具。
-    - **短行测试 (Short Lines)**: 针对海量短行数据（如 8600 万行，
-      1.7GB）进行测试，主要考察每行处理的固定开销。
+    - 注意: 测试不同文件大小。GNU`cut` 在小文件上通常非常快， 但在大文件上可能不如流式优化工具。
+    - **短行测试 (Short Lines)**: 针对海量短行数据（如 8600
+      万行， 1.7GB）进行测试，主要考察每行处理的固定开销。
 - **文件连接 (Join)**:
-    - **数据准备**: 将大文件拆分为两个文件（例如：
-      左文件含列 1-15，右文件含列 1, 16-29），并**随机打乱**行顺序，
+    - **数据准备**: 将大文件拆分为两个文件（例如： 左文件含列 1-15，右文件含列 1, 16-29），并**随机打乱**行顺序，
       但保留公共键（列 1）。
     - 逻辑: 基于公共键将两个乱序文件重新连接。
     - 基准:`tva join` vs `join` (Unix - 需先 sort) vs `qsv join` vs `tsv-join` vs `csvtk join`。
@@ -99,13 +94,12 @@
 
 ## 4. 执行环境与记录
 
-- **硬件记录**: 必须记录 CPU 型号、核心数、RAM 大小以及**磁盘类型** (NVMe SSD 对
-  I/O 密集型测试影响巨大)。
+- **硬件记录**: 必须记录 CPU 型号、核心数、RAM 大小以及**磁盘类型** (NVMe SSD 对 I/O
+  密集型测试影响巨大)。
 - **软件版本**:
     - Rust 编译器版本 (`rustc --version`)。
     - 所有对比工具的版本 (`qsv --version`, `awk --version` 等)。
-- **预热 (Warmup)**: 使用 `hyperfine --warmup` 确保文件系统缓存处于一致状态（
-  通常是热缓存状态）。
+- **预热 (Warmup)**: 使用 `hyperfine --warmup` 确保文件系统缓存处于一致状态（ 通常是热缓存状态）。
 
 ## 5. 执行工作流示例
 
@@ -282,8 +276,7 @@ hyperfine \
 
 1. **页缓存预读失效**: Linux 内核的预读机制优化顺序读取，反向扫描破坏预读策略
 2. **TLB 抖动**: 随机访问模式导致页表遍历开销增加
-3. **缺页中断**: 小文件（5MB）完全适合内存，
-   `read_to_end` 一次性读入后连续访问更缓存友好
+3. **缺页中断**: 小文件（5MB）完全适合内存， `read_to_end` 一次性读入后连续访问更缓存友好
 
 **代码层面**:
 
