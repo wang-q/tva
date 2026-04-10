@@ -21,7 +21,8 @@
 - **HEPMASS** (4.8GB): [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/HEPMASS)。
     - 内容: 约 700 万行，29 列数值数据。
     - 用途: 用于**数值行过滤**、**列选择**、**统计摘要**和**文件连接**测试。
-- **FIA Tree Data** (2.7GB): [USDA Forest Service](https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html)。
+- **FIA Tree Data** (2.7GB):
+  [USDA Forest Service](https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html)。
     - 内容:`TREE_GRM_ESTN.csv` 的前 1400 万行，包含混合文本和数值。
     - 用途: 用于**正则行过滤**和**CSV 转 TSV**测试。
 
@@ -32,8 +33,8 @@
     - 目标: 压力测试流处理能力、内存稳定性以及 I/O 吞吐量。
 - **启动开销 (小文件)**:
     - 使用**HEPMASS_100k** (~70MB, HEPMASS 的前 10 万行)。
-    - 目标: 测试工具的启动开销 (Startup Overhead) 和缓冲策略。
-      对于极短的运行时间，Rust/C 的启动时间差异会更明显。
+    - 目标: 测试工具的启动开销 (Startup Overhead) 和缓冲策略。 对于极短的运行时间，Rust/C
+      的启动时间差异会更明显。
 
 ## 3. 详细测试场景
 
@@ -45,17 +46,18 @@
     - 目的: 测试数值解析和比较的效率。
 - **正则行过滤 (Regex Filter)**:
     - 逻辑: 针对特定文本列的正则匹配 (例如 `[RD].*(ION[0-2])`)。
-    - 基准:`tva filter --regex` vs `grep` / `awk` / `ripgrep` (如果适用) vs `tsv-filter` vs`qsv search`。
+    - 基准:`tva filter --regex` vs `grep` / `awk` / `ripgrep` (如果适用) vs `tsv-filter` vs
+      `qsv search`。
     - 注意: 区分全行匹配与特定字段匹配。
 - **列选择 (Column Selection)**:
     - 逻辑: 提取分散的列 (例如 1, 8, 19)。
     - 基准:`tva select` vs `cut` vs `tsv-select` vs `qsv select` vs `csvtk cut`。
     - 注意: 测试不同文件大小。GNU`cut` 在小文件上通常非常快， 但在大文件上可能不如流式优化工具。
-    - **短行测试 (Short Lines)**: 针对海量短行数据（如 8600
-      万行， 1.7GB）进行测试，主要考察每行处理的固定开销。
+    - **短行测试 (Short Lines)**: 针对海量短行数据（如 8600 万行， 1.7GB）进行测试，
+      主要考察每行处理的固定开销。
 - **文件连接 (Join)**:
-    - **数据准备**: 将大文件拆分为两个文件（例如： 左文件含列 1-15，右文件含列 1, 16-29），并**随机打乱**行顺序，
-      但保留公共键（列 1）。
+    - **数据准备**: 将大文件拆分为两个文件（例如： 左文件含列 1-15，右文件含列 1, 16-29），并
+      **随机打乱**行顺序， 但保留公共键（列 1）。
     - 逻辑: 基于公共键将两个乱序文件重新连接。
     - 基准:`tva join` vs `join` (Unix - 需先 sort) vs `qsv join` vs `tsv-join` vs `csvtk join`。
     - 目的: 测试哈希表构建和查找的内存与速度平衡。
