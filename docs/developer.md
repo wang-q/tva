@@ -194,25 +194,25 @@ cargo build
 
 ### Hist (直方图) 补充分析
 
-除了 `plot`，`xan` 还提供了一个专门的 `hist` 命令 (`xan/src/cmd/hist.rs`)，
-用于绘制水平条形图（Horizontal Bar Charts）。
+除了 `plot`，`xan` 还提供了一个专门的 `hist` 命令 (`xan/src/cmd/hist.rs`)， 用于绘制水平条形图
+（Horizontal Bar Charts）。
 
 - **定位差异**:
     - `plot`: 通用绘图工具，支持散点图、折线图、垂直条形图， 基于 `ratatui`，交互性强，
       适合复杂数据探索。
-    - `hist`: 专注于**频次分布可视化**，通常配合 `freq` 或 `bins` 命令使用。它不使用
-      `ratatui`，而是直接通过 Unicode 字符（如 `█`, `▌`） 在标准输出打印，更轻量，适合管道操作。
+    - `hist`: 专注于**频次分布可视化**，通常配合 `freq` 或 `bins` 命令使用。它不使用 `ratatui`，
+      而是直接通过 Unicode 字符（如 `█`, `▌`） 在标准输出打印，更轻量，适合管道操作。
 - **核心逻辑**:
     - **数据模型**: 期望输入包含 `field` (可选), `value` (标签),`count` (数值) 三列。
-    - **渲染**: 手动计算每个条形的宽度，使用 `Scale` 进行线性或对数缩放，
-      并处理颜色（Rainbow/Category/Stripes）。
-    - **特色功能**: 支持日期补全 (`--dates`)，自动填充缺失的日期并设为 0；支持间隙压缩
-      (`--compress-gaps`)，隐藏连续的 0 值。
+    - **渲染**: 手动计算每个条形的宽度，使用 `Scale` 进行线性或对数缩放， 并处理颜色（Rainbow
+      /Category/Stripes）。
+    - **特色功能**: 支持日期补全 (`--dates`)，自动填充缺失的日期并设为 0；
+      支持间隙压缩 (`--compress-gaps`)，隐藏连续的 0 值。
 
 ## Arc 优化基准测试结果
 
-针对 `tva` 的 `Value` 类型使用 `Arc` 进行优化的可行性，我们编写了基准测试（`benches/value_arc.rs`），
- 对比当前直接克隆与使用 `Arc` 包装后的性能差异。
+针对 `tva` 的 `Value` 类型使用 `Arc` 进行优化的可行性，我们编写基准测试（`benches/value_arc.rs`），
+对比当前直接克隆与使用 `Arc` 包装后的性能差异。
 
 **测试环境**: Release 模式，iterations = 10,000
 
@@ -233,10 +233,10 @@ cargo build
 **分析**:
 
 - **Arc 有优势的场景**: 纯克隆操作（不修改数据）和频繁参数传递的场景。`Arc` 仅递增引用计数（O(1)），
-  而直接克隆需要深拷贝（O(n)）。
-- **Arc 无优势的场景**: 需要遍历并创建新列表的操作（`sort`, `filter`, `map`,
-  `unique`）。这些操作需要 `list.iter().cloned().collect()`，比直接 `list.clone()` 慢得多。此外，
-  `Arc<Vec<T>>` 无法直接获取可变引用，需要 `Arc::make_mut` 或重新分配 Vec。
+   而直接克隆需要深拷贝（O(n)）。
+- **Arc 无优势的场景**: 需要遍历并创建新列表的操作（`sort`, `filter`, `map`, `unique`）。
+  这些操作需要 `list.iter().cloned().collect()`，比直接 `list.clone()` 慢得多。此外， `Arc<Vec<T>>`
+  无法直接获取可变引用，需要 `Arc::make_mut` 或重新分配 Vec。
 
 **字符串操作基准测试** (`benches/string_arc.rs`):
 
