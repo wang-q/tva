@@ -39,15 +39,13 @@ cargo build
 
 ### 参考项目: GNU Datamash
 
-`datamash` 是命令行统计分析的标杆工具。`tva`
-可以借鉴其在数据验证和交叉制表方面的设计。
+`datamash` 是命令行统计分析的标杆工具。`tva` 可以借鉴其在数据验证和交叉制表方面的设计。
 
 #### 5. 逐行转换操作 (Per-Line Operations)
 
 - **特性**: datamash 提供大量逐行转换操作，无需分组即可使用：
     - **数值修约**: `trunc`, `frac`。
-    - **文件路径处理**: `dirname`, `basename`, `extname`,
-      `barename`。abspath
+    - **文件路径处理**: `dirname`, `basename`, `extname`, `barename`。abspath
     - **数值提取**: `getnum` 从混合文本中提取数字（如 "zoom-123.45xyz" -> 123.45）。
     - **分箱**: `strbin` (字符串哈希分箱)。
 
@@ -64,33 +62,30 @@ cargo build
 
 ### 参考项目: xan
 
-`xan` (前身为 `xsv` 的 fork) 是一个功能极强的 CSV/TSV 工具集。
-通过分析其源码，我们可以为 `tva` 汲取以下几个关键的架构和功能灵感。
+`xan` (前身为 `xsv` 的 fork) 是一个功能极强的 CSV/TSV 工具集。 通过分析其源码，我们可以为 `tva`
+汲取以下几个关键的架构和功能灵感。
 
 #### 1. 并行处理架构 (Parallel Processing)
 
 - **实现**: `cmd/parallel.rs` (~1600 行)
-- **核心设计**: 采用**"External Parallelism"**模式，不修改单个命令的内部实现，
-  而是通过一个通用的 `parallel` 子命令来并行化任意操作。
+- **核心设计**: 采用**"External Parallelism"**模式，不修改单个命令的内部实现， 而是通过一个通用的
+  `parallel` 子命令来并行化任意操作。
 
 **关键机制**:
 
 1. **任务分发策略** (线程分配算法):
     - 当输入文件数 >= 线程数时：每个文件一个任务
-    - 当线程数 > 文件数时：利用 CSV/BGZF 的 seek
-      能力将大文件切分为多个 `FileChunk`
+    - 当线程数 > 文件数时：利用 CSV/BGZF 的 seek 能力将大文件切分为多个 `FileChunk`
     - 通过 `simd_seeker().segments(t)` 实现基于字节偏移的精确分块
 2. **预处理管道** (两种模式):
     - `-P, --preprocess`: 使用 xan 子命令管道 (如 `"search -s name John | slice -l 10"`)
-    - `-H, --shell-preprocess`: 使用 shell 管道 (`$SHELL -c`)，更灵活但
-      Windows 不支持
+    - `-H, --shell-preprocess`: 使用 shell 管道 (`$SHELL -c`)，更灵活但 Windows 不支持
 3. **子命令实现**:
     - `count`: 行数统计 (支持 `--source-column` 输出每个文件的计数)
     - `cat`: 并行预处理并合并结果 (带缓冲区控制 `--buffer-size`)
     - `freq`: 并行频率统计，使用 `Counter` 数据结构合并结果
     - `stats`: 并行统计计算，使用 `Stats` 结构合并
-    - `agg`/`groupby`: 并行聚合，使用 `AggregationProgram`
-      /`GroupAggregationProgram`
+    - `agg`/`groupby`: 并行聚合，使用 `AggregationProgram` /`GroupAggregationProgram`
     - `map`: 并行处理并输出到指定模板文件 (如 `'{}_freq.csv'`)
 4. **进程管理** (`ProcessManager`):
     - 使用 `rayon` 线程池进行并行执行
@@ -122,12 +117,11 @@ cargo build
 #### 4. 随机访问与索引 (Random Access & Indexing)
 
 - **实现**: `src/config.rs` & `bgzip`
-- **机制**: 利用 `.gzi` 索引文件（BGZF 格式），
-  支持不解压整个文件的情况下 Seek 到 Gzip 中间。
+- **机制**: 利用 `.gzi` 索引文件（BGZF 格式）， 支持不解压整个文件的情况下 Seek 到 Gzip 中间。
 - **对 `tva` 的启示**:
     - 对于大文件（GB/TB 级）的并行处理至关重要。
-    - **建议**: 处理超大压缩 TSV 时，支持 BGZF 索引是实现并行切片 (`slice`)
-      和随机采样 (`sample`)的基础。
+    - **建议**: 处理超大压缩 TSV 时，支持 BGZF 索引是实现并行切片 (`slice`) 和随机采样 (`sample`)
+      的基础。
 
 ## 计划中的功能
 
@@ -140,8 +134,7 @@ cargo build
     - `separate` (unpack): 使用分隔符或正则将单个字符串列拆分为多个列。
     - `unite` (pack): 使用模板或分隔符将多个列合并为单个字符串列。
 - **行拆分 (Row Splitting)**:
-    - `separate-rows` (explode): 将包含分隔符的单元格拆分为多行
-      (e.g. "a,b" -> 2 rows)。
+    - `separate-rows` (explode): 将包含分隔符的单元格拆分为多行 (e.g. "a,b" -> 2 rows)。
 - **缺失值处理 (Missing Values)**:
     - `replace_na`: 将显式 `NA` (空字符串) 替换为指定值。
     - `drop_na`: 丢弃包含缺失值的行。
@@ -149,8 +142,7 @@ cargo build
 ### 数据操作 (Data Manipulation) - dplyr 核心模式
 
 - **安全连接 (Safe Joins)**:
-    - 行动: 添加 `--relationship` 标志（例如 `one-to-one`, `many-to-one`）
-      在连接时验证键。
+    - 行动: 添加 `--relationship` 标志（例如 `one-to-one`, `many-to-one`） 在连接时验证键。
 - **Tidy Selection DSL**:
     - 行动: 增强 `src/libs/fields.rs` 以支持正则 (`matches('^date_')`)、谓词 (`where(is_numeric)`)
       和集合操作 (`-colA`)。
@@ -161,19 +153,17 @@ cargo build
 
 ### 借鉴 xan 的未来演进路线 (Future Roadmap: Lessons from xan)
 
-通过对 `xan` 源码的深入分析，我们发现了几个极具价值的功能模块，
-值得 `tva` 在未来版本中借鉴或引入。
+通过对 `xan` 源码的深入分析，我们发现了几个极具价值的功能模块， 值得 `tva` 在未来版本中借鉴或引入。
 
 #### 2. Search (高级搜索)
 
 - **功能**: `xan search` 远超简单的 `grep`。它支持：
     - **多模式匹配**: 同时搜索数千个关键词（基于 Aho-Corasick 算法）。
-    - **模糊匹配**: `xan fuzzy-join`
-      和搜索支持基于 Levenshtein 距离的匹配。
+    - **模糊匹配**: `xan fuzzy-join` 和搜索支持基于 Levenshtein 距离的匹配。
     - **替换**: 支持正则替换并输出到新列。
 - **价值**: 在数据清洗（ETL）场景中，批量关键词匹配和替换是刚需。
-- **建议**: 增强 `tva filter` 或新增 `tva search`，集成
-  `aho-corasick` crate 以支持高性能的多模式匹配。
+- **建议**: 增强 `tva filter` 或新增 `tva search`，集成 `aho-corasick` crate
+  以支持高性能的多模式匹配。
 
 ## tva 与 xan 命令对比分析
 
@@ -208,23 +198,21 @@ cargo build
 用于绘制水平条形图（Horizontal Bar Charts）。
 
 - **定位差异**:
-    - `plot`: 通用绘图工具，支持散点图、折线图、垂直条形图，
-      基于 `ratatui`，交互性强，适合复杂数据探索。
-    - `hist`: 专注于**频次分布可视化**，通常配合 `freq` 或 `bins`
-      命令使用。它不使用 `ratatui`，而是直接通过 Unicode 字符（如 `█`, `▌`）
-      在标准输出打印，更轻量，适合管道操作。
+    - `plot`: 通用绘图工具，支持散点图、折线图、垂直条形图， 基于 `ratatui`，交互性强，
+      适合复杂数据探索。
+    - `hist`: 专注于**频次分布可视化**，通常配合 `freq` 或 `bins` 命令使用。它不使用
+      `ratatui`，而是直接通过 Unicode 字符（如 `█`, `▌`） 在标准输出打印，更轻量，适合管道操作。
 - **核心逻辑**:
-    - **数据模型**: 期望输入包含 `field` (可选),
-      `value` (标签),`count` (数值) 三列。
+    - **数据模型**: 期望输入包含 `field` (可选), `value` (标签),`count` (数值) 三列。
     - **渲染**: 手动计算每个条形的宽度，使用 `Scale` 进行线性或对数缩放，
       并处理颜色（Rainbow/Category/Stripes）。
-    - **特色功能**: 支持日期补全 (`--dates`)，自动填充缺失的日期并设为
-      0；支持间隙压缩 (`--compress-gaps`)，隐藏连续的 0 值。
+    - **特色功能**: 支持日期补全 (`--dates`)，自动填充缺失的日期并设为 0；支持间隙压缩
+      (`--compress-gaps`)，隐藏连续的 0 值。
 
 ## Arc 优化基准测试结果
 
 针对 `tva` 的 `Value` 类型使用 `Arc` 进行优化的可行性，我们编写了基准测试（`benches/value_arc.rs`），
-对比当前直接克隆与使用 `Arc` 包装后的性能差异。
+ 对比当前直接克隆与使用 `Arc` 包装后的性能差异。
 
 **测试环境**: Release 模式，iterations = 10,000
 
@@ -244,12 +232,11 @@ cargo build
 
 **分析**:
 
-- **Arc 有优势的场景**: 纯克隆操作（不修改数据）和频繁参数传递的场景。`Arc`
-  仅递增引用计数（O(1)），而直接克隆需要深拷贝（O(n)）。
+- **Arc 有优势的场景**: 纯克隆操作（不修改数据）和频繁参数传递的场景。`Arc` 仅递增引用计数（O(1)），
+  而直接克隆需要深拷贝（O(n)）。
 - **Arc 无优势的场景**: 需要遍历并创建新列表的操作（`sort`, `filter`, `map`,
-  `unique`）。这些操作需要 `list.iter().cloned().collect()`，比直接 `list.clone()`
-  慢得多。此外，`Arc<Vec<T>>`
-  无法直接获取可变引用，需要 `Arc::make_mut` 或重新分配 Vec。
+  `unique`）。这些操作需要 `list.iter().cloned().collect()`，比直接 `list.clone()` 慢得多。此外，
+  `Arc<Vec<T>>` 无法直接获取可变引用，需要 `Arc::make_mut` 或重新分配 Vec。
 
 **字符串操作基准测试** (`benches/string_arc.rs`):
 
@@ -270,12 +257,11 @@ cargo build
 
 **对 `tva` 的启示**:
 
-- 如果 `expr` 命令主要使用 `take`, `first`, `last`, `nth` 等访问操作，
-  `Arc` 优化是有价值的。
+- 如果 `expr` 命令主要使用 `take`, `first`, `last`, `nth` 等访问操作， `Arc` 优化是有价值的。
 - 如果频繁使用 `sort`, `filter`, `map` 等转换操作，当前实现可能更合适。
 - 字符串操作：`split()` 受益明显，其他操作收益有限。
-- **最终建议**: 考虑到 `tva` 的核心是 TSV 文本处理，当前
-  `Value` 类型设计已足够高效，暂不引入 `Arc` 增加复杂度。
+- **最终建议**: 考虑到 `tva` 的核心是 TSV 文本处理，当前 `Value` 类型设计已足够高效，暂不引入 `Arc`
+  增加复杂度。
 
 ## 代码结构优化建议
 
@@ -316,8 +302,8 @@ fn contains_field_names(spec: &str) -> bool {
 }
 ```
 
-**建议**: 将 `contains_field_names` 函数移至
-`src/libs/tsv/fields.rs` 的 `FieldResolver` 中，作为公共方法。
+**建议**: 将 `contains_field_names` 函数移至 `src/libs/tsv/fields.rs` 的 `FieldResolver` 中，
+作为公共方法。
 
 ### 7. 输出刷新策略不一致
 
@@ -401,14 +387,13 @@ Nary { op: Add, exprs: [a, b, c, d] }
 
 ## 表达式求值递归优化方案
 
-基于对 `src/libs/expr/runtime/mod.rs` 的分析，结合 tva **只有匿名函数（lambda）
-**且主要用于 TSV 数据处理的特点，以下是实用的优化策略。
+基于对 `src/libs/expr/runtime/mod.rs` 的分析，结合 tva **只有匿名函数（lambda） **且主要用于 TSV
+数据处理的特点，以下是实用的优化策略。
 
 ### 关键洞察：为什么递归不是主要问题
 
 1. **无具名函数定义**：lambda 无法直接自引用，天然避免了无限递归
-2. **TSV 场景限制**：典型表达式是简单的列运算（`@price * @qty`），
-   而非深层嵌套
+2. **TSV 场景限制**：典型表达式是简单的列运算（`@price * @qty`）， 而非深层嵌套
 3. **高阶函数替代**：`map`/`filter`/`reduce` 覆盖了 95% 的循环需求
 
 ### 不需要的优化（避免过度设计）
@@ -431,14 +416,12 @@ Nary { op: Add, exprs: [a, b, c, d] }
 
 ### 核心原则
 
-> **保持简单**：tva 的表达式语言设计目标是**简单高效的数据处理**，
-> 不是通用编程语言。
+> **保持简单**：tva 的表达式语言设计目标是**简单高效的数据处理**， 不是通用编程语言。
 
 ```rust
 // 不需要支持 - 复杂的递归算法
 // fib = n => if(n <= 1, n, fib(n-1) + fib(n-2))  // 不支持！
 ```
 
-真正的递归需求（如树遍历）应该在 Rust
-层实现为内置函数，而不是让用户用 lambda 写递归。
+真正的递归需求（如树遍历）应该在 Rust 层实现为内置函数，而不是让用户用 lambda 写递归。
 
