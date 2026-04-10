@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1e038d04.js";
+            window.path_to_searchindex_js = "searchindex-bb707f79.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-89bb9ebf.js"></script>
@@ -732,8 +732,7 @@ map lookups.</li>
 <h2 id="1-基准工具"><a class="header" href="#1-基准工具">1. 基准工具</a></h2>
 <ul>
 <li><a href="https://github.com/eBay/tsv-utils">tsv-utils</a> (D): 主要性能对标目标。</li>
-<li><a href="https://github.com/jqnatividad/qsv">qsv</a> (Rust): xsv 的活跃分支，
-功能超级强大。</li>
+<li><a href="https://github.com/jqnatividad/qsv">qsv</a> (Rust): xsv 的活跃分支， 功能超级强大。</li>
 <li><a href="https://www.gnu.org/software/datamash/">GNU datamash</a> (C): 统计操作的标准。</li>
 <li><a href="https://www.gnu.org/software/gawk/">GNU awk</a> / <a href="https://invisible-island.net/mawk/">mawk</a> (C):
 行过滤和基本处理的基准。</li>
@@ -778,16 +777,14 @@ map lookups.</li>
 <li><strong>数值行过滤 (Numeric Filter)</strong>:
 <ul>
 <li>逻辑: 多列数值比较 (例如 <code>col4 &gt; 0.000025 &amp;&amp; col16 &gt; 0.3</code>)。</li>
-<li>基准:<code>tva filter</code> vs <code>awk</code> (mawk/gawk) vs <code>tsv-filter</code> (D) vs <code>qsv search</code> (
-Rust)。</li>
+<li>基准:<code>tva filter</code> vs <code>awk</code> (mawk/gawk) vs <code>tsv-filter</code> (D) vs <code>qsv search</code> (Rust)。</li>
 <li>目的: 测试数值解析和比较的效率。</li>
 </ul>
 </li>
 <li><strong>正则行过滤 (Regex Filter)</strong>:
 <ul>
 <li>逻辑: 针对特定文本列的正则匹配 (例如 <code>[RD].*(ION[0-2])</code>)。</li>
-<li>基准:<code>tva filter --regex</code> vs <code>grep</code> / <code>awk</code> / <code>ripgrep</code>
-(如果适用) vs <code>tsv-filter</code> vs<code>qsv search</code>。</li>
+<li>基准:<code>tva filter --regex</code> vs <code>grep</code> / <code>awk</code> / <code>ripgrep</code> (如果适用) vs <code>tsv-filter</code> vs<code>qsv search</code>。</li>
 <li>注意: 区分全行匹配与特定字段匹配。</li>
 </ul>
 </li>
@@ -795,16 +792,14 @@ Rust)。</li>
 <ul>
 <li>逻辑: 提取分散的列 (例如 1, 8, 19)。</li>
 <li>基准:<code>tva select</code> vs <code>cut</code> vs <code>tsv-select</code> vs <code>qsv select</code> vs <code>csvtk cut</code>。</li>
-<li>注意: 测试不同文件大小。GNU<code>cut</code> 在小文件上通常非常快，
-但在大文件上可能不如流式优化工具。</li>
-<li><strong>短行测试 (Short Lines)</strong>: 针对海量短行数据（如 8600 万行，
-1.7GB）进行测试，主要考察每行处理的固定开销。</li>
+<li>注意: 测试不同文件大小。GNU<code>cut</code> 在小文件上通常非常快， 但在大文件上可能不如流式优化工具。</li>
+<li><strong>短行测试 (Short Lines)</strong>: 针对海量短行数据（如 8600
+万行， 1.7GB）进行测试，主要考察每行处理的固定开销。</li>
 </ul>
 </li>
 <li><strong>文件连接 (Join)</strong>:
 <ul>
-<li><strong>数据准备</strong>: 将大文件拆分为两个文件（例如：
-左文件含列 1-15，右文件含列 1, 16-29），并<strong>随机打乱</strong>行顺序，
+<li><strong>数据准备</strong>: 将大文件拆分为两个文件（例如： 左文件含列 1-15，右文件含列 1, 16-29），并<strong>随机打乱</strong>行顺序，
 但保留公共键（列 1）。</li>
 <li>逻辑: 基于公共键将两个乱序文件重新连接。</li>
 <li>基准:<code>tva join</code> vs <code>join</code> (Unix - 需先 sort) vs <code>qsv join</code> vs <code>tsv-join</code> vs <code>csvtk join</code>。</li>
@@ -873,16 +868,15 @@ Rust)。</li>
 </ul>
 <h2 id="4-执行环境与记录"><a class="header" href="#4-执行环境与记录">4. 执行环境与记录</a></h2>
 <ul>
-<li><strong>硬件记录</strong>: 必须记录 CPU 型号、核心数、RAM 大小以及<strong>磁盘类型</strong> (NVMe SSD 对
-I/O 密集型测试影响巨大)。</li>
+<li><strong>硬件记录</strong>: 必须记录 CPU 型号、核心数、RAM 大小以及<strong>磁盘类型</strong> (NVMe SSD 对 I/O
+密集型测试影响巨大)。</li>
 <li><strong>软件版本</strong>:
 <ul>
 <li>Rust 编译器版本 (<code>rustc --version</code>)。</li>
 <li>所有对比工具的版本 (<code>qsv --version</code>, <code>awk --version</code> 等)。</li>
 </ul>
 </li>
-<li><strong>预热 (Warmup)</strong>: 使用 <code>hyperfine --warmup</code> 确保文件系统缓存处于一致状态（
-通常是热缓存状态）。</li>
+<li><strong>预热 (Warmup)</strong>: 使用 <code>hyperfine --warmup</code> 确保文件系统缓存处于一致状态（ 通常是热缓存状态）。</li>
 </ul>
 <h2 id="5-执行工作流示例"><a class="header" href="#5-执行工作流示例">5. 执行工作流示例</a></h2>
 <p>我们将使用内联 Bash 脚本与 <code>hyperfine</code> 结合，实现完全自动化的基准测试。</p>
@@ -1061,8 +1055,7 @@ hyperfine \
 <ol>
 <li><strong>页缓存预读失效</strong>: Linux 内核的预读机制优化顺序读取，反向扫描破坏预读策略</li>
 <li><strong>TLB 抖动</strong>: 随机访问模式导致页表遍历开销增加</li>
-<li><strong>缺页中断</strong>: 小文件（5MB）完全适合内存，
-<code>read_to_end</code> 一次性读入后连续访问更缓存友好</li>
+<li><strong>缺页中断</strong>: 小文件（5MB）完全适合内存， <code>read_to_end</code> 一次性读入后连续访问更缓存友好</li>
 </ol>
 <p><strong>代码层面</strong>:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
