@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-bb707f79.js";
+            window.path_to_searchindex_js = "searchindex-9fe68561.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-89bb9ebf.js"></script>
@@ -748,7 +748,8 @@ map lookups.</li>
 <li>用途: 用于<strong>数值行过滤</strong>、<strong>列选择</strong>、<strong>统计摘要</strong>和<strong>文件连接</strong>测试。</li>
 </ul>
 </li>
-<li><strong>FIA Tree Data</strong> (2.7GB): <a href="https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html">USDA Forest Service</a>。
+<li><strong>FIA Tree Data</strong> (2.7GB):
+<a href="https://apps.fs.usda.gov/fia/datamart/CSV/datamart_csv.html">USDA Forest Service</a>。
 <ul>
 <li>内容:<code>TREE_GRM_ESTN.csv</code> 的前 1400 万行，包含混合文本和数值。</li>
 <li>用途: 用于<strong>正则行过滤</strong>和<strong>CSV 转 TSV</strong>测试。</li>
@@ -766,8 +767,8 @@ map lookups.</li>
 <li><strong>启动开销 (小文件)</strong>:
 <ul>
 <li>使用<strong>HEPMASS_100k</strong> (~70MB, HEPMASS 的前 10 万行)。</li>
-<li>目标: 测试工具的启动开销 (Startup Overhead) 和缓冲策略。
-对于极短的运行时间，Rust/C 的启动时间差异会更明显。</li>
+<li>目标: 测试工具的启动开销 (Startup Overhead) 和缓冲策略。 对于极短的运行时间，Rust/C
+的启动时间差异会更明显。</li>
 </ul>
 </li>
 </ul>
@@ -784,7 +785,8 @@ map lookups.</li>
 <li><strong>正则行过滤 (Regex Filter)</strong>:
 <ul>
 <li>逻辑: 针对特定文本列的正则匹配 (例如 <code>[RD].*(ION[0-2])</code>)。</li>
-<li>基准:<code>tva filter --regex</code> vs <code>grep</code> / <code>awk</code> / <code>ripgrep</code> (如果适用) vs <code>tsv-filter</code> vs<code>qsv search</code>。</li>
+<li>基准:<code>tva filter --regex</code> vs <code>grep</code> / <code>awk</code> / <code>ripgrep</code> (如果适用) vs <code>tsv-filter</code> vs
+<code>qsv search</code>。</li>
 <li>注意: 区分全行匹配与特定字段匹配。</li>
 </ul>
 </li>
@@ -793,14 +795,14 @@ map lookups.</li>
 <li>逻辑: 提取分散的列 (例如 1, 8, 19)。</li>
 <li>基准:<code>tva select</code> vs <code>cut</code> vs <code>tsv-select</code> vs <code>qsv select</code> vs <code>csvtk cut</code>。</li>
 <li>注意: 测试不同文件大小。GNU<code>cut</code> 在小文件上通常非常快， 但在大文件上可能不如流式优化工具。</li>
-<li><strong>短行测试 (Short Lines)</strong>: 针对海量短行数据（如 8600
-万行， 1.7GB）进行测试，主要考察每行处理的固定开销。</li>
+<li><strong>短行测试 (Short Lines)</strong>: 针对海量短行数据（如 8600 万行， 1.7GB）进行测试，
+主要考察每行处理的固定开销。</li>
 </ul>
 </li>
 <li><strong>文件连接 (Join)</strong>:
 <ul>
-<li><strong>数据准备</strong>: 将大文件拆分为两个文件（例如： 左文件含列 1-15，右文件含列 1, 16-29），并<strong>随机打乱</strong>行顺序，
-但保留公共键（列 1）。</li>
+<li><strong>数据准备</strong>: 将大文件拆分为两个文件（例如： 左文件含列 1-15，右文件含列 1, 16-29），并
+<strong>随机打乱</strong>行顺序， 但保留公共键（列 1）。</li>
 <li>逻辑: 基于公共键将两个乱序文件重新连接。</li>
 <li>基准:<code>tva join</code> vs <code>join</code> (Unix - 需先 sort) vs <code>qsv join</code> vs <code>tsv-join</code> vs <code>csvtk join</code>。</li>
 <li>目的: 测试哈希表构建和查找的内存与速度平衡。</li>
