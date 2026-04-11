@@ -136,25 +136,25 @@ The evolution shows a clear progression from naive implementations to hand-optim
 
 #### Test Data 1: Short Fields, Few Columns (5 cols, ~8 bytes/field)
 
-| Implementation | Time | Throughput | Notes |
-| :--- | :--- | :--- | :--- |
-| **TVA for_each_row (Single-Pass)** | **43 µs** | **1.63 GiB/s** | **Current**: Hand-written SIMD (SSE2), true single-pass |
-| **simd-csv** | 80 µs | 905 MiB/s | Hybrid SIMD state machine, previous ceiling |
-| **TVA for_each_line + memchr** | 87 µs | 830 MiB/s | Two-pass: SIMD for lines, memchr for fields |
-| **Memchr Reused Buffer** | 113 µs | 639 MiB/s | Line-by-line memchr, limited by function call overhead |
-| **csv crate** | 130 µs | 556 MiB/s | Classic DFA state machine, correctness baseline |
-| **Naive Split** | 562 µs | 129 MiB/s | Original implementation, slowest |
+| Implementation                 | Time      | Throughput     | Notes                                                   |
+|:-------------------------------|:----------|:---------------|:--------------------------------------------------------|
+| **TVA for_each_row**           | **43 µs** | **1.63 GiB/s** | **Current**: Hand-written SIMD (SSE2), true single-pass |
+| **simd-csv**                   | 80 µs     | 905 MiB/s      | Hybrid SIMD state machine, previous ceiling             |
+| **TVA for_each_line + memchr** | 87 µs     | 830 MiB/s      | Two-pass: SIMD for lines, memchr for fields             |
+| **Memchr Reused Buffer**       | 113 µs    | 639 MiB/s      | Line-by-line memchr, limited by function call overhead  |
+| **csv crate**                  | 130 µs    | 556 MiB/s      | Classic DFA state machine, correctness baseline         |
+| **Naive Split**                | 562 µs    | 129 MiB/s      | Original implementation, slowest                        |
 
 #### Test Data 2: Wide Rows, Many Columns (20 cols, ~6 bytes/field)
 
-| Implementation | Time | Throughput | Notes |
-| :--- | :--- | :--- | :--- |
-| **TVA for_each_row (Single-Pass)** | **128 µs** | **896 MiB/s** | **Current**: Hand-written SIMD (SSE2), true single-pass |
-| **simd-csv** | 180 µs | 635 MiB/s | Hybrid SIMD state machine |
-| **TVA for_each_line + memchr** | 247 µs | 463 MiB/s | Two-pass: SIMD for lines, memchr for fields |
-| **Memchr Reused Buffer** | 344 µs | 333 MiB/s | Line-by-line memchr |
-| **csv crate** | 320 µs | 358 MiB/s | Classic DFA state machine |
-| **Naive Split** | 1167 µs | 98 MiB/s | Original implementation |
+| Implementation                 | Time       | Throughput    | Notes                                                   |
+|:-------------------------------|:-----------|:--------------|:--------------------------------------------------------|
+| **TVA for_each_row**           | **128 µs** | **896 MiB/s** | **Current**: Hand-written SIMD (SSE2), true single-pass |
+| **simd-csv**                   | 180 µs     | 635 MiB/s     | Hybrid SIMD state machine                               |
+| **TVA for_each_line + memchr** | 247 µs     | 463 MiB/s     | Two-pass: SIMD for lines, memchr for fields             |
+| **Memchr Reused Buffer**       | 344 µs     | 333 MiB/s     | Line-by-line memchr                                     |
+| **csv crate**                  | 320 µs     | 358 MiB/s     | Classic DFA state machine                               |
+| **Naive Split**                | 1167 µs    | 98 MiB/s      | Original implementation                                 |
 
 **Key Findings**:
 
@@ -173,12 +173,12 @@ TSV format to achieve high performance.
 
 ### Format Differences: CSV vs TSV
 
-| Feature | CSV (RFC 4180) | TSV (Simple) | Impact |
-| :--- | :--- | :--- | :--- |
-| **Delimiter** | `,` (variable) | `\t` (fixed) | TSV can hardcode delimiter, enabling SIMD optimization. |
-| **Quotes** | Supports `"` wrapping | **Not supported** | TSV eliminates "in_quote" state machine, removing branch misprediction. |
-| **Escapes** | `""` escapes quotes | None | TSV supports true zero-copy slicing without rewriting. |
-| **Newlines** | Allowed in fields | **Not allowed** | TSV guarantees `\n` always means record end, enabling parallel chunking. |
+| Feature       | CSV (RFC 4180)        | TSV (Simple)      | Impact                                                                   |
+|:--------------|:----------------------|:------------------|:-------------------------------------------------------------------------|
+| **Delimiter** | `,` (variable)        | `\t` (fixed)      | TSV can hardcode delimiter, enabling SIMD optimization.                  |
+| **Quotes**    | Supports `"` wrapping | **Not supported** | TSV eliminates "in_quote" state machine, removing branch misprediction.  |
+| **Escapes**   | `""` escapes quotes   | None              | TSV supports true zero-copy slicing without rewriting.                   |
+| **Newlines**  | Allowed in fields     | **Not allowed**   | TSV guarantees `\n` always means record end, enabling parallel chunking. |
 
 ### Implementation
 
@@ -197,7 +197,8 @@ src/libs/tsv/simd/
    eliminating generic library overhead.
 
 2. **Single-Pass Scanning**: All delimiter positions are found in one pass, storing field
-   boundaries in a pre-allocated array. This eliminates the **~95%** overhead of two-pass approaches.
+   boundaries in a pre-allocated array. This eliminates the **~95%** overhead of two-pass
+   approaches.
 
 3. **Unified CR Handling**: Only `\t` and `\n` are searched during SIMD scan. When `\n` is found,
    we check if the preceding byte is `\r`. This reduces register pressure compared to searching
@@ -207,17 +208,18 @@ src/libs/tsv/simd/
    eliminating per-row allocation.
 
 **Platform Support**:
+
 - **x86_64**: SSE2 intrinsics (baseline for all x86_64 CPUs)
 - **aarch64**: NEON intrinsics (baseline for all ARM64 CPUs)
 - **Fallback**: `memchr2` for other platforms
 
 ### Performance Validation
 
-| Metric | Target | Achieved | Status |
-|:-------|:-------|:---------|:-------|
+| Metric                    | Target    | Achieved       | Status                   |
+|:--------------------------|:----------|:---------------|:-------------------------|
 | Throughput (short fields) | 2-3 GiB/s | **1.63 GiB/s** | ✅ Near theoretical limit |
-| Speedup vs `simd-csv` | 1.5-2x | **1.8x** | ✅ Exceeded target |
-| Speedup vs memchr2 | 1.5-2x | **2.0x** | ✅ Achieved target |
+| Speedup vs `simd-csv`     | 1.5-2x    | **1.8x**       | ✅ Exceeded target        |
+| Speedup vs memchr2        | 1.5-2x    | **2.0x**       | ✅ Achieved target        |
 
 **Key Insights**:
 
@@ -271,14 +273,14 @@ All tools use a unified syntax to identify fields (columns). See
 It combines the strict, high-performance nature of `tsv-utils` with the cross-platform accessibility
 and modern ecosystem of Rust.
 
-| Feature | `tva` (Rust) | `tsv-utils` (D) | `xsv` / `qsv` (Rust) | `datamash` (C) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Primary Format** | TSV (Strict) | TSV (Strict) | CSV (Flexible) | TSV (Default) |
-| **Escapes** | No | No | Yes | No |
-| **Header Aware** | Yes | Yes | Yes | Partial |
-| **Field Syntax** | Names & Indices | Names & Indices | Names & Indices | Indices |
-| **Platform** | Cross-platform | Unix-focused | Cross-platform | Unix-focused |
-| **Performance** | High | High | High (CSV cost) | High |
+| Feature            | `tva` (Rust)    | `tsv-utils` (D) | `xsv` / `qsv` (Rust) | `datamash` (C) |
+|:-------------------|:----------------|:----------------|:---------------------|:---------------|
+| **Primary Format** | TSV (Strict)    | TSV (Strict)    | CSV (Flexible)       | TSV (Default)  |
+| **Escapes**        | No              | No              | Yes                  | No             |
+| **Header Aware**   | Yes             | Yes             | Yes                  | Partial        |
+| **Field Syntax**   | Names & Indices | Names & Indices | Names & Indices      | Indices        |
+| **Platform**       | Cross-platform  | Unix-focused    | Cross-platform       | Unix-focused   |
+| **Performance**    | High            | High            | High (CSV cost)      | High           |
 
 ### Detailed Breakdown
 
@@ -372,7 +374,7 @@ Source → Pest Parser → AST (Expr) → Direct Interpretation (eval)
 ### Expr Engine Optimizations
 
 | Optimization             | Technique                          | Speedup |
-| :----------------------- | :--------------------------------- | :------ |
+|:-------------------------|:-----------------------------------|:--------|
 | Global Function Registry | `OnceLock` static registry         | 35-57x  |
 | Parse Cache              | `HashMap<String, Expr>` caching    | 12x     |
 | Column Name Resolution   | Compile-time name→index conversion | 3x      |
