@@ -10,9 +10,9 @@ reasons, especially in data mining and large-scale data processing contexts:
 
 ### 1. No Escapes = Reliability & Speed
 
-- **CSV Complexity**: CSV uses escape characters (usually quotes) to handle delimiters (commas) and
-  newlines within fields. Parsing this requires a state machine, which is slower and prone to errors
-  in ad-hoc scripts.
+- **CSV Complexity**: CSV uses escape characters (usually quotes) to handle delimiters (commas)
+  and newlines within fields. Parsing this requires a state machine, which is slower and prone to
+  errors in ad-hoc scripts.
 - **TSV Simplicity**: TSV disallows tabs and newlines within fields. This means:
     - **Parsing is trivial**: `split('\t')` works reliably.
     - **Record boundaries are clear**: Every newline is a record separator.
@@ -44,8 +44,8 @@ reasons, especially in data mining and large-scale data processing contexts:
 
 ### 2. Cross-Platform & Deployment
 
-- **Single Binary**: Rust compiles to a static binary with no runtime dependencies (unlike Python or
-  Java).
+- **Single Binary**: Rust compiles to a static binary with no runtime dependencies (unlike Python
+  or Java).
 - **Windows Support**: Rust has first-class support for Windows, making `tva` easily deployable on
   non-Unix environments (a key differentiator from many Unix-centric tools).
 
@@ -88,8 +88,8 @@ reasons, especially in data mining and large-scale data processing contexts:
 
 **Core Philosophy: Single-threaded extreme performance + external parallel tools**
 
-`tva` adopts a **single-threaded** model for most data processing scenarios. This is not a technical
-limitation, but an active choice based on Unix philosophy:
+`tva` adopts a **single-threaded** model for most data processing scenarios. This is not a
+technical limitation, but an active choice based on Unix philosophy:
 
 1. **Do One Thing Well**: `tva` focuses on streaming data parsing, transformation, and statistics,
    leaving parallel scheduling complexity to specialized tools (like GNU Parallel).
@@ -116,8 +116,8 @@ limitation, but an active choice based on Unix philosophy:
 - **String Reuse**: Where possible, `tva` reuses allocated string buffers (e.g., via `read_line`
   into a cleared String) to avoid the overhead of repeated memory allocation and deallocation.
 - **Iterator-Based Processing**: Leverages Rust's iterator lazy evaluation to process data
-  line-by-line without loading entire files into memory, enabling processing of datasets larger than
-  RAM.
+  line-by-line without loading entire files into memory, enabling processing of datasets larger
+  than RAM.
 
 ## Performance Architecture & Benchmarks
 
