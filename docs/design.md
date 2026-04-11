@@ -10,10 +10,10 @@ reasons, especially in data mining and large-scale data processing contexts:
 
 ### 1. No Escapes = Reliability & Speed
 
-* **CSV Complexity**: CSV uses escape characters (usually quotes) to handle delimiters (commas) and
+- **CSV Complexity**: CSV uses escape characters (usually quotes) to handle delimiters (commas) and
   newlines within fields. Parsing this requires a state machine, which is slower and prone to errors
   in ad-hoc scripts.
-* **TSV Simplicity**: TSV disallows tabs and newlines within fields. This means:
+- **TSV Simplicity**: TSV disallows tabs and newlines within fields. This means:
     * **Parsing is trivial**: `split('\t')` works reliably.
     * **Record boundaries are clear**: Every newline is a record separator.
     * **Performance**: Highly optimized routines can be used to find delimiters.
@@ -21,12 +21,12 @@ reasons, especially in data mining and large-scale data processing contexts:
 
 ### 2. Unix Tool Compatibility
 
-* Traditional Unix tools (`cut`, `awk`, `sort`, `join`, `uniq`) work seamlessly with TSV files by
+- Traditional Unix tools (`cut`, `awk`, `sort`, `join`, `uniq`) work seamlessly with TSV files by
   specifying the delimiter (e.g., `cut -f1`).
-* **The CSV Problem**: Standard Unix tools fail on CSV files with quoted fields or newlines. This
+- **The CSV Problem**: Standard Unix tools fail on CSV files with quoted fields or newlines. This
   forces CSV toolkits (like `xsv`) to re-implement standard operations (sorting, joining) just to
   handle parsing correctly.
-* **The TSV Advantage**: `tva` leverages the simplicity of TSV. While `tva` provides its own `sort`
+- **The TSV Advantage**: `tva` leverages the simplicity of TSV. While `tva` provides its own `sort`
   and `join` for header awareness and Windows support, the underlying data remains compatible with
   the vast ecosystem of standard Unix text processing tools.
 
@@ -36,53 +36,53 @@ reasons, especially in data mining and large-scale data processing contexts:
 
 ### 1. Safety & Performance
 
-* **Memory Safety**: Rust's ownership model ensures memory safety without a garbage collector,
+- **Memory Safety**: Rust's ownership model ensures memory safety without a garbage collector,
   crucial for high-performance data processing tools.
-* **Zero-Cost Abstractions**: High-level constructs (iterators, closures) compile down to efficient
+- **Zero-Cost Abstractions**: High-level constructs (iterators, closures) compile down to efficient
   machine code, often matching or beating C/C++.
-* **Predictable Performance**: No GC pauses means consistent throughput for large datasets.
+- **Predictable Performance**: No GC pauses means consistent throughput for large datasets.
 
 ### 2. Cross-Platform & Deployment
 
-* **Single Binary**: Rust compiles to a static binary with no runtime dependencies (unlike Python or
+- **Single Binary**: Rust compiles to a static binary with no runtime dependencies (unlike Python or
   Java).
-* **Windows Support**: Rust has first-class support for Windows, making `tva` easily deployable on
+- **Windows Support**: Rust has first-class support for Windows, making `tva` easily deployable on
   non-Unix environments (a key differentiator from many Unix-centric tools).
 
 ## Design Goals
 
 ### 1. Unix Philosophy
 
-* **Do One Thing Well**: Each subcommand (`filter`, `select`, `stats`) focuses on a specific task.
-* **Pipeable**: Tools read from stdin and write to stdout by default, enabling powerful pipelines:
+- **Do One Thing Well**: Each subcommand (`filter`, `select`, `stats`) focuses on a specific task.
+- **Pipeable**: Tools read from stdin and write to stdout by default, enabling powerful pipelines:
   ```bash
   tva filter --gt score:0.9 data.tsv | tva select name,score | tva sort -k score
   ```
-* **Streaming**: Stateless where possible to support infinite streams and large files.
+- **Streaming**: Stateless where possible to support infinite streams and large files.
 
 ### 2. Header Awareness
 
-* Unlike generic Unix tools, `tva` is aware of headers.
-* **Field Selection**: Columns can be selected by name (`--fields user_id`) rather than just index.
-* **Header Preservation**: Operations like `filter` or `sample` automatically preserve the header
+- Unlike generic Unix tools, `tva` is aware of headers.
+- **Field Selection**: Columns can be selected by name (`--fields user_id`) rather than just index.
+- **Header Preservation**: Operations like `filter` or `sample` automatically preserve the header
   row.
 
 ### 3. TSV-first
 
-* Default separator is TAB.
-* Processing revolves around the "Row + Field" model.
-* CSV is treated as an import format (`from-csv`), but core logic is TSV-centric.
+- Default separator is TAB.
+- Processing revolves around the "Row + Field" model.
+- CSV is treated as an import format (`from-csv`), but core logic is TSV-centric.
 
 ### 4. Explicit CLI & Fail-fast
 
-* Options should be explicit (no "magic" behavior).
-* Strict error handling: mismatched field counts or broken headers result in immediate error exit (
+- Options should be explicit (no "magic" behavior).
+- Strict error handling: mismatched field counts or broken headers result in immediate error exit (
   stderr + non-zero status), rather than silent truncation.
 
 ### 5. High Performance
 
-* Aim for single-pass processing.
-* Avoid unnecessary allocations and sorting.
+- Aim for single-pass processing.
+- Avoid unnecessary allocations and sorting.
 
 ### 6. Single-Threaded by Default
 
@@ -106,16 +106,16 @@ limitation, but an active choice based on Unix philosophy:
 
 ### 1. Buffered I/O
 
-* **Input**: Uses `std::io::BufReader` to minimize system calls when reading large files.
+- **Input**: Uses `std::io::BufReader` to minimize system calls when reading large files.
   Transparently handles `.gz` files (via `flate2`).
-* **Output**: Uses `std::io::BufWriter` to batch writes, significantly improving throughput for
+- **Output**: Uses `std::io::BufWriter` to batch writes, significantly improving throughput for
   commands that produce large output.
 
 ### 2. Zero-Copy & Re-use
 
-* **String Reuse**: Where possible, `tva` reuses allocated string buffers (e.g., via `read_line`
+- **String Reuse**: Where possible, `tva` reuses allocated string buffers (e.g., via `read_line`
   into a cleared String) to avoid the overhead of repeated memory allocation and deallocation.
-* **Iterator-Based Processing**: Leverages Rust's iterator lazy evaluation to process data
+- **Iterator-Based Processing**: Leverages Rust's iterator lazy evaluation to process data
   line-by-line without loading entire files into memory, enabling processing of datasets larger than
   RAM.
 
@@ -236,32 +236,32 @@ and combine.
 All tools use a unified syntax to identify fields (columns).
 See [Field Syntax Documentation](help/fields.md) for details.
 
-* **Index**: `1` (first column), `2` (second column).
-* **Range**: `1-3` (columns 1, 2, 3).
-* **List**: `1,3,5`.
-* **Name**: `user_id` (requires `--header`).
-* **Wildcard**: `user_*` (matches `user_id`, `user_name`, etc.).
-* **Exclusion**: `--exclude 1,2` (select all except 1 and 2).
+- **Index**: `1` (first column), `2` (second column).
+- **Range**: `1-3` (columns 1, 2, 3).
+- **List**: `1,3,5`.
+- **Name**: `user_id` (requires `--header`).
+- **Wildcard**: `user_*` (matches `user_id`, `user_name`, etc.).
+- **Exclusion**: `--exclude 1,2` (select all except 1 and 2).
 
 ### Header Processing
 
-* **Input**: Most tools accept a `--header` (or `-H`) flag to indicate the first line of input is a
+- **Input**: Most tools accept a `--header` (or `-H`) flag to indicate the first line of input is a
   header. This enables field selection by name.
     * Note: The `longer` and `wider` commands assume a header by default.
-* **Output**: When `--header` is used, `tva` ensures the header is preserved in the output (unless
+- **Output**: When `--header` is used, `tva` ensures the header is preserved in the output (unless
   explicitly suppressed).
-* **No Header**: Without this flag, the first row is treated as data. Field selection is limited to
+- **No Header**: Without this flag, the first row is treated as data. Field selection is limited to
   indices (no names).
-* **Multiple Files**: If processing multiple files with `--header`:
+- **Multiple Files**: If processing multiple files with `--header`:
     * The header from the **first** file is written to output.
     * Headers from subsequent files are **skipped** (assumed to be identical to the first).
     * **Validation**: Field counts must be consistent; `tva` fails immediately on jagged rows.
 
 ### Multiple Files & Standard Input
 
-* **Standard Input**: If no files are provided, or if `-` is used as a filename, `tva` reads from
+- **Standard Input**: If no files are provided, or if `-` is used as a filename, `tva` reads from
   standard input (stdin).
-* **Concatenation**: When multiple files are provided, `tva` processes them sequentially as a single
+- **Concatenation**: When multiple files are provided, `tva` processes them sequentially as a single
   continuous stream of data (logical concatenation).
     * Example: `tva filter --gt value:10 file1.tsv file2.tsv` processes both files.
 
@@ -282,31 +282,31 @@ and modern ecosystem of Rust.
 
 ### Detailed Breakdown
 
-* **[tsv-utils](https://github.com/eBay/tsv-utils-d)** (D):
+- **[tsv-utils](https://github.com/eBay/tsv-utils-d)** (D):
     * The direct inspiration for `tva`. `tva` aims to be a Rust-based alternative that is easier to
       install (no D compiler needed) and extends functionality (e.g., `sample`, `slice`).
 
-* **[xsv](https://github.com/BurntSushi/xsv) / [qsv](https://github.com/jqnatividad/qsv)** (Rust):
+- **[xsv](https://github.com/BurntSushi/xsv) / [qsv](https://github.com/jqnatividad/qsv)** (Rust):
     * The premier tools for **CSV** processing.
     * Because they must handle CSV escapes, they are inherently more complex than TSV-only tools.
     * Use these if you must work with CSVs directly; use `tva` if you can convert to TSV for faster,
       simpler processing.
 
-* **[GNU Datamash](https://www.gnu.org/software/datamash/)** (C):
+- **[GNU Datamash](https://www.gnu.org/software/datamash/)** (C):
     * Excellent for statistical operations (groupby, pivot) on TSV files.
     * `tva stats` is similar but adds header awareness and named field selection, making it
       friendlier for interactive use.
 
-* **[Miller (mlr)](https://github.com/johnkerl/miller)** (C):
+- **[Miller (mlr)](https://github.com/johnkerl/miller)** (C):
     * A powerful "awk for CSV/TSV/JSON". Supports many formats and complex transformations.
     * Miller is a DSL (Domain Specific Language); `tva` follows the "do one thing well" Unix
       philosophy with separate subcommands.
 
-* **[csvkit](https://github.com/wireservice/csvkit)** (Python):
+- **[csvkit](https://github.com/wireservice/csvkit)** (Python):
     * Very feature-rich but slower due to Python overhead. Great for converting obscure formats (
       XLSX, DBF) to CSV/TSV.
 
-* **[GNU shuf](https://www.gnu.org/software/coreutils/)** (C):
+- **[GNU shuf](https://www.gnu.org/software/coreutils/)** (C):
     * Standard tool for random permutations.
     * `tva sample` adds specific data science sampling methods: weighted sampling (by column value)
       and Bernoulli sampling.
@@ -324,13 +324,13 @@ graph at runtime, while the State (`Aggregator`) uses compact columnar storage (
 
 **Advantages**:
 
-* **Memory Efficient**: Even with millions of groups, each group's `Aggregator` overhead is
+- **Memory Efficient**: Even with millions of groups, each group's `Aggregator` overhead is
   minimal (only a few `Vec` headers).
-* **Modular**: Adding new operators only requires implementing the `Calculator` trait, completely
+- **Modular**: Adding new operators only requires implementing the `Calculator` trait, completely
   decoupled from existing code.
-* **Fast Compilation**: Compared to generic/template bloat, `dyn Trait` significantly reduces
+- **Fast Compilation**: Compared to generic/template bloat, `dyn Trait` significantly reduces
   compile times and binary size.
-* **Deterministic**: Uses `IndexMap` to guarantee that GroupBy output order matches the
+- **Deterministic**: Uses `IndexMap` to guarantee that GroupBy output order matches the
   first-occurrence order in the input.
 
 **Trade-offs**: Virtual function calls (`vtable`) have a tiny overhead compared to inlined code in
@@ -362,12 +362,12 @@ Source → Pest Parser → AST (Expr) → Direct Interpretation (eval)
 
 ### Design Principles
 
-* **Conciseness**: Short syntax for common operations (e.g., `@1`, `@name` for column references).
-* **Shell-friendly**: Avoids conflicts with Shell special characters (`$`, `` ` ``, `!`).
-* **Streaming**: Row-by-row evaluation with no global state, suitable for big data.
-* **Type-aware**: Recognizes numbers/dates when needed, treats data as strings by default for speed.
-* **Error Handling**: Defaults to permissive mode (invalid operations return `null`).
-* **Consistency**: Similar to jq/xan to reduce learning costs.
+- **Conciseness**: Short syntax for common operations (e.g., `@1`, `@name` for column references).
+- **Shell-friendly**: Avoids conflicts with Shell special characters (`$`, `` ` ``, `!`).
+- **Streaming**: Row-by-row evaluation with no global state, suitable for big data.
+- **Type-aware**: Recognizes numbers/dates when needed, treats data as strings by default for speed.
+- **Error Handling**: Defaults to permissive mode (invalid operations return `null`).
+- **Consistency**: Similar to jq/xan to reduce learning costs.
 
 ### Expr Engine Optimizations
 
@@ -381,14 +381,14 @@ Source → Pest Parser → AST (Expr) → Direct Interpretation (eval)
 
 **Details**:
 
-* **Parse caching**: Expressions are parsed once and cached for all rows. Identical expressions
+- **Parse caching**: Expressions are parsed once and cached for all rows. Identical expressions
   reuse the cached AST.
-* **Column name resolution**: When headers are available, `@name` references are resolved to
+- **Column name resolution**: When headers are available, `@name` references are resolved to
   `@index` at parse time for O(1) access.
-* **Constant folding**: Constant sub-expressions (e.g., `2 + 3 * 4`) are pre-computed during
+- **Constant folding**: Constant sub-expressions (e.g., `2 + 3 * 4`) are pre-computed during
   parsing.
-* **Function registry**: Built-in functions are looked up once and cached, avoiding repeated hash
+- **Function registry**: Built-in functions are looked up once and cached, avoiding repeated hash
   map lookups.
-* **Hash algorithm**: Uses `ahash` for faster hash map operations.
+- **Hash algorithm**: Uses `ahash` for faster hash map operations.
 
 For best performance, use column indices (`@1`, `@2`) instead of names.
