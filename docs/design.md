@@ -14,10 +14,10 @@ reasons, especially in data mining and large-scale data processing contexts:
   newlines within fields. Parsing this requires a state machine, which is slower and prone to errors
   in ad-hoc scripts.
 - **TSV Simplicity**: TSV disallows tabs and newlines within fields. This means:
-    * **Parsing is trivial**: `split('\t')` works reliably.
-    * **Record boundaries are clear**: Every newline is a record separator.
-    * **Performance**: Highly optimized routines can be used to find delimiters.
-    * **Robustness**: No "malformed CSV" errors due to incorrect quoting.
+    - **Parsing is trivial**: `split('\t')` works reliably.
+    - **Record boundaries are clear**: Every newline is a record separator.
+    - **Performance**: Highly optimized routines can be used to find delimiters.
+    - **Robustness**: No "malformed CSV" errors due to incorrect quoting.
 
 ### 2. Unix Tool Compatibility
 
@@ -158,8 +158,8 @@ The evolution shows a clear progression from naive implementations to hand-optim
 
 **Key Findings**:
 
-1. **Performance Leap**: `for_each_row` achieves **1.63 GiB/s** on short fields—**1.8x faster** than
-   `simd-csv` and **12.6x faster** than naive split. On wide rows, it maintains **896 MiB/s**,
+1. **Performance Leap**: `for_each_row` achieves **1.63 GiB/s** on short fields—**1.8x faster**
+   than `simd-csv` and **12.6x faster** than naive split. On wide rows, it maintains **896 MiB/s**,
    demonstrating consistent advantage across data shapes.
 2. **Single-Pass Wins**: True single-pass scanning outperforms two-pass approaches by **~95%**
    regardless of row width, as more delimiter searches are eliminated.
@@ -233,8 +233,8 @@ and combine.
 
 ### Field Syntax
 
-All tools use a unified syntax to identify fields (columns).
-See [Field Syntax Documentation](help/fields.md) for details.
+All tools use a unified syntax to identify fields (columns). See
+[Field Syntax Documentation](help/fields.md) for details.
 
 - **Index**: `1` (first column), `2` (second column).
 - **Range**: `1-3` (columns 1, 2, 3).
@@ -247,15 +247,15 @@ See [Field Syntax Documentation](help/fields.md) for details.
 
 - **Input**: Most tools accept a `--header` (or `-H`) flag to indicate the first line of input is a
   header. This enables field selection by name.
-    * Note: The `longer` and `wider` commands assume a header by default.
+    - Note: The `longer` and `wider` commands assume a header by default.
 - **Output**: When `--header` is used, `tva` ensures the header is preserved in the output (unless
   explicitly suppressed).
 - **No Header**: Without this flag, the first row is treated as data. Field selection is limited to
   indices (no names).
 - **Multiple Files**: If processing multiple files with `--header`:
-    * The header from the **first** file is written to output.
-    * Headers from subsequent files are **skipped** (assumed to be identical to the first).
-    * **Validation**: Field counts must be consistent; `tva` fails immediately on jagged rows.
+    - The header from the **first** file is written to output.
+    - Headers from subsequent files are **skipped** (assumed to be identical to the first).
+    - **Validation**: Field counts must be consistent; `tva` fails immediately on jagged rows.
 
 ### Multiple Files & Standard Input
 
@@ -371,13 +371,13 @@ Source → Pest Parser → AST (Expr) → Direct Interpretation (eval)
 
 ### Expr Engine Optimizations
 
-| Optimization | Technique | Speedup |
-|:-------------|:----------|:--------|
-| Global Function Registry | `OnceLock` static registry | 35-57x |
-| Parse Cache | `HashMap<String, Expr>` caching | 12x |
-| Column Name Resolution | Compile-time name→index conversion | 3x |
-| Constant Folding | Compile-time constant evaluation | 10x |
-| HashMap (ahash) | Faster HashMap implementation | 6% |
+| Optimization             | Technique                          | Speedup |
+| :----------------------- | :--------------------------------- | :------ |
+| Global Function Registry | `OnceLock` static registry         | 35-57x  |
+| Parse Cache              | `HashMap<String, Expr>` caching    | 12x     |
+| Column Name Resolution   | Compile-time name→index conversion | 3x      |
+| Constant Folding         | Compile-time constant evaluation   | 10x     |
+| HashMap (ahash)          | Faster HashMap implementation      | 6%      |
 
 **Details**:
 
