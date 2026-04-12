@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9fe68561.js";
+            window.path_to_searchindex_js = "searchindex-ab8388f6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-89bb9ebf.js"></script>
@@ -188,9 +188,9 @@ original <a href="https://github.com/eBay/tsv-utils">TSV Utilities</a> by eBay.<
 reasons, especially in data mining and large-scale data processing contexts:</p>
 <h3 id="1-no-escapes--reliability--speed"><a class="header" href="#1-no-escapes--reliability--speed">1. No Escapes = Reliability &amp; Speed</a></h3>
 <ul>
-<li><strong>CSV Complexity</strong>: CSV uses escape characters (usually quotes) to handle delimiters (commas) and
-newlines within fields. Parsing this requires a state machine, which is slower and prone to errors
-in ad-hoc scripts.</li>
+<li><strong>CSV Complexity</strong>: CSV uses escape characters (usually quotes) to handle delimiters (commas)
+and newlines within fields. Parsing this requires a state machine, which is slower and prone to
+errors in ad-hoc scripts.</li>
 <li><strong>TSV Simplicity</strong>: TSV disallows tabs and newlines within fields. This means:
 <ul>
 <li><strong>Parsing is trivial</strong>: <code>split('\t')</code> works reliably.</li>
@@ -223,8 +223,8 @@ machine code, often matching or beating C/C++.</li>
 </ul>
 <h3 id="2-cross-platform--deployment"><a class="header" href="#2-cross-platform--deployment">2. Cross-Platform &amp; Deployment</a></h3>
 <ul>
-<li><strong>Single Binary</strong>: Rust compiles to a static binary with no runtime dependencies (unlike Python or
-Java).</li>
+<li><strong>Single Binary</strong>: Rust compiles to a static binary with no runtime dependencies (unlike Python
+or Java).</li>
 <li><strong>Windows Support</strong>: Rust has first-class support for Windows, making <code>tva</code> easily deployable on
 non-Unix environments (a key differentiator from many Unix-centric tools).</li>
 </ul>
@@ -264,14 +264,14 @@ stderr + non-zero status), rather than silent truncation.</li>
 </ul>
 <h3 id="6-single-threaded-by-default"><a class="header" href="#6-single-threaded-by-default">6. Single-Threaded by Default</a></h3>
 <p><strong>Core Philosophy: Single-threaded extreme performance + external parallel tools</strong></p>
-<p><code>tva</code> adopts a <strong>single-threaded</strong> model for most data processing scenarios. This is not a technical
-limitation, but an active choice based on Unix philosophy:</p>
+<p><code>tva</code> adopts a <strong>single-threaded</strong> model for most data processing scenarios. This is not a
+technical limitation, but an active choice based on Unix philosophy:</p>
 <ol>
 <li><strong>Do One Thing Well</strong>: <code>tva</code> focuses on streaming data parsing, transformation, and statistics,
 leaving parallel scheduling complexity to specialized tools (like GNU Parallel).</li>
 <li><strong>Don’t Reinvent the Wheel</strong>: GNU Parallel is already a mature, powerful parallel task scheduler.
-Rather than implementing complex thread pools and task distribution inside <code>tva</code>, it’s better to
-make <code>tva</code> the best partner for Parallel.</li>
+Rather than implementing complex thread pools and task distribution inside <code>tva</code>, it’s better
+to make <code>tva</code> the best partner for Parallel.</li>
 <li><strong>Determinism and Simplicity</strong>: Single-threaded models make data processing order naturally
 deterministic, debugging easier, and greatly reduce memory management complexity and overhead (
 lock-free, zero-copy easier to achieve).</li>
@@ -290,8 +290,8 @@ commands that produce large output.</li>
 <li><strong>String Reuse</strong>: Where possible, <code>tva</code> reuses allocated string buffers (e.g., via <code>read_line</code>
 into a cleared String) to avoid the overhead of repeated memory allocation and deallocation.</li>
 <li><strong>Iterator-Based Processing</strong>: Leverages Rust’s iterator lazy evaluation to process data
-line-by-line without loading entire files into memory, enabling processing of datasets larger than
-RAM.</li>
+line-by-line without loading entire files into memory, enabling processing of datasets larger
+than RAM.</li>
 </ul>
 <h2 id="performance-architecture--benchmarks"><a class="header" href="#performance-architecture--benchmarks">Performance Architecture &amp; Benchmarks</a></h2>
 <p><code>tva</code> is built on a philosophy of “Zero-Copy” and “SIMD-First”. We continuously benchmark different
@@ -311,7 +311,7 @@ The evolution shows a clear progression from naive implementations to hand-optim
 <tr><th style="text-align: left">Implementation</th><th style="text-align: left">Time</th><th style="text-align: left">Throughput</th><th style="text-align: left">Notes</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong>TVA for_each_row (Single-Pass)</strong></td><td style="text-align: left"><strong>43 µs</strong></td><td style="text-align: left"><strong>1.63 GiB/s</strong></td><td style="text-align: left"><strong>Current</strong>: Hand-written SIMD (SSE2), true single-pass</td></tr>
+<tr><td style="text-align: left"><strong>TVA for_each_row</strong></td><td style="text-align: left"><strong>43 µs</strong></td><td style="text-align: left"><strong>1.63 GiB/s</strong></td><td style="text-align: left"><strong>Current</strong>: Hand-written SIMD (SSE2), true single-pass</td></tr>
 <tr><td style="text-align: left"><strong>simd-csv</strong></td><td style="text-align: left">80 µs</td><td style="text-align: left">905 MiB/s</td><td style="text-align: left">Hybrid SIMD state machine, previous ceiling</td></tr>
 <tr><td style="text-align: left"><strong>TVA for_each_line + memchr</strong></td><td style="text-align: left">87 µs</td><td style="text-align: left">830 MiB/s</td><td style="text-align: left">Two-pass: SIMD for lines, memchr for fields</td></tr>
 <tr><td style="text-align: left"><strong>Memchr Reused Buffer</strong></td><td style="text-align: left">113 µs</td><td style="text-align: left">639 MiB/s</td><td style="text-align: left">Line-by-line memchr, limited by function call overhead</td></tr>
@@ -327,7 +327,7 @@ The evolution shows a clear progression from naive implementations to hand-optim
 <tr><th style="text-align: left">Implementation</th><th style="text-align: left">Time</th><th style="text-align: left">Throughput</th><th style="text-align: left">Notes</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong>TVA for_each_row (Single-Pass)</strong></td><td style="text-align: left"><strong>128 µs</strong></td><td style="text-align: left"><strong>896 MiB/s</strong></td><td style="text-align: left"><strong>Current</strong>: Hand-written SIMD (SSE2), true single-pass</td></tr>
+<tr><td style="text-align: left"><strong>TVA for_each_row</strong></td><td style="text-align: left"><strong>128 µs</strong></td><td style="text-align: left"><strong>896 MiB/s</strong></td><td style="text-align: left"><strong>Current</strong>: Hand-written SIMD (SSE2), true single-pass</td></tr>
 <tr><td style="text-align: left"><strong>simd-csv</strong></td><td style="text-align: left">180 µs</td><td style="text-align: left">635 MiB/s</td><td style="text-align: left">Hybrid SIMD state machine</td></tr>
 <tr><td style="text-align: left"><strong>TVA for_each_line + memchr</strong></td><td style="text-align: left">247 µs</td><td style="text-align: left">463 MiB/s</td><td style="text-align: left">Two-pass: SIMD for lines, memchr for fields</td></tr>
 <tr><td style="text-align: left"><strong>Memchr Reused Buffer</strong></td><td style="text-align: left">344 µs</td><td style="text-align: left">333 MiB/s</td><td style="text-align: left">Line-by-line memchr</td></tr>
@@ -338,8 +338,8 @@ The evolution shows a clear progression from naive implementations to hand-optim
 </div>
 <p><strong>Key Findings</strong>:</p>
 <ol>
-<li><strong>Performance Leap</strong>: <code>for_each_row</code> achieves <strong>1.63 GiB/s</strong> on short fields—<strong>1.8x faster</strong> than
-<code>simd-csv</code> and <strong>12.6x faster</strong> than naive split. On wide rows, it maintains <strong>896 MiB/s</strong>,
+<li><strong>Performance Leap</strong>: <code>for_each_row</code> achieves <strong>1.63 GiB/s</strong> on short fields—<strong>1.8x faster</strong>
+than <code>simd-csv</code> and <strong>12.6x faster</strong> than naive split. On wide rows, it maintains <strong>896 MiB/s</strong>,
 demonstrating consistent advantage across data shapes.</li>
 <li><strong>Single-Pass Wins</strong>: True single-pass scanning outperforms two-pass approaches by <strong>~95%</strong>
 regardless of row width, as more delimiter searches are eliminated.</li>
@@ -372,23 +372,15 @@ TSV format to achieve high performance.</p>
 </code></pre>
 <p><strong>Key Design Decisions</strong>:</p>
 <ol>
-<li>
-<p><strong>Hand-written SIMD</strong>: Platform-specific searchers simultaneously scan for <code>\t</code> and <code>\n</code>,
-eliminating generic library overhead.</p>
-</li>
-<li>
-<p><strong>Single-Pass Scanning</strong>: All delimiter positions are found in one pass, storing field
-boundaries in a pre-allocated array. This eliminates the <strong>~95%</strong> overhead of two-pass approaches.</p>
-</li>
-<li>
-<p><strong>Unified CR Handling</strong>: Only <code>\t</code> and <code>\n</code> are searched during SIMD scan. When <code>\n</code> is found,
-we check if the preceding byte is <code>\r</code>. This reduces register pressure compared to searching
-for three characters simultaneously.</p>
-</li>
-<li>
-<p><strong>Zero-Copy API</strong>: <code>TsvRow</code> structs yield borrowed slices into the internal buffer,
-eliminating per-row allocation.</p>
-</li>
+<li><strong>Hand-written SIMD</strong>: Platform-specific searchers simultaneously scan for <code>\t</code> and <code>\n</code>,
+eliminating generic library overhead.</li>
+<li><strong>Single-Pass Scanning</strong>: All delimiter positions are found in one pass, storing field boundaries
+in a pre-allocated array. This eliminates the <strong>~95%</strong> overhead of two-pass approaches.</li>
+<li><strong>Unified CR Handling</strong>: Only <code>\t</code> and <code>\n</code> are searched during SIMD scan. When <code>\n</code> is found,
+we check if the preceding byte is <code>\r</code>. This reduces register pressure compared to searching for
+three characters simultaneously.</li>
+<li><strong>Zero-Copy API</strong>: <code>TsvRow</code> structs yield borrowed slices into the internal buffer, eliminating
+per-row allocation.</li>
 </ol>
 <p><strong>Platform Support</strong>:</p>
 <ul>
@@ -420,8 +412,8 @@ over two-pass approaches regardless of data shape.</li>
 <p><code>tva</code> tools share a consistent set of behaviors and syntax conventions, making them easy to learn
 and combine.</p>
 <h3 id="field-syntax"><a class="header" href="#field-syntax">Field Syntax</a></h3>
-<p>All tools use a unified syntax to identify fields (columns).
-See <a href="help/fields.html">Field Syntax Documentation</a> for details.</p>
+<p>All tools use a unified syntax to identify fields (columns). See
+<a href="help/fields.html">Field Syntax Documentation</a> for details.</p>
 <ul>
 <li><strong>Index</strong>: <code>1</code> (first column), <code>2</code> (second column).</li>
 <li><strong>Range</strong>: <code>1-3</code> (columns 1, 2, 3).</li>
@@ -454,17 +446,17 @@ indices (no names).</li>
 <ul>
 <li><strong>Standard Input</strong>: If no files are provided, or if <code>-</code> is used as a filename, <code>tva</code> reads from
 standard input (stdin).</li>
-<li><strong>Concatenation</strong>: When multiple files are provided, <code>tva</code> processes them sequentially as a single
-continuous stream of data (logical concatenation).
+<li><strong>Concatenation</strong>: When multiple files are provided, <code>tva</code> processes them sequentially as a
+single continuous stream of data (logical concatenation).
 <ul>
 <li>Example: <code>tva filter --gt value:10 file1.tsv file2.tsv</code> processes both files.</li>
 </ul>
 </li>
 </ul>
 <h2 id="comparison-with-other-tools"><a class="header" href="#comparison-with-other-tools">Comparison with Other Tools</a></h2>
-<p><code>tva</code> is designed to coexist with and complement other excellent open-source tools for tabular data.
-It combines the strict, high-performance nature of <code>tsv-utils</code> with the cross-platform accessibility
-and modern ecosystem of Rust.</p>
+<p><code>tva</code> is designed to coexist with and complement other excellent open-source tools for tabular
+data.It combines the strict, high-performance nature of <code>tsv-utils</code> with the cross-platform
+accessibility and modern ecosystem of Rust.</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -482,15 +474,13 @@ and modern ecosystem of Rust.</p>
 </div>
 <h3 id="detailed-breakdown"><a class="header" href="#detailed-breakdown">Detailed Breakdown</a></h3>
 <ul>
-<li>
-<p><strong><a href="https://github.com/eBay/tsv-utils-d">tsv-utils</a></strong> (D):</p>
+<li><strong><a href="https://github.com/eBay/tsv-utils-d">tsv-utils</a></strong> (D):
 <ul>
 <li>The direct inspiration for <code>tva</code>. <code>tva</code> aims to be a Rust-based alternative that is easier to
 install (no D compiler needed) and extends functionality (e.g., <code>sample</code>, <code>slice</code>).</li>
 </ul>
 </li>
-<li>
-<p><strong><a href="https://github.com/BurntSushi/xsv">xsv</a> / <a href="https://github.com/jqnatividad/qsv">qsv</a></strong> (Rust):</p>
+<li><strong><a href="https://github.com/jqnatividad/qsv">qsv</a></strong> (Rust):
 <ul>
 <li>The premier tools for <strong>CSV</strong> processing.</li>
 <li>Because they must handle CSV escapes, they are inherently more complex than TSV-only tools.</li>
@@ -498,31 +488,27 @@ install (no D compiler needed) and extends functionality (e.g., <code>sample</co
 simpler processing.</li>
 </ul>
 </li>
-<li>
-<p><strong><a href="https://www.gnu.org/software/datamash/">GNU Datamash</a></strong> (C):</p>
+<li><strong><a href="https://www.gnu.org/software/datamash/">GNU Datamash</a></strong> (C):
 <ul>
 <li>Excellent for statistical operations (groupby, pivot) on TSV files.</li>
 <li><code>tva stats</code> is similar but adds header awareness and named field selection, making it
 friendlier for interactive use.</li>
 </ul>
 </li>
-<li>
-<p><strong><a href="https://github.com/johnkerl/miller">Miller (mlr)</a></strong> (C):</p>
+<li><strong><a href="https://github.com/johnkerl/miller">Miller (mlr)</a></strong> (C):
 <ul>
 <li>A powerful “awk for CSV/TSV/JSON”. Supports many formats and complex transformations.</li>
 <li>Miller is a DSL (Domain Specific Language); <code>tva</code> follows the “do one thing well” Unix
 philosophy with separate subcommands.</li>
 </ul>
 </li>
-<li>
-<p><strong><a href="https://github.com/wireservice/csvkit">csvkit</a></strong> (Python):</p>
+<li><strong><a href="https://github.com/wireservice/csvkit">csvkit</a></strong> (Python):
 <ul>
 <li>Very feature-rich but slower due to Python overhead. Great for converting obscure formats (
 XLSX, DBF) to CSV/TSV.</li>
 </ul>
 </li>
-<li>
-<p><strong><a href="https://www.gnu.org/software/coreutils/">GNU shuf</a></strong> (C):</p>
+<li><strong><a href="https://www.gnu.org/software/coreutils/">GNU shuf</a></strong> (C):
 <ul>
 <li>Standard tool for random permutations.</li>
 <li><code>tva sample</code> adds specific data science sampling methods: weighted sampling (by column value)
@@ -548,9 +534,9 @@ compile times and binary size.</li>
 <li><strong>Deterministic</strong>: Uses <code>IndexMap</code> to guarantee that GroupBy output order matches the
 first-occurrence order in the input.</li>
 </ul>
-<p><strong>Trade-offs</strong>: Virtual function calls (<code>vtable</code>) have a tiny overhead compared to inlined code in
-extremely high-frequency loops (e.g., 10 calls per row), but this is usually negligible in I/O-bound
-CLI tools.</p>
+<p><strong>Trade-offs</strong>: Virtual function calls (<code>vtable</code>) have a tiny overhead compared to inlined code
+in extremely high-frequency loops (e.g., 10 calls per row), but this is usually negligible in
+I/O-bound CLI tools.</p>
 <h3 id="other-tools"><a class="header" href="#other-tools">Other Tools</a></h3>
 <p><strong>xan</strong>: Uses enum dispatch (<code>enum Agg { Sum(SumState), ... }</code>) to avoid heap allocation, but
 requires modifying core enum definitions to add new operators.</p>

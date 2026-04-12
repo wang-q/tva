@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9fe68561.js";
+            window.path_to_searchindex_js = "searchindex-ab8388f6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-89bb9ebf.js"></script>
@@ -195,19 +195,16 @@ only).</li>
 </ul>
 <p><strong>Header Detection Modes</strong> (mutually exclusive):</p>
 <ul>
-<li>
-<p><strong>Modes that provide column names</strong> (<code>header_args_with_columns()</code>):</p>
+<li><strong>Modes that provide column names</strong> (<code>header_args_with_columns()</code>):
 <ul>
-<li>
-<p><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode</p>
+<li><code>--header</code> / <code>-H</code>: <strong>FirstLine</strong> mode
 <ul>
 <li>Takes the first line as column names.</li>
 <li>Simplest mode for standard TSV files.</li>
 <li><code>lines</code> is empty, <code>column_names_line</code> is the first line.</li>
 </ul>
 </li>
-<li>
-<p><code>--header-hash1</code>: <strong>HashLines1</strong> mode</p>
+<li><code>--header-hash1</code>: <strong>HashLines1</strong> mode
 <ul>
 <li>Takes consecutive <code>#</code> lines plus the next line as header.</li>
 <li><strong>Graceful degradation</strong>: If no <code>#</code> lines exist, uses the first line as column names (
@@ -217,22 +214,21 @@ separately.</li>
 </ul>
 </li>
 </ul>
+</li>
+</ul>
 <p>Commands using these modes: <code>append</code>, <code>bin</code>, <code>blank</code>, <code>fill</code>, <code>filter</code>, <code>join</code>, <code>longer</code>, <code>nl</code>,
 <code>reverse</code>, <code>select</code>, <code>stats</code>, <code>uniq</code>, <code>wider</code>.</p>
-</li>
-<li>
-<p><strong>Modes that don’t provide column names</strong> (<code>header_args()</code>):</p>
 <ul>
-<li>
-<p><code>--header-lines N</code>: <strong>LinesN</strong> mode</p>
+<li><strong>Modes that don’t provide column names</strong> (<code>header_args()</code>):
+<ul>
+<li><code>--header-lines N</code>: <strong>LinesN</strong> mode
 <ul>
 <li>Takes up to N lines as header (fewer if file is shorter).</li>
 <li>Does not extract column names.</li>
 <li><code>lines</code> contains up to n lines, <code>column_names_line</code> is None.</li>
 </ul>
 </li>
-<li>
-<p><code>--header-hash</code>: <strong>HashLines</strong> mode</p>
+<li><code>--header-hash</code>: <strong>HashLines</strong> mode
 <ul>
 <li>Takes all consecutive <code>#</code> lines as header (metadata only).</li>
 <li>No column names line is extracted.</li>
@@ -240,9 +236,9 @@ separately.</li>
 </ul>
 </li>
 </ul>
-<p>Commands using these modes: <code>check</code>, <code>slice</code>, <code>sort</code>.</p>
 </li>
 </ul>
+<p>Commands using these modes: <code>check</code>, <code>slice</code>, <code>sort</code>.</p>
 <p><strong>Library Implementation:</strong></p>
 <ul>
 <li>Use <code>TsvReader::read_header_mode(mode)</code> to read headers.</li>
@@ -300,52 +296,46 @@ and written to output.</li>
 <h2 id="field-selection-syntax"><a class="header" href="#field-selection-syntax">Field Selection Syntax</a></h2>
 <p>Commands that support field selection (e.g., <code>select</code>, <code>filter</code>, <code>sort</code>) use a unified field syntax.</p>
 <ul>
-<li>
-<p><strong>1-based Indexing</strong></p>
+<li><strong>1-based Indexing</strong>
 <ul>
 <li>Fields are numbered starting from 1 (following Unix <code>cut</code>/<code>awk</code> convention).</li>
 <li>Example: <code>1,3,5</code> selects the 1st, 3rd, and 5th columns.</li>
 </ul>
 </li>
-<li>
-<p><strong>Field Names</strong></p>
+<li><strong>Field Names</strong>
 <ul>
 <li>Requires the <code>--header</code> flag (or command-specific header option).</li>
 <li>Names are case-sensitive.</li>
 <li>Example: <code>date,user_id</code> selects columns named “date” and “user_id”.</li>
 </ul>
 </li>
-<li>
-<p><strong>Ranges</strong></p>
+<li><strong>Ranges</strong>
 <ul>
 <li>Numeric Ranges: <code>start-end</code>. Example: <code>2-4</code> selects columns 2, 3, and 4.</li>
-<li>Name Ranges: <code>start_col-end_col</code>. Selects all columns from <code>start_col</code> to
-<code>end_col</code> inclusive, based on their order in the header.</li>
+<li>Name Ranges: <code>start_col-end_col</code>. Selects all columns from <code>start_col</code> to <code>end_col</code> inclusive,
+based on their order in the header.</li>
 <li>Reverse Ranges: <code>5-3</code> is automatically treated as <code>3-5</code>.</li>
 </ul>
 </li>
-<li>
-<p><strong>Wildcards</strong></p>
+<li><strong>Wildcards</strong>
 <ul>
 <li><code>*</code> matches any sequence of characters in a field name.</li>
 <li>Example: <code>user_*</code> selects <code>user_id</code>, <code>user_name</code>, etc.</li>
 <li>Example: <code>*_time</code> selects <code>start_time</code>, <code>end_time</code>.</li>
 </ul>
 </li>
-<li>
-<p><strong>Escaping</strong></p>
+<li><strong>Escaping</strong>
 <ul>
-<li>Special characters in field names (like space, comma, colon, dash, star)
-must be escaped with <code>\</code>.</li>
+<li>Special characters in field names (like space, comma, colon, dash, star) must be escaped with
+<code>\</code>.</li>
 <li>Example: <code>Order\ ID</code> selects the column “Order ID”.</li>
 <li>Example: <code>run\:id</code> selects “run:id”.</li>
 </ul>
 </li>
-<li>
-<p><strong>Exclusion</strong></p>
+<li><strong>Exclusion</strong>
 <ul>
-<li>Negative selection is typically handled via a separate flag (e.g.,
-<code>--exclude</code> in <code>select</code>), but uses the same field syntax.</li>
+<li>Negative selection is typically handled via a separate flag (e.g., <code>--exclude</code> in <code>select</code>),
+but uses the same field syntax.</li>
 </ul>
 </li>
 </ul>
@@ -392,10 +382,12 @@ must be escaped with <code>\</code>.</li>
 <li><strong>String comparison</strong>: <code>eq</code>, <code>ne</code>, <code>lt</code>, <code>le</code>, <code>gt</code>, <code>ge</code></li>
 <li><strong>Logical</strong>: <code>and</code>, <code>or</code>, <code>not</code></li>
 <li><strong>String concatenation</strong>: <code>++</code></li>
-<li><strong>Functions</strong>: <code>trim()</code>, <code>upper()</code>, <code>lower()</code>, <code>len()</code>, <code>abs()</code>, <code>round()</code>, <code>min()</code>, <code>max()</code>, <code>if()</code>,
-<code>default()</code>, <code>substr()</code>, <code>replace()</code>, <code>split()</code>, <code>join()</code>, <code>range()</code>, <code>map()</code>, <code>filter()</code>, <code>reduce()</code></li>
+<li><strong>Functions</strong>: <code>trim()</code>, <code>upper()</code>, <code>lower()</code>, <code>len()</code>, <code>abs()</code>, <code>round()</code>, <code>min()</code>, <code>max()</code>,
+<code>if()</code>, <code>default()</code>, <code>substr()</code>, <code>replace()</code>, <code>split()</code>, <code>join()</code>, <code>range()</code>, <code>map()</code>, <code>filter()</code>,
+<code>reduce()</code></li>
 <li><strong>Pipe operator</strong>: <code>|</code> for chaining functions (e.g., <code>@name | trim() | upper()</code>)</li>
-<li><strong>Underscore placeholder</strong>: <code>_</code> for piped values in multi-argument functions (e.g., <code>@name | substr(_, 0, 3)</code>)</li>
+<li><strong>Underscore placeholder</strong>: <code>_</code> for piped values in multi-argument functions (e.g.,
+<code>@name | substr(_, 0, 3)</code>)</li>
 <li><strong>Lambda expressions</strong>: <code>x =&gt; x + 1</code> or <code>(x, y) =&gt; x + y</code></li>
 <li><strong>List literals</strong>: <code>[1, 2, 3]</code> or <code>[@a, @b, @c]</code></li>
 <li><strong>Variable binding</strong>: <code>as</code> for intermediate results (e.g., <code>@price * @qty as @total; @total * 0.9</code>)</li>
