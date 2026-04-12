@@ -94,8 +94,8 @@ technical limitation, but an active choice based on Unix philosophy:
 1. **Do One Thing Well**: `tva` focuses on streaming data parsing, transformation, and statistics,
    leaving parallel scheduling complexity to specialized tools (like GNU Parallel).
 2. **Don't Reinvent the Wheel**: GNU Parallel is already a mature, powerful parallel task scheduler.
-   Rather than implementing complex thread pools and task distribution inside `tva`, it's better to
-   make `tva` the best partner for Parallel.
+   Rather than implementing complex thread pools and task distribution inside `tva`, it's better
+   to make `tva` the best partner for Parallel.
 3. **Determinism and Simplicity**: Single-threaded models make data processing order naturally
    deterministic, debugging easier, and greatly reduce memory management complexity and overhead (
    lock-free, zero-copy easier to achieve).
@@ -137,7 +137,7 @@ The evolution shows a clear progression from naive implementations to hand-optim
 #### Test Data 1: Short Fields, Few Columns (5 cols, ~8 bytes/field)
 
 | Implementation                 | Time      | Throughput     | Notes                                                   |
-|:-------------------------------|:----------|:---------------|:--------------------------------------------------------|
+| :----------------------------- | :-------- | :------------- | :------------------------------------------------------ |
 | **TVA for_each_row**           | **43 µs** | **1.63 GiB/s** | **Current**: Hand-written SIMD (SSE2), true single-pass |
 | **simd-csv**                   | 80 µs     | 905 MiB/s      | Hybrid SIMD state machine, previous ceiling             |
 | **TVA for_each_line + memchr** | 87 µs     | 830 MiB/s      | Two-pass: SIMD for lines, memchr for fields             |
@@ -148,7 +148,7 @@ The evolution shows a clear progression from naive implementations to hand-optim
 #### Test Data 2: Wide Rows, Many Columns (20 cols, ~6 bytes/field)
 
 | Implementation                 | Time       | Throughput    | Notes                                                   |
-|:-------------------------------|:-----------|:--------------|:--------------------------------------------------------|
+| :----------------------------- | :--------- | :------------ | :------------------------------------------------------ |
 | **TVA for_each_row**           | **128 µs** | **896 MiB/s** | **Current**: Hand-written SIMD (SSE2), true single-pass |
 | **simd-csv**                   | 180 µs     | 635 MiB/s     | Hybrid SIMD state machine                               |
 | **TVA for_each_line + memchr** | 247 µs     | 463 MiB/s     | Two-pass: SIMD for lines, memchr for fields             |
@@ -195,17 +195,13 @@ src/libs/tsv/simd/
 
 1. **Hand-written SIMD**: Platform-specific searchers simultaneously scan for `\t` and `\n`,
    eliminating generic library overhead.
-
-2. **Single-Pass Scanning**: All delimiter positions are found in one pass, storing field
-   boundaries in a pre-allocated array. This eliminates the **~95%** overhead of two-pass
-   approaches.
-
+2. **Single-Pass Scanning**: All delimiter positions are found in one pass, storing field boundaries
+   in a pre-allocated array. This eliminates the **~95%** overhead of two-pass approaches.
 3. **Unified CR Handling**: Only `\t` and `\n` are searched during SIMD scan. When `\n` is found,
-   we check if the preceding byte is `\r`. This reduces register pressure compared to searching
-   for three characters simultaneously.
-
-4. **Zero-Copy API**: `TsvRow` structs yield borrowed slices into the internal buffer,
-   eliminating per-row allocation.
+   we check if the preceding byte is `\r`. This reduces register pressure compared to searching for
+   three characters simultaneously.
+4. **Zero-Copy API**: `TsvRow` structs yield borrowed slices into the internal buffer, eliminating
+   per-row allocation.
 
 **Platform Support**:
 
@@ -215,8 +211,8 @@ src/libs/tsv/simd/
 
 ### Performance Validation
 
-| Metric                    | Target    | Achieved       | Status                   |
-|:--------------------------|:----------|:---------------|:-------------------------|
+| Metric                    | Target    | Achieved       | Status                    |
+| :------------------------ | :-------- | :------------- | :------------------------ |
 | Throughput (short fields) | 2-3 GiB/s | **1.63 GiB/s** | ✅ Near theoretical limit |
 | Speedup vs `simd-csv`     | 1.5-2x    | **1.8x**       | ✅ Exceeded target        |
 | Speedup vs memchr2        | 1.5-2x    | **2.0x**       | ✅ Achieved target        |
@@ -263,18 +259,18 @@ All tools use a unified syntax to identify fields (columns). See
 
 - **Standard Input**: If no files are provided, or if `-` is used as a filename, `tva` reads from
   standard input (stdin).
-- **Concatenation**: When multiple files are provided, `tva` processes them sequentially as a single
-  continuous stream of data (logical concatenation).
-    * Example: `tva filter --gt value:10 file1.tsv file2.tsv` processes both files.
+- **Concatenation**: When multiple files are provided, `tva` processes them sequentially as a
+  single continuous stream of data (logical concatenation).
+    - Example: `tva filter --gt value:10 file1.tsv file2.tsv` processes both files.
 
 ## Comparison with Other Tools
 
-`tva` is designed to coexist with and complement other excellent open-source tools for tabular data.
-It combines the strict, high-performance nature of `tsv-utils` with the cross-platform accessibility
-and modern ecosystem of Rust.
+`tva` is designed to coexist with and complement other excellent open-source tools for tabular
+data.It combines the strict, high-performance nature of `tsv-utils` with the cross-platform
+accessibility and modern ecosystem of Rust.
 
 | Feature            | `tva` (Rust)    | `tsv-utils` (D) | `xsv` / `qsv` (Rust) | `datamash` (C) |
-|:-------------------|:----------------|:----------------|:---------------------|:---------------|
+| :----------------- | :-------------- | :-------------- | :------------------- | :------------- |
 | **Primary Format** | TSV (Strict)    | TSV (Strict)    | CSV (Flexible)       | TSV (Default)  |
 | **Escapes**        | No              | No              | Yes                  | No             |
 | **Header Aware**   | Yes             | Yes             | Yes                  | Partial        |
@@ -285,32 +281,27 @@ and modern ecosystem of Rust.
 ### Detailed Breakdown
 
 - **[tsv-utils](https://github.com/eBay/tsv-utils-d)** (D):
-    * The direct inspiration for `tva`. `tva` aims to be a Rust-based alternative that is easier to
+    - The direct inspiration for `tva`. `tva` aims to be a Rust-based alternative that is easier to
       install (no D compiler needed) and extends functionality (e.g., `sample`, `slice`).
-
-- **[xsv](https://github.com/BurntSushi/xsv) / [qsv](https://github.com/jqnatividad/qsv)** (Rust):
-    * The premier tools for **CSV** processing.
-    * Because they must handle CSV escapes, they are inherently more complex than TSV-only tools.
-    * Use these if you must work with CSVs directly; use `tva` if you can convert to TSV for faster,
+- **[qsv](https://github.com/jqnatividad/qsv)** (Rust):
+    - The premier tools for **CSV** processing.
+    - Because they must handle CSV escapes, they are inherently more complex than TSV-only tools.
+    - Use these if you must work with CSVs directly; use `tva` if you can convert to TSV for faster,
       simpler processing.
-
 - **[GNU Datamash](https://www.gnu.org/software/datamash/)** (C):
-    * Excellent for statistical operations (groupby, pivot) on TSV files.
-    * `tva stats` is similar but adds header awareness and named field selection, making it
+    - Excellent for statistical operations (groupby, pivot) on TSV files.
+    - `tva stats` is similar but adds header awareness and named field selection, making it
       friendlier for interactive use.
-
 - **[Miller (mlr)](https://github.com/johnkerl/miller)** (C):
-    * A powerful "awk for CSV/TSV/JSON". Supports many formats and complex transformations.
-    * Miller is a DSL (Domain Specific Language); `tva` follows the "do one thing well" Unix
+    - A powerful "awk for CSV/TSV/JSON". Supports many formats and complex transformations.
+    - Miller is a DSL (Domain Specific Language); `tva` follows the "do one thing well" Unix
       philosophy with separate subcommands.
-
 - **[csvkit](https://github.com/wireservice/csvkit)** (Python):
-    * Very feature-rich but slower due to Python overhead. Great for converting obscure formats (
+    - Very feature-rich but slower due to Python overhead. Great for converting obscure formats (
       XLSX, DBF) to CSV/TSV.
-
 - **[GNU shuf](https://www.gnu.org/software/coreutils/)** (C):
-    * Standard tool for random permutations.
-    * `tva sample` adds specific data science sampling methods: weighted sampling (by column value)
+    - Standard tool for random permutations.
+    - `tva sample` adds specific data science sampling methods: weighted sampling (by column value)
       and Bernoulli sampling.
 
 ## Aggregation Architecture
@@ -335,9 +326,9 @@ graph at runtime, while the State (`Aggregator`) uses compact columnar storage (
 - **Deterministic**: Uses `IndexMap` to guarantee that GroupBy output order matches the
   first-occurrence order in the input.
 
-**Trade-offs**: Virtual function calls (`vtable`) have a tiny overhead compared to inlined code in
-extremely high-frequency loops (e.g., 10 calls per row), but this is usually negligible in I/O-bound
-CLI tools.
+**Trade-offs**: Virtual function calls (`vtable`) have a tiny overhead compared to inlined code
+in extremely high-frequency loops (e.g., 10 calls per row), but this is usually negligible in
+I/O-bound CLI tools.
 
 ### Other Tools
 
@@ -374,7 +365,7 @@ Source → Pest Parser → AST (Expr) → Direct Interpretation (eval)
 ### Expr Engine Optimizations
 
 | Optimization             | Technique                          | Speedup |
-|:-------------------------|:-----------------------------------|:--------|
+| :----------------------- | :--------------------------------- | :------ |
 | Global Function Registry | `OnceLock` static registry         | 35-57x  |
 | Parse Cache              | `HashMap<String, Expr>` caching    | 12x     |
 | Column Name Resolution   | Compile-time name→index conversion | 3x      |
