@@ -233,7 +233,7 @@ cargo build
 **分析**:
 
 - **Arc 有优势的场景**: 纯克隆操作（不修改数据）和频繁参数传递的场景。`Arc` 仅递增引用计数（O(1)），
-   而直接克隆需要深拷贝（O(n)）。
+  而直接克隆需要深拷贝（O(n)）。
 - **Arc 无优势的场景**: 需要遍历并创建新列表的操作（`sort`, `filter`, `map`, `unique`）。
   这些操作需要 `list.iter().cloned().collect()`，比直接 `list.clone()` 慢得多。此外， `Arc<Vec<T>>`
   无法直接获取可变引用，需要 `Arc::make_mut` 或重新分配 Vec。
