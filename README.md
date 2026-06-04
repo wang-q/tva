@@ -42,7 +42,7 @@ Unix philosophy.
 
 ## Installation
 
-Current release: 0.3.2
+Current release: 0.3.3
 
 ```bash
 # Clone the repository and install via cargo

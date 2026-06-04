@@ -2,6 +2,8 @@
 
 ## Unreleased - ReleaseDate
 
+## 0.3.3 - 2026-06-04
+
 ### Fixed
 
 - Fixed `stats` `--group-by` behavior to match `tsv-summarize`: output order now preserves
