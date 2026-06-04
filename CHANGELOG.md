@@ -2,6 +2,14 @@
 
 ## Unreleased - ReleaseDate
 
+### Fixed
+
+- Fixed `stats` `--group-by` behavior to match `tsv-summarize`: output order now preserves
+  insertion order, and missing group-by fields now report errors instead of silently generating
+  empty keys.
+- Fixed `Collapse` calculator not respecting `--exclude-missing` and `--replace-missing`
+  options.
+
 ## 0.3.2 - 2026-04-05
 
 ### Added
