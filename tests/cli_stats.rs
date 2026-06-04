@@ -177,25 +177,6 @@ fn test_stats_string_ops_with_header(args: &str, expected: &str) {
     assert_eq!(stdout, expected);
 }
 
-#[test_case(
-    "--group-by header1 --count --sum value",
-    "header1\tcount\tvalue_sum\nA\t3\t60\nB\t3\t150\n";
-    "group_by_single"
-)]
-#[test_case(
-    "--group-by header1,header2 --sum value",
-    "header1\theader2\tvalue_sum\nA\tX\t30\nA\tY\t30\nB\tX\t40\nB\tY\t110\n";
-    "group_by_multiple"
-)]
-fn test_stats_group_by_with_header(args: &str, expected: &str) {
-    let args: Vec<&str> = std::iter::once("stats")
-        .chain(std::iter::once("--header"))
-        .chain(args.split_whitespace())
-        .collect();
-    let (stdout, _) = TvaCmd::new().args(&args).stdin(INPUT_BASIC).run();
-    assert_eq!(stdout, expected);
-}
-
 #[test]
 fn stats_advanced_math() {
     let input = "val\n2\n8\n";
@@ -440,20 +421,6 @@ B,30
     assert_eq!(stdout.trim(), "field2_sum\n60");
 }
 
-#[test]
-fn stats_custom_delimiter_group() {
-    let input = "A,10
-A,20
-B,30
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "-d", ",", "-g", "1", "--sum", "2"])
-        .stdin(input)
-        .run();
-
-    assert_eq!(stdout.trim(), "A\t30\nB\t30");
-}
-
 // --- Tests from cli_stats_tsv_utils.rs ---
 
 #[test]
@@ -469,103 +436,6 @@ fn tsv_utils_test_20_basic_count_min_max() {
         "count\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max"
     ));
     assert!(stdout.contains("7\t7.4\t1\t2\t16\t6\t7"));
-}
-
-#[test]
-fn tsv_utils_test_28_group_by_1() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "1",
-            "--count",
-            "--min",
-            "3,4,5",
-            "--max",
-            "3,4,5",
-        ])
-        .stdin(INPUT_5FIELD_A)
-        .run();
-
-    assert!(stdout.contains("color\tcount\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max"));
-    assert!(stdout.contains("blue\t3\t12\t1\t2\t16\t4\t4"));
-    assert!(stdout.contains("red\t2\t8\t4\t6\t10\t6\t7"));
-}
-
-#[test]
-fn tsv_utils_test_34_group_by_1_2() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "1,2",
-            "--count",
-            "--min",
-            "3,4,5",
-            "--max",
-            "3,4,5",
-        ])
-        .stdin(INPUT_5FIELD_A)
-        .run();
-
-    assert!(stdout.contains("color\tpattern\tcount\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max"));
-    assert!(stdout.contains("blue\tsolid\t2\t14\t2\t3\t16\t4\t4"));
-    assert!(stdout.contains("blue\tstriped\t1\t12\t1\t2\t12\t1\t2"));
-    assert!(stdout.contains("green\tsolid\t2\t7.4\t5.5\t3.2\t11\t6\t5.4"));
-    assert!(stdout.contains("red\tsolid\t1\t10\t4\t7\t10\t4\t7"));
-    assert!(stdout.contains("red\tstriped\t1\t8\t6\t6\t8\t6\t6"));
-}
-
-#[test]
-fn tsv_utils_test_42_group_by_range() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "1-2",
-            "--count",
-            "--min",
-            "3-5",
-            "--max",
-            "5-3",
-        ])
-        .stdin(INPUT_5FIELD_A)
-        .run();
-
-    assert!(stdout.contains("color\tpattern\tcount\tlength_min\twidth_min\theight_min"));
-    assert!(stdout.contains("height_max"));
-    assert!(stdout.contains("width_max"));
-    assert!(stdout.contains("length_max"));
-}
-
-#[test]
-fn tsv_utils_test_50_group_by_names() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "color,pattern",
-            "--count",
-            "--min",
-            "length-height",
-            "--max",
-            "height-length",
-        ])
-        .stdin(INPUT_5FIELD_A)
-        .run();
-
-    // length-height expands to length(3), width(4), height(5) in header order
-    // height-length expands to height(5), width(4), length(3) in header order
-    assert!(stdout.contains("color\tpattern\tcount\tlength_min\twidth_min\theight_min\theight_max\twidth_max\tlength_max"), "Header mismatch. Actual: {}", stdout);
-    assert!(
-        stdout.contains("red\tsolid\t1\t10\t4\t7\t7\t4\t10"),
-        "Data mismatch. Actual: {}",
-        stdout
-    );
 }
 
 #[test]
@@ -625,37 +495,6 @@ fn tsv_utils_test_97_multi_file_unique_count() {
 }
 
 #[test]
-fn tsv_utils_test_103_group_by_unique_count() {
-    let file_a = create_file(INPUT_5FIELD_A);
-    let file_empty = create_file("");
-    let file_b = create_file(INPUT_5FIELD_B);
-    let file_header_only = create_file(INPUT_5FIELD_HEADER_ONLY);
-    let file_c = create_file(INPUT_5FIELD_C);
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--group-by",
-            "1",
-            "--count",
-            "--nunique",
-            "2,3,4,5",
-            file_a.path().to_str().unwrap(),
-            file_empty.path().to_str().unwrap(),
-            file_b.path().to_str().unwrap(),
-            file_header_only.path().to_str().unwrap(),
-            file_c.path().to_str().unwrap(),
-        ])
-        .run();
-
-    assert!(stdout.contains("red\t4\t3\t3\t3\t3"));
-    assert!(stdout.contains("blue\t3\t2\t3\t3\t3"));
-    assert!(stdout.contains("green\t2\t1\t2\t2\t2"));
-    assert!(stdout.contains("赤\t2\t1\t2\t2\t2"));
-    assert!(stdout.contains("青\t1\t1\t1\t1\t1"));
-}
-
-#[test]
 fn tsv_utils_test_154_count_unique_count_files() {
     let file_a = create_file(INPUT_1FIELD_A);
     let file_b = create_file(INPUT_1FIELD_B);
@@ -674,52 +513,6 @@ fn tsv_utils_test_154_count_unique_count_files() {
 
     assert!(stdout.contains("count\tsize_nunique"));
     assert!(stdout.contains("9\t6"));
-}
-
-#[test]
-fn tsv_utils_test_243_mean() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "1",
-            "--min",
-            "3-5",
-            "--max",
-            "3-5",
-            "--mean",
-            "3-5",
-        ])
-        .stdin(INPUT_5FIELD_D)
-        .run();
-
-    let lines: Vec<&str> = stdout.trim().lines().collect();
-    assert!(lines[0].contains("length_mean\twidth_mean\theight_mean"));
-
-    let red_line = lines
-        .iter()
-        .find(|l| l.starts_with("red"))
-        .expect("Should have red line");
-    let red_parts: Vec<&str> = red_line.split('\t').collect();
-    // red length_mean ~ 0.0773666...
-    common::assert_close(
-        red_parts[red_parts.len() - 3].parse().unwrap(),
-        0.077366666,
-        1e-4,
-    );
-
-    let blue_line = lines
-        .iter()
-        .find(|l| l.starts_with("blue"))
-        .expect("Should have blue line");
-    let blue_parts: Vec<&str> = blue_line.split('\t').collect();
-    // blue length_mean ~ 0.1055
-    common::assert_close(
-        blue_parts[blue_parts.len() - 3].parse().unwrap(),
-        0.1055,
-        1e-4,
-    );
 }
 
 #[test]
@@ -798,77 +591,6 @@ fn test_tsv_utils_errors(args: &str, input: &str, expected_err: &str) {
 }
 
 #[test]
-fn tsv_utils_test_stdin_group_by() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "2",
-            "--count",
-            "--min",
-            "3,4,5",
-            "--max",
-            "3,4,5",
-        ])
-        .stdin(INPUT_5FIELD_A)
-        .run();
-
-    assert!(stdout.contains("pattern\tcount\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max"));
-    assert!(stdout.contains("solid\t5\t7.4\t2\t3\t16\t6\t7"));
-    assert!(stdout.contains("striped\t2\t8\t1\t2\t12\t6\t6"));
-}
-
-#[test]
-fn tsv_utils_test_stdin_mixed_files() {
-    let file_a = create_file(INPUT_5FIELD_A);
-    let file_c = create_file(INPUT_5FIELD_C);
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "2",
-            "--count",
-            "--min",
-            "3,4,5",
-            "--max",
-            "3,4,5",
-            file_a.path().to_str().unwrap(),
-            "-",
-            file_c.path().to_str().unwrap(),
-        ])
-        .stdin(INPUT_5FIELD_B)
-        .run();
-
-    assert!(stdout.contains("solid\t6"));
-    assert!(stdout.contains("striped\t2"));
-    assert!(stdout.contains("checked\t1"));
-}
-
-#[test]
-fn tsv_utils_test_field_out_of_bounds_multi_file_behavior() {
-    let file_5field = create_file(INPUT_5FIELD_A);
-    let file_1field = create_file(INPUT_1FIELD_A);
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--group-by",
-            "2",
-            "--nunique",
-            "1",
-            file_5field.path().to_str().unwrap(),
-            file_1field.path().to_str().unwrap(),
-        ])
-        .run();
-
-    // The empty string group (from file_1field which lacks field 2) has 5 unique values
-    assert!(stdout.contains("\t5"));
-}
-
-#[test]
 fn tsv_utils_test_crlf_handling() {
     let (stdout, _) = TvaCmd::new()
         .args(&["stats", "--count", "--nunique", "1"])
@@ -932,73 +654,6 @@ fn tsv_utils_test_extended_stats() {
     assert!(parts[5].starts_with("3.1005"));
 
     assert_eq!(parts[6], "blue"); // mode
-}
-
-#[test]
-fn tsv_utils_test_float_precision_defaults() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "1",
-            "--min",
-            "3,4,5",
-            "--max",
-            "3,4,5",
-            "--mean",
-            "3,4,5",
-        ])
-        .stdin(INPUT_5FIELD_D)
-        .run();
-
-    let lines: Vec<&str> = stdout.trim().lines().collect();
-    assert!(lines[0].contains("color\tlength_min\twidth_min\theight_min\tlength_max\twidth_max\theight_max\tlength_mean\twidth_mean\theight_mean"));
-
-    let blue_line = lines
-        .iter()
-        .find(|l| l.starts_with("blue"))
-        .expect("Should have blue line");
-    let blue_parts: Vec<&str> = blue_line.split('\t').collect();
-    // length_min: 0.1
-    common::assert_close(blue_parts[1].parse().unwrap(), 0.1, 1e-4);
-    // height_min: 0.123456...
-    common::assert_close(blue_parts[3].parse().unwrap(), 0.1235, 1e-4);
-    // length_mean: 0.1055
-    common::assert_close(blue_parts[7].parse().unwrap(), 0.1055, 1e-4);
-
-    let red_line = lines
-        .iter()
-        .find(|l| l.starts_with("red"))
-        .expect("Should have red line");
-    let red_parts: Vec<&str> = red_line.split('\t').collect();
-    // length_mean: 0.077366... -> 0.0774
-    common::assert_close(red_parts[7].parse().unwrap(), 0.0774, 1e-4);
-}
-
-#[test_case(
-    "--group-by x --count",
-    INPUT_5FIELD_A,
-    "requires header";
-    "non_numeric_group_by"
-)]
-#[test_case(
-    "--header --group-by 2 --sum width,len",
-    INPUT_5FIELD_A,
-    "Field not found";
-    "field_not_found_header"
-)]
-fn test_tsv_utils_errors_2(args: &str, input: &str, expected_err: &str) {
-    let args: Vec<&str> = std::iter::once("stats")
-        .chain(args.split_whitespace())
-        .collect();
-    let (_, stderr) = TvaCmd::new().args(&args).stdin(input).run_fail();
-    assert!(
-        stderr.contains(expected_err),
-        "Expected error containing '{}' in: {}",
-        expected_err,
-        stderr
-    );
 }
 
 #[test]
@@ -1069,16 +724,6 @@ fn test_tsv_utils_errors_3(args: &str, input: &str, expected_err: &str) {
 }
 
 #[test]
-fn tsv_utils_test_header_as_data() {
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--group-by", "1,2", "--count"])
-        .stdin(INPUT_5FIELD_A)
-        .run();
-
-    assert!(stdout.contains("color\tpattern"));
-}
-
-#[test]
 fn tsv_utils_test_1field_no_header() {
     let (stdout, _) = TvaCmd::new()
         .args(&["stats", "--count"])
@@ -1112,33 +757,6 @@ fn tsv_utils_test_multi_file_no_header() {
         .run();
 
     assert!(stdout.contains("11\t7"));
-}
-
-#[test]
-fn tsv_utils_test_no_header_group_by() {
-    let file_a = create_file(INPUT_1FIELD_A);
-    let file_b = create_file(INPUT_1FIELD_B);
-
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--group-by",
-            "1",
-            "--count",
-            "--nunique",
-            "1",
-            file_a.path().to_str().unwrap(),
-            file_b.path().to_str().unwrap(),
-        ])
-        .run();
-
-    assert!(stdout.contains("size\t2\t1"));
-    assert!(stdout.contains("10\t3\t1"));
-    assert!(stdout.contains("small\t2\t1"));
-    assert!(stdout.contains("8\t1\t1"));
-    assert!(stdout.contains("9\t1\t1"));
-    assert!(stdout.contains("medium\t1\t1"));
-    assert!(stdout.contains("\t1\t1"));
 }
 
 // ============================================================================
@@ -1309,50 +927,6 @@ fn test_stats_number_edge_cases(input: &str, args: &str, expected: &[&str]) {
         "Expected one of {:?} in output: {}",
         expected, stdout
     );
-}
-
-#[test]
-fn stats_group_by_single_group() {
-    // All rows have same group key
-    let input = "grp\tval
-A\t10
-A\t20
-A\t30
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--group-by",
-            "grp",
-            "--sum",
-            "val",
-            "--count",
-        ])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A"));
-    assert!(stdout.contains("60")); // sum
-    assert!(stdout.contains("3")); // count
-}
-
-#[test]
-fn stats_group_by_many_groups() {
-    // Each row is its own group
-    let input = "grp\tval
-A\t10
-B\t20
-C\t30
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--group-by", "grp", "--sum", "val"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A\t10"));
-    assert!(stdout.contains("B\t20"));
-    assert!(stdout.contains("C\t30"));
 }
 
 #[test]
@@ -1588,17 +1162,7 @@ fn stats_field_by_name_not_found() {
 }
 
 #[test]
-fn stats_group_by_field_not_found() {
-    let (_, stderr) = TvaCmd::new()
-        .args(&["stats", "--header", "--group-by", "nonexistent", "--count"])
-        .stdin(INPUT_BASIC)
-        .run_fail();
-
-    assert!(stderr.contains("not found") || stderr.contains("field"));
-}
-
-#[test]
-fn stats_mixed_types() {
+fn stats_stdin_combined_with_files() {
     // Mix of numeric and non-numeric in same column
     let input = "val\n10\nabc\n20\n";
     let (stdout, _) = TvaCmd::new()
@@ -1834,22 +1398,6 @@ fn stats_two_column_file() {
 }
 
 #[test]
-fn stats_group_by_with_missing_values() {
-    let input = "grp\tval
-A\t10
-\t20
-A\t30
-";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--header", "--group-by", "grp", "--sum", "val"])
-        .stdin(input)
-        .run();
-
-    // Should handle missing group key
-    assert!(stdout.contains("A"));
-}
-
-#[test]
 fn stats_multiple_operations_different_fields() {
     let input = "a\tb\tc\n1\t10\t100\n2\t20\t200\n3\t30\t300\n";
     let (stdout, _) = TvaCmd::new()
@@ -2037,38 +1585,6 @@ fn stats_mad_no_header() {
     assert!(!stdout.trim().is_empty());
 }
 
-#[test]
-fn stats_group_by_no_header() {
-    let input = "A\t10\nA\t20\nB\t30\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&["stats", "--group-by", "1", "--sum", "2"])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A\t30") || stdout.contains("A\t30"));
-    assert!(stdout.contains("B\t30"));
-}
-
-#[test]
-fn stats_write_header_with_group_by() {
-    let input = "grp\tval
-A\t10\nB\t20\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header",
-            "--write-header",
-            "--group-by",
-            "grp",
-            "--sum",
-            "val",
-        ])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("grp") || stdout.contains("val_sum"));
-}
-
 #[test_case("A\nB\nC\n", "--retain 1", "A"; "retain")]
 #[test_case("2\n4\n", "--var 1", "2"; "var")]
 #[test_case("A\nA\nB\n", "--unique-count 1", "2"; "unique_count")]
@@ -2120,25 +1636,6 @@ fn stats_header_hash1_count() {
         .run();
 
     assert_eq!(stdout, "count\n2\n");
-}
-
-#[test]
-fn stats_header_hash1_group_by() {
-    let input = "# Comment\ngroup\tvalue\nA\t10\nA\t20\nB\t30\n";
-    let (stdout, _) = TvaCmd::new()
-        .args(&[
-            "stats",
-            "--header-hash1",
-            "--group-by",
-            "group",
-            "--sum",
-            "value",
-        ])
-        .stdin(input)
-        .run();
-
-    assert!(stdout.contains("A\t30"));
-    assert!(stdout.contains("B\t30"));
 }
 
 #[test]

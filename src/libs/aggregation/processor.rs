@@ -334,6 +334,8 @@ impl StatsProcessor {
                             field_idx: idx,
                             string_values_slot: slot,
                             delimiter: config.delimiter.to_string(),
+                            exclude_missing: config.exclude_missing,
+                            missing_val: config.missing_val.clone(),
                         }));
                     }
                 }

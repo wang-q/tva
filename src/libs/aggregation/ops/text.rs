@@ -38,15 +38,29 @@ pub struct Collapse {
     pub field_idx: usize,
     pub string_values_slot: usize,
     pub delimiter: String,
+    pub exclude_missing: bool,
+    pub missing_val: Option<String>,
 }
 
 impl Calculator for Collapse {
     fn update(&self, agg: &mut Aggregator, row: &dyn Row) {
-        agg.string_values[self.string_values_slot].push(get_str(row, self.field_idx));
+        let val = get_str(row, self.field_idx);
+        if self.exclude_missing && val.is_empty() {
+            return;
+        }
+        agg.string_values[self.string_values_slot].push(val);
     }
 
     fn format(&self, agg: &Aggregator) -> String {
-        agg.string_values[self.string_values_slot].join(&self.delimiter)
+        let vals = &agg.string_values[self.string_values_slot];
+        if let Some(ref replacement) = self.missing_val {
+            vals.iter()
+                .map(|v| if v.is_empty() { replacement.as_str() } else { v.as_str() })
+                .collect::<Vec<&str>>()
+                .join(&self.delimiter)
+        } else {
+            vals.join(&self.delimiter)
+        }
     }
 }
 
@@ -138,12 +152,50 @@ mod tests {
             field_idx: 0,
             string_values_slot: 0,
             delimiter: ",".to_string(),
+            exclude_missing: false,
+            missing_val: None,
         };
 
         calc.update(&mut agg, &StrSliceRow { fields: &["A"] });
         calc.update(&mut agg, &StrSliceRow { fields: &["B"] });
 
         assert_eq!(calc.format(&agg), "A,B");
+    }
+
+    #[test]
+    fn test_collapse_exclude_missing() {
+        let mut agg = new_agg();
+        let calc = Collapse {
+            field_idx: 0,
+            string_values_slot: 0,
+            delimiter: ",".to_string(),
+            exclude_missing: true,
+            missing_val: None,
+        };
+
+        calc.update(&mut agg, &StrSliceRow { fields: &["A"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &[""] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["B"] });
+
+        assert_eq!(calc.format(&agg), "A,B");
+    }
+
+    #[test]
+    fn test_collapse_replace_missing() {
+        let mut agg = new_agg();
+        let calc = Collapse {
+            field_idx: 0,
+            string_values_slot: 0,
+            delimiter: ",".to_string(),
+            exclude_missing: false,
+            missing_val: Some("NA".to_string()),
+        };
+
+        calc.update(&mut agg, &StrSliceRow { fields: &["A"] });
+        calc.update(&mut agg, &StrSliceRow { fields: &[""] });
+        calc.update(&mut agg, &StrSliceRow { fields: &["B"] });
+
+        assert_eq!(calc.format(&agg), "A,NA,B");
     }
 
     #[test]

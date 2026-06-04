@@ -467,7 +467,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
             if idxs.is_empty() {
                 None
             } else {
-                Some(KeyExtractor::new(Some(idxs), false, false)) // strict=false for stats
+                Some(KeyExtractor::new(Some(idxs), false, true)) // strict=true for stats
             }
         } else {
             None
@@ -546,10 +546,17 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
                             .as_mut()
                             .unwrap()
                             .extract_from_row(row, opt_delimiter);
-                        let key = match key_res {
-                            Ok(k) => k.into_owned(),
-                            Err(_) => KeyBuffer::new(),
-                        };
+                        let key = key_res
+                            .map_err(|idx| {
+                                std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    format!(
+                                        "Not enough fields in line for group-by key. Required field index: {}",
+                                        idx
+                                    ),
+                                )
+                            })?
+                            .into_owned();
 
                         let agg = groups
                             .entry(key)
@@ -568,11 +575,7 @@ pub fn execute(matches: &ArgMatches) -> anyhow::Result<()> {
 
     if let Some(proc) = &processor {
         if use_grouping {
-            let mut keys: Vec<_> = groups.keys().collect();
-            keys.sort();
-
-            for key in keys {
-                let agg = &groups[key];
+            for (key, agg) in &groups {
                 print!("{}", String::from_utf8_lossy(key));
 
                 let values = proc.format_results(agg);
